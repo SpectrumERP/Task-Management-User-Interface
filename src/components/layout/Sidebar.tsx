@@ -1,7 +1,8 @@
 import {
   LayoutGrid,
   Plus,
-  Snowflake
+  Snowflake,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,20 +17,32 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (id: string) => void;
   onCreateTask: () => void;
+  onClose?: () => void;
 }
 
-export function Sidebar({ activeTab, onTabChange, onCreateTask }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, onCreateTask, onClose }: SidebarProps) {
   return (
-    <aside className="w-64 h-screen bg-[#f4f7fa] border-r flex flex-col p-4">
+    <aside className="w-64 h-full bg-[#f4f7fa] border-r flex flex-col p-4 shrink-0">
       {/* Brand */}
-      <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="bg-[#0077b6] p-2 rounded-xl text-white">
-          <Snowflake size={24} />
+      <div className="flex items-center justify-between mb-8 px-2">
+        <div className="flex items-center gap-3">
+          <div className="bg-[#0077b6] p-2 rounded-xl text-white">
+            <Snowflake size={24} />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-800 leading-tight">Task Management</h2>
+          </div>
         </div>
-        <div>
-          <h2 className="font-bold text-slate-800 leading-tight">Task Management</h2>
-          {/* <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Execution Mode</p> */}
-        </div>
+        {onClose && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose} 
+            className="lg:hidden h-8 w-8 rounded-lg hover:bg-slate-200/50 flex items-center justify-center"
+          >
+            <X size={18} className="text-slate-500" />
+          </Button>
+        )}
       </div>
 
       {/* Create Task Button */}

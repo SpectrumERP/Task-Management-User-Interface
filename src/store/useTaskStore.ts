@@ -17,6 +17,13 @@ interface FilterParams {
   toDueDate?: string;
   companyNo?: number;
   folderNo?: number;
+  sortingColumnName?: string;
+  sortingType?: string;
+  loginNo?: string;
+  fromCreatedDate?: string;
+  toCreatedDate?: string;
+  pageSize?: number;
+  pageNo?: number;
 }
 
 export interface TaskFillValues {
@@ -29,6 +36,7 @@ export interface TaskFillValues {
   benefitType?: { BusinessBenefitTypeNo: number; "Business Benefit": string; Code?: string }[];
   userGroup?: { UserGroupNo: number; UserGroupName: string; Code?: string }[];
   filterType?: { FilterTypeNo: number; FilterTypeName: string }[];
+  sortingColumns?: { SortingColumnName: string; DisplayName: string }[];
 }
 
 interface TaskState {
@@ -134,12 +142,36 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         }
       }
 
-      // Automatically append current user ID as LoginNo parameter
-      const currentUser = useAuthStore.getState().user;
-      const userLoginNo = currentUser?.LoginNo || currentUser?.loginNo;
-      if (userLoginNo) {
-        searchParamsPascal.LoginNo = Number(userLoginNo);
+      // Handle User autocomplete selection or fall back to logged-in user
+      if (searchParamsCamel.loginNo !== undefined && searchParamsCamel.loginNo !== '') {
+        searchParamsPascal.LoginNo = Number(searchParamsCamel.loginNo);
+      } else {
+        const currentUser = useAuthStore.getState().user;
+        const userLoginNo = currentUser?.LoginNo || currentUser?.loginNo;
+        if (userLoginNo) {
+          searchParamsPascal.LoginNo = Number(userLoginNo);
+        }
       }
+
+      // Advanced Filter Sorting Parameters
+      if (searchParamsCamel.sortingColumnName !== undefined && searchParamsCamel.sortingColumnName !== '') {
+        searchParamsPascal.SortingColumnName = searchParamsCamel.sortingColumnName;
+      }
+      if (searchParamsCamel.sortingType !== undefined && searchParamsCamel.sortingType !== '') {
+        searchParamsPascal.SortingType = searchParamsCamel.sortingType;
+      }
+
+      // Advanced Filter Created Date Parameters
+      if (searchParamsCamel.fromCreatedDate !== undefined) {
+        searchParamsPascal.FromCreatedDate = searchParamsCamel.fromCreatedDate;
+      }
+      if (searchParamsCamel.toCreatedDate !== undefined) {
+        searchParamsPascal.ToCreatedDate = searchParamsCamel.toCreatedDate;
+      }
+
+      // Pagination Parameters
+      searchParamsPascal.PageSize = searchParamsCamel.pageSize !== undefined ? Number(searchParamsCamel.pageSize) : 100;
+      searchParamsPascal.PageNo = searchParamsCamel.pageNo !== undefined ? Number(searchParamsCamel.pageNo) : 1;
 
       const response = await apiService.get<{ success: boolean, data: any[] }>('/api/crm/tasks/search-data', {
         params: searchParamsPascal

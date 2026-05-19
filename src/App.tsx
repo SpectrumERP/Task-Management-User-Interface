@@ -19,6 +19,7 @@ import {
 import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
 import { useTaskStore } from '@/store/useTaskStore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LayoutGrid, List as ListIcon, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -37,8 +38,15 @@ function Dashboard() {
   });
   const navigate = useNavigate();
   const { fetchTasks, fetchFillValues, isLoading } = useTaskStore();
+  const tasks = useTaskStore((state) => state.tasks);
+  const selectedFolder = useTaskStore((state) => state.selectedFolder);
+
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const [pageSize, setPageSize] = useState(100);
+  const [pageNo, setPageNo] = useState(1);
+  const [currentFilters, setCurrentFilters] = useState<any>(null);
 
   const handleTaskClick = (taskId: number) => {
     setSelectedTaskId(taskId);
@@ -53,18 +61,39 @@ function Dashboard() {
         ? fillValues.folder[0].TaskFolderNo 
         : undefined;
       
-      // Initial fetch with default filters
-      fetchTasks({ companyNo: 2, folderNo });
+      // Initial filters setup
+      setCurrentFilters({ companyNo: 2, folderNo });
     };
     initData();
-  }, [fetchTasks, fetchFillValues]);
+  }, [fetchFillValues]);
+
+  useEffect(() => {
+    if (selectedFolder) {
+      setPageNo(1);
+      setCurrentFilters((prev: any) => ({
+        ...(prev || { companyNo: 2 }),
+        folderNo: selectedFolder.TaskFolderNo
+      }));
+    }
+  }, [selectedFolder]);
+
+  useEffect(() => {
+    if (currentFilters) {
+      fetchTasks({
+        ...currentFilters,
+        pageSize,
+        pageNo
+      });
+    }
+  }, [currentFilters, pageSize, pageNo, fetchTasks]);
 
   const handleCreateTask = () => {
     navigate('/task/new');
   };
 
   const handleFilter = (filters: any) => {
-    fetchTasks(filters);
+    setPageNo(1); // Reset page number on filter change
+    setCurrentFilters(filters);
   };
 
   const setViewModeAndStore = (mode: 'list' | 'board') => {
@@ -134,10 +163,60 @@ function Dashboard() {
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto scrollbar-hide">
           {viewMode === 'list' ? (
-            <TaskListView tasks={useTaskStore.getState().tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
+            <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
           ) : (
             <Board onAddTask={(status) => navigate(`/task/new?status=${status}`)} onTaskClick={handleTaskClick} />
           )}
+        </div>
+
+        {/* Glacier Pagination Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 mt-4 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-150/80 shadow-md shadow-slate-100/30 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Page Size:</span>
+            <Select 
+              value={pageSize.toString()} 
+              onValueChange={(val) => {
+                setPageSize(Number(val));
+                setPageNo(1);
+              }}
+            >
+              <SelectTrigger className="h-8.5 w-20 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 focus:ring-1 focus:ring-[#006699]/15">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
+                <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
+                <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
+                <SelectItem value="100" className="text-xs font-medium">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={pageNo === 1 || isLoading}
+              onClick={() => setPageNo(prev => Math.max(prev - 1, 1))}
+              className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              Previous
+            </Button>
+            
+            <div className="h-8.5 px-4 bg-[#e1ecf7]/50 rounded-xl flex items-center justify-center border border-[#006699]/10">
+              <span className="text-xs font-black text-[#006699]">Page {pageNo}</span>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={tasks.length < pageSize || isLoading}
+              onClick={() => setPageNo(prev => prev + 1)}
+              className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              Next
+            </Button>
+          </div>
         </div>
 
         <TaskDetailModal

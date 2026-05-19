@@ -74,15 +74,18 @@ export function UserCombobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between text-[11px] font-bold text-slate-900 rounded-xl h-9 transition-all",
+            "w-full justify-between transition-all",
+            !className?.includes("text-") && "text-[11px] font-bold text-slate-900",
+            !className?.includes("rounded-") && "rounded-xl",
+            !className?.includes("h-") && "h-9",
             className
           )}
         >
-          <span className="truncate">{selectedLabel || placeholder}</span>
-          <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-40" />
+          <span className={cn("truncate", !selectedLabel && "text-slate-400 font-medium")}>{selectedLabel || placeholder}</span>
+          <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-40 text-slate-400" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[600px] p-0" align="start">
+      <PopoverContent className="w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 z-[9999]" align="start">
         <Command className="rounded-xl border-slate-200" shouldFilter={false}>
           <div className="border-b border-slate-100 bg-slate-50/50">
             <CommandInput 

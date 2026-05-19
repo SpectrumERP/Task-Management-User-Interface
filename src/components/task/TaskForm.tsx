@@ -83,13 +83,13 @@ const taskSchema = z.object({
         path: ['business_benefit_type_No'],
       });
     }
-    if (!data.business_benefit_description || data.business_benefit_description.trim() === '') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Benefit Description is required',
-        path: ['business_benefit_description'],
-      });
-    }
+    // if (!data.business_benefit_description || data.business_benefit_description.trim() === '') {
+    //   ctx.addIssue({
+    //     code: z.ZodIssueCode.custom,
+    //     message: 'Benefit Description is required',
+    //     path: ['business_benefit_description'],
+    //   });
+    // }
     if (!data.estimated_benefit_amount || isNaN(parseFloat(data.estimated_benefit_amount)) || parseFloat(data.estimated_benefit_amount) <= 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -97,13 +97,13 @@ const taskSchema = z.object({
         path: ['estimated_benefit_amount'],
       });
     }
-    if (!data.actual_benefit_amount || isNaN(parseFloat(data.actual_benefit_amount)) || parseFloat(data.actual_benefit_amount) <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Actual benefit amount must be greater than 0',
-        path: ['actual_benefit_amount'],
-      });
-    }
+    // if (!data.actual_benefit_amount || isNaN(parseFloat(data.actual_benefit_amount)) || parseFloat(data.actual_benefit_amount) <= 0) {
+    //   ctx.addIssue({
+    //     code: z.ZodIssueCode.custom,
+    //     message: 'Actual benefit amount must be greater than 0',
+    //     path: ['actual_benefit_amount'],
+    //   });
+    // }
     if (!data.benefit_period || data.benefit_period === '') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -119,6 +119,7 @@ interface TaskFormProps {
   initialData?: Task;
   onComplete?: () => void;
   onRefreshData?: () => void;
+  onSaveStateChange?: (isSaving: boolean) => void;
 }
 
 interface TaskFillValues {
@@ -188,7 +189,7 @@ const resolveCompanyValue = (company: any, authCompanies: any[] | null): string 
   return matched?.companyNo?.toString() || matched?.CompanyNo?.toString() || extractedVal;
 };
 
-export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData }: TaskFormProps) {
+export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData, onSaveStateChange }: TaskFormProps) {
   const { addTask, updateTask, fetchFillValues, selectedFolder } = useTaskStore();
   const { company: authCompanies, user: authUser } = useAuthStore();
   const [selectedCollabTeam, setSelectedCollabTeam] = useState<string>("");
@@ -366,6 +367,13 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
       });
     }
   }, [initialData, form, authCompanies]);
+
+  // Dynamically default the folder field to the navbar's selected workspace folder on task creation
+  useEffect(() => {
+    if (!initialData && selectedFolder && !form.getValues('folder_No')) {
+      form.setValue('folder_No', selectedFolder.TaskFolderNo.toString());
+    }
+  }, [selectedFolder, initialData, form]);
 
   const handleTeamSelection = async (groupNo: string, type: 'collaborator' | 'inform') => {
     const group = fillValues?.userGroup.find(g => g.UserGroupNo.toString() === groupNo);
@@ -554,6 +562,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
 
     console.log('Final Submission Payload:', payload);
 
+    if (onSaveStateChange) onSaveStateChange(true);
     try {
       if (initialData) {
         await apiService.post(`/api/crm/tasks/save`, payload); // Assuming update is POST/PUT as per typical pattern
@@ -568,6 +577,8 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
       if (onComplete) onComplete();
     } catch (error) {
       console.error('Failed to save task:', error);
+    } finally {
+      if (onSaveStateChange) onSaveStateChange(false);
     }
   };
 
@@ -676,7 +687,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
             </div>
 
             {/* Row 3: Category, Type, Priority */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-4">
               <div className="space-y-1.5" id="form-group-category_No">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Category</Label>
                 <Controller
@@ -1039,7 +1050,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                 {form.formState.errors.start_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.start_date.message}</p>}
               </div>
               <div className="space-y-1.5" id="form-group-end_date">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">End Date</Label>
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Due Date</Label>
                 <Controller
                   name="end_date"
                   control={form.control}

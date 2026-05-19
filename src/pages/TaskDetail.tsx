@@ -44,6 +44,7 @@ export default function TaskDetail() {
   const isEdit = id !== 'new';
   const [task, setTask] = useState<Task | undefined>(undefined);
   const [isFetching, setIsFetching] = useState(isEdit);
+  const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
@@ -219,7 +220,8 @@ export default function TaskDetail() {
                 variant="ghost"
                 type="button"
                 onClick={() => navigate('/')}
-                className="rounded-xl h-9 px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs"
+                disabled={isSaving}
+                className="rounded-xl h-9 px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
               >
                 <X size={16} />
                 Cancel
@@ -227,11 +229,20 @@ export default function TaskDetail() {
               <Button
                 type="submit"
                 form="task-form"
-                onClick={() => console.log('Create Task button clicked')}
-                className="rounded-xl h-9 px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white"
+                disabled={isSaving}
+                className="rounded-xl h-9 px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
               >
-                <Save size={16} />
-                {isEdit ? 'Update' : 'Save'}
+                {isSaving ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    {isEdit ? 'Updating...' : 'Saving...'}
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    {isEdit ? 'Update' : 'Save'}
+                  </>
+                )}
               </Button>
               {isEdit && (
                 <DropdownMenu>
@@ -273,6 +284,7 @@ export default function TaskDetail() {
                   initialData={task}
                   initialStatus={initialStatus}
                   onComplete={() => navigate('/')}
+                  onSaveStateChange={setIsSaving}
                 />
               )}
             </div>

@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar, Clipboard } from 'lucide-react';
+import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar, Clipboard, Folder, ArrowUpDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
+import { UserCombobox } from '@/components/ui/UserCombobox';
 
 interface FilterFormValues {
   taskCode?: string;
@@ -23,6 +24,12 @@ interface FilterFormValues {
   toDueDate?: Date;
   companyNo?: string;
   filterType?: string;
+  sortingColumnName?: string;
+  sortingType?: string;
+  folderNo?: string;
+  loginNo?: string;
+  fromCreatedDate?: Date;
+  toCreatedDate?: Date;
 }
 
 interface TaskFilterProps {
@@ -34,8 +41,9 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const { fetchFillValues } = useTaskStore();
-  
-  const { control, handleSubmit, reset, watch, setValue } = useForm<FilterFormValues>({
+  const selectedFolder = useTaskStore((state) => state.selectedFolder);
+
+  const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FilterFormValues>({
     defaultValues: {
       taskCode: '',
       title: '',
@@ -49,13 +57,24 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
       toDueDate: undefined,
       companyNo: '2',
       filterType: 'All',
+      sortingColumnName: '',
+      sortingType: '',
+      folderNo: '',
+      loginNo: '',
+      fromCreatedDate: undefined,
+      toCreatedDate: undefined,
     }
   });
 
-  const formValues = watch();
 
-  // Dynamic count of active filters (ignoring default companyNo and filterType: 'All')
-  const activeCount = Object.entries(formValues || {}).filter(([key, val]) => {
+  // State to track the actually applied filters (only updated on Submit/Reset/Badge Clear)
+  const [appliedFilters, setAppliedFilters] = useState<FilterFormValues>({
+    companyNo: '2',
+    filterType: 'All',
+  });
+
+  // Dynamic count of active applied filters (ignoring default companyNo and filterType: 'All')
+  const activeCount = Object.entries(appliedFilters || {}).filter(([key, val]) => {
     if (key === 'companyNo') return false;
     if (key === 'filterType' && val === 'All') return false;
     return val !== undefined && val !== '' && val !== null;
@@ -75,7 +94,20 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
     fetchOptions();
   }, [fetchFillValues]);
 
+  // Reactive default folder population from the navbar selection
+  useEffect(() => {
+    if (selectedFolder) {
+      const folderNoStr = selectedFolder.TaskFolderNo.toString();
+      setValue('folderNo', folderNoStr);
+      setAppliedFilters(prev => ({
+        ...prev,
+        folderNo: folderNoStr
+      }));
+    }
+  }, [selectedFolder, setValue]);
+
   const onSubmit = (data: FilterFormValues) => {
+    setAppliedFilters(data); // Commit selected values to applied state!
     const cleanFilters: any = {};
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== '' && value !== null) {
@@ -92,8 +124,116 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
 
   const handleReset = () => {
     reset(); // Triggers full reset to all defaultValues defined above
-    onFilter({ companyNo: '2', filterType: 'All' });
+    const resetState = {
+      companyNo: '2',
+      filterType: 'All',
+      folderNo: selectedFolder ? selectedFolder.TaskFolderNo.toString() : ''
+    };
+    setAppliedFilters(resetState);
+
+    const cleanFilters: any = { companyNo: '2', filterType: 'All' };
+    if (selectedFolder) {
+      cleanFilters.folderNo = selectedFolder.TaskFolderNo.toString();
+    }
+    onFilter(cleanFilters);
     setIsOpen(false); // Close popover on reset
+  };
+
+  const clearFilterKey = (key: keyof FilterFormValues) => {
+    let defaultValue: any = '';
+    if (key === 'companyNo') defaultValue = '2';
+    else if (key === 'filterType') defaultValue = 'All';
+    else if (key === 'fromDueDate' || key === 'toDueDate' || key === 'fromCreatedDate' || key === 'toCreatedDate') defaultValue = undefined;
+
+    setValue(key, defaultValue);
+
+    // Automatically submit with updated values!
+    const updatedValues = { ...appliedFilters, [key]: defaultValue };
+    if (key === 'fromDueDate') {
+      setValue('toDueDate', undefined);
+      updatedValues.toDueDate = undefined;
+    }
+    if (key === 'fromCreatedDate') {
+      setValue('toCreatedDate', undefined);
+      updatedValues.toCreatedDate = undefined;
+    }
+
+    setAppliedFilters(updatedValues); // Commit directly!
+
+    // Convert Dates to ISOStrings for onSubmit
+    const cleanFilters: any = {};
+    Object.entries(updatedValues).forEach(([k, v]) => {
+      if (v !== undefined && v !== '' && v !== null) {
+        if (v instanceof Date) {
+          cleanFilters[k] = v.toISOString();
+        } else {
+          cleanFilters[k] = v;
+        }
+      }
+    });
+
+    onFilter(cleanFilters);
+  };
+
+  const getFilterBadgeLabel = (key: string, val: any): string | null => {
+    if (!val || val === '') return null;
+
+    switch (key) {
+      case 'title':
+        return `Title: "${val}"`;
+      case 'taskCode':
+        return `Task ID: ${val}`;
+      case 'operTaskStatusNo': {
+        const item = fillValues?.status?.find(s => s.StatusNo.toString() === val.toString());
+        return item ? `Status: ${item.Status}` : null;
+      }
+      case 'operTaskPriorityNo': {
+        const item = fillValues?.priority?.find(p => p.OperTaskPriorityNo.toString() === val.toString());
+        return item ? `Priority: ${item.Priority}` : null;
+      }
+      case 'operTaskCategoryNo': {
+        const item = fillValues?.category?.find(c => c.OperTaskCategoryNo.toString() === val.toString());
+        return item ? `Category: ${item.Category}` : null;
+      }
+      case 'operTaskTypeNo': {
+        const item = fillValues?.type?.find(t => t.OperTaskTypeNo.toString() === val.toString());
+        return item ? `Type: ${item["Task Type"]}` : null;
+      }
+      case 'operTaskLocationNo': {
+        const item = fillValues?.location?.find(l => l.OperLocationNo.toString() === val.toString());
+        return item ? `Location: ${item.Location}` : null;
+      }
+      case 'folderNo': {
+        const item = fillValues?.folder?.find(f => f.TaskFolderNo.toString() === val.toString());
+        return item ? `Folder: ${item["Folder Name"]}` : null;
+      }
+      case 'filterType':
+        if (val === 'All') return null;
+        return `Filter: ${val}`;
+      case 'loginNo':
+        return `User: ${val}`;
+      case 'sortingColumnName': {
+        const col = fillValues?.sortingColumns?.find(c => c.SortingColumnName === val);
+        const dir = appliedFilters.sortingType === 'desc' ? 'Desc' : 'Asc';
+        return col ? `Sort: ${col.DisplayName} (${dir})` : null;
+      }
+      case 'fromDueDate': {
+        if (!val) return null;
+        const toVal = appliedFilters.toDueDate;
+        const fromStr = new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const toStr = toVal ? new Date(toVal).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+        return `Due: ${fromStr}${toStr ? ` - ${toStr}` : ''}`;
+      }
+      case 'fromCreatedDate': {
+        if (!val) return null;
+        const toVal = appliedFilters.toCreatedDate;
+        const fromStr = new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const toStr = toVal ? new Date(toVal).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+        return `Created: ${fromStr}${toStr ? ` - ${toStr}` : ''}`;
+      }
+      default:
+        return null;
+    }
   };
 
   return (
@@ -102,7 +242,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
         {/* Main Search Row */}
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px] space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
               <Search size={12} className="text-slate-400" />
               Search Title
             </label>
@@ -123,7 +263,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
           </div>
 
           <div className="w-[140px] space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
               <Clipboard size={12} className="text-slate-400" />
               Status
             </label>
@@ -146,7 +286,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
           </div>
 
           <div className="w-[140px] space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
               <Tag size={12} className="text-slate-400" />
               Priority
             </label>
@@ -170,8 +310,8 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
 
           {/* Action Controls */}
           <div className="flex gap-2.5">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="h-11 px-5 rounded-2xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] font-black text-xs uppercase tracking-widest text-white shadow-lg shadow-[#006699]/15 transition-all hover:scale-[1.02] active:scale-95 gap-2"
             >
               <Search size={14} strokeWidth={3} />
@@ -198,24 +338,24 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent 
-                align="end" 
-                className="w-[320px] sm:w-[500px] md:w-[600px] p-6 rounded-[24px] border border-slate-100 bg-white shadow-2xl z-[100] outline-none"
+              <PopoverContent
+                align="end"
+                className="w-[320px] sm:w-[500px] md:w-[600px] max-w-[92vw] sm:max-w-none p-0 rounded-[24px] border border-slate-100 bg-white shadow-2xl z-[100] outline-none max-h-[80vh] flex flex-col"
                 onInteractOutside={(event) => {
                   // Prevent closing parent popover when clicking inside calendar popups
                   const target = event.target as HTMLElement;
                   if (
-                    target.closest('[data-radix-popper-content-wrapper]') || 
-                    target.closest('.rdp') || 
+                    target.closest('[data-radix-popper-content-wrapper]') ||
+                    target.closest('.rdp') ||
                     target.closest('[role="dialog"]')
                   ) {
                     event.preventDefault();
                   }
                 }}
               >
-                <div className="space-y-5">
+                <div className="flex flex-col max-h-[80vh] w-full">
                   {/* Popover Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-slate-100 shrink-0">
                     <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-2">
                       <SlidersHorizontal size={14} className="text-[#006699]" />
                       Advanced Filters
@@ -227,132 +367,253 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
                     )}
                   </div>
 
-                  {/* Advanced Filters Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-                        <Clipboard size={12} className="text-slate-400" />
-                        Task ID / Code
-                      </label>
-                      <Controller
-                        name="taskCode"
-                        control={control}
-                        render={({ field }) => (
-                          <Input {...field} type="text" placeholder="Enter Task ID / Code" className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0" />
-                        )}
-                      />
-                    </div>
+                  {/* Advanced Filters Scroll Area */}
+                  <div className="overflow-y-auto p-6 space-y-5 flex-1 max-h-[calc(85vh-130px)]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <Clipboard size={12} className="text-slate-400" />
+                          Task ID / Code
+                        </label>
+                        <Controller
+                          name="taskCode"
+                          control={control}
+                          render={({ field }) => (
+                            <Input {...field} type="text" placeholder="Enter Task ID / Code" className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0" />
+                          )}
+                        />
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-                        <Layers size={12} className="text-slate-400" />
-                        Category
-                      </label>
-                      <Controller
-                        name="operTaskCategoryNo"
-                        control={control}
-                        render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                              <SelectValue placeholder="All Categories" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl">
-                              {fillValues?.category.map(c => (
-                                <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()} className="text-xs font-medium">{c.Category}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <Layers size={12} className="text-slate-400" />
+                          Category
+                        </label>
+                        <Controller
+                          name="operTaskCategoryNo"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                                <SelectValue placeholder="All Categories" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl">
+                                {fillValues?.category.map(c => (
+                                  <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()} className="text-xs font-medium">{c.Category}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-                        <Tag size={12} className="text-slate-400" />
-                        Task Type
-                      </label>
-                      <Controller
-                        name="operTaskTypeNo"
-                        control={control}
-                        render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                              <SelectValue placeholder="All Types" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl">
-                              {fillValues?.type.map(t => (
-                                <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()} className="text-xs font-medium">{t["Task Type"]}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <Tag size={12} className="text-slate-400" />
+                          Task Type
+                        </label>
+                        <Controller
+                          name="operTaskTypeNo"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                                <SelectValue placeholder="All Types" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl">
+                                {fillValues?.type.map(t => (
+                                  <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()} className="text-xs font-medium">{t["Task Type"]}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-                        <SlidersHorizontal size={12} className="text-slate-400" />
-                        Filter Type
-                      </label>
-                      <Controller
-                        name="filterType"
-                        control={control}
-                        render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                              <SelectValue placeholder="Select Filter Type" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl">
-                              {fillValues?.filterType?.map(ft => (
-                                <SelectItem key={ft.FilterTypeNo} value={ft.FilterTypeName} className="text-xs font-medium">{ft.FilterTypeName}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <MapPin size={12} className="text-slate-400" />
+                          Location
+                        </label>
+                        <Controller
+                          name="operTaskLocationNo"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                                <SelectValue placeholder="All Locations" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl">
+                                {fillValues?.location.map(l => (
+                                  <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()} className="text-xs font-medium">{l.Location}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-                        <MapPin size={12} className="text-slate-400" />
-                        Location
-                      </label>
-                      <Controller
-                        name="operTaskLocationNo"
-                        control={control}
-                        render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                              <SelectValue placeholder="All Locations" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl">
-                              {fillValues?.location.map(l => (
-                                <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()} className="text-xs font-medium">{l.Location}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <SlidersHorizontal size={12} className="text-slate-400" />
+                          Filter Type
+                        </label>
+                        <Controller
+                          name="filterType"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                                <SelectValue placeholder="Select Filter Type" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl">
+                                {fillValues?.filterType?.map(ft => (
+                                  <SelectItem key={ft.FilterTypeNo} value={ft.FilterTypeName} className="text-xs font-medium">{ft.FilterTypeName}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
 
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-                        <Calendar size={12} className="text-slate-400" />
-                        Due Date Range
-                      </label>
-                      <DateRangePicker
-                        value={{ from: watch('fromDueDate'), to: watch('toDueDate') }}
-                        onChange={(range) => {
-                          setValue('fromDueDate', range?.from || undefined);
-                          setValue('toDueDate', range?.to || undefined);
-                        }}
-                        className="w-full"
-                      />
+                      <div className="space-y-1.5" id="form-group-loginNo">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <SlidersHorizontal size={12} className="text-slate-400" />
+                          User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-black">*</span>}
+                        </label>
+                        <Controller
+                          name="loginNo"
+                          control={control}
+                          rules={{
+                            validate: (val) => {
+                              const filterType = watch('filterType');
+                              if (filterType && filterType !== 'All' && (!val || val === '')) {
+                                return 'User is required when filter type is selected';
+                              }
+                              return true;
+                            }
+                          }}
+                          render={({ field }) => (
+                            <UserCombobox
+                              value={field.value}
+                              onChange={(user) => field.onChange(user.loginNo.toString())}
+                              placeholder="Search user..."
+                              className={cn("border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 h-11 rounded-2xl w-full", errors.loginNo && "border-red-500")}
+                            />
+                          )}
+                        />
+                        {errors.loginNo && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.loginNo.message}</p>}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <ArrowUpDown size={12} className="text-slate-400" />
+                          Sort By Column
+                        </label>
+                        <Controller
+                          name="sortingColumnName"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                                <SelectValue placeholder="Select Sort Column" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl">
+                                {fillValues?.sortingColumns?.map(sc => (
+                                  <SelectItem key={sc.SortingColumnName} value={sc.SortingColumnName} className="text-xs font-medium">
+                                    {sc.DisplayName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <ArrowUpDown size={12} className="text-slate-400" />
+                          Sort Direction
+                        </label>
+                        <Controller
+                          name="sortingType"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                                <SelectValue placeholder="Select Direction" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl">
+                                <SelectItem value="asc" className="text-xs font-medium">Ascending</SelectItem>
+                                <SelectItem value="desc" className="text-xs font-medium">Descending</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <Folder size={12} className="text-slate-400" />
+                          Workspace Folder
+                        </label>
+                        <Controller
+                          name="folderNo"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')}
+                            >
+                              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                                <SelectValue placeholder="All Folders" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl">
+                                {fillValues?.folder?.map(f => (
+                                  <SelectItem key={f.TaskFolderNo} value={f.TaskFolderNo.toString()} className="text-xs font-medium">
+                                    {f["Folder Name"]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <Calendar size={12} className="text-slate-400" />
+                          Due Date Range
+                        </label>
+                        <DateRangePicker
+                          value={{ from: watch('fromDueDate'), to: watch('toDueDate') }}
+                          onChange={(range) => {
+                            setValue('fromDueDate', range?.from || undefined);
+                            setValue('toDueDate', range?.to || undefined);
+                          }}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <Calendar size={12} className="text-slate-400" />
+                          Created Date Range
+                        </label>
+                        <DateRangePicker
+                          value={{ from: watch('fromCreatedDate'), to: watch('toCreatedDate') }}
+                          onChange={(range) => {
+                            setValue('fromCreatedDate', range?.from || undefined);
+                            setValue('toCreatedDate', range?.to || undefined);
+                          }}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
                   </div>
 
                   {/* Popover Actions */}
-                  <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 shrink-0 bg-slate-50/50 rounded-b-[24px]">
                     <Button
                       type="button"
                       variant="ghost"
@@ -373,16 +634,58 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
               </PopoverContent>
             </Popover>
 
-            <Button 
-              type="button" 
-              variant="ghost" 
-              onClick={handleReset} 
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleReset}
               className="h-11 w-11 p-0 rounded-2xl border border-slate-200 text-slate-400 hover:text-slate-600 bg-white hover:bg-slate-50 shadow-sm transition-transform active:rotate-180 duration-500"
             >
               <RotateCcw size={15} />
             </Button>
           </div>
         </div>
+
+        {/* Render Applied Filter Badges */}
+        {/* comment for future usage */}
+        {/* {activeCount > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-slate-100/60 mt-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-1 flex items-center gap-1">
+              <SlidersHorizontal size={10} className="text-slate-400" />
+              Active Filters:
+            </span>
+            {Object.entries(appliedFilters || {}).map(([key, val]) => {
+              if (key === 'companyNo' || key === 'toDueDate' || key === 'toCreatedDate' || key === 'sortingType') return null;
+              
+              const label = getFilterBadgeLabel(key, val);
+              if (!label) return null;
+              
+              return (
+                <div 
+                  key={key}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#e1ecf7]/50 border border-[#006699]/10 text-[#006699] text-[10px] font-black rounded-full transition-all duration-200 hover:bg-[#e1ecf7]/70"
+                >
+                  <span>{label}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => clearFilterKey(key as keyof FilterFormValues)}
+                    className="hover:text-red-600 transition-colors p-0.5 rounded-full hover:bg-white/60"
+                  >
+                    <X size={10} strokeWidth={2.5} />
+                  </button>
+                </div>
+              );
+            })}
+            
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleReset}
+              className="h-6 px-2.5 text-[9px] font-black text-slate-400 hover:text-red-600 uppercase tracking-wider rounded-full ml-auto hover:bg-red-50/50"
+            >
+              Clear All
+            </Button>
+          </div>
+        )} */}
       </form>
     </Card>
   );
