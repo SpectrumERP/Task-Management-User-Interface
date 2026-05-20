@@ -37,6 +37,7 @@ export interface TaskFillValues {
   userGroup?: { UserGroupNo: number; UserGroupName: string; Code?: string }[];
   filterType?: { FilterTypeNo: number; FilterTypeName: string }[];
   sortingColumns?: { SortingColumnName: string; DisplayName: string }[];
+  frequency?: any[];
 }
 
 interface TaskState {
@@ -185,6 +186,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           priority_No: item.priority?.operTaskPriorityNo || 0,
           category_No: item.category?.operTaskCategoryNo || 0,
           type_No: item.type?.operTaskTypeNo || 0,
+          project_No: item.project?.operTaskProjectNo || item.project?.projectNo || item.project?.project_No || item.project?.operTaskFolderNo || item.project?.folderNo || item.folder?.operTaskFolderNo || item.folder?.folderNo || item.folder?.TaskFolderNo || item.folder?.taskFolderNo || item.project_No || item.projectNo || item.folderNo || item.folder_No || 0,
           tags: item.tags ? item.tags.split(',') : [],
           originator_user_No: item.createdBy?.id || 0,
           owner_user_No: item.assignedTo?.id || 0,

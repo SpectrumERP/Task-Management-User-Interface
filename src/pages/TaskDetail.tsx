@@ -138,9 +138,11 @@ export default function TaskDetail() {
             code: d.code || '',
             title: d.title || '',
             description: d.description || '',
+            isPrivate: d.isPrivate || false,
             priority_No: d.priority?.operTaskPriorityNo || 1,
             category_No: d.category?.operTaskCategoryNo || 0,
             type_No: d.type?.operTaskTypeNo || 0,
+            project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || 0,
             tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
             originator_user_No: d.originator?.id || 1,
             owner_user_No: d.owner?.id || 0,
@@ -169,7 +171,8 @@ export default function TaskDetail() {
             task_comments: mappedComments,
             actual_efforts: mappedEfforts,
             executionNotes: d.executionNotes || d.execution_notes || '',
-            execution_notes: d.executionNotes || d.execution_notes || ''
+            execution_notes: d.executionNotes || d.execution_notes || '',
+            subTasks: d.subTasks || []
           };
 
           setTask(mappedTask);
@@ -190,7 +193,17 @@ export default function TaskDetail() {
   }, [id, isEdit]);
 
   return (
-    <MainLayout activeTab="board">
+    <MainLayout 
+      activeTab="board" 
+      onTabChange={(tabId) => {
+        if (tabId.startsWith('master-')) {
+          const type = tabId.replace('master-', '');
+          navigate(`/master/${type}`);
+        } else {
+          navigate(`/?tab=${tabId}`);
+        }
+      }}
+    >
       <div className="flex-1 w-full flex flex-col bg-[#f1f5f9] overflow-hidden">
         {/* Fixed Header Section */}
         <div className="w-full px-8 py-5 bg-white border-b border-slate-200 shadow-sm z-20">
@@ -281,7 +294,9 @@ export default function TaskDetail() {
                 </div>
               ) : (
                 <TaskForm
-                  initialData={task}
+                  key={location.pathname + location.search}
+                  initialData={isEdit ? task : undefined}
+                  parentTask={!isEdit ? task : undefined}
                   initialStatus={initialStatus}
                   onComplete={() => navigate('/')}
                   onSaveStateChange={setIsSaving}

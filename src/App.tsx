@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
+import { MasterManager } from '@/components/master/MasterManager';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('tasks');
@@ -37,9 +38,18 @@ function Dashboard() {
     return (saved === 'list' || saved === 'board') ? saved : 'list';
   });
   const navigate = useNavigate();
+  const location = useLocation();
   const { fetchTasks, fetchFillValues, isLoading } = useTaskStore();
   const tasks = useTaskStore((state) => state.tasks);
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
 
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -57,10 +67,10 @@ function Dashboard() {
     const initData = async () => {
       // First fetch fill values to ensure default folder is set!
       const fillValues = await fetchFillValues('2');
-      const folderNo = fillValues?.folder && fillValues.folder.length > 0 
-        ? fillValues.folder[0].TaskFolderNo 
+      const folderNo = fillValues?.folder && fillValues.folder.length > 0
+        ? fillValues.folder[0].TaskFolderNo
         : undefined;
-      
+
       // Initial filters setup
       setCurrentFilters({ companyNo: 2, folderNo });
     };
@@ -101,11 +111,20 @@ function Dashboard() {
     localStorage.setItem('glacier_task_view_mode', mode);
   };
 
+  const handleTabChange = (id: string) => {
+    if (id.startsWith('master-')) {
+      const type = id.replace('master-', '');
+      navigate(`/master/${type}`);
+    } else {
+      setActiveTab(id);
+    }
+  };
+
   return (
-    <MainLayout activeTab={activeTab} onTabChange={setActiveTab}>
+    <MainLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <main className="flex-1 p-4 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
         {/* Top Control Bar (Filters + Merged View Toggles + Create Task) */}
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4 mb-6">
           <div className="flex-1 min-w-0">
             <TaskFilter onFilter={handleFilter} />
           </div>
@@ -173,8 +192,8 @@ function Dashboard() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 mt-4 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-150/80 shadow-md shadow-slate-100/30 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Page Size:</span>
-            <Select 
-              value={pageSize.toString()} 
+            <Select
+              value={pageSize.toString()}
               onValueChange={(val) => {
                 setPageSize(Number(val));
                 setPageNo(1);
@@ -202,7 +221,7 @@ function Dashboard() {
             >
               Previous
             </Button>
-            
+
             <div className="h-8.5 px-4 bg-[#e1ecf7]/50 rounded-xl flex items-center justify-center border border-[#006699]/10">
               <span className="text-xs font-black text-[#006699]">Page {pageNo}</span>
             </div>
@@ -252,7 +271,7 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <Dialog open={isSessionTimeoutOpen} onOpenChange={() => {}}>
+      <Dialog open={isSessionTimeoutOpen} onOpenChange={() => { }}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-slate-100 shadow-2xl [&>button]:hidden">
           <DialogHeader className="space-y-3">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 border border-red-100">
@@ -262,7 +281,7 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
               Session Expired
             </DialogTitle>
             <DialogDescription className="text-center text-slate-600 font-medium text-xs leading-normal">
-              Your session has timed out due to inactivity or invalid credentials. Please log in again to continue.
+              Your session has timed out. Please log in again to continue.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 flex items-center justify-center">
@@ -284,6 +303,34 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MasterPageRoute() {
+  const { form } = useParams<{ form: string }>();
+  const navigate = useNavigate();
+
+  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location'];
+  if (!form || !validForms.includes(form)) {
+    return <Navigate to="/" replace />;
+  }
+
+  const activeTab = `master-${form}`;
+
+  return (
+    <MainLayout
+      activeTab={activeTab}
+      onTabChange={(id) => {
+        if (id.startsWith('master-')) {
+          const type = id.replace('master-', '');
+          navigate(`/master/${type}`);
+        } else {
+          navigate('/');
+        }
+      }}
+    >
+      <MasterManager type={form as any} />
+    </MainLayout>
+  );
+}
+
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
@@ -301,6 +348,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/master/:form"
+            element={
+              <PrivateRoute>
+                <MasterPageRoute />
               </PrivateRoute>
             }
           />

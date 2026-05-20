@@ -59,6 +59,7 @@ export interface Task {
   actual_benefit_amount?: number;
   benefit_period?: string;
   actual_benefit_period?: string;
+  isPrivate?: boolean;
   status_No: number;
   collaborators: Person[];
   informed_to: Person[];
@@ -67,6 +68,7 @@ export interface Task {
   task_comments: Comment[];
   executionNotes?: string;
   execution_notes?: string;
+  subTasks?: any[];
   
   // UI helper fields
   status: TaskStatus;

@@ -1,4 +1,5 @@
 import { dbService } from './dbService';
+import { toast } from 'sonner';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -53,13 +54,29 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         import('@/store/useAuthStore').then(({ useAuthStore }) => {
           useAuthStore.setState({ isSessionTimeoutOpen: true });
         });
+      } else {
+        const errorMessage = data?.message || data?.error || data?.title || `HTTP Error ${response.status}`;
+        toast.error(errorMessage);
       }
       throw new ApiError(response.status, data);
+    }
+
+    if (data && typeof data === 'object' && data.success === false) {
+      const errorMessage = data.message || data.error || 'Operation failed';
+      if (errorMessage) {
+        toast.error(errorMessage);
+      }
     }
 
     return data as T;
   } catch (error) {
     if (error instanceof ApiError) throw error;
+    
+    // Check if it's a network error (TypeError usually implies network/cors issues)
+    if (error instanceof TypeError) {
+      toast.error('Network error or server unreachable. Please check your connection.');
+    }
+    
     throw new Error('Network error or server unreachable');
   }
 }

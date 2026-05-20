@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar, Clipboard, Folder, ArrowUpDown, X } from 'lucide-react';
+import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar, Clipboard, Folder, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
@@ -139,102 +139,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
     setIsOpen(false); // Close popover on reset
   };
 
-  const clearFilterKey = (key: keyof FilterFormValues) => {
-    let defaultValue: any = '';
-    if (key === 'companyNo') defaultValue = '2';
-    else if (key === 'filterType') defaultValue = 'All';
-    else if (key === 'fromDueDate' || key === 'toDueDate' || key === 'fromCreatedDate' || key === 'toCreatedDate') defaultValue = undefined;
 
-    setValue(key, defaultValue);
-
-    // Automatically submit with updated values!
-    const updatedValues = { ...appliedFilters, [key]: defaultValue };
-    if (key === 'fromDueDate') {
-      setValue('toDueDate', undefined);
-      updatedValues.toDueDate = undefined;
-    }
-    if (key === 'fromCreatedDate') {
-      setValue('toCreatedDate', undefined);
-      updatedValues.toCreatedDate = undefined;
-    }
-
-    setAppliedFilters(updatedValues); // Commit directly!
-
-    // Convert Dates to ISOStrings for onSubmit
-    const cleanFilters: any = {};
-    Object.entries(updatedValues).forEach(([k, v]) => {
-      if (v !== undefined && v !== '' && v !== null) {
-        if (v instanceof Date) {
-          cleanFilters[k] = v.toISOString();
-        } else {
-          cleanFilters[k] = v;
-        }
-      }
-    });
-
-    onFilter(cleanFilters);
-  };
-
-  const getFilterBadgeLabel = (key: string, val: any): string | null => {
-    if (!val || val === '') return null;
-
-    switch (key) {
-      case 'title':
-        return `Title: "${val}"`;
-      case 'taskCode':
-        return `Task ID: ${val}`;
-      case 'operTaskStatusNo': {
-        const item = fillValues?.status?.find(s => s.StatusNo.toString() === val.toString());
-        return item ? `Status: ${item.Status}` : null;
-      }
-      case 'operTaskPriorityNo': {
-        const item = fillValues?.priority?.find(p => p.OperTaskPriorityNo.toString() === val.toString());
-        return item ? `Priority: ${item.Priority}` : null;
-      }
-      case 'operTaskCategoryNo': {
-        const item = fillValues?.category?.find(c => c.OperTaskCategoryNo.toString() === val.toString());
-        return item ? `Category: ${item.Category}` : null;
-      }
-      case 'operTaskTypeNo': {
-        const item = fillValues?.type?.find(t => t.OperTaskTypeNo.toString() === val.toString());
-        return item ? `Type: ${item["Task Type"]}` : null;
-      }
-      case 'operTaskLocationNo': {
-        const item = fillValues?.location?.find(l => l.OperLocationNo.toString() === val.toString());
-        return item ? `Location: ${item.Location}` : null;
-      }
-      case 'folderNo': {
-        const item = fillValues?.folder?.find(f => f.TaskFolderNo.toString() === val.toString());
-        return item ? `Folder: ${item["Folder Name"]}` : null;
-      }
-      case 'filterType':
-        if (val === 'All') return null;
-        return `Filter: ${val}`;
-      case 'loginNo':
-        return `User: ${val}`;
-      case 'sortingColumnName': {
-        const col = fillValues?.sortingColumns?.find(c => c.SortingColumnName === val);
-        const dir = appliedFilters.sortingType === 'desc' ? 'Desc' : 'Asc';
-        return col ? `Sort: ${col.DisplayName} (${dir})` : null;
-      }
-      case 'fromDueDate': {
-        if (!val) return null;
-        const toVal = appliedFilters.toDueDate;
-        const fromStr = new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        const toStr = toVal ? new Date(toVal).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
-        return `Due: ${fromStr}${toStr ? ` - ${toStr}` : ''}`;
-      }
-      case 'fromCreatedDate': {
-        if (!val) return null;
-        const toVal = appliedFilters.toCreatedDate;
-        const fromStr = new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        const toStr = toVal ? new Date(toVal).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
-        return `Created: ${fromStr}${toStr ? ` - ${toStr}` : ''}`;
-      }
-      default:
-        return null;
-    }
-  };
 
   return (
     <Card className={cn("p-4 border-none shadow-xl shadow-slate-200/40 bg-white/80 backdrop-blur-md rounded-[24px] transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/50", className)}>

@@ -2,13 +2,30 @@ import {
   LayoutGrid,
   Plus,
   Snowflake,
-  X
+  X,
+  Layers,
+  Sliders,
+  AlertCircle,
+  Folder,
+  Users,
+  Sparkles,
+  MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { icon: LayoutGrid, label: 'Board', id: 'board' },
+  { icon: LayoutGrid, label: 'Tasks Dashboard', id: 'tasks' },
+];
+
+const masterItems = [
+  { icon: Layers, label: 'Categories', id: 'master-category' },
+  { icon: Sliders, label: 'Types', id: 'master-type' },
+  { icon: AlertCircle, label: 'Priorities', id: 'master-priority' },
+  { icon: Folder, label: 'Folders', id: 'master-folder' },
+  { icon: Users, label: 'User Groups', id: 'master-user-group' },
+  { icon: Sparkles, label: 'Benefit Types', id: 'master-benefit-type' },
+  { icon: MapPin, label: 'Locations', id: 'master-location' }
 ];
 
 const bottomItems: { icon: any; label: string; id: string }[] = [];
@@ -55,22 +72,52 @@ export function Sidebar({ activeTab, onTabChange, onCreateTask, onClose }: Sideb
       </Button>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className={cn(
-              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm",
-              activeTab === item.id
-                ? "bg-[#e1ecf7] text-[#006699]"
-                : "text-slate-500 hover:bg-slate-200/50"
-            )}
-          >
-            <item.icon size={20} className={activeTab === item.id ? "text-[#006699]" : "text-slate-400"} />
-            {item.label}
-          </button>
-        ))}
+      <nav className="flex-1 space-y-6 overflow-y-auto pr-1 scrollbar-thin">
+        <div className="space-y-1">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm",
+                activeTab === item.id
+                  ? "bg-[#e1ecf7] text-[#006699]"
+                  : "text-slate-600 hover:bg-slate-200/50"
+              )}
+            >
+              <item.icon size={20} className={activeTab === item.id ? "text-[#006699]" : "text-slate-400"} />
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Master Data Section */}
+        <div className="space-y-2">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 mb-2 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#00b4d8]" />
+            Master Data
+          </h3>
+          <div className="space-y-1">
+            {masterItems.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onTabChange(item.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-bold text-[12px]",
+                    isActive
+                      ? "bg-[#e1ecf7] text-[#006699] shadow-sm"
+                      : "text-slate-600 hover:bg-slate-200/40"
+                  )}
+                >
+                  <item.icon size={16} className={isActive ? "text-[#006699]" : "text-slate-400"} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </nav>
 
       {/* Bottom Items */}

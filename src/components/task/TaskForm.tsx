@@ -11,21 +11,23 @@ import { Button } from '@/components/ui/button';
 import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
 import { useTaskStore } from '@/store/useTaskStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Combobox } from '@/components/ui/Combobox';
-import { DatePicker } from '@/components/ui/DatePicker';
+import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
-import { format, parseISO } from 'date-fns';
 import { TaskActivity } from './TaskActivity';
+import { TaskListView } from './TaskListView';
 
 
 
-const taskSchema = z.object({
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
+const getTaskSchema = (isSubTask: boolean) => z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title cannot exceed 200 characters'),
   code: z.string().optional(),
   description: z.string().optional(),
@@ -39,8 +41,9 @@ const taskSchema = z.object({
   owner_user_No: z.string().min(1, 'Assigned to is required'),
   originator_user_No: z.string().min(1, 'Task Owner is required'),
   status: z.string().min(1, 'Status is required'),
+  isPrivate: z.boolean().optional().default(false),
   start_date: z.string().optional(),
-  end_date: z.string().optional(),
+  end_date: isSubTask ? z.string().min(1, 'Due Date is required for sub-tasks') : z.string().optional(),
   estimated_effort_value: z.string().optional(),
   estimated_effort_unit: z.string().optional(),
   is_business_benefit_applicable: z.boolean(),
@@ -83,13 +86,6 @@ const taskSchema = z.object({
         path: ['business_benefit_type_No'],
       });
     }
-    // if (!data.business_benefit_description || data.business_benefit_description.trim() === '') {
-    //   ctx.addIssue({
-    //     code: z.ZodIssueCode.custom,
-    //     message: 'Benefit Description is required',
-    //     path: ['business_benefit_description'],
-    //   });
-    // }
     if (!data.estimated_benefit_amount || isNaN(parseFloat(data.estimated_benefit_amount)) || parseFloat(data.estimated_benefit_amount) <= 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -97,13 +93,6 @@ const taskSchema = z.object({
         path: ['estimated_benefit_amount'],
       });
     }
-    // if (!data.actual_benefit_amount || isNaN(parseFloat(data.actual_benefit_amount)) || parseFloat(data.actual_benefit_amount) <= 0) {
-    //   ctx.addIssue({
-    //     code: z.ZodIssueCode.custom,
-    //     message: 'Actual benefit amount must be greater than 0',
-    //     path: ['actual_benefit_amount'],
-    //   });
-    // }
     if (!data.benefit_period || data.benefit_period === '') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -117,13 +106,14 @@ const taskSchema = z.object({
 interface TaskFormProps {
   initialStatus?: TaskStatus;
   initialData?: Task;
+  parentTask?: Task;
   onComplete?: () => void;
   onRefreshData?: () => void;
   onSaveStateChange?: (isSaving: boolean) => void;
 }
 
 interface TaskFillValues {
-  priority: { OperTaskPriorityNo: number; Priority: string; Code: string }[];
+  priority: { OperTaskPriorityNo: number; Priority: string; Code: string; PriorityDuration?: number; PriorityDurationFrequencyNo?: number }[];
   type: { OperTaskTypeNo: number; "Task Type": string; Code: string }[];
   category: { OperTaskCategoryNo: number; Category: string; Code: string }[];
   location: { OperLocationNo: number; Location: string; Code: string }[];
@@ -131,6 +121,7 @@ interface TaskFillValues {
   status: { StatusNo: number; Status: string; IsDefault: boolean }[];
   userGroup: { UserGroupNo: number; UserGroupName: string; Code: string }[];
   folder: { TaskFolderNo: number; "Folder Name": string; Code: string }[];
+  frequency?: { FrequencyNo: number; Frequency: string }[];
 }
 
 const statusTransitions: Record<string, string[]> = {
@@ -189,8 +180,33 @@ const resolveCompanyValue = (company: any, authCompanies: any[] | null): string 
   return matched?.companyNo?.toString() || matched?.CompanyNo?.toString() || extractedVal;
 };
 
-export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData, onSaveStateChange }: TaskFormProps) {
-  const { addTask, updateTask, fetchFillValues, selectedFolder } = useTaskStore();
+export function TaskForm({ initialStatus, initialData, parentTask: parentTaskProp, onComplete, onRefreshData, onSaveStateChange }: TaskFormProps) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const parentTaskNoQuery = searchParams.get('parentTaskNo');
+  const parentTaskNo = parentTaskNoQuery ? parseInt(parentTaskNoQuery) : (initialData?.parent_task_No || 0);
+  const isSubTask = parentTaskNo > 0;
+
+  const { addTask, updateTask, fetchFillValues, selectedFolder, tasks } = useTaskStore();
+  const [localParentTask, setLocalParentTask] = useState<Task | null>(null);
+  const parentTask = parentTaskProp || tasks.find(t => t.taskNo === parentTaskNo) || localParentTask;
+  const subtasks = useMemo(() => {
+    if (initialData?.subTasks && initialData.subTasks.length > 0) {
+      return initialData.subTasks.map((st: any) => ({
+        taskNo: st.operTaskNo || st.taskNo,
+        code: st.code,
+        title: st.title,
+        status: st.status?.statusName || st.status || 'Draft',
+        start_date: st.startDate || st.start_date,
+        categoryName: st.category?.categoryName || st.categoryName,
+        typeName: st.type?.typeName || st.typeName,
+        priority: st.priority?.priorityName || st.priority,
+        assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
+      }));
+    }
+    return tasks.filter(t => t.parent_task_No === initialData?.taskNo);
+  }, [tasks, initialData]);
+
   const { company: authCompanies, user: authUser } = useAuthStore();
   const [selectedCollabTeam, setSelectedCollabTeam] = useState<string>("");
   const [selectedInformTeam, setSelectedInformTeam] = useState<string>("");
@@ -198,28 +214,28 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
 
   const form = useForm({
-    resolver: zodResolver(taskSchema),
+    resolver: zodResolver(getTaskSchema(isSubTask)),
     shouldFocusError: false,
     defaultValues: {
       title: initialData?.title || '',
       code: initialData?.code || '',
       description: initialData?.description || '',
-      priority_No: initialData?.priority_No?.toString() || '',
-      type_No: initialData?.type_No?.toString() || '',
-      folder_No: (initialData as any)?.folder_No?.toString() || (initialData as any)?.folderNo?.toString() || selectedFolder?.TaskFolderNo?.toString() || '',
-      category_No: initialData?.category_No?.toString() || '',
+      priority_No: initialData?.priority_No?.toString() || (isSubTask && parentTask ? parentTask.priority_No.toString() : ''),
+      type_No: initialData?.type_No?.toString() || (isSubTask && parentTask ? parentTask.type_No.toString() : ''),
+      folder_No: (initialData as any)?.folder_No?.toString() || (initialData as any)?.folderNo?.toString() || (isSubTask && parentTask ? (parentTask.project_No || (parentTask as any).folder_No || (parentTask as any).folderNo)?.toString() : '') || selectedFolder?.TaskFolderNo?.toString() || '',
+      category_No: initialData?.category_No?.toString() || (isSubTask && parentTask ? parentTask.category_No.toString() : ''),
       tags: initialData?.tags || [],
-      company: resolveCompanyValue(initialData?.company, authCompanies),
-      location_No: initialData?.location_No?.toString() || '',
-      start_date: initialData?.start_date ? format(new Date(initialData.start_date), 'yyyy-MM-dd') : '',
-      end_date: initialData?.end_date ? format(new Date(initialData.end_date), 'yyyy-MM-dd') : '',
-      estimated_effort_value: initialData?.estimated_effort_value?.toString() || '0',
+      company: resolveCompanyValue(initialData?.company, authCompanies) || (isSubTask && parentTask ? resolveCompanyValue(parentTask.company, authCompanies) : ''),
+      location_No: initialData?.location_No?.toString() || (isSubTask && parentTask ? parentTask.location_No.toString() : ''),
+      start_date: initialData?.start_date ? new Date(initialData.start_date).toISOString() : '',
+      end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : '',
+      estimated_effort_value: initialData?.estimated_effort_value?.toString() || (isSubTask ? '' : '0'),
       estimated_effort_unit: initialData?.estimated_effort_unit || 'Hours',
       is_business_benefit_applicable: initialData?.is_business_benefit_applicable || false,
       business_benefit_type_No: initialData?.business_benefit_type_No?.toString() || '',
       business_benefit_description: initialData?.business_benefit_description || '',
-      estimated_benefit_amount: initialData?.estimated_benefit_amount?.toString() || '0',
-      actual_benefit_amount: initialData?.actual_benefit_amount?.toString() || '0',
+      estimated_benefit_amount: initialData?.estimated_benefit_amount?.toString() || (isSubTask ? '' : '0'),
+      actual_benefit_amount: initialData?.actual_benefit_amount?.toString() || (isSubTask ? '' : '0'),
       benefit_period: initialData?.benefit_period || 'Monthly',
       originator_user_No: initialData?.originator_user_No?.toString() || '101',
       owner_user_No: initialData?.owner_user_No?.toString() || '',
@@ -232,9 +248,83 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
       })) || [],
       check_list: initialData?.check_list || [],
       executionNotes: initialData?.executionNotes || initialData?.execution_notes || '',
-      status: initialData?.status || initialStatus || 'Draft'
+      status: initialData?.status || initialStatus || 'Draft',
+      isPrivate: initialData?.isPrivate || false
     }
   });
+
+  useEffect(() => {
+    if (isSubTask && !initialData && !isLoadingOptions) {
+      const timer = setTimeout(() => {
+        form.setFocus('title');
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [isSubTask, initialData, isLoadingOptions, form]);
+
+  useEffect(() => {
+    if (isSubTask && parentTaskNo && !parentTaskProp && !tasks.find(t => t.taskNo === parentTaskNo)) {
+      const fetchParent = async () => {
+        try {
+          const response = await apiService.get<{ success: boolean; data: any }>(`/api/crm/tasks/load-data/${parentTaskNo}`);
+          if (response.success && response.data) {
+            const d = response.data;
+            const mappedParent: Task = {
+              taskNo: d.operTaskNo,
+              code: d.code || '',
+              title: d.title || '',
+              description: d.description || '',
+              priority_No: d.priority?.operTaskPriorityNo || 1,
+              category_No: d.category?.operTaskCategoryNo || 0,
+              type_No: d.type?.operTaskTypeNo || 0,
+              tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
+              originator_user_No: d.originator?.id || 1,
+              owner_user_No: d.owner?.id || 0,
+              location_No: d.location?.operTaskLocationNo || 0,
+              company: d.company || 'Glacier',
+              start_date: d.startDate,
+              end_date: d.endDate,
+              estimated_effort_value: d.estimatedEfforts?.hours || 0,
+              estimated_effort_unit: 'hours',
+              is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,
+              business_benefit_type_No: d.businessBenefit?.businessBenefitTypeNo || 0,
+              business_benefit_description: d.businessBenefit?.businessBenefitDescription || '',
+              estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount || 0,
+              actual_benefit_amount: d.businessBenefit?.actualBenefitAmount || 0,
+              benefit_period: 'One Time',
+              status_No: d.status?.operTaskStatusNo || 1,
+              status: d.status?.statusName || 'Draft',
+              priority: d.priority?.priorityName || 'Low Priority',
+              categoryName: d.category?.categoryName || '',
+              typeName: d.type?.typeName || '',
+              assignedDisplayName: d.owner?.displayName || '',
+              originatorDisplayName: d.originator?.displayName || '',
+              collaborators: [],
+              informed_to: [],
+              check_list: [],
+              task_comments: [],
+              actual_efforts: [],
+              executionNotes: d.executionNotes || '',
+              execution_notes: d.executionNotes || ''
+            };
+            setLocalParentTask(mappedParent);
+
+            // Pre-fill the inherited fields in the form dynamically
+            form.setValue('category_No', mappedParent.category_No.toString());
+            form.setValue('company', resolveCompanyValue(mappedParent.company, authCompanies));
+            form.setValue('type_No', mappedParent.type_No.toString());
+            const parsedFolderVal = (d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || '').toString();
+            form.setValue('folder_No', parsedFolderVal && parsedFolderVal !== '0' ? parsedFolderVal : (selectedFolder?.TaskFolderNo?.toString() || ''));
+            form.setValue('location_No', mappedParent.location_No.toString());
+            form.setValue('priority_No', mappedParent.priority_No.toString());
+          }
+        } catch (error) {
+          console.error("Failed to load fallback parent task:", error);
+        }
+      };
+      fetchParent();
+    }
+  }, [isSubTask, parentTaskNo, parentTaskProp, tasks, authCompanies, selectedFolder, form]);
 
   const currentStatus = form.watch('status');
   const isBenefitApplicable = form.watch('is_business_benefit_applicable');
@@ -291,12 +381,12 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
     }
   };
 
-  const { fields: collabFields, append: appendCollab, remove: removeCollab } = useFieldArray({
+  const { fields: collabFields, append: appendCollab, remove: removeCollab, replace: replaceCollab } = useFieldArray({
     control: form.control,
     name: "collaborators"
   });
 
-  const { fields: informFields, append: appendInform, remove: removeInform } = useFieldArray({
+  const { fields: informFields, append: appendInform, remove: removeInform, replace: replaceInform } = useFieldArray({
     control: form.control,
     name: "informed_to"
   });
@@ -339,6 +429,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
         title: initialData.title,
         code: initialData.code || '',
         description: initialData.description,
+        isPrivate: initialData.isPrivate || false,
         priority_No: initialData.priority_No.toString(),
         type_No: initialData.type_No.toString(),
         folder_No: (initialData as any).folder_No?.toString() || (initialData as any).folderNo?.toString() || selectedFolder?.TaskFolderNo?.toString() || '',
@@ -520,6 +611,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
       code: data.code,
       description: data.description || '',
       executionNotes: data.executionNotes || '',
+      isPrivate: data.isPrivate,
       operTaskPriorityNo: parseInt(data.priority_No) || 0,
       operTaskCategoryNo: parseInt(data.category_No) || 0,
       operTaskTypeNo: parseInt(data.type_No) || 0,
@@ -529,7 +621,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
       infromToUserGroupNo: 0,
       originatorLoginNo: parseInt(data.originator_user_No) || 1,
       ownerLoginNo: parseInt(data.owner_user_No) || 0,
-      parentTaskNo: initialData?.parent_task_No || 0,
+      parentTaskNo: parentTaskNo || 0,
       operTaskLocationNo: parseInt(data.location_No) || 0,
       startDate: data.start_date ? new Date(data.start_date).toISOString() : new Date().toISOString(),
       endDate: data.end_date ? new Date(data.end_date).toISOString() : new Date().toISOString(),
@@ -566,11 +658,15 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
     try {
       if (initialData) {
         await apiService.post(`/api/crm/tasks/save`, payload); // Assuming update is POST/PUT as per typical pattern
-        updateTask(initialData.taskNo, data);
+        updateTask(initialData.taskNo, {
+          ...data,
+          parent_task_No: parentTaskNo || undefined
+        });
       } else {
         const response: any = await apiService.post(`/api/crm/tasks/save`, payload);
         addTask({
           ...data,
+          parent_task_No: parentTaskNo || undefined,
           taskNo: response?.data?.operTaskNo || Math.floor(Math.random() * 1000) + 100
         });
       }
@@ -581,6 +677,55 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
       if (onSaveStateChange) onSaveStateChange(false);
     }
   };
+
+  const isPrivateTask = form.watch('isPrivate');
+  const taskOriginator = form.watch('originator_user_No');
+
+  useEffect(() => {
+    if (isPrivateTask) {
+      if (taskOriginator) {
+        form.setValue('owner_user_No', taskOriginator);
+      }
+      replaceCollab([]);
+      replaceInform([]);
+    }
+  }, [isPrivateTask, taskOriginator, form, replaceCollab, replaceInform]);
+
+  const selectedPriorityNo = form.watch('priority_No');
+  const selectedStartDate = form.watch('start_date');
+
+  useEffect(() => {
+    if (!fillValues?.priority || !selectedPriorityNo) return;
+
+    const priorityObj = fillValues.priority.find(p => p.OperTaskPriorityNo.toString() === selectedPriorityNo);
+    if (priorityObj && priorityObj.PriorityDuration && priorityObj.PriorityDurationFrequencyNo) {
+      const baseDate = selectedStartDate ? new Date(selectedStartDate) : new Date();
+      const newEndDate = new Date(baseDate);
+
+      const duration = priorityObj.PriorityDuration;
+      const freqNo = priorityObj.PriorityDurationFrequencyNo;
+      const frequencyObj = fillValues.frequency?.find(f => f.FrequencyNo === freqNo);
+      const freqName = frequencyObj?.Frequency?.toLowerCase() || '';
+
+      if (freqName === 'hours' || freqName === 'hour') {
+        newEndDate.setHours(newEndDate.getHours() + duration);
+      } else if (freqName === 'days' || freqName === 'day') {
+        newEndDate.setDate(newEndDate.getDate() + duration);
+      } else if (freqName === 'weeks' || freqName === 'week') {
+        newEndDate.setDate(newEndDate.getDate() + (duration * 7));
+      } else if (freqName === 'months' || freqName === 'month') {
+        newEndDate.setMonth(newEndDate.getMonth() + duration);
+      } else if (freqName === 'years' || freqName === 'year') {
+        newEndDate.setFullYear(newEndDate.getFullYear() + duration);
+      } else {
+        // Fallback to old hardcoded map just in case frequency list wasn't populated
+        if (freqNo === 1) newEndDate.setHours(newEndDate.getHours() + duration);
+        else if (freqNo === 2) newEndDate.setDate(newEndDate.getDate() + duration);
+      }
+
+      form.setValue('end_date', newEndDate.toISOString());
+    }
+  }, [selectedPriorityNo, selectedStartDate, fillValues, form]);
 
   const completedCount = checklist.filter(item => item.completed).length;
   const progressPercent = checklist.length > 0 ? Math.round((completedCount / checklist.length) * 100) : 0;
@@ -625,27 +770,39 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
           title="Basic Information"
           icon={Info}
           headerAction={
-            <div className="flex items-center gap-3 bg-slate-50/80 px-4 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
-              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</Label>
+            <div className="flex items-center gap-4">
               <Controller
-                name="status"
+                name="isPrivate"
                 control={form.control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className="rounded-xl h-8 border-transparent bg-transparent text-slate-900 font-bold text-xs shadow-none hover:bg-slate-100 w-[160px]">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {filteredStatuses.map(s => (
-                        <SelectItem key={s.StatusNo} value={s.Status}>{s.Status}</SelectItem>
-                      ))}
-                      {filteredStatuses.length === 0 && (
-                        <SelectItem value={currentStatus} disabled>{currentStatus}</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center space-x-2 mr-2">
+                    <Checkbox id="isPrivate" checked={field.value} onCheckedChange={field.onChange} />
+                    <label htmlFor="isPrivate" className="text-xs font-black text-slate-600 uppercase tracking-wider cursor-pointer">Private Task</label>
+                  </div>
                 )}
               />
+              <div className="flex items-center gap-3 bg-slate-50/80 px-4 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</Label>
+                <Controller
+                  name="status"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="rounded-xl h-8 border-transparent bg-transparent text-slate-900 font-bold text-xs shadow-none hover:bg-slate-100 w-[160px]">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {filteredStatuses.map(s => (
+                          <SelectItem key={s.StatusNo} value={s.Status}>{s.Status}</SelectItem>
+                        ))}
+                        {filteredStatuses.length === 0 && (
+                          <SelectItem value={currentStatus} disabled>{currentStatus}</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
             </div>
           }
         >
@@ -666,7 +823,9 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                 {form.formState.errors.code && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.code.message}</p>}
               </div>
               <div className="space-y-1.5 lg:col-span-3" id="form-group-title">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Title</Label>
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
+                  Task Title {isSubTask && <span className="text-red-500 font-black">*</span>}
+                </Label>
                 <Input placeholder="Enter task title" {...form.register('title')} className={cn("rounded-xl border-slate-300 h-9 focus:ring-primary/20 focus:border-[#006699] text-slate-900 font-medium text-sm shadow-sm", form.formState.errors.title && "border-red-500")} />
                 {form.formState.errors.title && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.title.message}</p>}
               </div>
@@ -695,6 +854,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                   control={form.control}
                   render={({ field }) => (
                     <Combobox
+                      disabled={isSubTask}
                       options={fillValues?.category
                         .filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
                         .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
@@ -717,6 +877,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                   control={form.control}
                   render={({ field }) => (
                     <Combobox
+                      disabled={isSubTask}
                       options={fillValues?.type
                         .filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
                         .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
@@ -736,6 +897,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                   control={form.control}
                   render={({ field }) => (
                     <Combobox
+                      disabled={isSubTask}
                       options={fillValues?.folder
                         .map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
                       value={field.value}
@@ -754,6 +916,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                   control={form.control}
                   render={({ field }) => (
                     <Combobox
+                      disabled={isSubTask}
                       options={fillValues?.priority
                         .filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
                         .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
@@ -798,6 +961,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                   control={form.control}
                   render={({ field }) => (
                     <Combobox
+                      disabled={isSubTask}
                       options={companyOptions}
                       value={field.value}
                       onChange={field.onChange}
@@ -815,6 +979,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                   control={form.control}
                   render={({ field }) => (
                     <Combobox
+                      disabled={isSubTask}
                       options={fillValues?.location
                         .filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]')
                         .map(l => ({ label: l.Location, value: l.OperLocationNo.toString() })) || []}
@@ -828,7 +993,9 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                 {form.formState.errors.location_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.location_No.message}</p>}
               </div>
               <div className="space-y-1.5" id="form-group-owner_user_No">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Owner</Label>
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
+                  Task Owner {isSubTask && <span className="text-red-500 font-black">*</span>}
+                </Label>
                 <Controller
                   name="owner_user_No"
                   control={form.control}
@@ -839,6 +1006,7 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                       placeholder="Search member..."
                       initialLabel={initialData?.assignedDisplayName || undefined}
                       className={form.formState.errors.owner_user_No ? "border-red-500" : ""}
+                      disabled={isPrivateTask}
                     />
                   )}
                 />
@@ -863,169 +1031,171 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Collaborators Grid */}
-              <div className="space-y-3" id="form-group-collaborators">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Collaborators</h4>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
-                      <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
-                        <SelectTrigger className="rounded-lg h-6 border-slate-300 text-[9px] w-24 bg-slate-50 shadow-none px-2"><SelectValue placeholder="Quick Add" /></SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          {fillValues?.userGroup.map(group => (
-                            <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+            {!isPrivateTask && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Collaborators Grid */}
+                <div className="space-y-3" id="form-group-collaborators">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Collaborators</h4>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
+                        <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
+                          <SelectTrigger className="rounded-lg h-6 border-slate-300 text-[9px] w-24 bg-slate-50 shadow-none px-2"><SelectValue placeholder="Quick Add" /></SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {fillValues?.userGroup.map(group => (
+                              <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
+                    <Button type="button" onClick={() => appendCollab({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
+                      <UserPlus size={12} /> Add
+                    </Button>
                   </div>
-                  <Button type="button" onClick={() => appendCollab({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
-                    <UserPlus size={12} /> Add
-                  </Button>
-                </div>
-                <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all", hasCollabError ? "border-red-500 ring-2 ring-red-500/10" : "border-slate-200")}>
-                  <table className="w-full text-left text-[11px] border-collapse">
-                    <thead className="bg-slate-100/80 border-b border-slate-200">
-                      <tr>
-                        <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                        <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                        <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
-                        <th className="px-2 py-1.5 w-8"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {collabFields.map((field, index) => (
-                        <tr key={field.id} className="group hover:bg-white transition-colors">
-                          <td className="px-2 py-1">
-                            <Controller
-                              name={`collaborators.${index}.userName`}
-                              control={form.control}
-                              render={({ field: nameField }) => (
-                                <UserCombobox
-                                  value={nameField.value}
-                                  onChange={(user) => {
-                                    nameField.onChange(user.loginId);
-                                    form.setValue(`collaborators.${index}.displayName`, user.printingName);
-                                    form.setValue(`collaborators.${index}.email`, user.email || '');
-                                    form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
-                                  }}
-                                  placeholder="User Name"
-                                  className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
-                                  initialLabel={nameField.value}
-                                  disabled={field.isFromTeam}
-                                />
-                              )}
-                            />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                          </td>
-                          <td className="px-1 py-1 text-center">
-                            {!field.isFromTeam && (
-                              <button type="button" onClick={() => removeCollab(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                <Trash2 size={12} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {collabFields.length === 0 && (
+                  <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all", hasCollabError ? "border-red-500 ring-2 ring-red-500/10" : "border-slate-200")}>
+                    <table className="w-full text-left text-[11px] border-collapse">
+                      <thead className="bg-slate-100/80 border-b border-slate-200">
                         <tr>
-                          <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators.</td>
+                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
+                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
+                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                          <th className="px-2 py-1.5 w-8"></th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {collabFields.map((field, index) => (
+                          <tr key={field.id} className="group hover:bg-white transition-colors">
+                            <td className="px-2 py-1">
+                              <Controller
+                                name={`collaborators.${index}.userName`}
+                                control={form.control}
+                                render={({ field: nameField }) => (
+                                  <UserCombobox
+                                    value={nameField.value}
+                                    onChange={(user) => {
+                                      nameField.onChange(user.loginId);
+                                      form.setValue(`collaborators.${index}.displayName`, user.printingName);
+                                      form.setValue(`collaborators.${index}.email`, user.email || '');
+                                      form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
+                                    }}
+                                    placeholder="User Name"
+                                    className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                                    initialLabel={nameField.value}
+                                    disabled={field.isFromTeam}
+                                  />
+                                )}
+                              />
+                            </td>
+                            <td className="px-2 py-1">
+                              <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                            </td>
+                            <td className="px-2 py-1">
+                              <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                            </td>
+                            <td className="px-1 py-1 text-center">
+                              {!field.isFromTeam && (
+                                <button type="button" onClick={() => removeCollab(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {collabFields.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {hasCollabError && <p className="text-[10px] text-red-500 font-bold ml-1">{collabError.message}</p>}
                 </div>
-                {hasCollabError && <p className="text-[10px] text-red-500 font-bold ml-1">{collabError.message}</p>}
-              </div>
 
-              {/* Inform To Grid */}
-              <div className="space-y-3" id="form-group-informed_to">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-1">
-                    <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Inform To</h4>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
-                      <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
-                        <SelectTrigger className="rounded-lg h-6 border-slate-300 text-[9px] w-24 bg-slate-50 shadow-none px-2"><SelectValue placeholder="Quick Add" /></SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          {fillValues?.userGroup.map(group => (
-                            <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                {/* Inform To Grid */}
+                <div className="space-y-3" id="form-group-informed_to">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Inform To</h4>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
+                        <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
+                          <SelectTrigger className="rounded-lg h-6 border-slate-300 text-[9px] w-24 bg-slate-50 shadow-none px-2"><SelectValue placeholder="Quick Add" /></SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {fillValues?.userGroup.map(group => (
+                              <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
+                    <Button type="button" onClick={() => appendInform({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
+                      <UserPlus size={12} /> Add
+                    </Button>
                   </div>
-                  <Button type="button" onClick={() => appendInform({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
-                    <UserPlus size={12} /> Add
-                  </Button>
-                </div>
-                <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all", hasInformError ? "border-red-500 ring-2 ring-red-500/10" : "border-slate-200")}>
-                  <table className="w-full text-left text-[11px] border-collapse">
-                    <thead className="bg-slate-100/80 border-b border-slate-200">
-                      <tr>
-                        <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                        <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                        <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
-                        <th className="px-2 py-1.5 w-8"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {informFields.map((field, index) => (
-                        <tr key={field.id} className="group hover:bg-white transition-colors">
-                          <td className="px-2 py-1">
-                            <Controller
-                              name={`informed_to.${index}.userName`}
-                              control={form.control}
-                              render={({ field: nameField }) => (
-                                <UserCombobox
-                                  value={nameField.value}
-                                  onChange={(user) => {
-                                    nameField.onChange(user.loginId);
-                                    form.setValue(`informed_to.${index}.displayName`, user.printingName);
-                                    form.setValue(`informed_to.${index}.email`, user.email || '');
-                                    form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
-                                  }}
-                                  placeholder="User Name"
-                                  className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
-                                  initialLabel={nameField.value}
-                                  disabled={field.isFromTeam}
-                                />
-                              )}
-                            />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                          </td>
-                          <td className="px-1 py-1 text-center">
-                            {!field.isFromTeam && (
-                              <button type="button" onClick={() => removeInform(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                <Trash2 size={12} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {informFields.length === 0 && (
+                  <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all", hasInformError ? "border-red-500 ring-2 ring-red-500/10" : "border-slate-200")}>
+                    <table className="w-full text-left text-[11px] border-collapse">
+                      <thead className="bg-slate-100/80 border-b border-slate-200">
                         <tr>
-                          <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No informed users.</td>
+                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
+                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
+                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                          <th className="px-2 py-1.5 w-8"></th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {informFields.map((field, index) => (
+                          <tr key={field.id} className="group hover:bg-white transition-colors">
+                            <td className="px-2 py-1">
+                              <Controller
+                                name={`informed_to.${index}.userName`}
+                                control={form.control}
+                                render={({ field: nameField }) => (
+                                  <UserCombobox
+                                    value={nameField.value}
+                                    onChange={(user) => {
+                                      nameField.onChange(user.loginId);
+                                      form.setValue(`informed_to.${index}.displayName`, user.printingName);
+                                      form.setValue(`informed_to.${index}.email`, user.email || '');
+                                      form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
+                                    }}
+                                    placeholder="User Name"
+                                    className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                                    initialLabel={nameField.value}
+                                    disabled={field.isFromTeam}
+                                  />
+                                )}
+                              />
+                            </td>
+                            <td className="px-2 py-1">
+                              <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                            </td>
+                            <td className="px-2 py-1">
+                              <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                            </td>
+                            <td className="px-1 py-1 text-center">
+                              {!field.isFromTeam && (
+                                <button type="button" onClick={() => removeInform(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {informFields.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No informed users.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {hasInformError && <p className="text-[10px] text-red-500 font-bold ml-1">{informError.message}</p>}
                 </div>
-                {hasInformError && <p className="text-[10px] text-red-500 font-bold ml-1">{informError.message}</p>}
               </div>
-            </div>
+            )}
           </div>
         </FormSection>
 
@@ -1039,10 +1209,10 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                   name="start_date"
                   control={form.control}
                   render={({ field }) => (
-                    <DatePicker
-                      date={field.value ? parseISO(field.value) : undefined}
-                      onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
-                      placeholder="Select start date"
+                    <DateTimePicker
+                      date={field.value ? new Date(field.value) : undefined}
+                      onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                      placeholder="Select start date & time"
                       className={form.formState.errors.start_date ? "border-red-500" : ""}
                     />
                   )}
@@ -1050,15 +1220,17 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                 {form.formState.errors.start_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.start_date.message}</p>}
               </div>
               <div className="space-y-1.5" id="form-group-end_date">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Due Date</Label>
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
+                  Due Date {isSubTask && <span className="text-red-500 font-black">*</span>}
+                </Label>
                 <Controller
                   name="end_date"
                   control={form.control}
                   render={({ field }) => (
-                    <DatePicker
-                      date={field.value ? parseISO(field.value) : undefined}
-                      onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
-                      placeholder="Select end date"
+                    <DateTimePicker
+                      date={field.value ? new Date(field.value) : undefined}
+                      onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                      placeholder="Select due date & time"
                       className={form.formState.errors.end_date ? "border-red-500" : ""}
                     />
                   )}
@@ -1234,6 +1406,41 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
         {/* 5. Execution Detail */}
         <FormSection title="Execution Detail" icon={CheckCircle}>
           <div className="space-y-6">
+            {/* Sub-Tasks Section */}
+            {!!initialData && (
+              <div className="space-y-3 pb-5 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                    Sub-Tasks
+                    {subtasks.length > 0 && (
+                      <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                        {subtasks.length}
+                      </span>
+                    )}
+                  </h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => navigate(`/task/new?parentTaskNo=${initialData.taskNo}`)}
+                    className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700 shrink-0"
+                  >
+                    <Plus size={14} className="text-[#006699]" /> Add Sub-Task
+                  </Button>
+                </div>
+
+                {subtasks.length > 0 ? (
+                  <div className="bg-slate-50/50 p-2 rounded-[24px] border border-slate-100">
+                    <TaskListView tasks={subtasks as any} />
+                  </div>
+                ) : (
+                  <div className="text-center py-6 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No sub-tasks created yet</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-between px-1">
               <div className="flex flex-col gap-1 flex-1 max-w-md">
                 <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Checklist</h4>
@@ -1252,22 +1459,12 @@ export function TaskForm({ initialStatus, initialData, onComplete, onRefreshData
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {!!initialData && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700"
-                  >
-                    <Plus size={14} className="text-[#006699]" /> Add Sub-Task
-                  </Button>
-                )}
                 <Button
                   variant="outline"
                   size="sm"
                   type="button"
                   onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
-                  className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95"
+                  className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700"
                 >
                   <Plus size={14} className="text-[#006699]" /> Add Checklist Item
                 </Button>

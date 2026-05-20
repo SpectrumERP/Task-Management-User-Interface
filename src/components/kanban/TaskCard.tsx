@@ -1,7 +1,7 @@
 import { Draggable } from '@hello-pangea/dnd';
 import { Card, CardContent } from '@/components/ui/card';
 import { Task } from '@/types/task';
-import { MessageSquare, Clock, AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { MessageSquare, Clock, AlertCircle, AlertTriangle, Info, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
@@ -53,7 +53,19 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
             <CardContent className="p-3 space-y-2">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">{displayCode}</span>
-                <PriorityIcon />
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/task/${task.taskNo}`);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center cursor-pointer shrink-0"
+                  >
+                    <Edit2 size={12} strokeWidth={2.5} />
+                  </button>
+                  <PriorityIcon />
+                </div>
               </div>
               
               <div className="space-y-1.5">
