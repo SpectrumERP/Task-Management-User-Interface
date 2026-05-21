@@ -208,8 +208,8 @@ export default function TaskDetail() {
     >
       <div className="flex-1 w-full flex flex-col bg-[#f1f5f9] overflow-hidden">
         {/* Fixed Header Section */}
-        <div className="w-full px-8 py-5 bg-white border-b border-slate-200 shadow-sm z-20">
-          <div className="flex items-center justify-between">
+        <div className="w-full px-4 sm:px-8 py-3.5 sm:py-5 bg-white border-b border-slate-200 shadow-sm z-20">
+          <div className="flex flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
@@ -236,26 +236,26 @@ export default function TaskDetail() {
                 type="button"
                 onClick={() => navigate('/')}
                 disabled={isSaving}
-                className="rounded-xl h-9 px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
+                className="rounded-xl h-9 px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
               >
                 <X size={16} />
-                Cancel
+                <span className="hidden sm:inline">Cancel</span>
               </Button>
               <Button
                 type="submit"
                 form="task-form"
                 disabled={isSaving}
-                className="rounded-xl h-9 px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                className="rounded-xl h-9 px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    {isEdit ? 'Updating...' : 'Saving...'}
+                    <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
                   </>
                 ) : (
                   <>
                     <Save size={16} />
-                    {isEdit ? 'Update' : 'Save'}
+                    <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
                   </>
                 )}
               </Button>
@@ -286,9 +286,9 @@ export default function TaskDetail() {
         </div>
 
         {/* Scrollable Form Content */}
-        <div className="flex-1 overflow-y-auto p-8 pt-6 pb-8 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 scrollbar-hide">
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-[24px] p-8 shadow-xl shadow-slate-200/40 border border-slate-100 h-fit min-h-[400px] flex flex-col justify-center">
+            <div className="bg-white rounded-[16px] sm:rounded-[24px] p-4 sm:p-8 shadow-xl shadow-slate-200/40 border border-slate-100 h-fit min-h-[400px] flex flex-col justify-center">
               {isFetching ? (
                 <div className="flex flex-col items-center justify-center gap-4 py-20">
                   <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />

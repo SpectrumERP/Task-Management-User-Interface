@@ -157,7 +157,7 @@ const statusTransitions: Record<string, string[]> = {
 function FormSection({ title, icon: Icon, children, headerAction }: { title: string, icon: any, children: React.ReactNode, headerAction?: React.ReactNode }) {
   return (
     <div className="space-y-4 pt-6 first:pt-0">
-      <div className="flex items-center justify-between px-1 border-l-4 border-[#006699] -ml-8 pl-7">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 border-l-4 border-[#006699] -ml-4 sm:-ml-8 pl-3 sm:pl-7">
         <div className="flex items-center gap-2">
           <Icon size={16} className="text-[#006699]" />
           <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">{title}</h3>
@@ -840,7 +840,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           title="Basic Information"
           icon={Info}
           headerAction={
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <Controller
                 name="isPrivate"
                 control={form.control}
@@ -851,14 +851,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   </div>
                 )}
               />
-              <div className="flex items-center gap-3 bg-slate-50/80 px-4 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+              <div className="flex items-center gap-2 sm:gap-3 bg-slate-50/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
                 <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</Label>
                 <Controller
                   name="status"
                   control={form.control}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="rounded-xl h-8 border-transparent bg-transparent text-slate-900 font-bold text-xs shadow-none hover:bg-slate-100 w-[160px]">
+                      <SelectTrigger className="rounded-xl h-8 border-transparent bg-transparent text-slate-900 font-bold text-xs shadow-none hover:bg-slate-100 w-[120px] sm:w-[160px]">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
