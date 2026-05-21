@@ -668,7 +668,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         const id = editingId;
         if (type === 'category') {
           const payload = {
-            operTaskCategoryNo: parseInt(id) || 0,
+            operTaskCategoryNo: parseInt(id) || null,
             operTaskCategoryName: name,
             isMultiLevelApproval: isApprovalApplicable,
             isInReviewApplicable: isInReviewRequired,
@@ -680,36 +680,36 @@ export function MasterManager({ type }: MasterManagerProps) {
           await fetchCategories();
         } else if (type === 'type') {
           const payload = {
-            operTaskTypeNo: parseInt(id) || 0,
+            operTaskTypeNo: parseInt(id) || null,
             operTaskTypeName: name
           };
           await apiService.post('/api/master/task-types/save', payload);
           await fetchTypes();
         } else if (type === 'priority') {
           const payload = {
-            operTaskPriorityNo: parseInt(id) || 0,
+            operTaskPriorityNo: parseInt(id) || null,
             taskPriorityName: name,
-            priorityDuration: Number(priorityDuration) || 0,
-            priorityDurationFrequencyNo: parseInt(priorityFrequencyNo) || 0,
-            sequenceNo: Number(sequence) || 0
+            priorityDuration: Number(priorityDuration) || null,
+            priorityDurationFrequencyNo: parseInt(priorityFrequencyNo) || null,
+            sequenceNo: Number(sequence) || null
           };
           await apiService.post('/api/master/task-priorities/save', payload);
           await fetchPriorities();
         } else if (type === 'folder') {
           const payload = {
-            taskFolderNo: parseInt(id) || 0,
+            taskFolderNo: parseInt(id) || null,
             taskFolderName: name,
-            description: description,
-            parentFolderNo: parentFolderNo === 'none' || !parentFolderNo ? 0 : parseInt(parentFolderNo),
-            sequenceNo: sequence
+            description: description || null,
+            parentFolderNo: parentFolderNo === 'none' || !parentFolderNo ? 0 : parseInt(parentFolderNo) || null,
+            sequenceNo: sequence || null
           };
           await apiService.post(`/api/master/task-folders/save`, payload);
           await fetchFolders();
         } else if (type === 'user-group') {
           const payload = {
-            userGroupNo: parseInt(id) || 0,
+            userGroupNo: parseInt(id) || null,
             userGroupName: name,
-            description: description,
+            description: description || null,
             inactive: false,
             memberLoginNos: selectedUsers.map((u: any) => parseInt(u.loginNo) || 0).filter(Boolean)
           };
@@ -719,7 +719,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           const payload = {
             businessBenefitTypeNo: parseInt(id) || 0,
             businessBenefitTypeName: name,
-            valuationType: parseInt(valuationtypeNo) || 0
+            valuationType: parseInt(valuationtypeNo) || 1
           };
           await apiService.post('/api/master/business-benefit-types/save', payload);
           await fetchBusinessBenefitTypes();
@@ -727,18 +727,18 @@ export function MasterManager({ type }: MasterManagerProps) {
           const cleanParent = parentLocationNo === 'none' ? '' : parentLocationNo;
           const cleanIncharge = inchargeNo === 'none' ? '' : inchargeNo;
           const payload = {
-            operLocationNo: parseInt(id) || 0,
+            operLocationNo: parseInt(id) || null,
             operLocationName: name,
-            operLocationInchargeNo: cleanIncharge ? parseInt(cleanIncharge) || 0 : 0,
-            operLocationParentNo: cleanParent ? parseInt(cleanParent) || 0 : 0,
+            operLocationInchargeNo: cleanIncharge ? parseInt(cleanIncharge) || null : null,
+            operLocationParentNo: cleanParent ? parseInt(cleanParent) || null : null,
             address1,
             address2,
             address3,
-            cityNo: parseInt(cityNo) || 0,
+            cityNo: parseInt(cityNo) || null,
             pinCode,
-            stateNo: parseInt(stateNo) || 0,
-            countryNo: parseInt(countryNo) || 0,
-            regionNo: parseInt(locationRegion) || 0
+            stateNo: parseInt(stateNo) || null,
+            countryNo: parseInt(countryNo) || null,
+            regionNo: parseInt(locationRegion) || null
           };
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
@@ -747,7 +747,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         // Add
         if (type === 'category') {
           const payload = {
-            operTaskCategoryNo: 0,
+            operTaskCategoryNo: null,
             operTaskCategoryName: name,
             isMultiLevelApproval: isApprovalApplicable,
             isInReviewApplicable: isInReviewRequired,
@@ -768,9 +768,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           const payload = {
             operTaskPriorityNo: 0,
             taskPriorityName: name,
-            priorityDuration: Number(priorityDuration) || 0,
-            priorityDurationFrequencyNo: parseInt(priorityFrequencyNo) || 0,
-            sequenceNo: Number(sequence) || 0
+            priorityDuration: Number(priorityDuration) || null,
+            priorityDurationFrequencyNo: parseInt(priorityFrequencyNo) || null,
+            sequenceNo: Number(sequence) || null
           };
           await apiService.post('/api/master/task-priorities/save', payload);
           await fetchPriorities();
@@ -798,7 +798,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           const payload = {
             businessBenefitTypeNo: 0,
             businessBenefitTypeName: name,
-            valuationType: parseInt(valuationtypeNo) || 0
+            valuationType: parseInt(valuationtypeNo) || null
           };
           await apiService.post('/api/master/business-benefit-types/save', payload);
           await fetchBusinessBenefitTypes();
@@ -808,16 +808,16 @@ export function MasterManager({ type }: MasterManagerProps) {
           const payload = {
             operLocationNo: 0,
             operLocationName: name,
-            operLocationInchargeNo: cleanIncharge ? parseInt(cleanIncharge) || 0 : 0,
-            operLocationParentNo: cleanParent ? parseInt(cleanParent) || 0 : 0,
+            operLocationInchargeNo: cleanIncharge ? parseInt(cleanIncharge) || null : null,
+            operLocationParentNo: cleanParent ? parseInt(cleanParent) || null : null,
             address1,
             address2,
             address3,
-            cityNo: parseInt(cityNo) || 0,
+            cityNo: parseInt(cityNo) || null,
             pinCode,
-            stateNo: parseInt(stateNo) || 0,
-            countryNo: parseInt(countryNo) || 0,
-            regionNo: parseInt(locationRegion) || 0
+            stateNo: parseInt(stateNo) || null,
+            countryNo: parseInt(countryNo) || null,
+            regionNo: parseInt(locationRegion) || null
           };
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
