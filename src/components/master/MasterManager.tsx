@@ -72,7 +72,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           isApprovalApplicable: c.isMultiLevelApproval,
           isInReviewRequired: c.isInReviewApplicable,
           isBusinessBenefitApplicable: c.isBusinessBenefitApplicable,
-          checkList: Array.isArray(c.checkLists) ? c.checkLists.map((cl: any) => cl.checkListDescription || cl.description) : [],
+          checkList: Array.isArray(c.checkLists) ? c.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : [],
           color: c.colorCoding || ''
         }));
         setApiCategories(mapped);
@@ -174,9 +174,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           id: (p.operTaskPriorityNo ?? '').toString(),
           code: p.code,
           name: p.taskPriorityName || '',
-          priorityDuration: p.priorityDuration || 0,
+          priorityDuration: p.priorityDuration || '',
           priorityFrequencyNo: (p.priorityDurationFrequencyNo || '').toString(),
-          sequence: p.sequenceNo || 0,
+          sequence: p.sequenceNo || '',
           inactive: p.inactive
         }));
         setApiPriorities(mapped);
@@ -202,7 +202,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           name: f.taskFolderName || '',
           description: f.description || '',
           parentFolderNo: (f.parentFolderNo ?? '').toString(),
-          sequence: f.sequenceNo || f.sequence || 0,
+          sequence: f.sequenceNo || f.sequence || '',
           inactive: f.inactive
         }));
         setApiFolders(mapped);
@@ -283,6 +283,7 @@ export function MasterManager({ type }: MasterManagerProps) {
     } else if (type === 'benefit-type') {
       fetchBusinessBenefitTypes();
       fetchBenefitFillValues();
+      setValuationtypeNo('1');
     }
   }, [type]);
 
@@ -291,6 +292,8 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   // Form states matching schemas
   const [name, setName] = useState('');
@@ -300,24 +303,24 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [isApprovalApplicable, setIsApprovalApplicable] = useState(false);
   const [isInReviewRequired, setIsInReviewRequired] = useState(false);
   const [isBusinessBenefitApplicable, setIsBusinessBenefitApplicable] = useState(false);
-  const [checklist, setChecklist] = useState<string[]>([]);
+  const [checklist, setChecklist] = useState<{ description: string; isChecked: boolean }[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [color, setColor] = useState('');
 
   // Priority extra fields
-  const [priorityDuration, setPriorityDuration] = useState<number>(1);
-  const [priorityFrequencyNo, setPriorityFrequencyNo] = useState('Days');
+  const [priorityDuration, setPriorityDuration] = useState<number | null>(null);
+  const [priorityFrequencyNo, setPriorityFrequencyNo] = useState('');
 
   // Folder extra fields
   const [description, setDescription] = useState('');
   const [parentFolderNo, setParentFolderNo] = useState('');
-  const [sequence, setSequence] = useState<number>(1);
+  const [sequence, setSequence] = useState<number | null>(null);
 
   // User Group extra fields
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
 
   // Business Benefit Type extra fields
-  const [valuationtypeNo, setValuationtypeNo] = useState('Financial Valuation');
+  const [valuationtypeNo, setValuationtypeNo] = useState('');
 
   // Location extra fields
   const [parentLocationNo, setParentLocationNo] = useState('');
@@ -383,24 +386,25 @@ export function MasterManager({ type }: MasterManagerProps) {
     setChecklist([]);
     setNewChecklistItem('');
     setColor('');
-    setPriorityDuration(1);
-    setPriorityFrequencyNo('Days');
+    setPriorityDuration(null);
+    setPriorityFrequencyNo('');
     setDescription('');
-    setParentFolderNo('none');
-    setSequence(1);
+    setParentFolderNo('');
+    setSequence(null);
     setSelectedUsers([]);
-    setValuationtypeNo('Financial Valuation');
-    setParentLocationNo('none');
-    setInchargeNo('none');
+    setValuationtypeNo(type === 'benefit-type' ? '1' : '');
+    setParentLocationNo('');
+    setInchargeNo('');
     setInchargeLabel('');
     setAddress1('');
     setAddress2('');
     setAddress3('');
-    setCountryNo('United States');
+    setCountryNo('');
     setStateNo('');
     setCityNo('');
     setPinCode('');
     setLocationRegion('');
+    setServerError(null);
     setIsModalOpen(true);
   };
 
@@ -409,6 +413,7 @@ export function MasterManager({ type }: MasterManagerProps) {
     setErrors({});
     setEditingId(item.id);
     setName(item.name || '');
+    setServerError(null);
 
     if (type === 'category') {
       apiService.get<any>(`/api/master/task-categories/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
@@ -420,7 +425,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             setIsApprovalApplicable(dl.isMultiLevelApproval || false);
             setIsInReviewRequired(dl.isInReviewApplicable || false);
             setIsBusinessBenefitApplicable(dl.isBusinessBenefitApplicable || false);
-            setChecklist(Array.isArray(dl.checkLists) ? dl.checkLists.map((cl: any) => cl.checkListDescription || cl.description) : []);
+            setChecklist(Array.isArray(dl.checkLists) ? dl.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : []);
             setColor(dl.colorCoding || '');
             setNewChecklistItem('');
           }
@@ -433,9 +438,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           const dl = body.data || body;
           if (dl) {
             setName(dl.taskPriorityName || dl.name || '');
-            setPriorityDuration(dl.priorityDuration || 1);
-            setPriorityFrequencyNo((dl.priorityDurationFrequencyNo || '').toString());
-            setSequence(dl.sequenceNo || 1);
+            setPriorityDuration(dl.priorityDuration !== undefined && dl.priorityDuration !== null ? dl.priorityDuration : null);
+            setPriorityFrequencyNo(dl.priorityDurationFrequencyNo ? dl.priorityDurationFrequencyNo.toString() : '');
+            setSequence(dl.sequenceNo !== undefined && dl.sequenceNo !== null ? dl.sequenceNo : null);
           }
         }
       }).catch(err => console.error("Failed to load priority details:", err));
@@ -447,8 +452,8 @@ export function MasterManager({ type }: MasterManagerProps) {
           if (dl) {
             setName(dl.taskFolderName || dl.name || '');
             setDescription(dl.description || '');
-            setParentFolderNo((dl.parentFolderNo || 'none').toString());
-            setSequence(dl.sequenceNo || dl.sequence || 0);
+            setParentFolderNo((dl.parentFolderNo || '').toString());
+            setSequence(dl.sequenceNo !== undefined && dl.sequenceNo !== null ? dl.sequenceNo : null);
           }
         }
       }).catch(err => console.error("Failed to load folder details:", err));
@@ -477,7 +482,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           const dl = body.data || body;
           if (dl) {
             setName(dl.businessBenefitTypeName || dl.name || '');
-            setValuationtypeNo((dl.valuationType?.valuationTypeNo ?? dl.valuationType ?? 0).toString());
+            setValuationtypeNo(dl.valuationType ? (dl.valuationType.valuationTypeNo ?? dl.valuationType ?? '').toString() : '');
           }
         }
       }).catch(err => console.error("Failed to load benefit type details:", err));
@@ -612,23 +617,21 @@ export function MasterManager({ type }: MasterManagerProps) {
     }
 
     if (type === 'priority') {
-      if (!priorityDuration || priorityDuration <= 0) {
+      if (priorityDuration !== null && priorityDuration <= 0) {
         newErrors.priorityDuration = 'Duration must be a positive number';
       }
-      if (!priorityFrequencyNo || priorityFrequencyNo === 'none') {
-        newErrors.priorityFrequencyNo = 'Frequency Unit is required';
-      }
-      if (!sequence || sequence <= 0) {
+      if (sequence !== null && sequence <= 0) {
         newErrors.sequence = 'Sequence must be a positive number';
       }
     } else if (type === 'folder') {
-      if (!sequence || sequence < 0) {
+      if (!description.trim()) {
+        newErrors.description = 'Folder Description is required';
+      }
+      if (sequence !== null && sequence < 0) {
         newErrors.sequence = 'Sequence order must be 0 or greater';
       }
     } else if (type === 'user-group') {
-      if (selectedUsers.length === 0) {
-        newErrors.selectedUsers = 'At least one member is required';
-      } else {
+      if (selectedUsers.length > 0) {
         const hasEmpty = selectedUsers.some(u => !u.userName);
         if (hasEmpty) {
           newErrors.selectedUsers = 'All group members must have a valid username';
@@ -638,17 +641,20 @@ export function MasterManager({ type }: MasterManagerProps) {
       if (!address1.trim()) {
         newErrors.address1 = 'Address Line 1 is required';
       }
-      if (!countryNo || countryNo === 'none') {
-        newErrors.countryNo = 'Country is required';
-      }
-      if (!stateNo || stateNo === 'none') {
-        newErrors.stateNo = 'State is required';
-      }
-      if (!cityNo || cityNo === 'none') {
-        newErrors.cityNo = 'City is required';
-      }
       if (!pinCode.trim()) {
         newErrors.pinCode = 'PIN / ZIP Code is required';
+      }
+      if (!countryNo || countryNo === 'none' || countryNo === '') {
+        newErrors.countryNo = 'Country is required';
+      }
+      if (!stateNo || stateNo === 'none' || stateNo === '') {
+        newErrors.stateNo = 'State is required';
+      }
+      if (!cityNo || cityNo === 'none' || cityNo === '') {
+        newErrors.cityNo = 'City is required';
+      }
+      if (!inchargeNo || inchargeNo === 'none' || inchargeNo === '') {
+        newErrors.inchargeNo = 'Incharge Lead is required';
       }
     }
 
@@ -660,7 +666,11 @@ export function MasterManager({ type }: MasterManagerProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!validateForm()) return;
+    setShowConfirm(true);
+  };
 
+  const handleConfirmSave = async () => {
+    setShowConfirm(false);
     setIsSaving(true);
     try {
       if (editingId) {
@@ -673,7 +683,11 @@ export function MasterManager({ type }: MasterManagerProps) {
             isMultiLevelApproval: isApprovalApplicable,
             isInReviewApplicable: isInReviewRequired,
             isBusinessBenefitApplicable: isBusinessBenefitApplicable,
-            checkLists: checklist.map(c => ({ description: c, checkListDescription: c, isChecked: false })),
+            checkLists: checklist.map(c => {
+              const desc = typeof c === 'string' ? c : c.description;
+              const checked = typeof c === 'string' ? false : c.isChecked;
+              return { description: desc, checkListDescription: desc, isChecked: checked };
+            }),
             colorCoding: color || null
           };
           await apiService.post('/api/master/task-categories/save', payload);
@@ -717,7 +731,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           await fetchUserGroups();
         } else if (type === 'benefit-type') {
           const payload = {
-            businessBenefitTypeNo: parseInt(id) || 0,
+            businessBenefitTypeNo: parseInt(id) || "",
             businessBenefitTypeName: name,
             valuationType: parseInt(valuationtypeNo) || 1
           };
@@ -752,21 +766,25 @@ export function MasterManager({ type }: MasterManagerProps) {
             isMultiLevelApproval: isApprovalApplicable,
             isInReviewApplicable: isInReviewRequired,
             isBusinessBenefitApplicable: isBusinessBenefitApplicable,
-            checkLists: checklist.map(c => ({ description: c, checkListDescription: c, isChecked: true })),
+            checkLists: checklist.map(c => {
+              const desc = typeof c === 'string' ? c : c.description;
+              const checked = typeof c === 'string' ? false : c.isChecked;
+              return { description: desc, checkListDescription: desc, isChecked: checked };
+            }),
             colorCoding: color || null
           };
           await apiService.post('/api/master/task-categories/save', payload);
           await fetchCategories();
         } else if (type === 'type') {
           const payload = {
-            operTaskTypeNo: 0,
+            operTaskTypeNo: null,
             operTaskTypeName: name
           };
           await apiService.post('/api/master/task-types/save', payload);
           await fetchTypes();
         } else if (type === 'priority') {
           const payload = {
-            operTaskPriorityNo: 0,
+            operTaskPriorityNo: null,
             taskPriorityName: name,
             priorityDuration: Number(priorityDuration) || null,
             priorityDurationFrequencyNo: parseInt(priorityFrequencyNo) || null,
@@ -776,17 +794,17 @@ export function MasterManager({ type }: MasterManagerProps) {
           await fetchPriorities();
         } else if (type === 'folder') {
           const payload = {
-            taskFolderNo: 0,
+            taskFolderNo: null,
             taskFolderName: name,
             description: description,
             parentFolderNo: parentFolderNo === 'none' || !parentFolderNo ? 0 : parseInt(parentFolderNo),
-            sequenceNo: sequence
+            sequenceNo: sequence !== null ? Number(sequence) : null
           };
           await apiService.post(`/api/master/task-folders/save`, payload);
           await fetchFolders();
         } else if (type === 'user-group') {
           const payload = {
-            userGroupNo: 0,
+            userGroupNo: null,
             userGroupName: name,
             description: description,
             inactive: false,
@@ -796,7 +814,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           await fetchUserGroups();
         } else if (type === 'benefit-type') {
           const payload = {
-            businessBenefitTypeNo: 0,
+            businessBenefitTypeNo: null,
             businessBenefitTypeName: name,
             valuationType: parseInt(valuationtypeNo) || null
           };
@@ -806,7 +824,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           const cleanParent = parentLocationNo === 'none' ? '' : parentLocationNo;
           const cleanIncharge = inchargeNo === 'none' ? '' : inchargeNo;
           const payload = {
-            operLocationNo: 0,
+            operLocationNo: null,
             operLocationName: name,
             operLocationInchargeNo: cleanIncharge ? parseInt(cleanIncharge) || null : null,
             operLocationParentNo: cleanParent ? parseInt(cleanParent) || null : null,
@@ -824,8 +842,90 @@ export function MasterManager({ type }: MasterManagerProps) {
         }
       }
       setIsModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Save failed:", err);
+      if (err && err.data) {
+        const errData = err.data;
+        if (Array.isArray(errData.errors)) {
+          const newFieldErrors: Record<string, string> = {};
+          const unmappedErrors: string[] = [];
+
+          errData.errors.forEach((e: any) => {
+            if (e && e.propertyName && e.errorMessage) {
+              const prop = e.propertyName;
+              const msg = e.errorMessage;
+              const propLower = prop.toLowerCase();
+
+              if (propLower.includes('name')) {
+                newFieldErrors.name = msg;
+              } else if (propLower === 'priorityduration') {
+                newFieldErrors.priorityDuration = msg;
+              } else if (propLower.includes('frequency') || propLower.includes('unit')) {
+                newFieldErrors.frequencyUnit = msg;
+              } else if (propLower.includes('sequence')) {
+                newFieldErrors.sequence = msg;
+              } else if (propLower === 'valuationtype' || propLower === 'valuationtypeno') {
+                newFieldErrors.valuationType = msg;
+              } else if (propLower.includes('parentlocation') || propLower.includes('parentno')) {
+                newFieldErrors.parentLocationNo = msg;
+              } else if (propLower.includes('inchargeno') || propLower.includes('incharge')) {
+                newFieldErrors.inchargeNo = msg;
+              } else if (propLower === 'address1') {
+                newFieldErrors.address1 = msg;
+              } else if (propLower === 'address2') {
+                newFieldErrors.address2 = msg;
+              } else if (propLower === 'address3') {
+                newFieldErrors.address3 = msg;
+              } else if (propLower === 'cityno' || propLower === 'city') {
+                newFieldErrors.cityNo = msg;
+              } else if (propLower === 'pincode' || propLower === 'zip') {
+                newFieldErrors.pinCode = msg;
+              } else if (propLower === 'stateno' || propLower === 'state') {
+                newFieldErrors.stateNo = msg;
+              } else if (propLower === 'countryno' || propLower === 'country') {
+                newFieldErrors.countryNo = msg;
+              } else if (propLower === 'regionno' || propLower === 'locationregion') {
+                newFieldErrors.locationRegion = msg;
+              } else if (propLower === 'description') {
+                newFieldErrors.description = msg;
+              } else if (propLower.includes('user') || propLower.includes('member')) {
+                newFieldErrors.selectedUsers = msg;
+              } else {
+                unmappedErrors.push(`${prop}: ${msg}`);
+              }
+            }
+          });
+
+          setErrors(newFieldErrors);
+
+          if (unmappedErrors.length > 0) {
+            setServerError(unmappedErrors.join(' | '));
+          } else {
+            setServerError(null);
+          }
+        } else {
+          const serverErrors = errData.errors;
+          if (serverErrors && typeof serverErrors === 'object') {
+            const messages: string[] = [];
+            Object.entries(serverErrors).forEach(([field, msgs]) => {
+              if (Array.isArray(msgs)) {
+                messages.push(`${field}: ${msgs.join(', ')}`);
+              } else if (typeof msgs === 'string') {
+                messages.push(`${field}: ${msgs}`);
+              }
+            });
+            if (messages.length > 0) {
+              setServerError(messages.join(' | '));
+            } else {
+              setServerError(errData.title || err.message || 'Validation error occurred');
+            }
+          } else {
+            setServerError(errData.title || errData.message || err.message || 'Operation failed');
+          }
+        }
+      } else {
+        setServerError(err?.message || 'Operation failed due to connection error.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -834,13 +934,25 @@ export function MasterManager({ type }: MasterManagerProps) {
   // Checklist Helpers
   const addChecklistItem = () => {
     if (newChecklistItem.trim()) {
-      setChecklist([...checklist, newChecklistItem.trim()]);
+      setChecklist([...checklist, { description: newChecklistItem.trim(), isChecked: false }]);
       setNewChecklistItem('');
     }
   };
 
   const removeChecklistItem = (index: number) => {
     setChecklist(checklist.filter((_, i) => i !== index));
+  };
+
+  const toggleChecklistItem = (index: number) => {
+    setChecklist(checklist.map((c, i) => {
+      if (i === index) {
+        if (typeof c === 'string') {
+          return { description: c, isChecked: true };
+        }
+        return { ...c, isChecked: !c.isChecked };
+      }
+      return c;
+    }));
   };
 
   // Toggle user selection in group
@@ -1089,6 +1201,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               <Input
                 placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
                 value={name}
+                maxLength={50}
                 onChange={(e) => {
                   setName(e.target.value);
                   if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
@@ -1160,7 +1273,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             {type === 'category' && (
               <div className="space-y-5 pt-2">
                 <div className="flex flex-col sm:flex-row gap-6 pt-1">
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <Checkbox
                       id="need-approval"
                       checked={isApprovalApplicable}
@@ -1180,7 +1293,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <label htmlFor="need-review" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
                       Need Review
                     </label>
-                  </div>
+                  </div> */}
 
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -1221,18 +1334,32 @@ export function MasterManager({ type }: MasterManagerProps) {
 
                   {checklist.length > 0 && (
                     <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-150/60 max-h-40 overflow-y-auto space-y-1.5 scrollbar-thin">
-                      {checklist.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between gap-3 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
-                          <span className="text-[11px] font-semibold text-slate-700 truncate">{item}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeChecklistItem(index)}
-                            className="text-red-500 hover:text-red-700 p-0.5 rounded-full hover:bg-slate-100/80"
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      ))}
+                      {checklist.map((item, index) => {
+                        const desc = typeof item === 'string' ? item : item.description;
+                        const isChecked = typeof item === 'string' ? false : item.isChecked;
+                        return (
+                          <div key={index} className="flex items-center justify-between gap-3 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <Checkbox
+                                id={`cl-item-${index}`}
+                                checked={isChecked}
+                                onCheckedChange={() => toggleChecklistItem(index)}
+                                className="h-4 w-4 rounded border-slate-300"
+                              />
+                              <label htmlFor={`cl-item-${index}`} className="text-[11px] font-bold text-slate-700 truncate cursor-pointer select-none">
+                                {desc}
+                              </label>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeChecklistItem(index)}
+                              className="text-red-500 hover:text-red-700 p-0.5 rounded-full hover:bg-slate-100/80 shrink-0"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1247,9 +1374,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <Input
                     type="number"
                     min={1}
-                    value={priorityDuration}
+                    value={priorityDuration ?? ''}
                     onChange={(e) => {
-                      setPriorityDuration(Number(e.target.value));
+                      const val = e.target.value === '' ? null : Number(e.target.value);
+                      setPriorityDuration(val);
                       if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
                     }}
                     className={cn(
@@ -1283,9 +1411,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <Input
                     type="number"
                     min={1}
-                    value={sequence}
+                    value={sequence ?? ''}
                     onChange={(e) => {
-                      setSequence(Number(e.target.value));
+                      const val = e.target.value === '' ? null : Number(e.target.value);
+                      setSequence(val);
                       if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
                     }}
                     className={cn(
@@ -1306,9 +1435,16 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <Input
                     placeholder="Enter short directory purpose..."
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl"
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
+                      errors.description && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
                   />
+                  {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1336,9 +1472,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <Input
                       type="number"
                       min={1}
-                      value={sequence}
+                      value={sequence ?? ''}
                       onChange={(e) => {
-                        setSequence(Number(e.target.value));
+                        const val = e.target.value === '' ? null : Number(e.target.value);
+                        setSequence(val);
                         if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
                       }}
                       className={cn(
@@ -1467,11 +1604,16 @@ export function MasterManager({ type }: MasterManagerProps) {
                       onChange={(user) => {
                         setInchargeNo(user.loginNo.toString());
                         setInchargeLabel(user.printingName);
+                        if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
                       }}
                       initialLabel={inchargeLabel}
                       placeholder="Search Incharge Lead..."
-                      className="h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                      className={cn(
+                        "h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full",
+                        errors.inchargeNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
                     />
+                    {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
                   </div>
                 </div>
 
@@ -1496,6 +1638,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <Input
                       placeholder="Address Line 1"
                       value={address1}
+                      maxLength={150}
                       onChange={(e) => {
                         setAddress1(e.target.value);
                         if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
@@ -1509,12 +1652,14 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <Input
                       placeholder="Address Line 2 (Optional)"
                       value={address2}
+                      maxLength={150}
                       onChange={(e) => setAddress2(e.target.value)}
                       className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
                     />
                     <Input
                       placeholder="Address Line 3 (Optional)"
                       value={address3}
+                      maxLength={150}
                       onChange={(e) => setAddress3(e.target.value)}
                       className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
                     />
@@ -1593,6 +1738,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <Input
                       placeholder="ZIP"
                       value={pinCode}
+                      maxLength={10}
                       onChange={(e) => {
                         setPinCode(e.target.value);
                         if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
@@ -1608,6 +1754,13 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
             )}
           </form>
+
+          {serverError && (
+            <div className="mx-6 mb-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-2 shadow-sm animate-pulse shrink-0">
+              <span className="font-extrabold select-none">⚠️ Error:</span>
+              <span className="flex-1 whitespace-pre-wrap leading-relaxed">{serverError}</span>
+            </div>
+          )}
 
           {/* Form Footer Action triggers */}
           <DialogFooter className="p-6 border-t border-slate-100/60 bg-gradient-to-tr from-slate-50/50 to-white flex items-center justify-between gap-3 shrink-0">
@@ -1660,6 +1813,36 @@ export function MasterManager({ type }: MasterManagerProps) {
               className="h-10 px-5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-widest shadow-md shadow-red-500/20 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save/Update Confirmation Dialog */}
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              Confirm {editingId ? "Update" : "Save"}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500 mt-2">
+              Are you sure you want to {editingId ? "update this record" : "save this new record"}? This action will apply the changes immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowConfirm(false)}
+              className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+            >
+              No, Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSave}
+              className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
+            >
+              Yes, Proceed
             </Button>
           </DialogFooter>
         </DialogContent>

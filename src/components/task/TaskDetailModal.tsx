@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useTaskStore } from '@/store/useTaskStore';
 
 interface TaskDetailModalProps {
   taskNo: number | null;
@@ -45,8 +46,29 @@ const reverseBenefitFrequencyMap: Record<number, string> = {
 
 export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: TaskDetailModalProps) {
   const navigate = useNavigate();
+  const { fillValues } = useTaskStore();
   const [task, setTask] = useState<Task | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
+
+  const getContrastColor = (hexColor?: string) => {
+    if (!hexColor) return '#1e293b';
+    const hex = hexColor.replace('#', '');
+    if (hex.length !== 6 && hex.length !== 3) return '#1e293b';
+
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 6) {
+      r = parseInt(hex.substring(0, 2), 16);
+      g = parseInt(hex.substring(2, 4), 16);
+      b = parseInt(hex.substring(4, 6), 16);
+    } else if (hex.length === 3) {
+      r = parseInt(hex.substring(0, 1) + hex.substring(0, 1), 16);
+      g = parseInt(hex.substring(1, 1) + hex.substring(1, 1), 16);
+      b = parseInt(hex.substring(2, 2) + hex.substring(2, 2), 16);
+    }
+
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return yiq >= 140 ? '#0f172a' : '#ffffff';
+  };
 
   const fetchTaskDetails = async () => {
     if (!taskNo) return;
@@ -94,7 +116,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
         // Map actual efforts
         const mappedEfforts = (d.effortLogs || []).map((e: any) => ({
           date: e.effortDate || e.logDate || '',
-          hours: e.effortHours || e.efforts || 0,
+          hours: e.effortHours || e.efforts || null,
           description: e.effortDescription || e.description || ''
         }));
 
@@ -103,23 +125,23 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           code: d.code || '',
           title: d.title || '',
           description: d.description || '',
-          priority_No: d.priority?.operTaskPriorityNo || 1,
-          category_No: d.category?.operTaskCategoryNo || 0,
-          type_No: d.type?.operTaskTypeNo || 0,
+          priority_No: d.priority?.operTaskPriorityNo || null,
+          category_No: d.category?.operTaskCategoryNo || null,
+          type_No: d.type?.operTaskTypeNo || null,
           tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
-          originator_user_No: d.originator?.id || 1,
-          owner_user_No: d.owner?.id || 0,
-          location_No: d.location?.operTaskLocationNo || 0,
+          originator_user_No: d.originator?.id || null,
+          owner_user_No: d.owner?.id || null,
+          location_No: d.location?.operTaskLocationNo || null,
           company: d.company || 'Glacier',
           start_date: d.startDate,
           end_date: d.endDate,
-          estimated_effort_value: d.estimatedEfforts?.hours || 0,
+          estimated_effort_value: d.estimatedEfforts?.hours ?? null,
           estimated_effort_unit: reverseEffortFrequencyMap[d.estimatedEfforts?.frequency?.frequencyNo || 2] || 'hours',
           is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,
-          business_benefit_type_No: d.businessBenefit?.businessBenefitTypeNo || 0,
+          business_benefit_type_No: d.businessBenefit?.businessBenefitType?.businessBenefitTypeNo || d.businessBenefit?.businessBenefitTypeNo || null,
           business_benefit_description: d.businessBenefit?.businessBenefitDescription || '',
-          estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount || 0,
-          actual_benefit_amount: d.businessBenefit?.actualBenefitAmount || 0,
+          estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount ?? null,
+          actual_benefit_amount: d.businessBenefit?.actualBenefitAmount ?? null,
           benefit_period: reverseBenefitFrequencyMap[d.businessBenefit?.benefitFrequency?.frequencyNo || 1] || 'One Time',
           status_No: d.status?.operTaskStatusNo || 1,
           status: d.status?.statusName || 'Draft',
@@ -134,7 +156,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           task_comments: mappedComments,
           actual_efforts: mappedEfforts,
           executionNotes: d.executionNotes || d.execution_notes || '',
-          execution_notes: d.executionNotes || d.execution_notes || ''
+          execution_notes: d.executionNotes || d.execution_notes || '',
+          collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
+          infromToUserGroupNo: d.infromToUserGroupNo || null
         };
 
         setTask(mappedTask);
@@ -355,12 +379,24 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                       </div>
 
                       {/* Category */}
-                      {task.categoryName && (
-                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                          <span className="font-bold text-slate-600 flex items-center gap-1.5"><Layers size={13} className="text-slate-500" /> Category</span>
-                          <span className="font-black text-slate-950 bg-slate-50 px-2 py-0.5 border border-slate-200 rounded-md text-[10px]">{task.categoryName}</span>
-                        </div>
-                      )}
+                      {task.categoryName && (() => {
+                        const catObj = fillValues?.category?.find(
+                          c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
+                        );
+                        const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || '#f1f5f9';
+                        const textColor = getContrastColor(bgColor);
+                        return (
+                          <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
+                            <span className="font-bold text-slate-600 flex items-center gap-1.5"><Layers size={13} className="text-slate-500" /> Category</span>
+                            <span
+                              style={{ backgroundColor: bgColor, color: textColor }}
+                              className="font-black px-2 py-0.5 border border-black/5 rounded-md text-[10px] shadow-sm/50 uppercase tracking-wider"
+                            >
+                              {task.categoryName}
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       {/* Type */}
                       {task.typeName && (
@@ -394,9 +430,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <span className="font-black text-slate-900">{task.start_date ? format(new Date(task.start_date), 'MMM dd, yyyy') : 'No date'}</span>
                       </div>
 
-                      {/* End Date */}
+                      {/* Due Date */}
                       <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                        <span className="font-bold text-slate-600 flex items-center gap-1.5"><Calendar size={13} className="text-slate-500" /> End Date</span>
+                        <span className="font-bold text-slate-600 flex items-center gap-1.5"><Calendar size={13} className="text-slate-500" /> Due Date</span>
                         <span className="font-black text-slate-900">{task.end_date ? format(new Date(task.end_date), 'MMM dd, yyyy') : 'No date'}</span>
                       </div>
 

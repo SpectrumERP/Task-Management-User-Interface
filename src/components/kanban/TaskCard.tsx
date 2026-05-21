@@ -5,6 +5,8 @@ import { MessageSquare, Clock, AlertCircle, AlertTriangle, Info, Edit2 } from 'l
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
+import { useTaskStore } from '@/store/useTaskStore';
+
 interface TaskCardProps {
   task: Task;
   index: number;
@@ -13,6 +15,27 @@ interface TaskCardProps {
 
 export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
   const navigate = useNavigate();
+  const { fillValues } = useTaskStore();
+
+  const getContrastColor = (hexColor?: string) => {
+    if (!hexColor) return '#1e293b';
+    const hex = hexColor.replace('#', '');
+    if (hex.length !== 6 && hex.length !== 3) return '#1e293b';
+    
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 6) {
+      r = parseInt(hex.substring(0, 2), 16);
+      g = parseInt(hex.substring(2, 4), 16);
+      b = parseInt(hex.substring(4, 6), 16);
+    } else if (hex.length === 3) {
+      r = parseInt(hex.substring(0, 1) + hex.substring(0, 1), 16);
+      g = parseInt(hex.substring(1, 1) + hex.substring(1, 1), 16);
+      b = parseInt(hex.substring(2, 2) + hex.substring(2, 2), 16);
+    }
+    
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return yiq >= 140 ? '#0f172a' : '#ffffff';
+  };
 
   const PriorityIcon = {
     4: () => <AlertCircle className="text-red-500 fill-red-500/10" size={18} />, // Urgent
@@ -79,11 +102,21 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                       {task.typeName}
                     </span>
                   )}
-                  {task.categoryName && (
-                    <span className="bg-[#e1ecf7] text-[#006699] text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                      {task.categoryName}
-                    </span>
-                  )}
+                  {task.categoryName && (() => {
+                    const catObj = fillValues?.category?.find(
+                      c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
+                    );
+                    const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || '#e2e8f0';
+                    const textColor = getContrastColor(bgColor);
+                    return (
+                      <span 
+                        style={{ backgroundColor: bgColor, color: textColor }}
+                        className="text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider border border-black/5"
+                      >
+                        {task.categoryName}
+                      </span>
+                    );
+                  })()}
                   <span className={cn(
                     "text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider",
                     task.priority_No >= 3 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-700"

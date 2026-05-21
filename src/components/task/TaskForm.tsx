@@ -22,6 +22,14 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { TaskActivity } from './TaskActivity';
 import { TaskListView } from './TaskListView';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 
 
@@ -44,13 +52,22 @@ const getTaskSchema = (isSubTask: boolean) => z.object({
   isPrivate: z.boolean().optional().default(false),
   start_date: z.string().optional(),
   end_date: isSubTask ? z.string().min(1, 'Due Date is required for sub-tasks') : z.string().optional(),
-  estimated_effort_value: z.string().optional(),
+  estimated_effort_value: z.string().optional()
+    .refine(val => !val || val === '' || parseFloat(val) > 0, {
+      message: 'Estimated effort must be greater than 0'
+    }),
   estimated_effort_unit: z.string().optional(),
   is_business_benefit_applicable: z.boolean(),
   business_benefit_type_No: z.string().optional(),
   business_benefit_description: z.string().optional(),
-  estimated_benefit_amount: z.string().optional(),
-  actual_benefit_amount: z.string().optional(),
+  estimated_benefit_amount: z.string().optional()
+    .refine(val => !val || val === '' || parseFloat(val) > 0, {
+      message: 'Estimated benefit must be greater than 0'
+    }),
+  actual_benefit_amount: z.string().optional()
+    .refine(val => !val || val === '' || parseFloat(val) > 0, {
+      message: 'Actual benefit must be greater than 0'
+    }),
   benefit_period: z.string().optional(),
   collaborators: z.array(z.object({
     userName: z.string().min(1, 'User Name is required'),
@@ -115,7 +132,7 @@ interface TaskFormProps {
 interface TaskFillValues {
   priority: { OperTaskPriorityNo: number; Priority: string; Code: string; PriorityDuration?: number; PriorityDurationFrequencyNo?: number }[];
   type: { OperTaskTypeNo: number; "Task Type": string; Code: string }[];
-  category: { OperTaskCategoryNo: number; Category: string; Code: string }[];
+  category: { OperTaskCategoryNo: number; Category: string; Code: string; colorCoding?: string; ColorCoding?: string }[];
   location: { OperLocationNo: number; Location: string; Code: string }[];
   benefitType: { BusinessBenefitTypeNo: number; "Business Benefit": string; Code: string }[];
   status: { StatusNo: number; Status: string; IsDefault: boolean }[];
@@ -184,8 +201,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const parentTaskNoQuery = searchParams.get('parentTaskNo');
-  const parentTaskNo = parentTaskNoQuery ? parseInt(parentTaskNoQuery) : (initialData?.parent_task_No || 0);
-  const isSubTask = parentTaskNo > 0;
+  const parentTaskNo = parentTaskNoQuery ? parseInt(parentTaskNoQuery) : (initialData?.parent_task_No || null);
+  const isSubTask = parentTaskNo !== null && parentTaskNo > 0;
 
   const { addTask, updateTask, fetchFillValues, selectedFolder, tasks } = useTaskStore();
   const [localParentTask, setLocalParentTask] = useState<Task | null>(null);
@@ -212,6 +229,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const [selectedInformTeam, setSelectedInformTeam] = useState<string>("");
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [formDataToSave, setFormDataToSave] = useState<any>(null);
 
   const form = useForm({
     resolver: zodResolver(getTaskSchema(isSubTask)),
@@ -229,13 +248,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       location_No: initialData?.location_No?.toString() || (isSubTask && parentTask ? parentTask.location_No.toString() : ''),
       start_date: initialData?.start_date ? new Date(initialData.start_date).toISOString() : '',
       end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : '',
-      estimated_effort_value: initialData?.estimated_effort_value?.toString() || (isSubTask ? '' : '0'),
+      estimated_effort_value: initialData?.estimated_effort_value?.toString() || '',
       estimated_effort_unit: initialData?.estimated_effort_unit || 'Hours',
       is_business_benefit_applicable: initialData?.is_business_benefit_applicable || false,
       business_benefit_type_No: initialData?.business_benefit_type_No?.toString() || '',
       business_benefit_description: initialData?.business_benefit_description || '',
-      estimated_benefit_amount: initialData?.estimated_benefit_amount?.toString() || (isSubTask ? '' : '0'),
-      actual_benefit_amount: initialData?.actual_benefit_amount?.toString() || (isSubTask ? '' : '0'),
+      estimated_benefit_amount: initialData?.estimated_benefit_amount?.toString() || '',
+      actual_benefit_amount: initialData?.actual_benefit_amount?.toString() || '',
       benefit_period: initialData?.benefit_period || 'Monthly',
       originator_user_No: initialData?.originator_user_No?.toString() || '101',
       owner_user_No: initialData?.owner_user_No?.toString() || '',
@@ -274,23 +293,23 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               code: d.code || '',
               title: d.title || '',
               description: d.description || '',
-              priority_No: d.priority?.operTaskPriorityNo || 1,
-              category_No: d.category?.operTaskCategoryNo || 0,
-              type_No: d.type?.operTaskTypeNo || 0,
+              priority_No: d.priority?.operTaskPriorityNo || null,
+              category_No: d.category?.operTaskCategoryNo || null,
+              type_No: d.type?.operTaskTypeNo || null,
               tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
               originator_user_No: d.originator?.id || 1,
-              owner_user_No: d.owner?.id || 0,
-              location_No: d.location?.operTaskLocationNo || 0,
+              owner_user_No: d.owner?.id || null,
+              location_No: d.location?.operTaskLocationNo || null,
               company: d.company || 'Glacier',
               start_date: d.startDate,
               end_date: d.endDate,
-              estimated_effort_value: d.estimatedEfforts?.hours || 0,
+              estimated_effort_value: d.estimatedEfforts?.hours || '',
               estimated_effort_unit: 'hours',
               is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,
-              business_benefit_type_No: d.businessBenefit?.businessBenefitTypeNo || 0,
+              business_benefit_type_No: d.businessBenefit?.businessBenefitType?.businessBenefitTypeNo || d.businessBenefit?.businessBenefitTypeNo || '',
               business_benefit_description: d.businessBenefit?.businessBenefitDescription || '',
-              estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount || 0,
-              actual_benefit_amount: d.businessBenefit?.actualBenefitAmount || 0,
+              estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount || '',
+              actual_benefit_amount: d.businessBenefit?.actualBenefitAmount || '',
               benefit_period: 'One Time',
               status_No: d.status?.operTaskStatusNo || 1,
               status: d.status?.statusName || 'Draft',
@@ -456,6 +475,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         check_list: initialData.check_list || [],
         executionNotes: initialData.executionNotes || initialData.execution_notes || '',
       });
+      if (initialData.collaboratorUserGroupNo) {
+        setSelectedCollabTeam(initialData.collaboratorUserGroupNo.toString());
+      }
+      if (initialData.infromToUserGroupNo) {
+        setSelectedInformTeam(initialData.infromToUserGroupNo.toString());
+      }
     }
   }, [initialData, form, authCompanies]);
 
@@ -571,6 +596,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const onSubmit = async (data: any) => {
     console.log('onSubmit triggered with data:', data);
+    setFormDataToSave(data);
+    setShowConfirm(true);
+  };
+
+  const proceedSubmit = async (data: any) => {
+    console.log('proceedSubmit triggered with data:', data);
+    setShowConfirm(false); // Close confirmation immediately
+
     // Mapping for effort frequency (units)
     const effortFrequencyMap: Record<string, number> = {
       'minutes': 1,
@@ -595,11 +628,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     // Combine collaborators and informTo into members
     const members = [
       ...data.collaborators.map((c: any) => ({
-        loginNo: c.loginNo || 0,
+        loginNo: c.loginNo || null,
         isCollaborator: true
       })),
       ...data.informed_to.map((i: any) => ({
-        loginNo: i.loginNo || 0,
+        loginNo: i.loginNo || null,
         isCollaborator: false
       }))
     ];
@@ -607,47 +640,47 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     const payload = {
       operTaskNo: initialData ? initialData.taskNo : null,
       companyNo: parseInt(data.company) || authCompanies?.[0]?.companyNo || 2,
-      title: data.title,
-      code: data.code,
-      description: data.description || '',
-      executionNotes: data.executionNotes || '',
+      title: data.title || null,
+      code: data.code || null,
+      description: data.description || null,
+      executionNotes: data.executionNotes || null,
       isPrivate: data.isPrivate,
-      operTaskPriorityNo: parseInt(data.priority_No) || 0,
-      operTaskCategoryNo: parseInt(data.category_No) || 0,
-      operTaskTypeNo: parseInt(data.type_No) || 0,
-      categoryNo: parseInt(data.category_No) || 0,
-      tags: data.tags ? data.tags.join(',') : '',
-      collaboratorUserGroupNo: 0,
-      infromToUserGroupNo: 0,
-      originatorLoginNo: parseInt(data.originator_user_No) || 1,
-      ownerLoginNo: parseInt(data.owner_user_No) || 0,
-      parentTaskNo: parentTaskNo || 0,
-      operTaskLocationNo: parseInt(data.location_No) || 0,
-      startDate: data.start_date ? new Date(data.start_date).toISOString() : new Date().toISOString(),
-      endDate: data.end_date ? new Date(data.end_date).toISOString() : new Date().toISOString(),
-      estimatedEfforts: parseFloat(data.estimated_effort_value) || 0,
-      estimatedEffortsFequencyNo: effortFrequencyMap[data.estimated_effort_unit] || 0,
+      operTaskPriorityNo: parseInt(data.priority_No) || null,
+      operTaskCategoryNo: parseInt(data.category_No) || null,
+      operTaskTypeNo: parseInt(data.type_No) || null,
+      categoryNo: parseInt(data.category_No) || null,
+      tags: data.tags && data.tags.length > 0 ? data.tags.join(',') : null,
+      collaboratorUserGroupNo: parseInt(selectedCollabTeam) || null,
+      infromToUserGroupNo: parseInt(selectedInformTeam) || null,
+      originatorLoginNo: parseInt(data.originator_user_No) || null,
+      ownerLoginNo: parseInt(data.owner_user_No) || null,
+      parentTaskNo: parentTaskNo || null,
+      operTaskLocationNo: parseInt(data.location_No) || null,
+      startDate: data.start_date ? new Date(data.start_date).toISOString() : null,
+      endDate: data.end_date ? new Date(data.end_date).toISOString() : null,
+      estimatedEfforts: parseFloat(data.estimated_effort_value) || null,
+      estimatedEffortsFequencyNo: (parseFloat(data.estimated_effort_value) || null) ? (effortFrequencyMap[data.estimated_effort_unit] || null) : null,
       isBusinessBenefitApplicable: data.is_business_benefit_applicable,
-      businessBenefitTypeNo: parseInt(data.business_benefit_type_No) || 0,
-      businessBenefitDescription: data.business_benefit_description || '',
-      estimatedBenefitAmount: parseFloat(data.estimated_benefit_amount) || 0,
-      actualBenefitAmount: parseFloat(data.actual_benefit_amount) || 0,
-      benefitFrequencyNo: benefitFrequencyMap[data.benefit_period] || 0,
-      statusNo: statusNo,
-      folderNo: parseInt(data.folder_No) || selectedFolder?.TaskFolderNo || 1,
+      businessBenefitTypeNo: data.is_business_benefit_applicable ? (parseInt(data.business_benefit_type_No) || null) : null,
+      businessBenefitDescription: data.is_business_benefit_applicable ? (data.business_benefit_description || null) : null,
+      estimatedBenefitAmount: data.is_business_benefit_applicable ? (parseFloat(data.estimated_benefit_amount) || null) : null,
+      actualBenefitAmount: data.is_business_benefit_applicable ? (parseFloat(data.actual_benefit_amount) || null) : null,
+      benefitFrequencyNo: data.is_business_benefit_applicable ? (benefitFrequencyMap[data.benefit_period] || null) : null,
+      statusNo: statusNo || null,
+      folderNo: parseInt(data.folder_No) || selectedFolder?.TaskFolderNo || null,
       createdBy: authUser?.loginNo || authUser?.LoginNo || 1,
       createdDate: new Date().toISOString(),
       checkLists: data.check_list.map((item: any, index: number) => ({
-        description: item.description,
+        description: item.description || null,
         sequenceNo: index + 1,
-        isChecked: item.completed,
+        isChecked: item.completed || false,
         checkedOn: new Date().toISOString()
       })),
       comments: [],
       effortLogs: data.actual_efforts.map((effort: any) => ({
-        logDate: effort.date ? new Date(effort.date).toISOString() : new Date().toISOString(),
-        efforts: parseFloat(effort.hours) || 0,
-        description: effort.description || ''
+        logDate: effort.date ? new Date(effort.date).toISOString() : null,
+        efforts: parseFloat(effort.hours) || null,
+        description: effort.description || null
       })),
       members: members
     };
@@ -657,7 +690,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     if (onSaveStateChange) onSaveStateChange(true);
     try {
       if (initialData) {
-        await apiService.post(`/api/crm/tasks/save`, payload); // Assuming update is POST/PUT as per typical pattern
+        await apiService.post(`/api/crm/tasks/save`, payload);
         updateTask(initialData.taskNo, {
           ...data,
           parent_task_No: parentTaskNo || undefined
@@ -671,8 +704,45 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         });
       }
       if (onComplete) onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save task:', error);
+
+      if (error && error.data && typeof error.data === 'object') {
+        const backendData = error.data;
+        if (backendData.errors && Array.isArray(backendData.errors)) {
+          backendData.errors.forEach((err: any) => {
+            const prop = err.propertyName;
+            const message = err.errorMessage;
+
+            // Map backend properties to react-hook-form keys
+            let formKey: any = null;
+            if (prop === 'Title' || prop === 'title') formKey = 'title';
+            else if (prop === 'Description' || prop === 'description') formKey = 'description';
+            else if (prop === 'OperTaskPriorityNo' || prop === 'operTaskPriorityNo') formKey = 'priority_No';
+            else if (prop === 'OperTaskCategoryNo' || prop === 'operTaskCategoryNo') formKey = 'category_No';
+            else if (prop === 'OperTaskTypeNo' || prop === 'operTaskTypeNo') formKey = 'type_No';
+            else if (prop === 'FolderNo' || prop === 'folderNo') formKey = 'folder_No';
+            else if (prop === 'StartDate' || prop === 'startDate') formKey = 'start_date';
+            else if (prop === 'EndDate' || prop === 'endDate') formKey = 'end_date';
+            else if (prop === 'OwnerLoginNo' || prop === 'ownerLoginNo') formKey = 'owner_user_No';
+            else if (prop === 'OriginatorLoginNo' || prop === 'originatorLoginNo') formKey = 'originator_user_No';
+            else if (prop === 'BusinessBenefitTypeNo' || prop === 'businessBenefitTypeNo') formKey = 'business_benefit_type_No';
+            else if (prop === 'EstimatedBenefitAmount' || prop === 'estimatedBenefitAmount') formKey = 'estimated_benefit_amount';
+            else if (prop === 'ActualBenefitAmount' || prop === 'actualBenefitAmount') formKey = 'actual_benefit_amount';
+            else if (prop === 'BenefitFrequencyNo' || prop === 'benefitFrequencyNo') formKey = 'benefit_period';
+            else if (prop === 'BusinessBenefitDescription' || prop === 'businessBenefitDescription') formKey = 'business_benefit_description';
+            else if (prop === 'EstimatedEfforts' || prop === 'estimatedEfforts') formKey = 'estimated_effort_value';
+            else if (prop === 'EstimatedEffortsFrequencyNo' || prop === 'estimatedEffortsFrequencyNo' || prop === 'EstimatedEffortsFequencyNo' || prop === 'estimatedEffortsFequencyNo') formKey = 'estimated_effort_unit';
+
+            if (formKey) {
+              form.setError(formKey, {
+                type: 'manual',
+                message: message
+              });
+            }
+          });
+        }
+      }
     } finally {
       if (onSaveStateChange) onSaveStateChange(false);
     }
@@ -1244,7 +1314,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     <Input
                       type="number"
                       step="0"
-                      placeholder="0"
+                      placeholder=""
                       {...form.register('estimated_effort_value')}
                       onInput={(e) => handleNumericInput(e, 0)}
                       className={cn(
@@ -1361,7 +1431,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <Input
                     type="number"
                     step="0.01"
-                    placeholder="0.00"
+                    placeholder=""
                     {...form.register('estimated_benefit_amount')}
                     onInput={(e) => handleNumericInput(e, 2)}
                     className={cn(
@@ -1376,7 +1446,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <Input
                     type="number"
                     step="0.01"
-                    placeholder="0.00"
+                    placeholder=""
                     {...form.register('actual_benefit_amount')}
                     onInput={(e) => handleNumericInput(e, 2)}
                     className={cn(
@@ -1578,6 +1648,45 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </FormSection>
         )}
       </form>
+
+      {/* Save/Update Confirmation Dialog */}
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              Confirm {initialData ? "Update" : "Save"}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500 mt-2">
+              Are you sure you want to {initialData ? "update this task" : "save this new task"}? This action will apply the changes immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowConfirm(false);
+                setFormDataToSave(null);
+              }}
+              className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+            >
+              No, Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (formDataToSave) {
+                  setShowConfirm(false);
+                  proceedSubmit(formDataToSave);
+                }
+              }}
+              className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
+            >
+              Yes, Proceed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
+import { useTaskStore } from '@/store/useTaskStore';
+
 interface TaskListViewProps {
   tasks: Task[];
   isLoading?: boolean;
@@ -14,6 +16,27 @@ interface TaskListViewProps {
 
 export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProps) {
   const navigate = useNavigate();
+  const { fillValues } = useTaskStore();
+
+  const getContrastColor = (hexColor?: string) => {
+    if (!hexColor) return '#1e293b';
+    const hex = hexColor.replace('#', '');
+    if (hex.length !== 6 && hex.length !== 3) return '#1e293b';
+    
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 6) {
+      r = parseInt(hex.substring(0, 2), 16);
+      g = parseInt(hex.substring(2, 4), 16);
+      b = parseInt(hex.substring(4, 6), 16);
+    } else if (hex.length === 3) {
+      r = parseInt(hex.substring(0, 1) + hex.substring(0, 1), 16);
+      g = parseInt(hex.substring(1, 1) + hex.substring(1, 1), 16);
+      b = parseInt(hex.substring(2, 2) + hex.substring(2, 2), 16);
+    }
+    
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return yiq >= 140 ? '#0f172a' : '#ffffff';
+  };
 
   const getInitials = (name?: string) => {
     if (!name) return '??';
@@ -80,12 +103,21 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                   <Calendar size={11} className="text-[#006699]" />
                   <span className="text-[10px] font-bold">{task.start_date ? format(new Date(task.start_date), 'MMM dd') : 'No date'}</span>
                 </div>
-                {task.categoryName && (
-                  <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#006699]" />
-                    {task.categoryName}
-                  </span>
-                )}
+                {task.categoryName && (() => {
+                  const catObj = fillValues?.category?.find(
+                    c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
+                  );
+                  const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || '#e2e8f0';
+                  const textColor = getContrastColor(bgColor);
+                  return (
+                    <span 
+                      style={{ backgroundColor: bgColor, color: textColor }}
+                      className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-black/5 shadow-sm"
+                    >
+                      {task.categoryName}
+                    </span>
+                  );
+                })()}
                 {task.typeName && (
                   <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#006699]" />

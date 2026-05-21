@@ -44,12 +44,43 @@ export function UserCombobox({
   const authUser = useAuthStore(state => state.user)
   const loginNo = authUser?.loginNo || 0
 
-  // Handle initial label if value changes and we don't have a label
+  // Handle initial label and resolve user printing name if value changes
   React.useEffect(() => {
     if (initialLabel) {
-      setSelectedLabel(initialLabel)
+      setSelectedLabel(initialLabel);
+      return;
     }
-  }, [initialLabel])
+
+    if (value) {
+      const resolveUser = async () => {
+        setIsLoading(true);
+        try {
+          const results = await userService.searchUsers('', loginNo);
+          let matched = results.find(u => u.loginNo.toString() === value);
+          
+          if (!matched) {
+            const resultsA = await userService.searchUsers('a', loginNo);
+            matched = resultsA.find(u => u.loginNo.toString() === value);
+          }
+          
+          if (matched) {
+            setSelectedLabel(matched.printingName);
+          } else {
+            if (authUser && (authUser.loginNo?.toString() === value || authUser.LoginNo?.toString() === value)) {
+              setSelectedLabel(authUser.printingName || authUser.printingName || authUser.loginId || '');
+            }
+          }
+        } catch (err) {
+          console.error("Failed to resolve user label:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      resolveUser();
+    } else {
+      setSelectedLabel("");
+    }
+  }, [value, initialLabel, loginNo, authUser]);
 
   // Debounced search
   React.useEffect(() => {

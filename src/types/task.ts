@@ -77,4 +77,6 @@ export interface Task {
   typeName?: string;
   assignedDisplayName?: string;
   originatorDisplayName?: string;
+  collaboratorUserGroupNo?: number;
+  infromToUserGroupNo?: number;
 }

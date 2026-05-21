@@ -47,7 +47,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
   const { fetchFillValues } = useTaskStore();
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
 
-  const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FilterFormValues>({
+  const { control, handleSubmit, reset, watch, setValue, trigger, formState: { errors } } = useForm<FilterFormValues>({
     defaultValues: {
       taskCode: '',
       title: '',
@@ -384,14 +384,26 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
                       <div className="space-y-1.5">
                         <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
                           <SlidersHorizontal size={12} className="text-slate-400" />
-                          Filter Type
+                          Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-black">*</span>}
                         </label>
                         <Controller
                           name="filterType"
                           control={control}
+                          rules={{
+                            validate: (val) => {
+                              const userVal = watch('loginNo');
+                              if (userVal && userVal !== '' && (!val || val === 'All')) {
+                                return 'Filter Type is required when User is selected';
+                              }
+                              return true;
+                            }
+                          }}
                           render={({ field }) => (
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                            <Select onValueChange={(val) => {
+                              field.onChange(val);
+                              trigger('loginNo');
+                            }} value={field.value}>
+                              <SelectTrigger className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15", errors.filterType && "border-red-500")}>
                                 <SelectValue placeholder="Select Filter Type" />
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl">
@@ -402,8 +414,9 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
                             </Select>
                           )}
                         />
+                        {errors.filterType && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.filterType.message}</p>}
                       </div>
-
+ 
                       <div className="space-y-1.5" id="form-group-loginNo">
                         <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
                           <SlidersHorizontal size={12} className="text-slate-400" />
@@ -416,7 +429,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
                             validate: (val) => {
                               const filterType = watch('filterType');
                               if (filterType && filterType !== 'All' && (!val || val === '')) {
-                                return 'User is required when filter type is selected';
+                                  return 'User is required when filter type is selected';
                               }
                               return true;
                             }
@@ -424,13 +437,35 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
                           render={({ field }) => (
                             <UserCombobox
                               value={field.value}
-                              onChange={(user) => field.onChange(user.loginNo.toString())}
+                              onChange={(user) => {
+                                field.onChange(user.loginNo.toString());
+                                trigger('filterType');
+                              }}
                               placeholder="Search user..."
                               className={cn("border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 h-11 rounded-2xl w-full", errors.loginNo && "border-red-500")}
                             />
                           )}
                         />
                         {errors.loginNo && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.loginNo.message}</p>}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                          <SlidersHorizontal size={12} className="text-slate-400" />
+                          Owner
+                        </label>
+                        <Controller
+                          name="ownerLoginNo"
+                          control={control}
+                          render={({ field }) => (
+                            <UserCombobox
+                              value={field.value}
+                              onChange={(user) => field.onChange(user.loginNo.toString())}
+                              placeholder="Search owner..."
+                              className="border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 h-11 rounded-2xl w-full"
+                            />
+                          )}
+                        />
                       </div>
 
                       <div className="space-y-1.5">

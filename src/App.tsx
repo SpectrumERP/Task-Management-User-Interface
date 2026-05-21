@@ -193,25 +193,36 @@ function Dashboard() {
 
         {/* Glacier Pagination Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 mt-4 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-150/80 shadow-md shadow-slate-100/30 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Page Size:</span>
-            <Select
-              value={pageSize.toString()}
-              onValueChange={(val) => {
-                setPageSize(Number(val));
-                setPageNo(1);
-              }}
-            >
-              <SelectTrigger className="h-8.5 w-20 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 focus:ring-1 focus:ring-[#006699]/15">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
-                <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
-                <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
-                <SelectItem value="100" className="text-xs font-medium">100</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Page Size:</span>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={(val) => {
+                  setPageSize(Number(val));
+                  setPageNo(1);
+                }}
+              >
+                <SelectTrigger className="h-8.5 w-20 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 focus:ring-1 focus:ring-[#006699]/15">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
+                  <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
+                  <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
+                  <SelectItem value="100" className="text-xs font-medium">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {tasks.length > 0 ? (
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                Showing {((pageNo - 1) * pageSize) + 1} - {((pageNo - 1) * pageSize) + tasks.length} records
+              </span>
+            ) : (
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                No records found
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2.5">

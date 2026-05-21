@@ -29,7 +29,7 @@ interface FilterParams {
 export interface TaskFillValues {
   priority: { OperTaskPriorityNo: number; Priority: string; Code?: string }[];
   type: { OperTaskTypeNo: number; "Task Type": string; Code?: string }[];
-  category: { OperTaskCategoryNo: number; Category: string; Code?: string }[];
+  category: { OperTaskCategoryNo: number; Category: string; Code?: string; colorCoding?: string; ColorCoding?: string }[];
   location: { OperLocationNo: number; Location: string; Code?: string }[];
   status: { StatusNo: number; Status: string; IsDefault?: boolean }[];
   folder?: { TaskFolderNo: number; "Folder Name": string; Code?: string }[];
@@ -92,12 +92,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           params: { companyNo: resolvedCompanyNo }
         });
         set({ fillValues: response });
-        
+
         // Select 0th index folder by default
         if (!get().selectedFolder && response.folder && response.folder.length > 0) {
           set({ selectedFolder: response.folder[0] });
         }
-        
+
         return response;
       } catch (error) {
         console.error('Failed to fetch filter options:', error);
@@ -121,7 +121,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       };
 
       const searchParamsPascal: any = {};
-      
+
       if (searchParamsCamel.companyNo !== undefined) searchParamsPascal.CompanyNo = Number(searchParamsCamel.companyNo);
       if (searchParamsCamel.folderNo !== undefined) searchParamsPascal.FolderNo = Number(searchParamsCamel.folderNo);
       if (searchParamsCamel.operTaskNo !== undefined && !isNaN(Number(searchParamsCamel.operTaskNo))) searchParamsPascal.OperTaskNo = Number(searchParamsCamel.operTaskNo);
@@ -190,15 +190,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           code: item.code || '',
           title: item.title,
           description: item.description || '',
-          priority_No: item.priority?.operTaskPriorityNo || 0,
-          category_No: item.category?.operTaskCategoryNo || 0,
-          type_No: item.type?.operTaskTypeNo || 0,
-          project_No: item.project?.operTaskProjectNo || item.project?.projectNo || item.project?.project_No || item.project?.operTaskFolderNo || item.project?.folderNo || item.folder?.operTaskFolderNo || item.folder?.folderNo || item.folder?.TaskFolderNo || item.folder?.taskFolderNo || item.project_No || item.projectNo || item.folderNo || item.folder_No || 0,
+          priority_No: item.priority?.operTaskPriorityNo || null,
+          category_No: item.category?.operTaskCategoryNo || null,
+          type_No: item.type?.operTaskTypeNo || null,
+          project_No: item.project?.operTaskProjectNo || item.project?.projectNo || item.project?.project_No || item.project?.operTaskFolderNo || item.project?.folderNo || item.folder?.operTaskFolderNo || item.folder?.folderNo || item.folder?.TaskFolderNo || item.folder?.taskFolderNo || item.project_No || item.projectNo || item.folderNo || item.folder_No || null,
           tags: item.tags ? item.tags.split(',') : [],
-          originator_user_No: item.createdBy?.id || 0,
-          owner_user_No: item.assignedTo?.id || 0,
-          location_No: item.location?.operTaskLocationNo || 0,
-          status_No: item.status?.operTaskStatusNo || 0,
+          originator_user_No: item.createdBy?.id || null,
+          owner_user_No: item.assignedTo?.id || null,
+          location_No: item.location?.operTaskLocationNo || null,
+          status_No: item.status?.operTaskStatusNo || null,
           status: item.status?.statusName || 'Todo',
           priority: item.priority?.priorityName || 'Low',
           categoryName: item.category?.categoryName,
@@ -206,7 +206,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           assignedDisplayName: item.assignedTo?.displayName,
           start_date: item.startDate,
           end_date: item.endDate,
-          estimated_effort_value: item.estimatedEfforts || 0,
+          estimated_effort_value: item.estimatedEfforts ?? null,
           is_business_benefit_applicable: item.isBusinessBenefitApplicable || false,
           collaborators: [],
           informed_to: [],

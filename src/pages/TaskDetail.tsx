@@ -129,7 +129,7 @@ export default function TaskDetail() {
           // Map actual efforts
           const mappedEfforts = (d.effortLogs || []).map((e: any) => ({
             date: e.effortDate || e.logDate || '',
-            hours: e.effortHours || e.efforts || 0,
+            hours: e.effortHours || e.efforts || null,
             description: e.effortDescription || e.description || ''
           }));
 
@@ -140,23 +140,23 @@ export default function TaskDetail() {
             description: d.description || '',
             isPrivate: d.isPrivate || false,
             priority_No: d.priority?.operTaskPriorityNo || 1,
-            category_No: d.category?.operTaskCategoryNo || 0,
-            type_No: d.type?.operTaskTypeNo || 0,
-            project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || 0,
+            category_No: d.category?.operTaskCategoryNo || null,
+            type_No: d.type?.operTaskTypeNo || null,
+            project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || null,
             tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
             originator_user_No: d.originator?.id || 1,
-            owner_user_No: d.owner?.id || 0,
-            location_No: d.location?.operTaskLocationNo || 0,
+            owner_user_No: d.owner?.id || null,
+            location_No: d.location?.operTaskLocationNo || null,
             company: d.company || 'Glacier',
             start_date: d.startDate,
             end_date: d.endDate,
-            estimated_effort_value: d.estimatedEfforts?.hours || 0,
+            estimated_effort_value: d.estimatedEfforts?.hours ?? null,
             estimated_effort_unit: reverseEffortFrequencyMap[d.estimatedEfforts?.frequency?.frequencyNo || 2] || 'hours',
             is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,
-            business_benefit_type_No: d.businessBenefit?.businessBenefitTypeNo || 0,
+            business_benefit_type_No: d.businessBenefit?.businessBenefitType?.businessBenefitTypeNo || d.businessBenefit?.businessBenefitTypeNo || null,
             business_benefit_description: d.businessBenefit?.businessBenefitDescription || '',
-            estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount || 0,
-            actual_benefit_amount: d.businessBenefit?.actualBenefitAmount || 0,
+            estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount ?? null,
+            actual_benefit_amount: d.businessBenefit?.actualBenefitAmount ?? null,
             benefit_period: reverseBenefitFrequencyMap[d.businessBenefit?.benefitFrequency?.frequencyNo || 1] || 'One Time',
             status_No: d.status?.operTaskStatusNo || 1,
             status: d.status?.statusName || 'Draft',
@@ -172,7 +172,9 @@ export default function TaskDetail() {
             actual_efforts: mappedEfforts,
             executionNotes: d.executionNotes || d.execution_notes || '',
             execution_notes: d.executionNotes || d.execution_notes || '',
-            subTasks: d.subTasks || []
+            subTasks: d.subTasks || [],
+            collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
+            infromToUserGroupNo: d.infromToUserGroupNo || null
           };
 
           setTask(mappedTask);
@@ -193,8 +195,8 @@ export default function TaskDetail() {
   }, [id, isEdit]);
 
   return (
-    <MainLayout 
-      activeTab="board" 
+    <MainLayout
+      activeTab="board"
       onTabChange={(tabId) => {
         if (tabId.startsWith('master-')) {
           const type = tabId.replace('master-', '');
