@@ -143,7 +143,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const fetchTypes = async () => {
     setIsLoadingTypes(true);
     try {
-      const response = await apiService.get<any>('/api/master/task-types/search-data?companyNo=2');
+      const response = await apiService.get<any>(`/api/master/task-types/search-data?companyNo=${companyNo}`);
       if (response) {
         const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
         const mapped = rawItems.map((t: any) => ({
@@ -167,7 +167,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const fetchPriorities = async () => {
     setIsLoadingPriorities(true);
     try {
-      const response = await apiService.get<any>('/api/master/task-priorities/search-data?companyNo=2');
+      const response = await apiService.get<any>(`/api/master/task-priorities/search-data?companyNo=${companyNo}`);
       if (response) {
         const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
         const mapped = rawItems.map((p: any) => ({
@@ -226,7 +226,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const fetchLocations = async () => {
     setIsLoadingLocations(true);
     try {
-      const response = await apiService.get<any>('/api/master/task-locations/search-data?companyNo=2');
+      const response = await apiService.get<any>(`/api/master/task-locations/search-data?companyNo=${companyNo}`);
       if (response) {
         const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
         const mapped = rawItems.map((l: any) => ({
@@ -256,7 +256,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   const fetchLocationFillValues = async () => {
     try {
-      const response = await apiService.get<any>('/api/master/task-locations/fill-values?companyNo=2');
+      const response = await apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${companyNo}`);
       if (response) {
         setLocationFillValues(response);
       }
@@ -294,6 +294,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   // Form states matching schemas
   const [name, setName] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Category extra fields
   const [isApprovalApplicable, setIsApprovalApplicable] = useState(false);
@@ -373,6 +374,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   // Open Modal to Add
   const handleAddClick = () => {
+    setErrors({});
     setEditingId(null);
     setName('');
     setIsApprovalApplicable(false);
@@ -404,6 +406,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   // Open Modal to Edit
   const handleEditClick = (item: any) => {
+    setErrors({});
     setEditingId(item.id);
     setName(item.name || '');
 
@@ -424,7 +427,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         }
       }).catch(err => console.error("Failed to load category details:", err));
     } else if (type === 'priority') {
-      apiService.get<any>(`/api/master/task-priorities/load-data/${item.id}?companyNo=2`).then((response) => {
+      apiService.get<any>(`/api/master/task-priorities/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
         if (response) {
           const body = response.data || response;
           const dl = body.data || body;
@@ -479,7 +482,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         }
       }).catch(err => console.error("Failed to load benefit type details:", err));
     } else if (type === 'type') {
-      apiService.get<any>(`/api/master/task-types/load-data/${item.id}?companyNo=2`).then((response) => {
+      apiService.get<any>(`/api/master/task-types/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
         if (response) {
           const body = response.data || response;
           const dl = body.data || body;
@@ -502,7 +505,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       setLocationRegion(loc.locationRegion);
 
       // Fetch detail load from backend GET /api/master/task-locations/load-data/{id}
-      apiService.get<any>(`/api/master/task-locations/load-data/${item.id}?companyNo=2`).then((response) => {
+      apiService.get<any>(`/api/master/task-locations/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
         if (response) {
           const body = response.data || response;
           const dl = body.data || body;
@@ -602,10 +605,61 @@ export function MasterManager({ type }: MasterManagerProps) {
     setDeleteTargetId(null);
   };
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) {
+      newErrors.name = 'Name / Label is required';
+    }
+
+    if (type === 'priority') {
+      if (!priorityDuration || priorityDuration <= 0) {
+        newErrors.priorityDuration = 'Duration must be a positive number';
+      }
+      if (!priorityFrequencyNo || priorityFrequencyNo === 'none') {
+        newErrors.priorityFrequencyNo = 'Frequency Unit is required';
+      }
+      if (!sequence || sequence <= 0) {
+        newErrors.sequence = 'Sequence must be a positive number';
+      }
+    } else if (type === 'folder') {
+      if (!sequence || sequence < 0) {
+        newErrors.sequence = 'Sequence order must be 0 or greater';
+      }
+    } else if (type === 'user-group') {
+      if (selectedUsers.length === 0) {
+        newErrors.selectedUsers = 'At least one member is required';
+      } else {
+        const hasEmpty = selectedUsers.some(u => !u.userName);
+        if (hasEmpty) {
+          newErrors.selectedUsers = 'All group members must have a valid username';
+        }
+      }
+    } else if (type === 'location') {
+      if (!address1.trim()) {
+        newErrors.address1 = 'Address Line 1 is required';
+      }
+      if (!countryNo || countryNo === 'none') {
+        newErrors.countryNo = 'Country is required';
+      }
+      if (!stateNo || stateNo === 'none') {
+        newErrors.stateNo = 'State is required';
+      }
+      if (!cityNo || cityNo === 'none') {
+        newErrors.cityNo = 'City is required';
+      }
+      if (!pinCode.trim()) {
+        newErrors.pinCode = 'PIN / ZIP Code is required';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // Submit Add/Edit Form
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
+    if (e) e.preventDefault();
+    if (!validateForm()) return;
 
     setIsSaving(true);
     try {
@@ -1033,12 +1087,18 @@ export function MasterManager({ type }: MasterManagerProps) {
             <div className="space-y-1.5">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Name / Label</label>
               <Input
-                required
                 placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl focus:ring-2 focus:ring-[#006699]/15"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                }}
+                className={cn(
+                  "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl focus:ring-2 focus:ring-[#006699]/15",
+                  errors.name && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
               />
+              {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
             </div>
 
             {/* Color Coding Option (Category only) */}
@@ -1187,11 +1247,17 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <Input
                     type="number"
                     min={1}
-                    required
                     value={priorityDuration}
-                    onChange={(e) => setPriorityDuration(Number(e.target.value))}
-                    className="bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl"
+                    onChange={(e) => {
+                      setPriorityDuration(Number(e.target.value));
+                      if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
+                      errors.priorityDuration && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
                   />
+                  {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Frequency Unit</label>
@@ -1201,20 +1267,33 @@ export function MasterManager({ type }: MasterManagerProps) {
                       value: (f.FrequencyNo || f.id || '').toString()
                     }))}
                     value={priorityFrequencyNo}
-                    onChange={setPriorityFrequencyNo}
+                    onChange={(val) => {
+                      setPriorityFrequencyNo(val);
+                      if (errors.priorityFrequencyNo) setErrors(prev => ({ ...prev, priorityFrequencyNo: '' }));
+                    }}
                     placeholder="Select frequency..."
+                    className={cn(
+                      errors.priorityFrequencyNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
                   />
+                  {errors.priorityFrequencyNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityFrequencyNo}</p>}
                 </div>
                 <div className="space-y-1.5 col-span-2">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Number</label>
                   <Input
                     type="number"
                     min={1}
-                    required
                     value={sequence}
-                    onChange={(e) => setSequence(Number(e.target.value))}
-                    className="bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl"
+                    onChange={(e) => {
+                      setSequence(Number(e.target.value));
+                      if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
+                      errors.sequence && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
                   />
+                  {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
                 </div>
               </div>
             )}
@@ -1258,9 +1337,16 @@ export function MasterManager({ type }: MasterManagerProps) {
                       type="number"
                       min={1}
                       value={sequence}
-                      onChange={(e) => setSequence(Number(e.target.value))}
-                      className="bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl"
+                      onChange={(e) => {
+                        setSequence(Number(e.target.value));
+                        if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
+                      }}
+                      className={cn(
+                        "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
+                        errors.sequence && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
                     />
+                    {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
                   </div>
                 </div>
               </div>
@@ -1283,6 +1369,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
                       <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Group Members</h4>
+                      {errors.selectedUsers && <p className="text-[10px] text-red-500 font-semibold">{errors.selectedUsers}</p>}
                     </div>
                     <Button type="button" onClick={addGridUser} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
                       <UserPlus size={12} /> Add
@@ -1409,9 +1496,16 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <Input
                       placeholder="Address Line 1"
                       value={address1}
-                      onChange={(e) => setAddress1(e.target.value)}
-                      className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                      onChange={(e) => {
+                        setAddress1(e.target.value);
+                        if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
+                      }}
+                      className={cn(
+                        "bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl",
+                        errors.address1 && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
                     />
+                    {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
                     <Input
                       placeholder="Address Line 2 (Optional)"
                       value={address2}
@@ -1436,11 +1530,18 @@ export function MasterManager({ type }: MasterManagerProps) {
                         value: (c.countryNo || '').toString()
                       }))}
                       value={countryNo}
-                      onChange={setCountryNo}
+                      onChange={(val) => {
+                        setCountryNo(val);
+                        if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
+                      }}
                       placeholder="Select Country"
                       searchPlaceholder="Search country..."
-                      className="h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                      className={cn(
+                        "h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full",
+                        errors.countryNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
                     />
+                    {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
@@ -1450,11 +1551,18 @@ export function MasterManager({ type }: MasterManagerProps) {
                         value: (s.stateNo || '').toString()
                       }))}
                       value={stateNo}
-                      onChange={setStateNo}
+                      onChange={(val) => {
+                        setStateNo(val);
+                        if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
+                      }}
                       placeholder="Select State"
                       searchPlaceholder="Search state..."
-                      className="h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                      className={cn(
+                        "h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full",
+                        errors.stateNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
                     />
+                    {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
                   </div>
                 </div>
 
@@ -1467,20 +1575,34 @@ export function MasterManager({ type }: MasterManagerProps) {
                         value: (c.cityNo || '').toString()
                       }))}
                       value={cityNo}
-                      onChange={setCityNo}
+                      onChange={(val) => {
+                        setCityNo(val);
+                        if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
+                      }}
                       placeholder="Select City"
                       searchPlaceholder="Search city..."
-                      className="h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                      className={cn(
+                        "h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full",
+                        errors.cityNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
                     />
+                    {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</label>
                     <Input
                       placeholder="ZIP"
                       value={pinCode}
-                      onChange={(e) => setPinCode(e.target.value)}
-                      className="bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl"
+                      onChange={(e) => {
+                        setPinCode(e.target.value);
+                        if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
+                      }}
+                      className={cn(
+                        "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
+                        errors.pinCode && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
                     />
+                    {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
                   </div>
                 </div>
               </div>

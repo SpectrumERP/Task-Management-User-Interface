@@ -58,6 +58,11 @@ interface TaskState {
 // Cache active in-flight request promise to deduplicate synchronous concurrent requests
 let activeFillValuesPromise: Promise<TaskFillValues | null> | null = null;
 
+const getCompanyNo = () => {
+  const authCompanies = useAuthStore.getState().company;
+  return authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2;
+};
+
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   isLoading: false,
@@ -65,7 +70,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   isLoadingFillValues: false,
   selectedFolder: null,
   setSelectedFolder: (folder) => set({ selectedFolder: folder }),
-  fetchFillValues: async (companyNo = '2'): Promise<TaskFillValues | null> => {
+  fetchFillValues: async (companyNo): Promise<TaskFillValues | null> => {
     // 1. Return cached values instantly to avoid redundant API hits!
     const state = get();
     if (state.fillValues) {
@@ -77,12 +82,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       return activeFillValuesPromise;
     }
 
+    const resolvedCompanyNo = companyNo || getCompanyNo().toString();
+
     // 3. Otherwise, create a new pending promise, execute it, and cache the result!
     activeFillValuesPromise = (async () => {
       set({ isLoadingFillValues: true });
       try {
         const response = await apiService.get<TaskFillValues>('/api/crm/tasks/fill-values', {
-          params: { companyNo }
+          params: { companyNo: resolvedCompanyNo }
         });
         set({ fillValues: response });
         
@@ -108,7 +115,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       const activeFolder = get().selectedFolder;
       const searchParamsCamel: any = {
-        companyNo: 2,
+        companyNo: getCompanyNo(),
         ...(activeFolder ? { folderNo: activeFolder.TaskFolderNo } : {}),
         ...filters
       };

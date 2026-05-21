@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { UserCombobox } from '@/components/ui/UserCombobox';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface FilterFormValues {
   taskCode?: string;
@@ -38,6 +39,9 @@ interface TaskFilterProps {
 }
 
 export function TaskFilter({ onFilter, className }: TaskFilterProps) {
+  const authCompanies = useAuthStore((state) => state.company);
+  const companyNo = (authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2).toString();
+
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const { fetchFillValues } = useTaskStore();
@@ -55,7 +59,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
       ownerLoginNo: '',
       fromDueDate: undefined,
       toDueDate: undefined,
-      companyNo: '2',
+      companyNo,
       filterType: 'All',
       sortingColumnName: '',
       sortingType: '',
@@ -69,7 +73,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
 
   // State to track the actually applied filters (only updated on Submit/Reset/Badge Clear)
   const [appliedFilters, setAppliedFilters] = useState<FilterFormValues>({
-    companyNo: '2',
+    companyNo,
     filterType: 'All',
   });
 
@@ -83,7 +87,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const response = await fetchFillValues('2');
+        const response = await fetchFillValues(companyNo);
         if (response) {
           setFillValues(response);
         }
@@ -92,7 +96,7 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
       }
     };
     fetchOptions();
-  }, [fetchFillValues]);
+  }, [fetchFillValues, companyNo]);
 
   // Reactive default folder population from the navbar selection
   useEffect(() => {
@@ -123,15 +127,34 @@ export function TaskFilter({ onFilter, className }: TaskFilterProps) {
   };
 
   const handleReset = () => {
-    reset(); // Triggers full reset to all defaultValues defined above
+    reset({
+      taskCode: '',
+      title: '',
+      operTaskCategoryNo: '',
+      operTaskPriorityNo: '',
+      operTaskStatusNo: '',
+      operTaskLocationNo: '',
+      operTaskTypeNo: '',
+      ownerLoginNo: '',
+      fromDueDate: undefined,
+      toDueDate: undefined,
+      companyNo,
+      filterType: 'All',
+      sortingColumnName: '',
+      sortingType: '',
+      folderNo: selectedFolder ? selectedFolder.TaskFolderNo.toString() : '',
+      loginNo: '',
+      fromCreatedDate: undefined,
+      toCreatedDate: undefined,
+    });
     const resetState = {
-      companyNo: '2',
+      companyNo,
       filterType: 'All',
       folderNo: selectedFolder ? selectedFolder.TaskFolderNo.toString() : ''
     };
     setAppliedFilters(resetState);
 
-    const cleanFilters: any = { companyNo: '2', filterType: 'All' };
+    const cleanFilters: any = { companyNo, filterType: 'All' };
     if (selectedFolder) {
       cleanFilters.folderNo = selectedFolder.TaskFolderNo.toString();
     }
