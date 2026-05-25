@@ -1,7 +1,6 @@
 import {
   LayoutGrid,
   Plus,
-  Snowflake,
   X,
   Layers,
   Sliders,

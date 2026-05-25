@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Task, TaskStatus } from '@/types/task';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,6 @@ import {
   Layers,
   Sparkles,
   CheckCircle2,
-  AlertCircle,
   SlidersHorizontal,
   List as ListIcon,
   LayoutGrid,
@@ -43,14 +42,6 @@ interface TaskCalendarViewProps {
 
 type CalendarViewMode = 'month' | 'week' | 'day' | 'agenda';
 
-const CURATED_COLORS = [
-  { value: '#006699', label: 'Ocean Blue' },
-  { value: '#e63946', label: 'Coral Red' },
-  { value: '#2a9d8f', label: 'Emerald Green' },
-  { value: '#f4a261', label: 'Sunset Amber' },
-  { value: '#7209b7', label: 'Royal Purple' },
-  { value: '#4a4e69', label: 'Sleek Slate' }
-];
 
 function getOpaqueTint(hexColor: string): string {
   if (!hexColor || !hexColor.startsWith('#')) return '#ffffff';
@@ -85,7 +76,7 @@ export function TaskCalendarView({
   const [selectedDayTasks, setSelectedDayTasks] = useState<{ date: Date; tasks: Task[] } | null>(null);
 
   // State for hovering overlapping tasks in Week/Day views
-  const [hoveredTaskNo, setHoveredTaskNo] = useState<string | null>(null);
+  const [hoveredTaskNo, setHoveredTaskNo] = useState<number | null>(null);
 
   // Helper: Format date string safely
   const formatDateHeader = () => {

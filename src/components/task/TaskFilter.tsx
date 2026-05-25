@@ -16,12 +16,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+
 
 interface FilterFormValues {
   taskCode?: string;
@@ -578,19 +573,22 @@ export function TaskFilter({
     );
   }
 
-  if (viewMode === 'calendar' && !isFiltersOpen) {
+  if ((viewMode as string) === 'calendar' && !isFiltersOpen) {
     return null;
   }
+
+  // Use a local string variable to avoid TS narrowing from the early-return above
+  const currentViewMode: string = viewMode ?? '';
 
   return (
     <Card className={cn(
       "border-none shadow-xl shadow-slate-200/40 bg-white/80 backdrop-blur-md rounded-[24px] transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/50 mb-2",
-      viewMode === 'calendar' ? "p-6" : "p-4",
+      currentViewMode === 'calendar' ? "p-6" : "p-4",
       className
     )}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Dynamic unified top search & trigger row */}
-        {viewMode !== 'calendar' && (
+        {currentViewMode !== 'calendar' && (
           <div className="flex flex-wrap items-center gap-3 w-full">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
@@ -607,7 +605,7 @@ export function TaskFilter({
             />
           </div>
 
-          {viewMode !== 'calendar' && (
+          {currentViewMode !== 'calendar' && (
             <Button
               type="button"
               onClick={() => toggleFilters()}
@@ -644,7 +642,7 @@ export function TaskFilter({
           </Button>
 
           {/* Merged View Toggle Dropdown from Dashboard */}
-          {viewMode !== 'calendar' && viewMode && onViewModeChange && (
+          {currentViewMode !== 'calendar' && viewMode && onViewModeChange && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -653,14 +651,14 @@ export function TaskFilter({
                   className="h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700 shadow-sm gap-2.5 transition-all flex items-center justify-between text-xs shrink-0"
                 >
                   <span className="flex items-center gap-2">
-                    {viewMode === 'list' ? (
+                    {currentViewMode === 'list' ? (
                       <ListIcon size={14} className="text-[#006699]" />
-                    ) : viewMode === 'board' ? (
+                    ) : currentViewMode === 'board' ? (
                       <LayoutGrid size={14} className="text-[#006699]" />
                     ) : (
                       <CalendarIcon size={14} className="text-[#006699]" />
                     )}
-                    {viewMode === 'list' ? 'List View' : viewMode === 'board' ? 'Board View' : 'Calendar View'}
+                    {currentViewMode === 'list' ? 'List View' : currentViewMode === 'board' ? 'Board View' : 'Calendar View'}
                   </span>
                   <ChevronDown size={14} className="text-slate-400" />
                 </Button>
@@ -670,7 +668,7 @@ export function TaskFilter({
                   onClick={() => onViewModeChange('list')}
                   className={cn(
                     "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                    viewMode === 'list' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
+                    currentViewMode === 'list' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
                   )}
                 >
                   <ListIcon size={14} />
@@ -680,7 +678,7 @@ export function TaskFilter({
                   onClick={() => onViewModeChange('board')}
                   className={cn(
                     "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                    viewMode === 'board' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
+                    currentViewMode === 'board' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
                   )}
                 >
                   <LayoutGrid size={14} />
@@ -690,7 +688,7 @@ export function TaskFilter({
                   onClick={() => onViewModeChange('calendar')}
                   className={cn(
                     "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                    viewMode === 'calendar' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
+                    currentViewMode === 'calendar' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
                   )}
                 >
                   <CalendarIcon size={14} />
@@ -718,7 +716,7 @@ export function TaskFilter({
         {isFiltersOpen && (
           <div className={cn(
             "flex flex-col max-h-[480px] md:max-h-none animate-in fade-in slide-in-from-top-3 duration-300",
-            viewMode !== 'calendar' && "pt-5 border-t border-slate-100"
+            currentViewMode !== 'calendar' && "pt-5 border-t border-slate-100"
           )}>
             {/* Scrollable Fields Wrapper */}
             <div className="overflow-y-auto md:overflow-visible pr-1.5 md:pr-0 scrollbar-thin flex-1 max-h-[385px] md:max-h-none space-y-4 pb-2">

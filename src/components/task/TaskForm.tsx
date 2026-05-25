@@ -12,7 +12,8 @@ import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, Hi
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
-import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
+import { useTaskStore } from '@/store/useTaskStore';
+
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
@@ -143,8 +144,9 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
         (b: any) => (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString() === data.business_benefit_type_No
       );
       if (selectedType) {
-        const valType = (selectedType.ValuationType || selectedType.valuationType || selectedType.valuationTypeName || selectedType.ValuationTypeName || selectedType.valuationtypeNo || selectedType.valuationtype || '').toString().toLowerCase();
-        const valTypeNo = selectedType.ValuationTypeNo ?? selectedType.valuationTypeNo ?? selectedType.valuationtypeNo ?? selectedType.valuationtype;
+        const st = selectedType as any;
+        const valType = (st.ValuationType || st.valuationType || st.valuationTypeName || st.ValuationTypeName || st.valuationtypeNo || st.valuationtype || '').toString().toLowerCase();
+        const valTypeNo = st.ValuationTypeNo ?? st.valuationTypeNo ?? st.valuationtypeNo ?? st.valuationtype;
         if (valType.includes('intangible') || valTypeNo === 2 || valTypeNo === '2') {
           shouldSkipAmountVal = true;
         }
@@ -189,7 +191,7 @@ interface TaskFillValues {
   status: { StatusNo: number; Status: string; IsDefault: boolean }[];
   userGroup: { UserGroupNo: number; UserGroupName: string; Code: string }[];
   folder: { TaskFolderNo: number; "Folder Name": string; Code: string }[];
-  frequency?: { FrequencyNo: number; Frequency: string }[];
+  frequency?: { FrequencyNo: number; Frequency?: string; FrequencyName?: string }[];
 }
 
 const statusTransitions: Record<string, string[]> = {
@@ -450,9 +452,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
     if (!selectedType) return false;
 
-    const valuationType = (selectedType.ValuationType || selectedType.valuationType || selectedType.valuationTypeName || selectedType.ValuationTypeName || selectedType.valuationtypeNo || selectedType.valuationtype || '').toString().toLowerCase();
+    const st = selectedType as any;
+    const valuationType = (st.ValuationType || st.valuationType || st.valuationTypeName || st.ValuationTypeName || st.valuationtypeNo || st.valuationtype || '').toString().toLowerCase();
 
-    const valuationTypeNo = selectedType.ValuationTypeNo ?? selectedType.valuationTypeNo ?? selectedType.valuationtypeNo ?? selectedType.valuationtype;
+    const valuationTypeNo = st.ValuationTypeNo ?? st.valuationTypeNo ?? st.valuationtypeNo ?? st.valuationtype;
 
     return valuationType.includes('intangible') || valuationTypeNo === 2 || valuationTypeNo === '2';
   }, [isBenefitApplicable, selectedBenefitTypeNo, fillValues]);
@@ -737,13 +740,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       // Successful upload! Add to form attachments list
       const currentAttachments = form.getValues('attachments') || [];
+      const de = dbEntry as any;
       form.setValue('attachments', [...currentAttachments, {
-        id: dbEntry.id,
-        name: dbEntry.docName || dbEntry.name || file.name,
-        size: dbEntry.docSize || dbEntry.size || file.size,
-        storedFileName: dbEntry.storedFileName,
-        storedFilePath: dbEntry.storedFilePath,
-        relativePath: dbEntry.relativePath
+        id: de.id,
+        name: de.docName || de.name || file.name,
+        size: de.docSize || de.size || file.size,
+        storedFileName: de.storedFileName,
+        storedFilePath: de.storedFilePath,
+        relativePath: de.relativePath
       }]);
 
       // Remove from active uploading status
@@ -848,15 +852,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     console.log('proceedSubmit triggered with data:', data);
     setShowConfirm(false); // Close confirmation immediately
 
-    // Mapping for effort frequency (units)
-    const effortFrequencyMap: Record<string, number> = {
-      'minutes': 1,
-      'hours': 2,
-      'days': 3,
-      'weeks': 4,
-      'months': 5,
-      'years': 6
-    };
+    // (effort frequency mapping handled by form value directly)
 
     // Mapping for benefit frequency (period)
     const benefitFrequencyMap: Record<string, number> = {
@@ -1022,7 +1018,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       const duration = priorityObj.PriorityDuration;
       const freqNo = priorityObj.PriorityDurationFrequencyNo;
       const frequencyObj = fillValues.frequency?.find(f => f.FrequencyNo === freqNo);
-      const freqName = frequencyObj?.Frequency?.toLowerCase() || '';
+      const freqName = (frequencyObj?.FrequencyName || frequencyObj?.Frequency || '').toLowerCase();
 
       if (freqName === 'hours' || freqName === 'hour') {
         newEndDate.setHours(newEndDate.getHours() + duration);

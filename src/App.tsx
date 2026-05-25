@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, usePa
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
-import { Plus, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import Login from '@/pages/Login';
 import TaskDetail from '@/pages/TaskDetail';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
