@@ -60,7 +60,7 @@ let activeFillValuesPromise: Promise<TaskFillValues | null> | null = null;
 
 const getCompanyNo = () => {
   const authCompanies = useAuthStore.getState().company;
-  return authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2;
+  return authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
 };
 
 export const useTaskStore = create<TaskState>((set, get) => ({

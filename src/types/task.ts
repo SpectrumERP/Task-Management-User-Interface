@@ -32,6 +32,17 @@ export interface Comment {
   text: string;
   timestamp: string;
 }
+export interface DocumentAttachment {
+  id: number;
+  name: string;
+  size?: number;
+  storedFileName?: string | null;
+  storedFilePath?: string | null;
+  relativePath?: string | null;
+  // Client-side UI helpers
+  status?: 'pending' | 'uploading' | 'verifying' | 'success' | 'failed';
+  errorMessage?: string;
+}
 
 export interface Task {
   taskNo: number;
@@ -69,6 +80,12 @@ export interface Task {
   executionNotes?: string;
   execution_notes?: string;
   subTasks?: any[];
+  isAllDay?: boolean;
+  calendarColor?: string;
+  recurrence?: {
+    pattern: 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+    until?: string;
+  };
   
   // UI helper fields
   status: TaskStatus;
@@ -79,4 +96,5 @@ export interface Task {
   originatorDisplayName?: string;
   collaboratorUserGroupNo?: number;
   infromToUserGroupNo?: number;
+  attachments?: DocumentAttachment[];
 }

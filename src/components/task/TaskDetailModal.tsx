@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '@/services/apiService';
+import { attachmentService } from '@/services/attachmentService';
 import { Task } from '@/types/task';
 import { TaskActivity } from './TaskActivity';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,9 @@ import {
   Coins,
   Loader2,
   CheckSquare,
-  FileText
+  FileText,
+  Paperclip,
+  Image
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -28,6 +31,13 @@ interface TaskDetailModalProps {
   onClose: () => void;
   onRefreshTasks?: () => void;
 }
+
+const formatFileSize = (bytes?: number | null) => {
+  if (bytes === undefined || bytes === null || bytes === 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 const reverseEffortFrequencyMap: Record<number, string> = {
   1: 'minutes',
@@ -158,8 +168,25 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           executionNotes: d.executionNotes || d.execution_notes || '',
           execution_notes: d.executionNotes || d.execution_notes || '',
           collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
-          infromToUserGroupNo: d.infromToUserGroupNo || null
+          infromToUserGroupNo: d.infromToUserGroupNo || null,
+          attachments: (d.attachment || d.attachments || d.documentAttachments || []).map((a: any) => ({
+            id: a.id || a.docNo || a.operTaskAttachmentDetailNo || 0,
+            name: a.name || a.fileName || a.storedFileName || 'attachment',
+            storedFileName: a.storedFileName || '',
+            storedFilePath: a.storedFilePath || '',
+            relativePath: a.relativePath || a.storedFilePath || ''
+          }))
         };
+
+        // Fetch dedicated attachments list from the new attachments API after successfully loading the task data
+        try {
+          const attachmentList = await attachmentService.getAttachments(mappedTask.taskNo);
+          if (attachmentList && attachmentList.length > 0) {
+            mappedTask.attachments = attachmentList;
+          }
+        } catch (attError) {
+          console.error('Failed to load attachments in modal load-data:', attError);
+        }
 
         setTask(mappedTask);
         if (onRefreshTasks) {
@@ -347,6 +374,48 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                       )}
                     </div>
                   </div>
+
+                  {/* Attached Documents Block */}
+                  {task.attachments && task.attachments.length > 0 && (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="h-7 w-7 rounded-lg bg-[#006699]/5 border border-[#006699]/15 flex items-center justify-center text-[#006699] shadow-sm">
+                          <Paperclip size={15} />
+                        </div>
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Attached Documents</h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {task.attachments.map((file: any) => (
+                          <div
+                            key={file.id}
+                            className="flex items-center justify-between p-3 bg-slate-50/40 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+                                {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-baseline gap-2 mb-0.5">
+                                  <p className="text-xs font-bold text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
+                                  {file.size ? (
+                                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
+                                  ) : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
+                                  className="text-[9px] font-black text-[#006699] uppercase tracking-wider hover:underline block text-left"
+                                >
+                                  Open Document
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Right Column (1/3 width) - Specifications Sidebar */}

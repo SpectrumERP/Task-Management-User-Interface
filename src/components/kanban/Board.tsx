@@ -1,5 +1,6 @@
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { useTaskStore } from '@/store/useTaskStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Column } from './Column';
 import { TaskStatus, Task } from '@/types/task';
 import { useState, useEffect } from 'react';
@@ -12,6 +13,8 @@ interface BoardProps {
 
 export function Board({ onAddTask, onTaskClick }: BoardProps) {
   const { tasks, moveTask, fetchTasks, isLoading: isTasksLoading, fetchFillValues } = useTaskStore();
+  const { company: authCompanies } = useAuthStore();
+  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
   const [statuses, setStatuses] = useState<{ StatusNo: number; Status: string }[]>([]);
   const [isStatusesLoading, setIsStatusesLoading] = useState(true);
 
@@ -19,26 +22,26 @@ export function Board({ onAddTask, onTaskClick }: BoardProps) {
     const initBoard = async () => {
       try {
         // 1. Fetch Statuses via deduplicated fetchFillValues helper
-        const statusResponse = await fetchFillValues('2');
+        const statusResponse = await fetchFillValues(companyNo.toString());
         if (!statusResponse) return;
 
         const filteredStatuses = statusResponse.status.filter(s => {
           const lower = s.Status.toLowerCase();
           return lower !== 'all' && lower !== '[all]' && lower !== 'approval in progress' && lower !== 'approval-in-progress';
         });
-        
+
         // Custom sort to make sure Draft/Todo columns are first and Complete/Closed columns are last!
         const order = ['draft', 'todo', 'to-do', 'to do', 'in progress', 'in-progress', 'inreview', 'in review', 'complete', 'completed', 'close', 'closed'];
         const sortedStatuses = [...filteredStatuses].sort((a, b) => {
           const nameA = a.Status.toLowerCase().trim();
           const nameB = b.Status.toLowerCase().trim();
-          
+
           const indexA = order.indexOf(nameA);
           const indexB = order.indexOf(nameB);
-          
+
           const valA = indexA === -1 ? 99 : indexA;
           const valB = indexB === -1 ? 99 : indexB;
-          
+
           return valA - valB;
         });
 

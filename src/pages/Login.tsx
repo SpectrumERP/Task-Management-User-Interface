@@ -11,6 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { authService } from '@/services/authService';
+import LogoImage from '@/assets/SteelMountLogo01.png';
 
 const loginSchema = z.object({
   loginId: z.string().min(1, 'Username is required'),
@@ -106,10 +107,8 @@ export default function Login() {
       >
         <Card className="border-slate-200/60 shadow-2xl bg-white/95 backdrop-blur-md overflow-hidden rounded-[24px]">
           <CardHeader className="space-y-4 pb-8">
-            <div className="flex justify-center mb-2">
-              <div className="rounded-2xl bg-[#006699] p-3 text-white shadow-lg shadow-[#006699]/20">
-                <Layout size={32} />
-              </div>
+            <div className="flex justify-center mb-2 py-2">
+              <img src={LogoImage} alt="SteelMont Logo" className="h-12 w-auto object-contain" />
             </div>
             <div className="text-center space-y-2">
               <CardTitle className="text-3xl font-extrabold tracking-tight text-slate-900">Welcome Back</CardTitle>

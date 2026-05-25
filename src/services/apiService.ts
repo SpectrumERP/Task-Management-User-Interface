@@ -7,12 +7,22 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
 }
 
+const getErrorMessage = (data: any, status: number): string => {
+  if (data?.errors?.[0]?.errorMessage) return data.errors[0].errorMessage;
+  if (data?.errorMessage) return data.errorMessage;
+  if (data?.message) return data.message;
+  if (data?.error) return data.error;
+  if (data?.title) return data.title;
+  return `HTTP Error ${status}`;
+};
+
 export class ApiError extends Error {
   status: number;
   data: any;
 
   constructor(status: number, data: any) {
-    super(data?.message || `HTTP Error ${status}`);
+    const errorMsg = getErrorMessage(data, status);
+    super(errorMsg);
     this.status = status;
     this.data = data;
     this.name = 'ApiError';
@@ -28,9 +38,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     url += `?${searchParams.toString()}`;
   }
 
-  const defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const defaultHeaders: Record<string, string> = {};
+  if (!(rest.body instanceof FormData)) {
+    defaultHeaders['Content-Type'] = 'application/json';
+  }
 
   // Get token from encrypted IndexedDB storage
   const token = await dbService.getItem<string>('auth_token');
@@ -55,7 +66,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
           useAuthStore.setState({ isSessionTimeoutOpen: true });
         });
       } else {
-        const errorMessage = data?.message || data?.error || data?.title || `HTTP Error ${response.status}`;
+        const errorMessage = getErrorMessage(data, response.status);
         toast.error(errorMessage);
       }
       throw new ApiError(response.status, data);
@@ -88,8 +99,14 @@ export const apiService = {
   post: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) }),
 
+  postMultipart: <T>(endpoint: string, formData: FormData, options?: RequestOptions) =>
+    request<T>(endpoint, { ...options, method: 'POST', body: formData }),
+
   put: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) }),
+
+  putMultipart: <T>(endpoint: string, formData: FormData, options?: RequestOptions) =>
+    request<T>(endpoint, { ...options, method: 'PUT', body: formData }),
 
   delete: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'DELETE' }),

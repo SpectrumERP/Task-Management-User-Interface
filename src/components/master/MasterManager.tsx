@@ -26,8 +26,8 @@ import {
   Check,
   X,
   Loader2,
-  UserPlus
-
+  UserPlus,
+  CheckCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -50,6 +50,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2;
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   // Real API State
@@ -842,6 +843,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         }
       }
       setIsModalOpen(false);
+      setShowSuccessAlert(true);
     } catch (err: any) {
       console.error("Save failed:", err);
       if (err && err.data) {
@@ -1793,7 +1795,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               Confirm Deletion
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
-              Are you sure you want to delete this master record? This action cannot be undone.
+              Do you want to delete?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-2xl">
@@ -1806,13 +1808,13 @@ export function MasterManager({ type }: MasterManagerProps) {
               }}
               className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
             >
-              Cancel
+              No
             </Button>
             <Button
               onClick={confirmDelete}
               className="h-10 px-5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-widest shadow-md shadow-red-500/20 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
             >
-              Delete
+              Yes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1826,7 +1828,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               Confirm {editingId ? "Update" : "Save"}
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
-              Are you sure you want to {editingId ? "update this record" : "save this new record"}? This action will apply the changes immediately.
+              Do you want to {editingId ? "update" : "save"}?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
@@ -1836,15 +1838,46 @@ export function MasterManager({ type }: MasterManagerProps) {
               onClick={() => setShowConfirm(false)}
               className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
             >
-              No, Cancel
+              No
             </Button>
             <Button
               onClick={handleConfirmSave}
               className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
             >
-              Yes, Proceed
+              Yes
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Alert Dialog */}
+      <Dialog open={showSuccessAlert} onOpenChange={setShowSuccessAlert}>
+        <DialogContent className="rounded-3xl max-w-xs p-0 border-none shadow-2xl bg-white/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
+          <div className="p-6 flex flex-col items-center text-center">
+            <div className="w-14 h-14 bg-emerald-50 rounded-full border border-emerald-100/80 flex items-center justify-center mb-4 shadow-sm relative">
+              {/* Inner glowing pulse ring */}
+              <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping"></div>
+              <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
+            </div>
+            
+            <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">
+              Success
+            </h3>
+            
+            <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">
+              Data save sucessfully.
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 flex justify-center">
+            <Button
+              type="button"
+              onClick={() => setShowSuccessAlert(false)}
+              className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
+            >
+              OK
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

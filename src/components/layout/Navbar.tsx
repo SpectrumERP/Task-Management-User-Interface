@@ -20,11 +20,13 @@ interface NavbarProps {
 
 export function Navbar({ onMenuClick }: NavbarProps) {
   const { user, logout } = useAuthStore();
+  const { company: authCompanies } = useAuthStore();
+  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
   const { fillValues, selectedFolder, setSelectedFolder, fetchFillValues, fetchTasks } = useTaskStore();
 
   useEffect(() => {
     if (!fillValues) {
-      fetchFillValues('2');
+      fetchFillValues(companyNo.toString());
     }
   }, [fillValues, fetchFillValues]);
 
@@ -52,13 +54,13 @@ export function Navbar({ onMenuClick }: NavbarProps) {
           </Button>
         )}
 
-        <div className="relative max-w-md w-full hidden md:block">
+        {/* <div className="relative max-w-md w-full hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             placeholder="Search tasks..."
             className="bg-slate-100/80 border-none rounded-full pl-10 h-10 w-full focus-visible:bg-slate-200/50 transition-all"
           />
-        </div>
+        </div> */}
       </div>
 
       <div className="flex items-center gap-2">
@@ -90,16 +92,14 @@ export function Navbar({ onMenuClick }: NavbarProps) {
                   <DropdownMenuItem
                     key={folder.TaskFolderNo}
                     onClick={() => handleFolderChange(folder)}
-                    className={`flex items-center justify-between rounded-lg px-3 py-2.5 cursor-pointer text-xs font-bold transition-all ${
-                      isSelected
-                        ? "bg-[#006699]/5 text-[#006699]"
-                        : "text-slate-600 hover:bg-slate-50"
-                    }`}
+                    className={`flex items-center justify-between rounded-lg px-3 py-2.5 cursor-pointer text-xs font-bold transition-all ${isSelected
+                      ? "bg-[#006699]/5 text-[#006699]"
+                      : "text-slate-600 hover:bg-slate-50"
+                      }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${
-                        isSelected ? "bg-[#006699]/10 text-[#006699]" : "bg-slate-100 text-slate-400"
-                      }`}>
+                      <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${isSelected ? "bg-[#006699]/10 text-[#006699]" : "bg-slate-100 text-slate-400"
+                        }`}>
                         <Folder size={12} className={isSelected ? "fill-[#006699]/20" : ""} />
                       </div>
                       <span className="truncate">{folder["Folder Name"]}</span>

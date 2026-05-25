@@ -8,10 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText } from 'lucide-react';
+import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
-import { useTaskStore } from '@/store/useTaskStore';
-import { useEffect, useState, useMemo } from 'react';
+import { attachmentService } from '@/services/attachmentService';
+import { toast } from 'sonner';
+import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -21,6 +23,13 @@ import { Combobox } from '@/components/ui/Combobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { TaskActivity } from './TaskActivity';
+
+const formatFileSize = (bytes?: number | null) => {
+  if (bytes === undefined || bytes === null || bytes === 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 import { TaskListView } from './TaskListView';
 import {
   Dialog,
@@ -35,7 +44,7 @@ import {
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-const getTaskSchema = (isSubTask: boolean) => z.object({
+const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) => z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title cannot exceed 200 characters'),
   code: z.string().optional(),
   description: z.string().optional(),
@@ -52,11 +61,25 @@ const getTaskSchema = (isSubTask: boolean) => z.object({
   isPrivate: z.boolean().optional().default(false),
   start_date: z.string().optional(),
   end_date: isSubTask ? z.string().min(1, 'Due Date is required for sub-tasks') : z.string().optional(),
+  isAllDay: z.boolean().optional().default(true),
+  calendarColor: z.string().optional().default('#006699'),
+  recurrence: z.object({
+    pattern: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
+    until: z.string().optional().nullable()
+  }).optional().default({ pattern: 'NONE', until: null }),
   estimated_effort_value: z.string().optional()
     .refine(val => !val || val === '' || parseFloat(val) > 0, {
       message: 'Estimated effort must be greater than 0'
     }),
   estimated_effort_unit: z.string().optional(),
+  attachments: z.array(z.object({
+    id: z.number(),
+    name: z.string(),
+    size: z.number().optional().nullable(),
+    storedFileName: z.string().nullable().optional(),
+    storedFilePath: z.string().nullable().optional(),
+    relativePath: z.string().nullable().optional()
+  })).optional().default([]),
   is_business_benefit_applicable: z.boolean(),
   business_benefit_type_No: z.string().optional(),
   business_benefit_description: z.string().optional(),
@@ -95,6 +118,15 @@ const getTaskSchema = (isSubTask: boolean) => z.object({
   })).optional().default([]),
   executionNotes: z.string().optional(),
 }).superRefine((data, ctx) => {
+  if (data.start_date && data.end_date) {
+    if (new Date(data.end_date) < new Date(data.start_date)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Due Date cannot be earlier than Start Date',
+        path: ['end_date']
+      });
+    }
+  }
   if (data.is_business_benefit_applicable) {
     if (!data.business_benefit_type_No || data.business_benefit_type_No === '') {
       ctx.addIssue({
@@ -103,13 +135,32 @@ const getTaskSchema = (isSubTask: boolean) => z.object({
         path: ['business_benefit_type_No'],
       });
     }
-    if (!data.estimated_benefit_amount || isNaN(parseFloat(data.estimated_benefit_amount)) || parseFloat(data.estimated_benefit_amount) <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Estimated benefit amount must be greater than 0',
-        path: ['estimated_benefit_amount'],
-      });
+
+    // Skip estimated amount validation if valuation type is Intangible or valuationTypeNo is 2
+    let shouldSkipAmountVal = false;
+    if (fillValues?.benefitType && data.business_benefit_type_No) {
+      const selectedType = fillValues.benefitType.find(
+        (b: any) => (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString() === data.business_benefit_type_No
+      );
+      if (selectedType) {
+        const valType = (selectedType.ValuationType || selectedType.valuationType || selectedType.valuationTypeName || selectedType.ValuationTypeName || selectedType.valuationtypeNo || selectedType.valuationtype || '').toString().toLowerCase();
+        const valTypeNo = selectedType.ValuationTypeNo ?? selectedType.valuationTypeNo ?? selectedType.valuationtypeNo ?? selectedType.valuationtype;
+        if (valType.includes('intangible') || valTypeNo === 2 || valTypeNo === '2') {
+          shouldSkipAmountVal = true;
+        }
+      }
     }
+
+    if (!shouldSkipAmountVal) {
+      if (!data.estimated_benefit_amount || isNaN(parseFloat(data.estimated_benefit_amount)) || parseFloat(data.estimated_benefit_amount) <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Estimated benefit amount must be greater than 0',
+          path: ['estimated_benefit_amount'],
+        });
+      }
+    }
+
     if (!data.benefit_period || data.benefit_period === '') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -171,6 +222,18 @@ function FormSection({ title, icon: Icon, children, headerAction }: { title: str
   );
 }
 
+const resolveFrequencyValue = (val: any): string => {
+  if (!val) return '1';
+  const valStr = val.toString().toLowerCase();
+  if (valStr === 'hours' || valStr === 'hour' || valStr === '1') return '1';
+  if (valStr === 'days' || valStr === 'day' || valStr === '2') return '2';
+  if (valStr === 'minutes' || valStr === 'minute' || valStr === '3') return '3';
+  if (valStr === 'weeks' || valStr === 'week' || valStr === '4') return '4';
+  if (valStr === 'months' || valStr === 'month' || valStr === '5') return '5';
+  if (valStr === 'years' || valStr === 'year' || valStr === '6') return '6';
+  return '1';
+};
+
 const resolveCompanyValue = (company: any, authCompanies: any[] | null): string => {
   if (!company) return '';
 
@@ -231,9 +294,27 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
   const [formDataToSave, setFormDataToSave] = useState<any>(null);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<Array<{
+    tempId: string;
+    name: string;
+    status: 'pending' | 'uploading' | 'verifying' | 'success' | 'failed';
+    errorMessage?: string;
+    fileObject: File;
+  }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const dateParam = searchParams.get('date');
+
+  const formResolver = useMemo(() => {
+    return zodResolver(getTaskSchema(isSubTask, fillValues));
+  }, [isSubTask, fillValues]);
 
   const form = useForm({
-    resolver: zodResolver(getTaskSchema(isSubTask)),
+    resolver: formResolver,
+    mode: 'onChange',
     shouldFocusError: false,
     defaultValues: {
       title: initialData?.title || '',
@@ -246,10 +327,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       tags: initialData?.tags || [],
       company: resolveCompanyValue(initialData?.company, authCompanies) || (isSubTask && parentTask ? resolveCompanyValue(parentTask.company, authCompanies) : ''),
       location_No: initialData?.location_No?.toString() || (isSubTask && parentTask ? parentTask.location_No.toString() : ''),
-      start_date: initialData?.start_date ? new Date(initialData.start_date).toISOString() : '',
+      start_date: initialData?.start_date ? new Date(initialData.start_date).toISOString() : (dateParam ? new Date(dateParam).toISOString() : ''),
       end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : '',
       estimated_effort_value: initialData?.estimated_effort_value?.toString() || '',
-      estimated_effort_unit: initialData?.estimated_effort_unit || 'Hours',
+      estimated_effort_unit: resolveFrequencyValue(initialData?.estimated_effort_unit),
       is_business_benefit_applicable: initialData?.is_business_benefit_applicable || false,
       business_benefit_type_No: initialData?.business_benefit_type_No?.toString() || '',
       business_benefit_description: initialData?.business_benefit_description || '',
@@ -268,7 +349,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       check_list: initialData?.check_list || [],
       executionNotes: initialData?.executionNotes || initialData?.execution_notes || '',
       status: initialData?.status || initialStatus || 'Draft',
-      isPrivate: initialData?.isPrivate || false
+      isPrivate: initialData?.isPrivate || false,
+      isAllDay: initialData?.isAllDay ?? true,
+      calendarColor: initialData?.calendarColor || '#006699',
+      recurrence: initialData?.recurrence || { pattern: 'NONE', until: null },
+      attachments: (initialData?.attachments || initialData?.attachments || []).map((a: any) => ({
+        id: a.id || a.docNo || a.operTaskAttachmentDetailNo || 0,
+        name: a.docName || a.name || a.fileName || a.storedFileName || 'attachment',
+        size: a.docSize || a.size || 0,
+        storedFileName: a.storedFileName || '',
+        storedFilePath: a.storedFilePath || '',
+        relativePath: a.relativePath || a.storedFilePath || ''
+      }))
     }
   });
 
@@ -347,6 +439,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const currentStatus = form.watch('status');
   const isBenefitApplicable = form.watch('is_business_benefit_applicable');
+  const selectedBenefitTypeNo = form.watch('business_benefit_type_No');
+
+  const shouldHideBenefitAmount = useMemo(() => {
+    if (!isBenefitApplicable || !selectedBenefitTypeNo) return false;
+
+    const selectedType = fillValues?.benefitType?.find(
+      (b: any) => (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString() === selectedBenefitTypeNo
+    );
+
+    if (!selectedType) return false;
+
+    const valuationType = (selectedType.ValuationType || selectedType.valuationType || selectedType.valuationTypeName || selectedType.ValuationTypeName || selectedType.valuationtypeNo || selectedType.valuationtype || '').toString().toLowerCase();
+
+    const valuationTypeNo = selectedType.ValuationTypeNo ?? selectedType.valuationTypeNo ?? selectedType.valuationtypeNo ?? selectedType.valuationtype;
+
+    return valuationType.includes('intangible') || valuationTypeNo === 2 || valuationTypeNo === '2';
+  }, [isBenefitApplicable, selectedBenefitTypeNo, fillValues]);
+
   const checklist = form.watch('check_list') || [];
 
   const [isBenefitDisabled, setIsBenefitDisabled] = useState(false);
@@ -462,7 +572,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         start_date: initialData.start_date || '',
         end_date: initialData.end_date || '',
         estimated_effort_value: initialData.estimated_effort_value?.toString() || '',
-        estimated_effort_unit: initialData.estimated_effort_unit || 'hours',
+        estimated_effort_unit: resolveFrequencyValue(initialData.estimated_effort_unit),
         is_business_benefit_applicable: initialData.is_business_benefit_applicable || false,
         business_benefit_type_No: initialData.business_benefit_type_No?.toString() || '',
         business_benefit_description: initialData.business_benefit_description || '',
@@ -474,6 +584,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         actual_efforts: initialData.actual_efforts?.map(e => ({ date: e.date, hours: e.hours.toString(), description: e.description })) || [],
         check_list: initialData.check_list || [],
         executionNotes: initialData.executionNotes || initialData.execution_notes || '',
+        attachments: (initialData.attachments || initialData.attachments || []).map((a: any) => ({
+          id: a.id || a.docNo || a.operTaskAttachmentDetailNo || 0,
+          name: a.docName || a.name || a.fileName || a.storedFileName || 'attachment',
+          size: a.docSize || a.size || 0,
+          storedFileName: a.storedFileName || '',
+          storedFilePath: a.storedFilePath || '',
+          relativePath: a.relativePath || a.storedFilePath || ''
+        })),
       });
       if (initialData.collaboratorUserGroupNo) {
         setSelectedCollabTeam(initialData.collaboratorUserGroupNo.toString());
@@ -594,7 +712,133 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
   };
 
+  const startUpload = async (tempId: string, file: File) => {
+    const selectedCompany = form.watch('company');
+    const companyNo = parseInt(selectedCompany) || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2;
+
+    try {
+      // 1. Create entry in DB
+      setUploadingFiles(prev =>
+        prev.map(f => f.tempId === tempId ? { ...f, status: 'uploading' } : f)
+      );
+      const dbEntry = await attachmentService.createEntry(file.name, companyNo);
+
+      // 2. Upload file payload
+      setUploadingFiles(prev =>
+        prev.map(f => f.tempId === tempId ? { ...f, status: 'verifying' } : f)
+      );
+      await attachmentService.uploadFile(dbEntry.id, file);
+
+      // 3. Verify status
+      const isVerified = await attachmentService.checkStatus(dbEntry.id);
+      if (!isVerified) {
+        throw new Error("Upload status could not be verified by the backend.");
+      }
+
+      // Successful upload! Add to form attachments list
+      const currentAttachments = form.getValues('attachments') || [];
+      form.setValue('attachments', [...currentAttachments, {
+        id: dbEntry.id,
+        name: dbEntry.docName || dbEntry.name || file.name,
+        size: dbEntry.docSize || dbEntry.size || file.size,
+        storedFileName: dbEntry.storedFileName,
+        storedFilePath: dbEntry.storedFilePath,
+        relativePath: dbEntry.relativePath
+      }]);
+
+      // Remove from active uploading status
+      setUploadingFiles(prev => prev.filter(f => f.tempId !== tempId));
+      toast.success(`"${file.name}" uploaded successfully!`);
+    } catch (error: any) {
+      console.error(`Upload failed for file: ${file.name}`, error);
+      const errorMsg = error?.message || "File upload failed. Please try again.";
+      setUploadingFiles(prev =>
+        prev.map(f => f.tempId === tempId ? { ...f, status: 'failed', errorMessage: errorMsg } : f)
+      );
+      toast.error(`"${file.name}" failed: ${errorMsg}`);
+    }
+  };
+
+  const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach(file => {
+      // Validation: Max 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`"${file.name}" exceeds the 10MB limit.`);
+        return;
+      }
+
+      // Validation: PDF/Images only
+      const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+      if (!isImage && !isPdf) {
+        toast.error(`"${file.name}" is not a supported file type. Only PDF and Image files are allowed.`);
+        return;
+      }
+
+      const tempId = Math.random().toString(36).substring(2, 9);
+
+      // Add to queue
+      setUploadingFiles(prev => [...prev, {
+        tempId,
+        name: file.name,
+        status: 'pending',
+        fileObject: file
+      }]);
+
+      // Start upload sequence
+      startUpload(tempId, file);
+    });
+
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleRetryUpload = (tempId: string) => {
+    const queueItem = uploadingFiles.find(f => f.tempId === tempId);
+    if (!queueItem) return;
+
+    setUploadingFiles(prev =>
+      prev.map(f => f.tempId === tempId ? { ...f, status: 'pending', errorMessage: undefined } : f)
+    );
+    startUpload(tempId, queueItem.fileObject);
+  };
+
+  const handleRemoveUploading = (tempId: string) => {
+    setUploadingFiles(prev => prev.filter(f => f.tempId !== tempId));
+  };
+
+  const handleRemoveAttachment = (id: number, name: string) => {
+    setAttachmentToDelete({ id, name });
+  };
+
+  const confirmRemoveAttachment = async () => {
+    if (!attachmentToDelete) return;
+    const { id } = attachmentToDelete;
+    setIsDeletingAttachment(true);
+    try {
+      if (id) {
+        await attachmentService.deleteAttachment(id);
+      }
+      const currentAttachments = form.getValues('attachments') || [];
+      form.setValue('attachments', currentAttachments.filter((a: any) => a.id !== id), { shouldDirty: true });
+      toast.success("Attachment removed successfully.");
+      setAttachmentToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete attachment from server:', error);
+      // apiService already raises detailed toast warnings on failure
+    } finally {
+      setIsDeletingAttachment(false);
+    }
+  };
+
   const onSubmit = async (data: any) => {
+    if (uploadingFiles.some(f => f.status === 'pending' || f.status === 'uploading' || f.status === 'verifying')) {
+      toast.error("Please wait for all attachments to finish uploading before saving the task.");
+      return;
+    }
     console.log('onSubmit triggered with data:', data);
     setFormDataToSave(data);
     setShowConfirm(true);
@@ -659,7 +903,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       startDate: data.start_date ? new Date(data.start_date).toISOString() : null,
       endDate: data.end_date ? new Date(data.end_date).toISOString() : null,
       estimatedEfforts: parseFloat(data.estimated_effort_value) || null,
-      estimatedEffortsFequencyNo: (parseFloat(data.estimated_effort_value) || null) ? (effortFrequencyMap[data.estimated_effort_unit] || null) : null,
+      estimatedEffortsFequencyNo: data.estimated_effort_unit ? parseInt(data.estimated_effort_unit) : null,
       isBusinessBenefitApplicable: data.is_business_benefit_applicable,
       businessBenefitTypeNo: data.is_business_benefit_applicable ? (parseInt(data.business_benefit_type_No) || null) : null,
       businessBenefitDescription: data.is_business_benefit_applicable ? (data.business_benefit_description || null) : null,
@@ -682,7 +926,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         efforts: parseFloat(effort.hours) || null,
         description: effort.description || null
       })),
-      members: members
+      members: members,
+      attachment: (data.attachments || []).map((a: any) => ({
+        docNo: a.id
+      }))
     };
 
     console.log('Final Submission Payload:', payload);
@@ -703,7 +950,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           taskNo: response?.data?.operTaskNo || Math.floor(Math.random() * 1000) + 100
         });
       }
-      if (onComplete) onComplete();
+      setShowSuccessAlert(true);
     } catch (error: any) {
       console.error('Failed to save task:', error);
 
@@ -1332,12 +1579,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <SelectValue placeholder="Unit" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
-                          <SelectItem value="minutes">Minutes</SelectItem>
-                          <SelectItem value="hours">Hours</SelectItem>
-                          <SelectItem value="days">Days</SelectItem>
-                          <SelectItem value="weeks">Weeks</SelectItem>
-                          <SelectItem value="months">Months</SelectItem>
-                          <SelectItem value="years">Years</SelectItem>
+                          {fillValues?.frequency?.map(f => (
+                            <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
+                              {f.FrequencyName || f.Frequency}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}
@@ -1347,6 +1593,81 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 {!form.formState.errors.estimated_effort_value && form.formState.errors.estimated_effort_unit && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_unit.message}</p>}
               </div>
             </div>
+
+            {/* Calendar Scheduling Options */}
+            {/* <div className="pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6 items-start animate-in fade-in duration-300">
+              <div className="space-y-2 mt-1">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Calendar Options</Label>
+                <Controller
+                  name="isAllDay"
+                  control={form.control}
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2 bg-slate-50/70 border border-slate-200/80 px-4 py-2.5 rounded-2xl shadow-sm transition-all hover:bg-slate-100/30">
+                      <Checkbox
+                        id="isAllDay"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
+                      />
+                      <label htmlFor="isAllDay" className="text-xs font-bold text-slate-700 cursor-pointer select-none">All-Day Task</label>
+                    </div>
+                  )}
+                />
+              </div>
+              
+              <div className="space-y-1.5">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Calendar Color</Label>
+                <Controller
+                  name="calendarColor"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="rounded-xl h-9.5 border-slate-300 text-slate-900 font-medium text-sm shadow-sm bg-white focus:ring-1 focus:ring-[#006699]/15">
+                        <SelectValue placeholder="Select Color" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl bg-white border border-slate-100 p-1 shadow-xl">
+                        <SelectItem value="#006699" className="text-xs font-bold rounded-lg cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-[#006699] inline-block shadow-sm" />
+                            <span>Ocean Blue</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="#e63946" className="text-xs font-bold rounded-lg cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-[#e63946] inline-block shadow-sm" />
+                            <span>Coral Red</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="#2a9d8f" className="text-xs font-bold rounded-lg cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-[#2a9d8f] inline-block shadow-sm" />
+                            <span>Emerald Green</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="#f4a261" className="text-xs font-bold rounded-lg cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-[#f4a261] inline-block shadow-sm" />
+                            <span>Sunset Amber</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="#7209b7" className="text-xs font-bold rounded-lg cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-[#7209b7] inline-block shadow-sm" />
+                            <span>Royal Purple</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="#4a4e69" className="text-xs font-bold rounded-lg cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-[#4a4e69] inline-block shadow-sm" />
+                            <span>Sleek Slate</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div> */}
           </div>
         </FormSection>
 
@@ -1426,36 +1747,40 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   />
                   {form.formState.errors.benefit_period && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.benefit_period.message}</p>}
                 </div>
-                <div className="space-y-1.5" id="form-group-estimated_benefit_amount">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Benefit Amount</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder=""
-                    {...form.register('estimated_benefit_amount')}
-                    onInput={(e) => handleNumericInput(e, 2)}
-                    className={cn(
-                      "rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm text-right",
-                      form.formState.errors.estimated_benefit_amount && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
-                    )}
-                  />
-                  {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
-                </div>
-                <div className="space-y-1.5" id="form-group-actual_benefit_amount">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Actual Benefit Amount</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder=""
-                    {...form.register('actual_benefit_amount')}
-                    onInput={(e) => handleNumericInput(e, 2)}
-                    className={cn(
-                      "rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm text-right",
-                      form.formState.errors.actual_benefit_amount && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
-                    )}
-                  />
-                  {form.formState.errors.actual_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.actual_benefit_amount.message}</p>}
-                </div>
+                {!shouldHideBenefitAmount && (
+                  <>
+                    <div className="space-y-1.5" id="form-group-estimated_benefit_amount">
+                      <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Benefit Amount</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder=""
+                        {...form.register('estimated_benefit_amount')}
+                        onInput={(e) => handleNumericInput(e, 2)}
+                        className={cn(
+                          "rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm text-right",
+                          form.formState.errors.estimated_benefit_amount && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                        )}
+                      />
+                      {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
+                    </div>
+                    <div className="space-y-1.5" id="form-group-actual_benefit_amount">
+                      <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Actual Benefit Amount</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder=""
+                        {...form.register('actual_benefit_amount')}
+                        onInput={(e) => handleNumericInput(e, 2)}
+                        className={cn(
+                          "rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm text-right",
+                          form.formState.errors.actual_benefit_amount && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                        )}
+                      />
+                      {form.formState.errors.actual_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.actual_benefit_amount.message}</p>}
+                    </div>
+                  </>
+                )}
                 <div className="space-y-1.5 md:col-span-2" id="form-group-business_benefit_description">
                   <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Description</Label>
                   <Textarea
@@ -1629,6 +1954,156 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </div>
         </FormSection>
 
+        <FormSection title="Attachments" icon={Paperclip}>
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#006699] rounded-2xl p-8 bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer group"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="application/pdf,image/*"
+                onChange={handleFileSelection}
+                className="hidden"
+              />
+              <div className="h-12 w-12 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#006699] group-hover:scale-110 transition-all">
+                <UploadCloud size={22} />
+              </div>
+              <p className="mt-3 text-xs font-black text-slate-700 uppercase tracking-wider">Drag & drop files or click to upload</p>
+              <p className="mt-1 text-[10px] font-bold text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
+            </div>
+
+            {/* Active Uploading Files Queue */}
+            {uploadingFiles.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Uploading Queue</h4>
+                <div className="space-y-2">
+                  {uploadingFiles.map(file => (
+                    <motion.div
+                      key={file.tempId}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className={cn(
+                        "flex items-center justify-between p-3.5 rounded-xl border transition-all shadow-sm",
+                        file.status === 'failed' ? "bg-red-50/50 border-red-200" : "bg-slate-50/50 border-slate-200"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={cn(
+                          "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border shadow-sm",
+                          file.status === 'failed' ? "bg-red-100 border-red-200 text-red-600" : "bg-white border-slate-200 text-[#006699]"
+                        )}>
+                          {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{file.name}</p>
+                          <span className="text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                            {file.status === 'pending' && <span className="text-slate-500">Pending upload...</span>}
+                            {file.status === 'uploading' && (
+                              <span className="text-[#006699] flex items-center gap-1">
+                                <Loader2 size={10} className="animate-spin" /> Registering entry...
+                              </span>
+                            )}
+                            {file.status === 'verifying' && (
+                              <span className="text-blue-600 flex items-center gap-1">
+                                <Loader2 size={10} className="animate-spin" /> Uploading file payload...
+                              </span>
+                            )}
+                            {file.status === 'failed' && (
+                              <span className="text-red-600 font-extrabold flex items-center gap-1">
+                                Failed: {file.errorMessage || "Network error"}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {file.status === 'failed' && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleRetryUpload(file.tempId)}
+                            className="h-8 w-8 rounded-lg border border-red-200/50 bg-white text-red-600 hover:bg-red-100/50 flex items-center justify-center transition-all shadow-sm"
+                          >
+                            <RefreshCw size={13} />
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleRemoveUploading(file.tempId)}
+                          className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 flex items-center justify-center transition-all shadow-sm"
+                        >
+                          <X size={13} />
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Successfully Uploaded Attachments List */}
+            {(() => {
+              const attachments = form.watch('attachments') || [];
+              if (attachments.length === 0) return null;
+
+              return (
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Attached Documents ({attachments.length})</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {attachments.map((file: any) => (
+                      <motion.div
+                        key={file.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex items-center justify-between p-3 bg-slate-50/30 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+                            {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-baseline gap-2 mb-0.5">
+                              <p className="text-xs font-bold text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
+                              {file.size ? (
+                                <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
+                              className="text-[9px] font-black text-[#006699] uppercase tracking-wider hover:underline block text-left"
+                            >
+                              View document
+                            </button>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleRemoveAttachment(file.id, file.name)}
+                          className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all shadow-sm"
+                        >
+                          <Trash size={13} />
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </FormSection>
+
         {initialData && (
           <FormSection title="Activity & Effort Logs" icon={History}>
             <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
@@ -1657,7 +2132,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               Confirm {initialData ? "Update" : "Save"}
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
-              Are you sure you want to {initialData ? "update this task" : "save this new task"}? This action will apply the changes immediately.
+              Do you want to {initialData ? "update" : "save"}?
             </DialogDescription>
           </DialogHeader>
 
@@ -1671,7 +2146,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               }}
               className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
             >
-              No, Cancel
+              No
             </Button>
             <Button
               onClick={() => {
@@ -1682,9 +2157,88 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               }}
               className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
             >
-              Yes, Proceed
+              Yes
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Deletion Confirmation Dialog */}
+      <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
+        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl [&>button]:hidden">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              Remove Attachment
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500 mt-2">
+              Do you want to delete?
+              {/* Are you sure <span className="font-bold text-slate-700">"{attachmentToDelete?.name}"</span>? */}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDeletingAttachment}
+              onClick={() => setAttachmentToDelete(null)}
+              className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+            >
+              No
+            </Button>
+            <Button
+              disabled={isDeletingAttachment}
+              onClick={confirmRemoveAttachment}
+              className="h-10 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest shadow-md shadow-red-600/10 gap-2 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center min-w-[70px]"
+            >
+              {isDeletingAttachment ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                "Yes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Alert Dialog */}
+      <Dialog open={showSuccessAlert} onOpenChange={(open) => {
+        if (!open) {
+          setShowSuccessAlert(false);
+          if (onComplete) onComplete();
+        }
+      }}>
+        <DialogContent className="rounded-3xl max-w-xs p-0 border-none shadow-2xl bg-white/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
+          <div className="p-6 flex flex-col items-center text-center">
+            <div className="w-14 h-14 bg-emerald-50 rounded-full border border-emerald-100/80 flex items-center justify-center mb-4 shadow-sm relative">
+              {/* Inner glowing pulse ring */}
+              <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping"></div>
+              <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
+            </div>
+            
+            <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">
+              Success
+            </h3>
+            
+            <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">
+              Data save sucessfully.
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 flex justify-center">
+            <Button
+              type="button"
+              onClick={() => {
+                setShowSuccessAlert(false);
+                if (onComplete) onComplete();
+              }}
+              className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
+            >
+              OK
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>

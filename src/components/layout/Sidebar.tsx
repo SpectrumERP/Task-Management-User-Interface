@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import LogoImage from '@/assets/SteelMountLogo01.png';
 
 const navItems = [
   { icon: LayoutGrid, label: 'Tasks Dashboard', id: 'tasks' },
@@ -42,13 +43,8 @@ export function Sidebar({ activeTab, onTabChange, onCreateTask, onClose }: Sideb
     <aside className="w-64 h-full bg-[#f4f7fa] border-r flex flex-col p-4 shrink-0">
       {/* Brand */}
       <div className="flex items-center justify-between mb-8 px-2">
-        <div className="flex items-center gap-3">
-          <div className="bg-[#0077b6] p-2 rounded-xl text-white">
-            <Snowflake size={24} />
-          </div>
-          <div>
-            <h2 className="font-bold text-slate-800 leading-tight">Task Management</h2>
-          </div>
+        <div className="flex items-center justify-start py-1">
+          <img src={LogoImage} alt="SteelMont Logo" className="h-10 w-auto object-contain" />
         </div>
         {onClose && (
           <Button 

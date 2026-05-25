@@ -20,22 +20,16 @@ import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
 import { useTaskStore } from '@/store/useTaskStore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LayoutGrid, List as ListIcon, ChevronDown } from 'lucide-react';
+import { TaskCalendarView } from '@/components/task/TaskCalendarView';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { MasterManager } from '@/components/master/MasterManager';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('tasks');
-  const [viewMode, setViewMode] = useState<'list' | 'board'>(() => {
+  const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>(() => {
     const saved = localStorage.getItem('glacier_task_view_mode');
-    return (saved === 'list' || saved === 'board') ? saved : 'list';
+    return (saved === 'list' || saved === 'board' || saved === 'calendar') ? saved : 'list';
   });
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,7 +38,7 @@ function Dashboard() {
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
 
   const authCompanies = useAuthStore((state) => state.company);
-  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2;
+  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -60,6 +54,7 @@ function Dashboard() {
   const [pageSize, setPageSize] = useState(100);
   const [pageNo, setPageNo] = useState(1);
   const [currentFilters, setCurrentFilters] = useState<any>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const handleTaskClick = (taskId: number) => {
     setSelectedTaskId(taskId);
@@ -109,7 +104,7 @@ function Dashboard() {
     setCurrentFilters(filters);
   };
 
-  const setViewModeAndStore = (mode: 'list' | 'board') => {
+  const setViewModeAndStore = (mode: 'list' | 'board' | 'calendar') => {
     setViewMode(mode);
     localStorage.setItem('glacier_task_view_mode', mode);
   };
@@ -126,131 +121,105 @@ function Dashboard() {
   return (
     <MainLayout activeTab={activeTab} onTabChange={handleTabChange}>
       <main className="flex-1 p-4 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
-        {/* Top Control Bar (Filters + Merged View Toggles + Create Task) */}
-        <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4 mb-6">
-          <div className="flex-1 min-w-0">
-            <TaskFilter onFilter={handleFilter} />
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0 self-end xl:self-auto">
-            {/* Merged View Toggle Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-11 px-5 rounded-2xl border-slate-200 bg-white/80 hover:bg-slate-50 font-bold text-slate-700 shadow-sm gap-2 transition-all flex items-center justify-between text-xs"
-                >
-                  <span className="flex items-center gap-2">
-                    {viewMode === 'list' ? <ListIcon size={15} className="text-[#006699]" /> : <LayoutGrid size={15} className="text-[#006699]" />}
-                    {viewMode === 'list' ? 'List View' : 'Board View'}
-                  </span>
-                  <ChevronDown size={14} className="text-slate-400" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl border border-slate-100 p-1 min-w-[140px] shadow-xl bg-white">
-                <DropdownMenuItem
-                  onClick={() => setViewModeAndStore('list')}
-                  className={cn(
-                    "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                    viewMode === 'list' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
-                  )}
-                >
-                  <ListIcon size={14} />
-                  List View
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setViewModeAndStore('board')}
-                  className={cn(
-                    "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                    viewMode === 'board' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
-                  )}
-                >
-                  <LayoutGrid size={14} />
-                  Board View
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Create Task Button */}
-            <Button
-              onClick={handleCreateTask}
-              className="h-11 px-5 rounded-2xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-lg shadow-[#006699]/15 font-black text-xs uppercase tracking-widest gap-2 transition-all hover:scale-[1.02] active:scale-95"
-            >
-              <Plus size={15} strokeWidth={3.5} />
-              Create Task
-            </Button>
-          </div>
+        {/* Unified Top Control Bar */}
+        <div className="mb-2">
+          <TaskFilter
+            onFilter={handleFilter}
+            viewMode={viewMode}
+            onViewModeChange={setViewModeAndStore}
+            onCreateTask={handleCreateTask}
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+          />
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className={cn(
+          "flex-1 min-h-0",
+          viewMode === 'list' ? "overflow-y-auto scrollbar-hide" : "flex flex-col overflow-hidden"
+        )}>
           {viewMode === 'list' ? (
             <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
-          ) : (
+          ) : viewMode === 'board' ? (
             <Board onAddTask={(status) => navigate(`/task/new?status=${status}`)} onTaskClick={handleTaskClick} />
+          ) : (
+            <TaskCalendarView
+              tasks={tasks}
+              isLoading={isLoading}
+              onTaskClick={handleTaskClick}
+              onAddTask={(date) => {
+                const dateStr = date ? `?date=${date.toISOString()}` : '';
+                navigate(`/task/new${dateStr}`);
+              }}
+              showFilters={showFilters}
+              onToggleFilters={() => setShowFilters(!showFilters)}
+              onViewModeChange={setViewModeAndStore}
+            />
           )}
         </div>
 
         {/* Glacier Pagination Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 mt-4 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-150/80 shadow-md shadow-slate-100/30 shrink-0">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Page Size:</span>
-              <Select
-                value={pageSize.toString()}
-                onValueChange={(val) => {
-                  setPageSize(Number(val));
-                  setPageNo(1);
-                }}
+        {viewMode === 'list' && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 mt-4 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-150/80 shadow-md shadow-slate-100/30 shrink-0">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Page Size:</span>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(val) => {
+                    setPageSize(Number(val));
+                    setPageNo(1);
+                  }}
+                >
+                  <SelectTrigger className="h-8.5 w-20 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 focus:ring-1 focus:ring-[#006699]/15">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
+                    <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
+                    <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
+                    <SelectItem value="100" className="text-xs font-medium">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {tasks.length > 0 ? (
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                  Showing {((pageNo - 1) * pageSize) + 1} - {((pageNo - 1) * pageSize) + tasks.length} records
+                </span>
+              ) : (
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                  No records found
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={pageNo === 1 || isLoading}
+                onClick={() => setPageNo(prev => Math.max(prev - 1, 1))}
+                className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
               >
-                <SelectTrigger className="h-8.5 w-20 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 focus:ring-1 focus:ring-[#006699]/15">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
-                  <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
-                  <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
-                  <SelectItem value="100" className="text-xs font-medium">100</SelectItem>
-                </SelectContent>
-              </Select>
+                Previous
+              </Button>
+
+              <div className="h-8.5 px-4 bg-[#e1ecf7]/50 rounded-xl flex items-center justify-center border border-[#006699]/10">
+                <span className="text-xs font-black text-[#006699]">Page {pageNo}</span>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={tasks.length < pageSize || isLoading}
+                onClick={() => setPageNo(prev => prev + 1)}
+                className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                Next
+              </Button>
             </div>
-            {tasks.length > 0 ? (
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                Showing {((pageNo - 1) * pageSize) + 1} - {((pageNo - 1) * pageSize) + tasks.length} records
-              </span>
-            ) : (
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                No records found
-              </span>
-            )}
           </div>
-
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={pageNo === 1 || isLoading}
-              onClick={() => setPageNo(prev => Math.max(prev - 1, 1))}
-              className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              Previous
-            </Button>
-
-            <div className="h-8.5 px-4 bg-[#e1ecf7]/50 rounded-xl flex items-center justify-center border border-[#006699]/10">
-              <span className="text-xs font-black text-[#006699]">Page {pageNo}</span>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={tasks.length < pageSize || isLoading}
-              onClick={() => setPageNo(prev => prev + 1)}
-              className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        )}
 
         <TaskDetailModal
           taskNo={selectedTaskId}

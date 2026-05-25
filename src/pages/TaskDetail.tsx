@@ -6,6 +6,7 @@ import { ChevronLeft, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-reac
 import { Task, TaskStatus } from '@/types/task';
 import { useState, useEffect } from 'react';
 import { apiService } from '@/services/apiService';
+import { attachmentService } from '@/services/attachmentService';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -177,6 +178,14 @@ export default function TaskDetail() {
             infromToUserGroupNo: d.infromToUserGroupNo || null
           };
 
+          // Call attachments list API after successful task load-data
+          try {
+            const attachmentList = await attachmentService.getAttachments(mappedTask.taskNo);
+            mappedTask.attachments = attachmentList;
+          } catch (attError) {
+            console.error('Failed to load attachments during task load-data:', attError);
+          }
+
           setTask(mappedTask);
         } else {
           setNotFoundMessage(response.message || "Task not found.");
@@ -320,7 +329,7 @@ export default function TaskDetail() {
               Delete Task
             </DialogTitle>
             <DialogDescription className="text-center text-slate-600 font-medium text-xs leading-normal">
-              Are you sure you want to delete this task?
+              Do you want to delete?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 sm:space-x-3 flex items-center justify-center">
@@ -330,7 +339,7 @@ export default function TaskDetail() {
               onClick={() => setIsDeleteDialogOpen(false)}
               className="w-full sm:w-auto rounded-xl font-bold text-slate-600 hover:bg-slate-100 text-xs px-5 h-9"
             >
-              Cancel
+              No
             </Button>
             <Button
               type="button"
@@ -343,7 +352,7 @@ export default function TaskDetail() {
               ) : (
                 <Trash2 size={14} />
               )}
-              Delete
+              Yes
             </Button>
           </DialogFooter>
         </DialogContent>
