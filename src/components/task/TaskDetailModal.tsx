@@ -145,6 +145,8 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           company: d.company || 'Glacier',
           start_date: d.startDate,
           end_date: d.endDate,
+          isAllDay: d.isAllday ?? d.isAllDay ?? false,
+          calendarColor: d.colorCoding || '',
           estimated_effort_value: d.estimatedEfforts?.hours ?? null,
           estimated_effort_unit: reverseEffortFrequencyMap[d.estimatedEfforts?.frequency?.frequencyNo || 2] || 'hours',
           is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,
@@ -220,7 +222,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl w-[92vw] h-[90vh] md:h-[85vh] p-0 rounded-[28px] overflow-hidden border border-slate-200 shadow-2xl flex flex-col bg-white">
+      <DialogContent className="max-w-7xl w-[96vw] h-[92vh] p-0 rounded-[28px] overflow-hidden border border-slate-200 shadow-2xl flex flex-col bg-white">
         <DialogTitle className="sr-only">
           {task?.title || 'Task Details'}
         </DialogTitle>
@@ -496,13 +498,13 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                       {/* Start Date */}
                       <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
                         <span className="font-bold text-slate-600 flex items-center gap-1.5"><Calendar size={13} className="text-slate-500" /> Start Date</span>
-                        <span className="font-black text-slate-900">{task.start_date ? format(new Date(task.start_date), 'MMM dd, yyyy') : 'No date'}</span>
+                        <span className="font-black text-slate-900">{task.start_date ? format(new Date(task.start_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
                       </div>
 
                       {/* Due Date */}
                       <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
                         <span className="font-bold text-slate-600 flex items-center gap-1.5"><Calendar size={13} className="text-slate-500" /> Due Date</span>
-                        <span className="font-black text-slate-900">{task.end_date ? format(new Date(task.end_date), 'MMM dd, yyyy') : 'No date'}</span>
+                        <span className="font-black text-slate-900">{task.end_date ? format(new Date(task.end_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
                       </div>
 
                       {/* Business Benefit Details */}

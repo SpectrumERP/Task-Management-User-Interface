@@ -50,14 +50,26 @@ function getOpaqueTint(hexColor: string): string {
   const b = parseInt(hexColor.slice(5, 7), 16);
   if (isNaN(r) || isNaN(g) || isNaN(b)) return '#ffffff';
   
-  // Opaque mix: 8% category color + 92% white
-  const mix = (c: number) => Math.round(c * 0.08 + 255 * 0.92);
+  // Opaque mix: 16% category color + 84% white
+  const mix = (c: number) => Math.round(c * 0.16 + 255 * 0.84);
   
   const mixedR = mix(r).toString(16).padStart(2, '0');
   const mixedG = mix(g).toString(16).padStart(2, '0');
   const mixedB = mix(b).toString(16).padStart(2, '0');
   
   return `#${mixedR}${mixedG}${mixedB}`;
+}
+
+function getContrastColor(hexColor: string): string {
+  if (!hexColor || !hexColor.startsWith('#')) return '#ffffff';
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return '#ffffff';
+  
+  // Relative luminance calculation
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.65 ? '#1e293b' : '#ffffff';
 }
 
 export function TaskCalendarView({ 
@@ -269,34 +281,48 @@ export function TaskCalendarView({
                 {/* Day tasks list */}
                 <div className="space-y-1.5 flex-1 overflow-hidden">
                   {visibleTasks.map(task => {
-                    const customColor = task.calendarColor || '#006699';
-                    const isHovered = hoveredTaskNo === task.taskNo;
+                      const customColor = task.calendarColor && task.calendarColor !== 'none' ? task.calendarColor : null;
+                      const isHovered = hoveredTaskNo === task.taskNo;
 
-                    return (
-                      <div
-                        key={task.taskNo}
-                        onClick={() => onTaskClick(task.taskNo)}
-                        onMouseEnter={() => setHoveredTaskNo(task.taskNo)}
-                        onMouseLeave={() => setHoveredTaskNo(null)}
-                        style={{
-                          borderLeft: `3px solid ${customColor}`,
-                          backgroundColor: task.isAllDay ? customColor : getOpaqueTint(customColor),
-                          color: task.isAllDay ? '#fff' : '#334155',
-                          borderColor: task.isAllDay ? 'transparent' : `${customColor}1e`,
-                          zIndex: isHovered ? 9999 : undefined
-                        }}
-                        className={cn(
-                          "px-2.5 py-1 rounded-full text-[10px] font-bold truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm flex items-center justify-between border",
-                          task.isAllDay ? "text-white" : "hover:bg-slate-50"
-                        )}
-                        title={task.title}
-                      >
-                        <span className="truncate">{task.title}</span>
-                        {!task.isAllDay && task.priority === 'Urgent' && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 ml-1" />
-                        )}
-                      </div>
-                    );
+                      return (
+                        <div
+                          key={task.taskNo}
+                          onClick={() => onTaskClick(task.taskNo)}
+                          onMouseEnter={() => setHoveredTaskNo(task.taskNo)}
+                          onMouseLeave={() => setHoveredTaskNo(null)}
+                          style={{
+                            borderLeft: customColor ? `3px solid ${customColor}` : `3px solid #cbd5e1`,
+                            backgroundColor: task.isAllDay
+                              ? (customColor || '#94a3b8')
+                              : (customColor ? getOpaqueTint(customColor) : '#f1f5f9'),
+                            color: task.isAllDay
+                              ? (customColor ? getContrastColor(customColor) : '#ffffff')
+                              : '#1e293b',
+                            borderColor: task.isAllDay
+                              ? 'transparent'
+                              : (customColor ? `${customColor}40` : '#e2e8f0'),
+                            zIndex: isHovered ? 9999 : undefined
+                          }}
+                          className={cn(
+                            "px-2 py-1 rounded-full text-[10px] font-bold truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm flex items-center justify-between border",
+                            task.isAllDay ? "" : "hover:bg-slate-50"
+                          )}
+                          title={task.title}
+                        >
+                          <div className="flex items-center gap-1.5 truncate max-w-[85%]">
+                            {customColor && !task.isAllDay && (
+                              <span 
+                                className="w-1.5 h-1.5 rounded-full shrink-0 border border-black/5 shadow-inner" 
+                                style={{ backgroundColor: customColor }}
+                              />
+                            )}
+                            <span className="truncate">{task.title}</span>
+                          </div>
+                          {!task.isAllDay && task.priority === 'Urgent' && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 ml-1" />
+                          )}
+                        </div>
+                      );
                   })}
 
                   {overflowCount > 0 && (
@@ -440,17 +466,23 @@ export function TaskCalendarView({
             const dayAllDayTasks = tasks.filter(t => t.isAllDay && isTaskOnDate(t, date));
             return (
               <div key={idx} className="p-1 border-r last:border-r-0 border-slate-150 space-y-1 self-stretch flex flex-col justify-start">
-                {dayAllDayTasks.map(t => (
-                  <div
-                    key={t.taskNo}
-                    onClick={() => onTaskClick(t.taskNo)}
-                    style={{ backgroundColor: t.calendarColor || '#006699' }}
-                    className="px-2 py-0.5 rounded-md text-[9px] font-bold text-white truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm"
-                    title={t.title}
-                  >
-                    {t.title}
-                  </div>
-                ))}
+                {dayAllDayTasks.map(t => {
+                  const hasColor = t.calendarColor && t.calendarColor !== 'none';
+                  return (
+                    <div
+                      key={t.taskNo}
+                      onClick={() => onTaskClick(t.taskNo)}
+                      style={{ 
+                        backgroundColor: hasColor ? t.calendarColor : '#94a3b8',
+                        color: hasColor ? getContrastColor(t.calendarColor!) : '#ffffff'
+                      }}
+                      className="px-2 py-0.5 rounded-md text-[9px] font-bold truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm"
+                      title={t.title}
+                    >
+                      {t.title}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -489,7 +521,7 @@ export function TaskCalendarView({
                     />
                   )}
                    {positioned.map(({ task, top, height, left, width, zIndex }) => {
-                    const customColor = task.calendarColor || '#006699';
+                    const customColor = task.calendarColor && task.calendarColor !== 'none' ? task.calendarColor : null;
                     const isUrgent = task.priority === 'Urgent';
                     const isHovered = hoveredTaskNo === task.taskNo;
 
@@ -507,8 +539,11 @@ export function TaskCalendarView({
                           height: `${height}%`,
                           left: `${left}%`,
                           width: `${width}%`,
-                          borderLeft: `4px solid ${customColor}`,
-                          backgroundColor: isHovered ? '#ffffff' : getOpaqueTint(customColor),
+                          borderLeft: customColor ? `4px solid ${customColor}` : `4px solid #cbd5e1`,
+                          backgroundColor: isHovered 
+                            ? '#ffffff' 
+                            : (customColor ? getOpaqueTint(customColor) : '#f8fafc'),
+                          borderColor: customColor ? `${customColor}40` : '#e2e8f0',
                           zIndex: isHovered ? 9999 : zIndex,
                           transform: isHovered ? 'scale(1.05)' : undefined,
                           boxShadow: isHovered ? '0 20px 25px -5px rgb(0 0 0 / 0.15), 0 8px 10px -6px rgb(0 0 0 / 0.15)' : undefined,
@@ -560,16 +595,22 @@ export function TaskCalendarView({
           {allDayTasks.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest mr-1.5">All-Day:</span>
-              {allDayTasks.map(t => (
-                <div
-                  key={t.taskNo}
-                  onClick={() => onTaskClick(t.taskNo)}
-                  style={{ backgroundColor: t.calendarColor || '#006699' }}
-                  className="px-3 py-1 rounded-xl text-xs font-bold text-white cursor-pointer shadow-sm transition-all hover:scale-105"
-                >
-                  {t.title}
-                </div>
-              ))}
+              {allDayTasks.map(t => {
+                const hasColor = t.calendarColor && t.calendarColor !== 'none';
+                return (
+                  <div
+                    key={t.taskNo}
+                    onClick={() => onTaskClick(t.taskNo)}
+                    style={{ 
+                      backgroundColor: hasColor ? t.calendarColor : '#94a3b8',
+                      color: hasColor ? getContrastColor(t.calendarColor!) : '#ffffff'
+                    }}
+                    className="px-3 py-1 rounded-xl text-xs font-bold cursor-pointer shadow-sm transition-all hover:scale-105"
+                  >
+                    {t.title}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -602,7 +643,7 @@ export function TaskCalendarView({
                 />
               )}
               {positioned.map(({ task, top, height, left, width, zIndex }) => {
-                const customColor = task.calendarColor || '#006699';
+                const customColor = task.calendarColor && task.calendarColor !== 'none' ? task.calendarColor : null;
                 const isHovered = hoveredTaskNo === task.taskNo;
 
                 return (
@@ -619,8 +660,11 @@ export function TaskCalendarView({
                       height: `${height}%`,
                       left: `${left}%`,
                       width: `${width}%`,
-                      borderLeft: `4.5px solid ${customColor}`,
-                      backgroundColor: isHovered ? '#ffffff' : getOpaqueTint(customColor),
+                      borderLeft: customColor ? `4.5px solid ${customColor}` : `4.5px solid #cbd5e1`,
+                      backgroundColor: isHovered 
+                        ? '#ffffff' 
+                        : (customColor ? getOpaqueTint(customColor) : '#f8fafc'),
+                      borderColor: customColor ? `${customColor}40` : '#e2e8f0',
                       zIndex: isHovered ? 9999 : zIndex,
                       transform: isHovered ? 'scale(1.03)' : undefined,
                       boxShadow: isHovered ? '0 20px 25px -5px rgb(0 0 0 / 0.15), 0 8px 10px -6px rgb(0 0 0 / 0.15)' : undefined,
@@ -729,7 +773,7 @@ export function TaskCalendarView({
               {/* Tasks list inside Card */}
               <div className="lg:col-span-3 space-y-4">
                 {dayTasks.map(task => {
-                  const customColor = task.calendarColor || '#006699';
+                  const customColor = task.calendarColor && task.calendarColor !== 'none' ? task.calendarColor : null;
 
                   return (
                     <div
@@ -739,10 +783,12 @@ export function TaskCalendarView({
                     >
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center flex-wrap gap-2">
-                          <span
-                            style={{ backgroundColor: customColor }}
-                            className="w-2.5 h-2.5 rounded-full inline-block shadow-sm"
-                          />
+                          {customColor && (
+                            <span
+                              style={{ backgroundColor: customColor }}
+                              className="w-2.5 h-2.5 rounded-full inline-block shadow-sm"
+                            />
+                          )}
                           <span className="text-[10px] font-mono font-bold text-slate-400">#{task.code || `TSK-${task.taskNo}`}</span>
                           {getStatusBadge(task.status)}
                         </div>

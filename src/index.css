@@ -13,7 +13,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 199.2 100% 30%; /* #006699 */
+    --primary: 199.2 100% 30%;
+    /* #006699 */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -28,8 +29,8 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 214.3 31.8% 82%;
+    --input: 214.3 31.8% 82%;
     --ring: 199.2 100% 30%;
 
     --radius: 0.75rem;
@@ -70,6 +71,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground antialiased overflow-hidden;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -86,19 +88,34 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   /* Hide arrows in number inputs */
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
   }
+
   input[type=number] {
     -moz-appearance: textfield;
     text-align: right;
   }
+}
+
+/* Centralized Form Field & Layout Border Visibility Upgrade */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select,
+[role="combobox"],
+[data-radix-select-trigger],
+.border-slate-200,
+.border-slate-200\/60,
+.border-slate-200\/80 {
+  border-color: #cbd5e1;
+  /* Elegant slate-300 border for superior readability and crisp visual definition */
 }

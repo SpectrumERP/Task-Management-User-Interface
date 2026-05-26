@@ -22,7 +22,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const { user, logout } = useAuthStore();
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
-  const { fillValues, selectedFolder, setSelectedFolder, fetchFillValues, fetchTasks } = useTaskStore();
+  const { fillValues, selectedFolder, setSelectedFolder, fetchFillValues } = useTaskStore();
 
   useEffect(() => {
     if (!fillValues) {
@@ -32,7 +32,6 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
   const handleFolderChange = (folder: any) => {
     setSelectedFolder(folder);
-    fetchTasks({ folderNo: folder.TaskFolderNo });
   };
 
   const printingName = user?.PrintingName || user?.name || 'User';

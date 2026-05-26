@@ -62,8 +62,8 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
   isPrivate: z.boolean().optional().default(false),
   start_date: z.string().optional(),
   end_date: isSubTask ? z.string().min(1, 'Due Date is required for sub-tasks') : z.string().optional(),
-  isAllDay: z.boolean().optional().default(true),
-  calendarColor: z.string().optional().default('#006699'),
+  isAllDay: z.boolean().optional().default(false),
+  calendarColor: z.string().optional().default(''),
   recurrence: z.object({
     pattern: z.enum(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']),
     until: z.string().optional().nullable()
@@ -352,8 +352,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       executionNotes: initialData?.executionNotes || initialData?.execution_notes || '',
       status: initialData?.status || initialStatus || 'Draft',
       isPrivate: initialData?.isPrivate || false,
-      isAllDay: initialData?.isAllDay ?? true,
-      calendarColor: initialData?.calendarColor || '#006699',
+      isAllDay: initialData?.isAllDay ?? false,
+      calendarColor: initialData?.calendarColor || '',
       recurrence: initialData?.recurrence || { pattern: 'NONE', until: null },
       attachments: (initialData?.attachments || initialData?.attachments || []).map((a: any) => ({
         id: a.id || a.docNo || a.operTaskAttachmentDetailNo || 0,
@@ -417,6 +417,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               check_list: [],
               task_comments: [],
               actual_efforts: [],
+              isAllDay: d.isAllday ?? d.isAllDay ?? false,
+              calendarColor: d.colorCoding || '',
               executionNotes: d.executionNotes || '',
               execution_notes: d.executionNotes || ''
             };
@@ -442,6 +444,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const currentStatus = form.watch('status');
   const isBenefitApplicable = form.watch('is_business_benefit_applicable');
   const selectedBenefitTypeNo = form.watch('business_benefit_type_No');
+  const isAllDay = form.watch('isAllDay');
 
   const shouldHideBenefitAmount = useMemo(() => {
     if (!isBenefitApplicable || !selectedBenefitTypeNo) return false;
@@ -533,7 +536,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     const fetchOptions = async () => {
       try {
         const companyNo = authCompanies?.[0]?.companyNo || 2;
-        const response = await fetchFillValues(companyNo.toString());
+        const response = await fetchFillValues(companyNo.toString(), true);
         if (response) {
           setFillValues(response as TaskFillValues);
         }
@@ -908,6 +911,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       benefitFrequencyNo: data.is_business_benefit_applicable ? (benefitFrequencyMap[data.benefit_period] || null) : null,
       statusNo: statusNo || null,
       folderNo: parseInt(data.folder_No) || selectedFolder?.TaskFolderNo || null,
+      isAllday: data.isAllDay,
+      colorCoding: data.calendarColor || null,
       createdBy: authUser?.loginNo || authUser?.LoginNo || 1,
       createdDate: new Date().toISOString(),
       checkLists: data.check_list.map((item: any, index: number) => ({
@@ -1367,62 +1372,64 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <UserPlus size={12} /> Add
                     </Button>
                   </div>
-                  <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all", hasCollabError ? "border-red-500 ring-2 ring-red-500/10" : "border-slate-200")}>
-                    <table className="w-full text-left text-[11px] border-collapse">
-                      <thead className="bg-slate-100/80 border-b border-slate-200">
-                        <tr>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
-                          <th className="px-2 py-1.5 w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {collabFields.map((field, index) => (
-                          <tr key={field.id} className="group hover:bg-white transition-colors">
-                            <td className="px-2 py-1">
-                              <Controller
-                                name={`collaborators.${index}.userName`}
-                                control={form.control}
-                                render={({ field: nameField }) => (
-                                  <UserCombobox
-                                    value={nameField.value}
-                                    onChange={(user) => {
-                                      nameField.onChange(user.loginId);
-                                      form.setValue(`collaborators.${index}.displayName`, user.printingName);
-                                      form.setValue(`collaborators.${index}.email`, user.email || '');
-                                      form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
-                                    }}
-                                    placeholder="User Name"
-                                    className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
-                                    initialLabel={nameField.value}
-                                    disabled={field.isFromTeam}
-                                  />
-                                )}
-                              />
-                            </td>
-                            <td className="px-2 py-1">
-                              <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                            </td>
-                            <td className="px-2 py-1">
-                              <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                            </td>
-                            <td className="px-1 py-1 text-center">
-                              {!field.isFromTeam && (
-                                <button type="button" onClick={() => removeCollab(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                  <Trash2 size={12} />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                        {collabFields.length === 0 && (
+                  <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasCollabError && "border-red-500 ring-2 ring-red-500/10")}>
+                    <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
+                      <table className="w-full text-left text-[11px] border-collapse">
+                        <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
                           <tr>
-                            <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators.</td>
+                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
+                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
+                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                            <th className="px-2 py-1.5 w-8"></th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {collabFields.map((field, index) => (
+                            <tr key={field.id} className="group hover:bg-white transition-colors">
+                              <td className="px-2 py-1">
+                                <Controller
+                                  name={`collaborators.${index}.userName`}
+                                  control={form.control}
+                                  render={({ field: nameField }) => (
+                                    <UserCombobox
+                                      value={nameField.value}
+                                      onChange={(user) => {
+                                        nameField.onChange(user.loginId);
+                                        form.setValue(`collaborators.${index}.displayName`, user.printingName);
+                                        form.setValue(`collaborators.${index}.email`, user.email || '');
+                                        form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
+                                      }}
+                                      placeholder="User Name"
+                                      className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                                      initialLabel={nameField.value}
+                                      disabled={field.isFromTeam}
+                                    />
+                                  )}
+                                />
+                              </td>
+                              <td className="px-2 py-1">
+                                <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                              </td>
+                              <td className="px-2 py-1">
+                                <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                              </td>
+                              <td className="px-1 py-1 text-center">
+                                {!field.isFromTeam && (
+                                  <button type="button" onClick={() => removeCollab(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                    <Trash2 size={12} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                          {collabFields.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                   {hasCollabError && <p className="text-[10px] text-red-500 font-bold ml-1">{collabError.message}</p>}
                 </div>
@@ -1448,62 +1455,64 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <UserPlus size={12} /> Add
                     </Button>
                   </div>
-                  <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all", hasInformError ? "border-red-500 ring-2 ring-red-500/10" : "border-slate-200")}>
-                    <table className="w-full text-left text-[11px] border-collapse">
-                      <thead className="bg-slate-100/80 border-b border-slate-200">
-                        <tr>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
-                          <th className="px-2 py-1.5 w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {informFields.map((field, index) => (
-                          <tr key={field.id} className="group hover:bg-white transition-colors">
-                            <td className="px-2 py-1">
-                              <Controller
-                                name={`informed_to.${index}.userName`}
-                                control={form.control}
-                                render={({ field: nameField }) => (
-                                  <UserCombobox
-                                    value={nameField.value}
-                                    onChange={(user) => {
-                                      nameField.onChange(user.loginId);
-                                      form.setValue(`informed_to.${index}.displayName`, user.printingName);
-                                      form.setValue(`informed_to.${index}.email`, user.email || '');
-                                      form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
-                                    }}
-                                    placeholder="User Name"
-                                    className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
-                                    initialLabel={nameField.value}
-                                    disabled={field.isFromTeam}
-                                  />
-                                )}
-                              />
-                            </td>
-                            <td className="px-2 py-1">
-                              <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                            </td>
-                            <td className="px-2 py-1">
-                              <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                            </td>
-                            <td className="px-1 py-1 text-center">
-                              {!field.isFromTeam && (
-                                <button type="button" onClick={() => removeInform(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                  <Trash2 size={12} />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                        {informFields.length === 0 && (
+                  <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasInformError && "border-red-500 ring-2 ring-red-500/10")}>
+                    <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
+                      <table className="w-full text-left text-[11px] border-collapse">
+                        <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
                           <tr>
-                            <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No informed users.</td>
+                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
+                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
+                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                            <th className="px-2 py-1.5 w-8"></th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {informFields.map((field, index) => (
+                            <tr key={field.id} className="group hover:bg-white transition-colors">
+                              <td className="px-2 py-1">
+                                <Controller
+                                  name={`informed_to.${index}.userName`}
+                                  control={form.control}
+                                  render={({ field: nameField }) => (
+                                    <UserCombobox
+                                      value={nameField.value}
+                                      onChange={(user) => {
+                                        nameField.onChange(user.loginId);
+                                        form.setValue(`informed_to.${index}.displayName`, user.printingName);
+                                        form.setValue(`informed_to.${index}.email`, user.email || '');
+                                        form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
+                                      }}
+                                      placeholder="User Name"
+                                      className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                                      initialLabel={nameField.value}
+                                      disabled={field.isFromTeam}
+                                    />
+                                  )}
+                                />
+                              </td>
+                              <td className="px-2 py-1">
+                                <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                              </td>
+                              <td className="px-2 py-1">
+                                <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                              </td>
+                              <td className="px-1 py-1 text-center">
+                                {!field.isFromTeam && (
+                                  <button type="button" onClick={() => removeInform(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                    <Trash2 size={12} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                          {informFields.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No informed users.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                   {hasInformError && <p className="text-[10px] text-red-500 font-bold ml-1">{informError.message}</p>}
                 </div>
@@ -1514,8 +1523,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
         {/* 3. Timeline */}
         <FormSection title="Timeline & Effort" icon={Clock}>
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-4">
+            {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div className="space-y-1.5" id="form-group-start_date">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Start Date</Label>
                 <Controller
@@ -1525,13 +1535,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     <DateTimePicker
                       date={field.value ? new Date(field.value) : undefined}
                       onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                      placeholder="Select start date & time"
+                      placeholder={isAllDay ? "Select start date" : "Select start date & time"}
+                      hideTime={isAllDay}
                       className={form.formState.errors.start_date ? "border-red-500" : ""}
                     />
                   )}
                 />
                 {form.formState.errors.start_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.start_date.message}</p>}
               </div>
+
               <div className="space-y-1.5" id="form-group-end_date">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
                   Due Date {isSubTask && <span className="text-red-500 font-black">*</span>}
@@ -1543,14 +1555,38 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     <DateTimePicker
                       date={field.value ? new Date(field.value) : undefined}
                       onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                      placeholder="Select due date & time"
+                      placeholder={isAllDay ? "Select due date" : "Select due date & time"}
+                      hideTime={isAllDay}
                       className={form.formState.errors.end_date ? "border-red-500" : ""}
                     />
                   )}
                 />
                 {form.formState.errors.end_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.end_date.message}</p>}
               </div>
-              <div className="space-y-1.5 lg:col-span-2" id="form-group-estimated_effort_value">
+
+              <div className="space-y-1.5 flex flex-col justify-end">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">All-Day Options</Label>
+                <Controller
+                  name="isAllDay"
+                  control={form.control}
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2 bg-slate-50/70 border border-slate-200/80 px-4 rounded-2xl shadow-sm transition-all hover:bg-slate-100/30 h-11">
+                      <Checkbox
+                        id="isAllDay"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
+                      />
+                      <label htmlFor="isAllDay" className="text-xs font-bold text-slate-700 cursor-pointer select-none">All-Day Task</label>
+                    </div>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Estimated Effort, Calendar Color */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
+              <div className="space-y-1.5 md:col-span-2" id="form-group-estimated_effort_value">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Effort</Label>
                 <div className="flex gap-2">
                   <div className="flex-1 space-y-1">
@@ -1574,7 +1610,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         <SelectTrigger className={cn("rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm w-32", form.formState.errors.estimated_effort_unit && "border-red-500")}>
                           <SelectValue placeholder="Unit" />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl">
+                        <SelectContent className="rounded-xl bg-white border border-slate-200">
                           {fillValues?.frequency?.map(f => (
                             <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
                               {f.FrequencyName || f.Frequency}
@@ -1588,82 +1624,47 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 {form.formState.errors.estimated_effort_value && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_value.message}</p>}
                 {!form.formState.errors.estimated_effort_value && form.formState.errors.estimated_effort_unit && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_unit.message}</p>}
               </div>
-            </div>
 
-            {/* Calendar Scheduling Options */}
-            {/* <div className="pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6 items-start animate-in fade-in duration-300">
-              <div className="space-y-2 mt-1">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Calendar Options</Label>
-                <Controller
-                  name="isAllDay"
-                  control={form.control}
-                  render={({ field }) => (
-                    <div className="flex items-center space-x-2 bg-slate-50/70 border border-slate-200/80 px-4 py-2.5 rounded-2xl shadow-sm transition-all hover:bg-slate-100/30">
-                      <Checkbox
-                        id="isAllDay"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
-                      />
-                      <label htmlFor="isAllDay" className="text-xs font-bold text-slate-700 cursor-pointer select-none">All-Day Task</label>
-                    </div>
-                  )}
-                />
-              </div>
-              
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 md:col-span-1" id="form-group-calendarColor">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Calendar Color</Label>
                 <Controller
                   name="calendarColor"
                   control={form.control}
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="rounded-xl h-9.5 border-slate-300 text-slate-900 font-medium text-sm shadow-sm bg-white focus:ring-1 focus:ring-[#006699]/15">
-                        <SelectValue placeholder="Select Color" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl bg-white border border-slate-100 p-1 shadow-xl">
-                        <SelectItem value="#006699" className="text-xs font-bold rounded-lg cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[#006699] inline-block shadow-sm" />
-                            <span>Ocean Blue</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="#e63946" className="text-xs font-bold rounded-lg cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[#e63946] inline-block shadow-sm" />
-                            <span>Coral Red</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="#2a9d8f" className="text-xs font-bold rounded-lg cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[#2a9d8f] inline-block shadow-sm" />
-                            <span>Emerald Green</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="#f4a261" className="text-xs font-bold rounded-lg cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[#f4a261] inline-block shadow-sm" />
-                            <span>Sunset Amber</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="#7209b7" className="text-xs font-bold rounded-lg cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[#7209b7] inline-block shadow-sm" />
-                            <span>Royal Purple</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="#4a4e69" className="text-xs font-bold rounded-lg cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-[#4a4e69] inline-block shadow-sm" />
-                            <span>Sleek Slate</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="relative flex items-center bg-white border border-slate-350 rounded-xl h-9 px-3.5 shadow-sm hover:bg-slate-50 transition-all cursor-pointer select-none">
+                      <div 
+                        className="w-4 h-4 rounded-full border border-slate-200 shadow-sm shrink-0 mr-3" 
+                        style={{ backgroundColor: field.value && field.value !== 'none' ? field.value : "#cbd5e1" }}
+                      />
+                      <span className="text-slate-900 font-bold text-sm flex-1">
+                        {field.value && field.value !== 'none' ? field.value : "None"}
+                      </span>
+                      
+                      <input
+                        type="color"
+                        value={field.value && field.value !== 'none' ? field.value : "#006699"}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                      />
+
+                      {field.value && field.value !== 'none' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            field.onChange("");
+                          }}
+                          className="relative z-10 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors ml-2"
+                        >
+                          <X size={12} strokeWidth={2.5} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 />
               </div>
-            </div> */}
+            </div>
           </div>
         </FormSection>
 

@@ -65,9 +65,11 @@ function Dashboard() {
     const initData = async () => {
       // First fetch fill values to ensure default folder is set!
       const fillValues = await fetchFillValues(companyNo.toString());
-      const folderNo = fillValues?.folder && fillValues.folder.length > 0
+      
+      const activeFolder = useTaskStore.getState().selectedFolder;
+      const folderNo = activeFolder?.TaskFolderNo || (fillValues?.folder && fillValues.folder.length > 0
         ? fillValues.folder[0].TaskFolderNo
-        : undefined;
+        : undefined);
 
       // Initial filters setup
       setCurrentFilters({ companyNo, folderNo });
@@ -78,10 +80,15 @@ function Dashboard() {
   useEffect(() => {
     if (selectedFolder) {
       setPageNo(1);
-      setCurrentFilters((prev: any) => ({
-        ...(prev || { companyNo }),
-        folderNo: selectedFolder.TaskFolderNo
-      }));
+      setCurrentFilters((prev: any) => {
+        if (prev && prev.folderNo === selectedFolder.TaskFolderNo) {
+          return prev;
+        }
+        return {
+          ...(prev || { companyNo }),
+          folderNo: selectedFolder.TaskFolderNo
+        };
+      });
     }
   }, [selectedFolder, companyNo]);
 

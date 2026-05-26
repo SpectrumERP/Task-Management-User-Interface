@@ -49,11 +49,11 @@ interface TaskFilterProps {
   onToggleFilters?: () => void;
 }
 
-export function TaskFilter({ 
-  onFilter, 
-  className, 
-  viewMode, 
-  onViewModeChange, 
+export function TaskFilter({
+  onFilter,
+  className,
+  viewMode,
+  onViewModeChange,
   onCreateTask,
   showFilters,
   onToggleFilters
@@ -81,7 +81,7 @@ export function TaskFilter({
       filterType: 'All',
       sortingColumnName: '',
       sortingType: '',
-      folderNo: '',
+      folderNo: selectedFolder?.TaskFolderNo.toString(),
       loginNo: '',
       fromCreatedDate: undefined,
       toCreatedDate: undefined,
@@ -198,10 +198,10 @@ export function TaskFilter({
                 <SlidersHorizontal size={14} className="text-[#006699]" />
                 Filter & Search Criteria
               </span>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={toggleFilters} 
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={toggleFilters}
                 className="h-8 w-8 p-0 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600"
               >
                 <X size={16} />
@@ -590,126 +590,126 @@ export function TaskFilter({
         {/* Dynamic unified top search & trigger row */}
         {currentViewMode !== 'calendar' && (
           <div className="flex flex-wrap items-center gap-3 w-full">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-            <Controller
-              name="title"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  placeholder="Search tasks by title..."
-                  className="pl-10 h-11 rounded-2xl border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/15 bg-white shadow-sm font-bold text-xs text-slate-700"
-                />
-              )}
-            />
-          </div>
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <Controller
+                name="title"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    placeholder="Search tasks by title..."
+                    className="pl-10 h-11 rounded-2xl border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/15 bg-white shadow-sm font-bold text-xs text-slate-700"
+                  />
+                )}
+              />
+            </div>
 
-          {currentViewMode !== 'calendar' && (
-            <Button
-              type="button"
-              onClick={() => toggleFilters()}
-              className={cn(
-                "h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs uppercase tracking-wider transition-all duration-200 gap-2 shadow-sm shrink-0",
-                isFiltersOpen && "border-[#006699] text-[#006699] bg-[#e1ecf7]/50"
-              )}
-            >
-              <SlidersHorizontal size={14} className={cn("transition-transform duration-300", isFiltersOpen && "rotate-180")} />
-              <span>FILTERS</span>
-              {activeCount > 0 && (
-                <span className="bg-[#006699] text-white text-[9px] h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center font-black">
-                  {activeCount}
-                </span>
-              )}
-            </Button>
-          )}
-
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleReset}
-            className="h-11 w-11 p-0 rounded-2xl border border-slate-200 text-slate-400 hover:text-slate-650 bg-white hover:bg-slate-50 shadow-sm transition-transform active:rotate-180 duration-500 shrink-0"
-          >
-            <RotateCcw size={15} />
-          </Button>
-
-          <Button
-            type="submit"
-            className="h-11 px-5 rounded-2xl bg-[#006699] hover:bg-[#005580] font-black text-xs uppercase tracking-widest text-white shadow-md shadow-[#006699]/15 transition-all hover:scale-[1.02] active:scale-95 gap-2 shrink-0"
-          >
-            <Search size={14} strokeWidth={3.5} />
-            <span>SEARCH</span>
-          </Button>
-
-          {/* Merged View Toggle Dropdown from Dashboard */}
-          {currentViewMode !== 'calendar' && viewMode && onViewModeChange && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700 shadow-sm gap-2.5 transition-all flex items-center justify-between text-xs shrink-0"
-                >
-                  <span className="flex items-center gap-2">
-                    {currentViewMode === 'list' ? (
-                      <ListIcon size={14} className="text-[#006699]" />
-                    ) : currentViewMode === 'board' ? (
-                      <LayoutGrid size={14} className="text-[#006699]" />
-                    ) : (
-                      <CalendarIcon size={14} className="text-[#006699]" />
-                    )}
-                    {currentViewMode === 'list' ? 'List View' : currentViewMode === 'board' ? 'Board View' : 'Calendar View'}
+            {currentViewMode !== 'calendar' && (
+              <Button
+                type="button"
+                onClick={() => toggleFilters()}
+                className={cn(
+                  "h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs uppercase tracking-wider transition-all duration-200 gap-2 shadow-sm shrink-0",
+                  isFiltersOpen && "border-[#006699] text-[#006699] bg-[#e1ecf7]/50"
+                )}
+              >
+                <SlidersHorizontal size={14} className={cn("transition-transform duration-300", isFiltersOpen && "rotate-180")} />
+                <span>FILTERS</span>
+                {activeCount > 0 && (
+                  <span className="bg-[#006699] text-white text-[9px] h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center font-black">
+                    {activeCount}
                   </span>
-                  <ChevronDown size={14} className="text-slate-400" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl border border-slate-100 p-1 min-w-[140px] shadow-xl bg-white">
-                <DropdownMenuItem
-                  onClick={() => onViewModeChange('list')}
-                  className={cn(
-                    "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                    currentViewMode === 'list' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
-                  )}
-                >
-                  <ListIcon size={14} />
-                  List View
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onViewModeChange('board')}
-                  className={cn(
-                    "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                    currentViewMode === 'board' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
-                  )}
-                >
-                  <LayoutGrid size={14} />
-                  Board View
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onViewModeChange('calendar')}
-                  className={cn(
-                    "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                    currentViewMode === 'calendar' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
-                  )}
-                >
-                  <CalendarIcon size={14} />
-                  Calendar View
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                )}
+              </Button>
+            )}
 
-          {/* Create Task Button from Dashboard */}
-          {onCreateTask && (
             <Button
               type="button"
-              onClick={onCreateTask}
+              variant="ghost"
+              onClick={handleReset}
+              className="h-11 w-11 p-0 rounded-2xl border border-slate-200 text-slate-400 hover:text-slate-650 bg-white hover:bg-slate-50 shadow-sm transition-transform active:rotate-180 duration-500 shrink-0"
+            >
+              <RotateCcw size={15} />
+            </Button>
+
+            <Button
+              type="submit"
               className="h-11 px-5 rounded-2xl bg-[#006699] hover:bg-[#005580] font-black text-xs uppercase tracking-widest text-white shadow-md shadow-[#006699]/15 transition-all hover:scale-[1.02] active:scale-95 gap-2 shrink-0"
             >
-              <Plus size={14} strokeWidth={3.5} />
-              CREATE TASK
+              <Search size={14} strokeWidth={3.5} />
+              <span>SEARCH</span>
             </Button>
-          )}
-        </div>
+
+            {/* Merged View Toggle Dropdown from Dashboard */}
+            {currentViewMode !== 'calendar' && viewMode && onViewModeChange && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700 shadow-sm gap-2.5 transition-all flex items-center justify-between text-xs shrink-0"
+                  >
+                    <span className="flex items-center gap-2">
+                      {currentViewMode === 'list' ? (
+                        <ListIcon size={14} className="text-[#006699]" />
+                      ) : currentViewMode === 'board' ? (
+                        <LayoutGrid size={14} className="text-[#006699]" />
+                      ) : (
+                        <CalendarIcon size={14} className="text-[#006699]" />
+                      )}
+                      {currentViewMode === 'list' ? 'List View' : currentViewMode === 'board' ? 'Board View' : 'Calendar View'}
+                    </span>
+                    <ChevronDown size={14} className="text-slate-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-xl border border-slate-100 p-1 min-w-[140px] shadow-xl bg-white">
+                  <DropdownMenuItem
+                    onClick={() => onViewModeChange('list')}
+                    className={cn(
+                      "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
+                      currentViewMode === 'list' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                  >
+                    <ListIcon size={14} />
+                    List View
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onViewModeChange('board')}
+                    className={cn(
+                      "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
+                      currentViewMode === 'board' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                  >
+                    <LayoutGrid size={14} />
+                    Board View
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onViewModeChange('calendar')}
+                    className={cn(
+                      "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
+                      currentViewMode === 'calendar' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                  >
+                    <CalendarIcon size={14} />
+                    Calendar View
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* Create Task Button from Dashboard */}
+            {onCreateTask && (
+              <Button
+                type="button"
+                onClick={onCreateTask}
+                className="h-11 px-5 rounded-2xl bg-[#006699] hover:bg-[#005580] font-black text-xs uppercase tracking-widest text-white shadow-md shadow-[#006699]/15 transition-all hover:scale-[1.02] active:scale-95 gap-2 shrink-0"
+              >
+                <Plus size={14} strokeWidth={3.5} />
+                CREATE TASK
+              </Button>
+            )}
+          </div>
         )}
 
         {/* Collapsible Unified Filters Grid (ONE SINGLE STEP) */}

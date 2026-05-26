@@ -151,6 +151,8 @@ export default function TaskDetail() {
             company: d.company || 'Glacier',
             start_date: d.startDate,
             end_date: d.endDate,
+            isAllDay: d.isAllday ?? d.isAllDay ?? false,
+            calendarColor: d.colorCoding || '',
             estimated_effort_value: d.estimatedEfforts?.hours ?? null,
             estimated_effort_unit: reverseEffortFrequencyMap[d.estimatedEfforts?.frequency?.frequencyNo || 2] || 'hours',
             is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,

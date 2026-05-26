@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '@/services/apiService';
 import { Combobox } from '@/components/ui/Combobox';
+import { format } from 'date-fns';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -74,7 +75,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           isInReviewRequired: c.isInReviewApplicable,
           isBusinessBenefitApplicable: c.isBusinessBenefitApplicable,
           checkList: Array.isArray(c.checkLists) ? c.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : [],
-          color: c.colorCoding || ''
+          color: c.colorCoding || '',
+          createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || (typeof c.createdBy === 'string' || typeof c.createdBy === 'number' ? c.createdBy : '') || 'System',
+          createdDate: c.createdDate || c.createdDateTime || c.createdOn || ''
         }));
         setApiCategories(mapped);
       }
@@ -95,7 +98,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           code: u.code || '',
           name: u.userGroupName || '',
           description: u.description || '',
-          inactive: u.inactive
+          inactive: u.inactive,
+          createdBy: u.createdBy?.printingName || u.createdBy?.displayName || u.createdBy?.loginId || u.createdByName || (typeof u.createdBy === 'string' || typeof u.createdBy === 'number' ? u.createdBy : '') || 'System',
+          createdDate: u.createdDate || u.createdDateTime || u.createdOn || ''
         }));
         setApiUserGroups(mapped);
       }
@@ -117,7 +122,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           code: b.code || '',
           name: b.businessBenefitTypeName || '',
           valuationtypeNo: b.valuationType?.toString() || '0',
-          inactive: b.inactive
+          inactive: b.inactive,
+          createdBy: b.createdBy?.printingName || b.createdBy?.displayName || b.createdBy?.loginId || b.createdByName || (typeof b.createdBy === 'string' || typeof b.createdBy === 'number' ? b.createdBy : '') || 'System',
+          createdDate: b.createdDate || b.createdDateTime || b.createdOn || ''
         }));
         setApiBusinessBenefitTypes(mapped);
       }
@@ -151,7 +158,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           id: (t.operTaskTypeNo ?? '').toString(),
           code: t.code,
           name: t.operTaskTypeName || '',
-          inactive: t.inactive
+          inactive: t.inactive,
+          createdBy: t.createdBy?.printingName || t.createdBy?.displayName || t.createdBy?.loginId || t.createdByName || (typeof t.createdBy === 'string' || typeof t.createdBy === 'number' ? t.createdBy : '') || 'System',
+          createdDate: t.createdDate || t.createdDateTime || t.createdOn || ''
         }));
         setApiTypes(mapped);
       }
@@ -178,7 +187,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           priorityDuration: p.priorityDuration || '',
           priorityFrequencyNo: (p.priorityDurationFrequencyNo || '').toString(),
           sequence: p.sequenceNo || '',
-          inactive: p.inactive
+          inactive: p.inactive,
+          createdBy: p.createdBy?.printingName || p.createdBy?.displayName || p.createdBy?.loginId || p.createdByName || (typeof p.createdBy === 'string' || typeof p.createdBy === 'number' ? p.createdBy : '') || 'System',
+          createdDate: p.createdDate || p.createdDateTime || p.createdOn || ''
         }));
         setApiPriorities(mapped);
       }
@@ -204,7 +215,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           description: f.description || '',
           parentFolderNo: (f.parentFolderNo ?? '').toString(),
           sequence: f.sequenceNo || f.sequence || '',
-          inactive: f.inactive
+          inactive: f.inactive,
+          createdBy: f.createdBy?.printingName || f.createdBy?.displayName || f.createdBy?.loginId || f.createdByName || (typeof f.createdBy === 'string' || typeof f.createdBy === 'number' ? f.createdBy : '') || 'System',
+          createdDate: f.createdDate || f.createdDateTime || f.createdOn || ''
         }));
         setApiFolders(mapped);
       }
@@ -244,7 +257,9 @@ export function MasterManager({ type }: MasterManagerProps) {
           stateNo: l.stateName || l.stateNo || '',
           cityNo: l.cityName || l.cityNo || '',
           pinCode: l.pinCode || '',
-          locationRegion: l.regionName || l.locationRegion || ''
+          locationRegion: l.regionName || l.locationRegion || '',
+          createdBy: l.createdBy?.printingName || l.createdBy?.displayName || l.createdBy?.loginId || l.createdByName || (typeof l.createdBy === 'string' || typeof l.createdBy === 'number' ? l.createdBy : '') || 'System',
+          createdDate: l.createdDate || l.createdDateTime || l.createdOn || ''
         }));
         setApiLocations(mapped);
       }
@@ -1040,49 +1055,51 @@ export function MasterManager({ type }: MasterManagerProps) {
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/50">
-                    <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-6">Code</th>
-                    <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
+                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4">Code</th>
+                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</th>
                     {type === 'category' && (
-                      <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Features</th>
+                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Features</th>
                     )}
                     {type === 'priority' && (
                       <>
-                        <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
-                        <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Priority Duration</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Priority Duration</th>
                       </>
                     )}
                     {type === 'folder' && (
                       <>
-                        <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
-                        <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Parent Folder</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Parent Folder</th>
                       </>
                     )}
                     {type === 'user-group' && (
-                      <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
                     )}
                     {type === 'benefit-type' && (
-                      <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
+                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
                     )}
                     {type === 'location' && (
                       <>
-                        <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                        <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Incharge</th>
-                        <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Address</th>
-                        <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Region</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Incharge</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Region</th>
                       </>
                     )}
-                    <th className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right pr-6 w-[100px]">Actions</th>
+                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created By</th>
+                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created Date</th>
+                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right pr-4 w-[100px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/60 bg-white">
                   {filteredList.map((item: any) => (
                     <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-5 py-3.5 text-xs font-black text-slate-700 pl-6">
+                      <td className="px-3.5 py-2 text-[11px] font-black text-slate-700 pl-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-slate-100 text-slate-600 border border-slate-200/50">
                           {item.code || `SYS-${item.id}`}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-xs font-bold text-slate-800">
+                      <td className="px-3.5 py-2 text-[11px] font-bold text-slate-800">
                         <div className="flex items-center gap-2">
                           {type === 'category' && item.color && (
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
@@ -1091,7 +1108,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                         </div>
                       </td>
                       {type === 'category' && (
-                        <td className="px-5 py-3.5">
+                        <td className="px-3.5 py-2">
                           <div className="flex flex-wrap gap-1">
                             {item.isApprovalApplicable && (
                               <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Approval</span>
@@ -1107,59 +1124,65 @@ export function MasterManager({ type }: MasterManagerProps) {
                       )}
                       {type === 'priority' && (
                         <>
-                          <td className="px-5 py-3.5 text-xs text-slate-600 font-bold">{item.sequence}</td>
-                          <td className="px-5 py-3.5 text-xs text-slate-600 font-bold">
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
                             {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
                           </td>
                         </>
                       )}
                       {type === 'folder' && (
                         <>
-                          <td className="px-5 py-3.5 text-xs text-slate-600 font-bold">{item.sequence}</td>
-                          <td className="px-5 py-3.5 text-xs text-slate-500 font-semibold">{item.parentFolderNo || 'Root'}</td>
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
+                          <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold">{item.parentFolderNo || 'Root'}</td>
                         </>
                       )}
                       {type === 'user-group' && (
-                        <td className="px-5 py-3.5 text-xs text-slate-500 font-semibold max-w-[300px] truncate">
+                        <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[200px] truncate">
                           {item.description || <span className="italic text-slate-300 font-medium">No description</span>}
                         </td>
                       )}
                       {type === 'benefit-type' && (
-                        <td className="px-5 py-3.5 text-xs text-slate-600 font-bold">
+                        <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
                           {benefitFillValues?.valuationTypes?.find((v: any) => v.valuationTypeNo?.toString() === item.valuationtypeNo?.toString())?.valuationTypeName || item.valuationtypeNo}
                         </td>
                       )}
                       {type === 'location' && (
                         <>
-                          <td className="px-5 py-3.5 text-xs text-slate-600 font-bold">
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
                             <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider">
                               {item.type || 'Office'}
                             </span>
                           </td>
-                          <td className="px-5 py-3.5 text-xs text-slate-600 font-bold">{item.inchargeNo || 'No Lead'}</td>
-                          <td className="px-5 py-3.5 text-xs text-slate-500 font-semibold max-w-[200px] truncate">
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.inchargeNo || 'No Lead'}</td>
+                          <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[150px] truncate">
                             {item.address1} {item.cityNo ? `, ${item.cityNo}` : ''}
                           </td>
-                          <td className="px-5 py-3.5 text-xs text-slate-600 font-bold">{item.locationRegion || 'Central'}</td>
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.locationRegion || 'Central'}</td>
                         </>
                       )}
-                      <td className="px-5 py-3.5 text-right pr-6 w-[100px]">
+                      <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]">
+                        {item.createdBy || 'System'}
+                      </td>
+                      <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-500 whitespace-nowrap">
+                        {item.createdDate ? format(new Date(item.createdDate), 'MMM dd, yyyy') : 'N/A'}
+                      </td>
+                      <td className="px-3.5 py-2 text-right pr-4 w-[100px]">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEditClick(item)}
-                            className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100/60 transition-colors flex items-center justify-center"
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-100/60 transition-colors flex items-center justify-center"
                           >
-                            <Edit size={14} />
+                            <Edit size={13} />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteClick(item.id)}
-                            className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50/50 transition-colors flex items-center justify-center"
+                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50/50 transition-colors flex items-center justify-center"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </Button>
                         </div>
                       </td>
@@ -1186,19 +1209,19 @@ export function MasterManager({ type }: MasterManagerProps) {
           </DialogHeader>
 
           {/* Form Content Area */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-3.5 scrollbar-thin">
             {/* Disabled System Code */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Code</label>
               <Input
                 disabled
                 value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
-                className="bg-slate-100/80 border-slate-200/50 h-11 text-xs font-bold text-slate-500 rounded-2xl cursor-not-allowed select-none"
+                className="bg-slate-100/80 border-slate-200/50 h-10 text-xs font-bold text-slate-500 rounded-xl cursor-not-allowed select-none"
               />
             </div>
 
             {/* Standard Name Input */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Name / Label</label>
               <Input
                 placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
@@ -1209,8 +1232,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                   if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
                 }}
                 className={cn(
-                  "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl focus:ring-2 focus:ring-[#006699]/15",
-                  errors.name && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
               {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
@@ -1323,7 +1346,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                           addChecklistItem();
                         }
                       }}
-                      className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                      className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
                     />
                     <Button
                       type="button"
@@ -1370,8 +1393,8 @@ export function MasterManager({ type }: MasterManagerProps) {
 
             {/* ----------------- PRIORITY EXTRA FIELDS ----------------- */}
             {type === 'priority' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-3">
+                 <div className="space-y-1">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Priority Duration Value</label>
                   <Input
                     type="number"
@@ -1383,13 +1406,13 @@ export function MasterManager({ type }: MasterManagerProps) {
                       if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
                     }}
                     className={cn(
-                      "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
-                      errors.priorityDuration && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                      errors.priorityDuration && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
                   {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
                 </div>
-                <div className="space-y-1.5">
+                 <div className="space-y-1">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Frequency Unit</label>
                   <Combobox
                     options={(fillValues?.frequency || []).map((f: any) => ({
@@ -1403,12 +1426,13 @@ export function MasterManager({ type }: MasterManagerProps) {
                     }}
                     placeholder="Select frequency..."
                     className={cn(
-                      errors.priorityFrequencyNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                      errors.priorityFrequencyNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
                   {errors.priorityFrequencyNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityFrequencyNo}</p>}
                 </div>
-                <div className="space-y-1.5 col-span-2">
+                 <div className="space-y-1 col-span-2">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Number</label>
                   <Input
                     type="number"
@@ -1420,8 +1444,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                       if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
                     }}
                     className={cn(
-                      "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
-                      errors.sequence && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                      errors.sequence && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
                   {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
@@ -1429,10 +1453,10 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
             )}
 
-            {/* ----------------- FOLDER EXTRA FIELDS ----------------- */}
+             {/* ----------------- FOLDER EXTRA FIELDS ----------------- */}
             {type === 'folder' && (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
+              <div className="space-y-3">
+                <div className="space-y-1">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Folder Description</label>
                   <Input
                     placeholder="Enter short directory purpose..."
@@ -1442,15 +1466,15 @@ export function MasterManager({ type }: MasterManagerProps) {
                       if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
                     }}
                     className={cn(
-                      "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
-                      errors.description && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                      errors.description && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
                   {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+                 <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Parent Folder</label>
                     <Combobox
                       options={[
@@ -1466,10 +1490,11 @@ export function MasterManager({ type }: MasterManagerProps) {
                       value={parentFolderNo}
                       onChange={setParentFolderNo}
                       placeholder="Select Parent Folder..."
+                      className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                   <div className="space-y-1">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Order</label>
                     <Input
                       type="number"
@@ -1481,8 +1506,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                         if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
                       }}
                       className={cn(
-                        "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
-                        errors.sequence && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                        errors.sequence && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                       )}
                     />
                     {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
@@ -1493,14 +1518,14 @@ export function MasterManager({ type }: MasterManagerProps) {
 
             {/* ----------------- USER GROUP EXTRA FIELDS ----------------- */}
             {type === 'user-group' && (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
+              <div className="space-y-3">
+                <div className="space-y-1">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Group Description</label>
                   <Input
                     placeholder="E.g., Core team that reviews task approvals..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl"
+                    className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
                   />
                 </div>
 
@@ -1563,7 +1588,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
             {/* ----------------- BENEFIT TYPE EXTRA FIELDS ----------------- */}
             {type === 'benefit-type' && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Valuation Scale / Type</label>
                 <Combobox
                   options={(benefitFillValues?.valuationTypes || []).map((v: any) => ({
@@ -1573,15 +1598,16 @@ export function MasterManager({ type }: MasterManagerProps) {
                   value={valuationtypeNo}
                   onChange={setValuationtypeNo}
                   placeholder="Select Valuation Type..."
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                 />
               </div>
             )}
 
-            {/* ----------------- LOCATION EXTRA FIELDS ----------------- */}
+             {/* ----------------- LOCATION EXTRA FIELDS ----------------- */}
             {type === 'location' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Parent Location</label>
                     <Combobox
                       options={[
@@ -1595,11 +1621,11 @@ export function MasterManager({ type }: MasterManagerProps) {
                       onChange={setParentLocationNo}
                       placeholder="Select Parent"
                       searchPlaceholder="Search parent..."
-                      className="h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                      className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                   <div className="space-y-1">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Incharge Lead</label>
                     <UserCombobox
                       value={inchargeNo}
@@ -1611,15 +1637,15 @@ export function MasterManager({ type }: MasterManagerProps) {
                       initialLabel={inchargeLabel}
                       placeholder="Search Incharge Lead..."
                       className={cn(
-                        "h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full",
-                        errors.inchargeNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                        "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                        errors.inchargeNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500 focus-visible:ring-red-500/10 focus-visible:border-red-500"
                       )}
                     />
                     {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Location Region</label>
                   <Combobox
                     options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
@@ -1630,11 +1656,11 @@ export function MasterManager({ type }: MasterManagerProps) {
                     onChange={setLocationRegion}
                     placeholder="Select Region"
                     searchPlaceholder="Search region..."
-                    className="h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                 <div className="space-y-1">
                   <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address</label>
                   <div className="space-y-2">
                     <Input
@@ -1646,8 +1672,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                         if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
                       }}
                       className={cn(
-                        "bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl",
-                        errors.address1 && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                        errors.address1 && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                       )}
                     />
                     {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
@@ -1656,20 +1682,20 @@ export function MasterManager({ type }: MasterManagerProps) {
                       value={address2}
                       maxLength={150}
                       onChange={(e) => setAddress2(e.target.value)}
-                      className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                      className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
                     />
                     <Input
                       placeholder="Address Line 3 (Optional)"
                       value={address3}
                       maxLength={150}
                       onChange={(e) => setAddress3(e.target.value)}
-                      className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                      className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+                 <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
                     <Combobox
                       options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
@@ -1684,13 +1710,13 @@ export function MasterManager({ type }: MasterManagerProps) {
                       placeholder="Select Country"
                       searchPlaceholder="Search country..."
                       className={cn(
-                        "h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full",
-                        errors.countryNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                        "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                        errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                       )}
                     />
                     {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
                   </div>
-                  <div className="space-y-1.5">
+                   <div className="space-y-1">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
                     <Combobox
                       options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
@@ -1705,16 +1731,16 @@ export function MasterManager({ type }: MasterManagerProps) {
                       placeholder="Select State"
                       searchPlaceholder="Search state..."
                       className={cn(
-                        "h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full",
-                        errors.stateNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                        "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                        errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                       )}
                     />
                     {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1.5 col-span-2">
+                 <div className="grid grid-cols-3 gap-2.5">
+                  <div className="space-y-1 col-span-2">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
                     <Combobox
                       options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
@@ -1729,13 +1755,13 @@ export function MasterManager({ type }: MasterManagerProps) {
                       placeholder="Select City"
                       searchPlaceholder="Search city..."
                       className={cn(
-                        "h-11 rounded-2xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full",
-                        errors.cityNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                        "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                        errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                       )}
                     />
                     {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</label>
                     <Input
                       placeholder="ZIP"
@@ -1746,8 +1772,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                         if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
                       }}
                       className={cn(
-                        "bg-white border-slate-200 h-11 text-xs font-bold text-slate-700 rounded-2xl",
-                        errors.pinCode && "border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                        errors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                       )}
                     />
                     {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}

@@ -48,7 +48,7 @@ interface TaskState {
   selectedFolder: { TaskFolderNo: number; "Folder Name": string; Code?: string } | null;
   setSelectedFolder: (folder: { TaskFolderNo: number; "Folder Name": string; Code?: string } | null) => void;
   fetchTasks: (filters?: FilterParams) => Promise<void>;
-  fetchFillValues: (companyNo?: string) => Promise<TaskFillValues | null>;
+  fetchFillValues: (companyNo?: string, force?: boolean) => Promise<TaskFillValues | null>;
   addTask: (task: Task) => void;
   updateTask: (taskNo: number, updates: Partial<Task>) => void;
   deleteTask: (taskNo: number) => void;
@@ -70,10 +70,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   isLoadingFillValues: false,
   selectedFolder: null,
   setSelectedFolder: (folder) => set({ selectedFolder: folder }),
-  fetchFillValues: async (companyNo): Promise<TaskFillValues | null> => {
+  fetchFillValues: async (companyNo, force = false): Promise<TaskFillValues | null> => {
     // 1. Return cached values instantly to avoid redundant API hits!
     const state = get();
-    if (state.fillValues) {
+    if (state.fillValues && !force) {
       return state.fillValues;
     }
 
@@ -114,10 +114,23 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     set({ isLoading: true });
     try {
       const activeFolder = get().selectedFolder;
+
+      let finalFolderNo: number | undefined = undefined;
+      if (filters && filters.folderNo !== undefined && filters.folderNo !== null) {
+        const parsedFolder = Number(filters.folderNo);
+        if (!isNaN(parsedFolder) && parsedFolder > 0) {
+          finalFolderNo = parsedFolder;
+        }
+      }
+
+      if (finalFolderNo === undefined && activeFolder) {
+        finalFolderNo = (activeFolder as any).taskFolderNo || activeFolder.TaskFolderNo;
+      }
+      console.log("finalFolderNo", finalFolderNo);
       const searchParamsCamel: any = {
         companyNo: getCompanyNo(),
-        ...(activeFolder ? { folderNo: activeFolder.TaskFolderNo } : {}),
-        ...filters
+        ...filters,
+        ...(finalFolderNo ? { folderNo: finalFolderNo } : {})
       };
 
       const searchParamsPascal: any = {};
@@ -206,6 +219,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           assignedDisplayName: item.assignedTo?.displayName,
           start_date: item.startDate,
           end_date: item.endDate,
+          isAllDay: item.isAllday ?? item.isAllDay ?? false,
+          calendarColor: item.colorCoding || '',
           estimated_effort_value: item.estimatedEfforts ?? null,
           is_business_benefit_applicable: item.isBusinessBenefitApplicable || false,
           collaborators: [],
