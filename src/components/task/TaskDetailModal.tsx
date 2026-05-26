@@ -222,7 +222,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-7xl w-[96vw] h-[92vh] p-0 rounded-[28px] overflow-hidden border border-slate-200 shadow-2xl flex flex-col bg-white">
+      <DialogContent className="w-full h-full sm:h-[92vh] sm:w-[96vw] sm:max-w-7xl p-0 rounded-none sm:rounded-[28px] overflow-hidden border-none sm:border border-slate-200 shadow-2xl flex flex-col bg-white">
         <DialogTitle className="sr-only">
           {task?.title || 'Task Details'}
         </DialogTitle>
@@ -330,8 +330,8 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                     </div>
                   )}
 
-                  {/* Collaborators & Informed Lists */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Collaborators & Informed Lists (Desktop/Tablet View) */}
+                  <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Collaborators */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                       <h5 className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-3">Collaborators</h5>
@@ -524,6 +524,53 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             <span className="font-black text-emerald-800">₹{task.actual_benefit_amount}</span>
                           </div>
                         </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Collaborators & Informed Lists (Mobile View) */}
+                  <div className="grid grid-cols-1 gap-4 md:hidden">
+                    {/* Collaborators */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                      <h5 className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-3">Collaborators</h5>
+                      {task.collaborators && task.collaborators.length > 0 ? (
+                        <div className="space-y-2">
+                          {task.collaborators.map((c, i) => (
+                            <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                              <div className="h-6 w-6 rounded-full bg-[#006699]/10 text-[#006699] flex items-center justify-center text-[9px] font-black uppercase border border-[#006699]/20">
+                                {getInitials(c.displayName)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-black text-slate-900 truncate leading-none">{c.displayName}</p>
+                                <span className="text-[8px] font-extrabold text-slate-600 truncate">{c.email}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-500 font-extrabold italic py-1">No collaborators assigned</p>
+                      )}
+                    </div>
+
+                    {/* Informed To */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                      <h5 className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-3">Informed To</h5>
+                      {task.informed_to && task.informed_to.length > 0 ? (
+                        <div className="space-y-2">
+                          {task.informed_to.map((inf, i) => (
+                            <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                              <div className="h-6 w-6 rounded-full bg-[#00b4d8]/10 text-[#00b4d8] flex items-center justify-center text-[9px] font-black uppercase border border-[#00b4d8]/20">
+                                {getInitials(inf.displayName)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-black text-slate-900 truncate leading-none">{inf.displayName}</p>
+                                <span className="text-[8px] font-extrabold text-slate-600 truncate">{inf.email}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-500 font-extrabold italic py-1">No informed users assigned</p>
                       )}
                     </div>
                   </div>

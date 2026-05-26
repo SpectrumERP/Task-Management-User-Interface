@@ -37,6 +37,16 @@ export function DateRangePicker({
   className,
   disabled,
 }: DateRangePickerProps) {
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+    return () => window.removeEventListener("resize", checkIsMobile);
+  }, []);
+
   // Convert standard { from?: Date; to?: Date } to react-day-picker's DateRange type
   const [range, setRange] = React.useState<DateRange | undefined>(() => {
     if (!value) return undefined;
@@ -159,39 +169,56 @@ export function DateRangePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="flex w-auto p-0 rounded-[24px] border-slate-100 shadow-2xl z-[150]" align="start">
-          {/* Preset Shortcuts Sidebar */}
-          <div className="w-[140px] border-r border-slate-100 p-2 flex flex-col gap-0.5 shrink-0 bg-slate-50/60 rounded-l-[24px] justify-center">
-            {presets.map((preset) => {
-              const isActive = checkPresetActive(preset.value);
-              return (
-                <button
-                  key={preset.label}
-                  type="button"
-                  onClick={() => selectPreset(preset.value)}
-                  className={cn(
-                    "w-full text-left text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center justify-between",
-                    isActive
-                      ? "bg-[#006699] text-white shadow-md shadow-[#006699]/10"
-                      : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
-                  )}
-                >
-                  <span>{preset.label}</span>
-                  {isActive && <Check size={11} className="text-white shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
+        <PopoverContent 
+        className={cn(
+          "flex p-0 rounded-[24px] border-slate-100 shadow-2xl z-[150]",
+          isMobile ? "flex-col w-[92vw] max-w-[340px]" : "flex-row w-auto"
+        )} 
+        align="start"
+      >
+        {/* Preset Shortcuts Sidebar / Mobile Header Strip */}
+        <div 
+          className={cn(
+            "shrink-0 bg-slate-50/60 flex",
+            isMobile 
+              ? "w-full border-b border-slate-100 p-2 flex-row gap-1.5 rounded-t-[24px] overflow-x-auto scrollbar-none"
+              : "w-[140px] border-r border-slate-100 p-2 flex-col gap-0.5 rounded-l-[24px] justify-center"
+          )}
+        >
+          {presets.map((preset) => {
+            const isActive = checkPresetActive(preset.value);
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => selectPreset(preset.value)}
+                className={cn(
+                  "text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center justify-between shrink-0",
+                  isMobile ? "h-8 px-3" : "w-full py-1.5 text-left",
+                  isActive
+                    ? "bg-[#006699] text-white shadow-md shadow-[#006699]/10"
+                    : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+                )}
+              >
+                <span>{preset.label}</span>
+                {!isMobile && isActive && <Check size={11} className="text-white shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
 
-          <Calendar
-            mode="range"
-            defaultMonth={range?.from}
-            selected={range}
-            onSelect={handleSelect}
-            numberOfMonths={2}
-            className="rounded-r-[24px] border-none p-3"
-          />
-        </PopoverContent>
+        <Calendar
+          mode="range"
+          defaultMonth={range?.from}
+          selected={range}
+          onSelect={handleSelect}
+          numberOfMonths={isMobile ? 1 : 2}
+          className={cn(
+            "border-none p-3",
+            isMobile ? "rounded-b-[24px]" : "rounded-r-[24px]"
+          )}
+        />
+      </PopoverContent>
       </Popover>
     </div>
   )

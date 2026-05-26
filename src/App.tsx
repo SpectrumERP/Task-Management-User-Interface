@@ -127,7 +127,7 @@ function Dashboard() {
 
   return (
     <MainLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      <main className="flex-1 p-4 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+      <main className="flex-1 p-2.5 sm:p-4 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
         {/* Unified Top Control Bar */}
         <div className="mb-2">
           <TaskFilter

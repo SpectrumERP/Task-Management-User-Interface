@@ -989,7 +989,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-6 gap-4 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-6 gap-4 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
       {/* Breadcrumb Header */}
       <div className="flex items-center shrink-0 mb-1 px-1">
         <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -1000,9 +1000,9 @@ export function MasterManager({ type }: MasterManagerProps) {
       </div>
 
       {/* Filters & Actions Section */}
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
         {/* Search Input Card */}
-        <Card className="flex-1 p-3.5 border-none shadow-md shadow-slate-200/20 bg-white/90 backdrop-blur-md rounded-2xl flex items-center gap-3 h-12">
+        <Card className="flex-1 p-3.5 border-none shadow-md shadow-slate-200/20 bg-white/90 backdrop-blur-md rounded-2xl flex items-center gap-3 h-10 sm:h-12">
           <Search size={16} className="text-slate-400 ml-1 shrink-0" />
           <Input
             placeholder={`Search ${title.toLowerCase()} records by name, code...`}
@@ -1015,7 +1015,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               variant="ghost"
               size="icon"
               onClick={() => setSearchQuery('')}
-              className="h-7 w-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center shrink-0"
+              className="h-7 w-7 rounded-lg text-slate-400 hover:text-slate-655 flex items-center justify-center shrink-0"
             >
               <X size={14} />
             </Button>
@@ -1025,7 +1025,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* Add Record Button */}
         <Button
           onClick={handleAddClick}
-          className="h-12 px-6 rounded-2xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-lg shadow-[#006699]/15 font-black text-xs uppercase tracking-widest gap-2 shrink-0 transition-transform hover:scale-[1.02] active:scale-95"
+          className="h-10 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-lg shadow-[#006699]/15 font-black text-xs uppercase tracking-widest gap-2 shrink-0 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center"
         >
           <Plus size={15} strokeWidth={3.5} />
           Add Record

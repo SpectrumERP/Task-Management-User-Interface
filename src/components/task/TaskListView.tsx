@@ -78,12 +78,12 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
           onClick={() => onTaskClick ? onTaskClick(task.taskNo) : navigate(`/task/${task.taskNo}`)}
           className="group hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 border-slate-200/60 rounded-[20px] cursor-pointer overflow-hidden bg-white/80 backdrop-blur-sm"
         >
-          <div className="flex items-center p-2.5 px-5 gap-4">
+          <div className="flex items-center p-2 sm:p-2.5 px-3 sm:px-5 gap-2 sm:gap-4">
             {/* 1. Status & ID */}
-            <div className="flex flex-col items-center justify-center w-[90px] shrink-0 border-r border-slate-100 pr-4">
-              <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-0.5">{task.code || `CP-${100 + task.taskNo}`}</span>
+            <div className="flex flex-col items-center justify-center w-[68px] sm:w-[90px] shrink-0 border-r border-slate-100 pr-2 sm:pr-4">
+              <span className="text-[9px] sm:text-[10px] font-black text-slate-600 uppercase tracking-widest mb-0.5">{task.code || `CP-${100 + task.taskNo}`}</span>
               <div className={cn(
-                "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider text-center flex items-center justify-center min-h-[18px] w-full max-w-[76px]",
+                "px-1.5 sm:px-2 py-0.5 rounded-full text-[7px] sm:text-[8px] font-black uppercase tracking-wider text-center flex items-center justify-center min-h-[16px] sm:min-h-[18px] w-full",
                 task.status === 'Done' ? "bg-green-100/80 text-green-800" :
                   task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
                     task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
@@ -95,7 +95,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
 
             {/* 2. Content */}
             <div className="flex-1 min-w-0 space-y-0.5">
-              <h3 className="text-[15px] font-black text-slate-900 group-hover:text-[#006699] transition-colors line-clamp-1 leading-snug">
+              <h3 className="text-sm sm:text-[15px] font-black text-slate-900 group-hover:text-[#006699] transition-colors line-clamp-1 leading-snug">
                 {task.title}
               </h3>
               <div className="flex flex-wrap items-center gap-2">
