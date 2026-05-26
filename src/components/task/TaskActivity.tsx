@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
 import { Button } from '@/components/ui/button';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
@@ -117,16 +118,6 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
   };
 
   const totalLoggedHours = efforts.reduce((sum, e) => sum + (e.hours || 0), 0);
-
-  const getInitials = (name?: string) => {
-    if (!name) return '??';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
 
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -307,9 +298,11 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
             <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 scrollbar-hide">
               {comments.map((c) => (
                 <div key={c.id} className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-slate-300 transition-colors flex items-start gap-3">
-                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-[9px] font-black text-white shrink-0 shadow-sm uppercase">
-                    {getInitials(c.author)}
-                  </div>
+                  <UserAvatar
+                    loginNo={(c as any).loginNo}
+                    displayName={c.author}
+                    size="md"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[11px] font-black text-slate-800 truncate leading-none">{c.author}</span>

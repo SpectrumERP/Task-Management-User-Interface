@@ -124,7 +124,8 @@ export default function TaskDetail() {
             id: (c.operTaskCommentDetailNo || Math.floor(Math.random() * 10000)).toString(),
             author: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || 'Unknown',
             text: c.description || c.comment || '',
-            timestamp: c.createdDate || new Date().toISOString()
+            timestamp: c.createdDate || new Date().toISOString(),
+            loginNo: c.createdBy?.id || c.loginNo || null
           }));
 
           // Map actual efforts
@@ -219,7 +220,7 @@ export default function TaskDetail() {
     >
       <div className="flex-1 w-full flex flex-col bg-[#f1f5f9] overflow-hidden">
         {/* Fixed Header Section */}
-        <div className="w-full px-4 sm:px-8 py-3.5 sm:py-5 bg-white border-b border-slate-200 shadow-sm z-20">
+        <div className="w-full px-2 sm:px-6 py-1.5 sm:py-2 bg-white border-b border-slate-200 shadow-sm z-20">
           <div className="flex flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-4">
               <Button

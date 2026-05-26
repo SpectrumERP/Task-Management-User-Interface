@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,15 +25,17 @@ interface UserComboboxProps {
   className?: string
   disabled?: boolean
   initialLabel?: string
+  isClearable?: boolean
 }
 
 export function UserCombobox({
   value,
   onChange,
   placeholder = "Search user...",
-  className = "border-slate-300 shadow-sm",
+  className,
   disabled = false,
-  initialLabel
+  initialLabel,
+  isClearable = true,
 }: UserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -44,14 +46,54 @@ export function UserCombobox({
   const authUser = useAuthStore(state => state.user)
   const loginNo = authUser?.loginNo || 0
 
+  const isInitialized = React.useRef(false);
+  const lastInitialLabelRef = React.useRef(initialLabel);
+  const optionsRef = React.useRef(options);
+
+  // Keep options ref updated without re-running effects
+  React.useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
+
+  // Handle dynamic initialLabel changes from the parent
+  React.useEffect(() => {
+    if (initialLabel !== lastInitialLabelRef.current) {
+      setSelectedLabel(initialLabel || "");
+      lastInitialLabelRef.current = initialLabel;
+      isInitialized.current = false;
+    }
+  }, [initialLabel]);
+
   // Handle initial label and resolve user printing name if value changes
   React.useEffect(() => {
-    if (initialLabel) {
+    if (initialLabel && !isInitialized.current) {
       setSelectedLabel(initialLabel);
+      isInitialized.current = true;
       return;
     }
 
     if (value) {
+      // 1. Check if it matches the authenticated user (instant check)
+      const isAuthUser = authUser && (
+        authUser.loginNo?.toString() === value || 
+        authUser.LoginNo?.toString() === value || 
+        authUser.id?.toString() === value
+      );
+      if (isAuthUser) {
+        setSelectedLabel(authUser.PrintingName || authUser.printingName || authUser.name || authUser.loginId || '');
+        isInitialized.current = true;
+        return;
+      }
+
+      // 2. Try to find in the already loaded options list first (instant)
+      const matchedInOptions = optionsRef.current.find(u => u.loginNo.toString() === value);
+      if (matchedInOptions) {
+        setSelectedLabel(matchedInOptions.printingName);
+        isInitialized.current = true;
+        return;
+      }
+
+      // 3. Fetch from the API if not found locally
       const resolveUser = async () => {
         setIsLoading(true);
         try {
@@ -67,7 +109,7 @@ export function UserCombobox({
             setSelectedLabel(matched.printingName);
           } else {
             if (authUser && (authUser.loginNo?.toString() === value || authUser.LoginNo?.toString() === value)) {
-              setSelectedLabel(authUser.printingName || authUser.printingName || authUser.loginId || '');
+              setSelectedLabel(authUser.PrintingName || authUser.printingName || authUser.name || authUser.loginId || '');
             }
           }
         } catch (err) {
@@ -80,20 +122,40 @@ export function UserCombobox({
     } else {
       setSelectedLabel("");
     }
+    isInitialized.current = true;
   }, [value, initialLabel, loginNo, authUser]);
 
-  // Debounced search
+  // Debounced search with immediate fetch on open
   React.useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (open) {
-        setIsLoading(true)
-        const results = await userService.searchUsers(search, loginNo)
-        setOptions(results)
-        setIsLoading(false)
-      }
-    }, 300)
+    if (!open) return;
 
-    return () => clearTimeout(timer)
+    let active = true;
+
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      try {
+        const results = await userService.searchUsers(search, loginNo);
+        if (active) {
+          setOptions(results);
+        }
+      } catch (err) {
+        console.error("Failed to search users:", err);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (search === "") {
+      fetchUsers();
+    } else {
+      const timer = setTimeout(fetchUsers, 300);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
+    }
   }, [search, open, loginNo])
 
   return (
@@ -105,15 +167,29 @@ export function UserCombobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between transition-all",
+            "w-full justify-between transition-all border shadow-sm relative pr-8",
+            !className?.includes("border-") && "border-slate-300",
             !className?.includes("text-") && "text-[11px] font-bold text-slate-900",
             !className?.includes("rounded-") && "rounded-xl",
             !className?.includes("h-") && "h-9",
             className
           )}
         >
-          <span className={cn("truncate", !selectedLabel && "text-slate-400 font-medium")}>{selectedLabel || placeholder}</span>
-          <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-40 text-slate-400" />
+          <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium")}>{selectedLabel || placeholder}</span>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
+            {value && !disabled && isClearable && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange({ loginNo: "", printingName: "" } as any);
+                }}
+                className="p-0.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="h-3 w-3" />
+              </span>
+            )}
+            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40 text-slate-400" />
+          </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 z-[9999]" align="start">

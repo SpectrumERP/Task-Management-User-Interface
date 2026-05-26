@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -823,10 +824,12 @@ export function TaskCalendarView({
 
                         {/* Assignee Avatar */}
                         {task.assignedDisplayName && (
-                          <div className="flex items-center gap-1 bg-[#e1ecf7]/40 px-2.5 py-1 rounded-xl border border-[#006699]/10">
-                            <span className="w-4 h-4 rounded-full bg-[#006699] text-white flex items-center justify-center text-[9px] font-black">
-                              {task.assignedDisplayName[0].toUpperCase()}
-                            </span>
+                          <div className="flex items-center gap-1 bg-[#e1ecf7]/40 px-1.5 py-0.5 rounded-xl border border-[#006699]/10">
+                            <UserAvatar
+                              loginNo={task.owner_user_No}
+                              displayName={task.assignedDisplayName}
+                              className="h-4.5 w-4.5 text-[8px]"
+                            />
                             <span className="text-[9px] font-bold text-slate-700">{task.assignedDisplayName}</span>
                           </div>
                         )}

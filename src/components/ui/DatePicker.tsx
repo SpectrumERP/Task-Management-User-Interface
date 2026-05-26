@@ -25,7 +25,8 @@ export function DatePicker({ date, onChange, placeholder = "Pick a date", classN
           variant={"outline"}
           disabled={disabled}
           className={cn(
-            "w-full justify-start text-left font-bold rounded-2xl h-11 border-slate-200 bg-white shadow-sm text-xs transition-all text-slate-700 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15",
+            "w-full justify-start text-left font-bold rounded-2xl h-11 bg-white shadow-sm text-xs transition-all text-slate-700 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15 border",
+            !className?.includes("border-") && "border-slate-200",
             !date && "text-slate-400 font-medium",
             className
           )}

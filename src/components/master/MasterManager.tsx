@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { apiService } from '@/services/apiService';
 import { Combobox } from '@/components/ui/Combobox';
 import { format } from 'date-fns';
@@ -24,11 +25,13 @@ import {
   Users,
   Sparkles,
   MapPin,
-  Check,
   X,
   Loader2,
+  Save,
   UserPlus,
-  CheckCircle
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -45,6 +48,12 @@ interface MasterManagerProps {
 }
 
 export function MasterManager({ type }: MasterManagerProps) {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
+  const location = useLocation();
+  const isNew = location.pathname.endsWith('/new');
+  const isEdit = !!id;
+  const isFormPage = isNew || isEdit;
 
   const { fillValues } = useTaskStore();
   const { company: authCompanies } = useAuthStore();
@@ -305,8 +314,16 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   // Local UI State
   const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset pagination to first page when search query or master type changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, type]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -351,6 +368,155 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [pinCode, setPinCode] = useState('');
   const [locationRegion, setLocationRegion] = useState('');
 
+  useEffect(() => {
+    if (isNew) {
+      setErrors({});
+      setEditingId(null);
+      setName('');
+      setIsApprovalApplicable(false);
+      setIsInReviewRequired(false);
+      setIsBusinessBenefitApplicable(false);
+      setChecklist([]);
+      setNewChecklistItem('');
+      setColor('');
+      setPriorityDuration(null);
+      setPriorityFrequencyNo('');
+      setDescription('');
+      setParentFolderNo('');
+      setSequence(null);
+      setSelectedUsers([]);
+      setValuationtypeNo(type === 'benefit-type' ? '1' : '');
+      setParentLocationNo('');
+      setInchargeNo('');
+      setInchargeLabel('');
+      setAddress1('');
+      setAddress2('');
+      setAddress3('');
+      setCountryNo('');
+      setStateNo('');
+      setCityNo('');
+      setPinCode('');
+      setLocationRegion('');
+      setServerError(null);
+    } else if (isEdit && id) {
+      setErrors({});
+      setEditingId(id);
+      setServerError(null);
+
+      const companyNoVal = companyNo;
+      if (type === 'category') {
+        apiService.get<any>(`/api/master/task-categories/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.operTaskCategoryName || dl.name || '');
+              setIsApprovalApplicable(dl.isMultiLevelApproval || false);
+              setIsInReviewRequired(dl.isInReviewApplicable || false);
+              setIsBusinessBenefitApplicable(dl.isBusinessBenefitApplicable || false);
+              setChecklist(Array.isArray(dl.checkLists) ? dl.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : []);
+              setColor(dl.colorCoding || '');
+              setNewChecklistItem('');
+            }
+          }
+        }).catch(err => console.error("Failed to load category details:", err));
+      } else if (type === 'priority') {
+        apiService.get<any>(`/api/master/task-priorities/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.taskPriorityName || dl.name || '');
+              setPriorityDuration(dl.priorityDuration !== undefined && dl.priorityDuration !== null ? dl.priorityDuration : null);
+              setPriorityFrequencyNo(dl.priorityDurationFrequencyNo ? dl.priorityDurationFrequencyNo.toString() : '');
+              setSequence(dl.sequenceNo !== undefined && dl.sequenceNo !== null ? dl.sequenceNo : null);
+            }
+          }
+        }).catch(err => console.error("Failed to load priority details:", err));
+      } else if (type === 'folder') {
+        apiService.get<any>(`/api/master/task-folders/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.taskFolderName || dl.name || '');
+              setDescription(dl.description || '');
+              setParentFolderNo((dl.parentFolderNo || '').toString());
+              setSequence(dl.sequenceNo !== undefined && dl.sequenceNo !== null ? dl.sequenceNo : null);
+            }
+          }
+        }).catch(err => console.error("Failed to load folder details:", err));
+      } else if (type === 'user-group') {
+        apiService.get<any>(`/api/security/user-groups/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.userGroupName || dl.name || '');
+              setDescription(dl.description || '');
+              const members = Array.isArray(dl.users) ? dl.users.map((u: any) => ({
+                loginNo: u.loginNo,
+                userName: u.loginId,
+                displayName: u.printingName || u.loginId,
+                email: u.email || ''
+              })) : [];
+              setSelectedUsers(members);
+            }
+          }
+        }).catch(err => console.error("Failed to load user group details:", err));
+      } else if (type === 'benefit-type') {
+        apiService.get<any>(`/api/master/business-benefit-types/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.businessBenefitTypeName || dl.name || '');
+              setValuationtypeNo(dl.valuationType ? (dl.valuationType.valuationTypeNo ?? dl.valuationType ?? '').toString() : '');
+            }
+          }
+        }).catch(err => console.error("Failed to load benefit type details:", err));
+      } else if (type === 'type') {
+        apiService.get<any>(`/api/master/task-types/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.operTaskTypeName || dl.name || '');
+            }
+          }
+        }).catch(err => console.error("Failed to load type details:", err));
+      } else if (type === 'location') {
+        apiService.get<any>(`/api/master/task-locations/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              const parentVal = dl.parentLocationNo || dl.parentLocation || 'none';
+              setParentLocationNo(parentVal.toString());
+              const inchargeVal = dl.operLocationIncharge?.loginNo || dl.locationIncharge || dl.inchargeNo || 'none';
+              setInchargeNo(inchargeVal.toString());
+              const inchargeName = dl.operLocationIncharge?.printingName || dl.operLocationIncharge?.loginId || dl.locationIncharge || '';
+              setInchargeLabel(inchargeName.toString());
+              const addr = dl.address || dl;
+              setAddress1(addr.address1 || '');
+              setAddress2(addr.address2 || '');
+              setAddress3(addr.address3 || '');
+              const countryVal = addr.country?.countryNo || addr.countryNo || '';
+              setCountryNo(countryVal.toString());
+              const stateVal = addr.state?.stateNo || addr.stateNo || '';
+              setStateNo(stateVal.toString());
+              const cityVal = addr.city?.cityNo || addr.cityNo || '';
+              setCityNo(cityVal.toString());
+              setPinCode(addr.pinCode || addr.pincode || '');
+              const regionVal = addr.region?.regionNo || addr.regionNo || '';
+              setLocationRegion(regionVal.toString());
+            }
+          }
+        }).catch(err => console.error("Failed to load location details:", err));
+      }
+    }
+  }, [isNew, isEdit, id, type, companyNo]);
+
   // -------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------
@@ -391,183 +557,25 @@ export function MasterManager({ type }: MasterManagerProps) {
     return matchesName || matchesCode || matchesDesc;
   });
 
+  // Pagination Calculations
+  const totalItems = filteredList.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  
+  // Safe page boundary checks
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  
+  const paginatedList = filteredList.slice(startIndex, endIndex);
+
   // Open Modal to Add
   const handleAddClick = () => {
-    setErrors({});
-    setEditingId(null);
-    setName('');
-    setIsApprovalApplicable(false);
-    setIsInReviewRequired(false);
-    setIsBusinessBenefitApplicable(false);
-    setChecklist([]);
-    setNewChecklistItem('');
-    setColor('');
-    setPriorityDuration(null);
-    setPriorityFrequencyNo('');
-    setDescription('');
-    setParentFolderNo('');
-    setSequence(null);
-    setSelectedUsers([]);
-    setValuationtypeNo(type === 'benefit-type' ? '1' : '');
-    setParentLocationNo('');
-    setInchargeNo('');
-    setInchargeLabel('');
-    setAddress1('');
-    setAddress2('');
-    setAddress3('');
-    setCountryNo('');
-    setStateNo('');
-    setCityNo('');
-    setPinCode('');
-    setLocationRegion('');
-    setServerError(null);
-    setIsModalOpen(true);
+    navigate(`/master/${type}/new`);
   };
 
   // Open Modal to Edit
   const handleEditClick = (item: any) => {
-    setErrors({});
-    setEditingId(item.id);
-    setName(item.name || '');
-    setServerError(null);
-
-    if (type === 'category') {
-      apiService.get<any>(`/api/master/task-categories/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
-        if (response) {
-          const body = response.data || response;
-          const dl = body.data || body;
-          if (dl) {
-            setName(dl.operTaskCategoryName || dl.name || '');
-            setIsApprovalApplicable(dl.isMultiLevelApproval || false);
-            setIsInReviewRequired(dl.isInReviewApplicable || false);
-            setIsBusinessBenefitApplicable(dl.isBusinessBenefitApplicable || false);
-            setChecklist(Array.isArray(dl.checkLists) ? dl.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : []);
-            setColor(dl.colorCoding || '');
-            setNewChecklistItem('');
-          }
-        }
-      }).catch(err => console.error("Failed to load category details:", err));
-    } else if (type === 'priority') {
-      apiService.get<any>(`/api/master/task-priorities/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
-        if (response) {
-          const body = response.data || response;
-          const dl = body.data || body;
-          if (dl) {
-            setName(dl.taskPriorityName || dl.name || '');
-            setPriorityDuration(dl.priorityDuration !== undefined && dl.priorityDuration !== null ? dl.priorityDuration : null);
-            setPriorityFrequencyNo(dl.priorityDurationFrequencyNo ? dl.priorityDurationFrequencyNo.toString() : '');
-            setSequence(dl.sequenceNo !== undefined && dl.sequenceNo !== null ? dl.sequenceNo : null);
-          }
-        }
-      }).catch(err => console.error("Failed to load priority details:", err));
-    } else if (type === 'folder') {
-      apiService.get<any>(`/api/master/task-folders/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
-        if (response) {
-          const body = response.data || response;
-          const dl = body.data || body;
-          if (dl) {
-            setName(dl.taskFolderName || dl.name || '');
-            setDescription(dl.description || '');
-            setParentFolderNo((dl.parentFolderNo || '').toString());
-            setSequence(dl.sequenceNo !== undefined && dl.sequenceNo !== null ? dl.sequenceNo : null);
-          }
-        }
-      }).catch(err => console.error("Failed to load folder details:", err));
-    } else if (type === 'user-group') {
-      apiService.get<any>(`/api/security/user-groups/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
-        if (response) {
-          const body = response.data || response;
-          const dl = body.data || body;
-          if (dl) {
-            setName(dl.userGroupName || dl.name || '');
-            setDescription(dl.description || '');
-            const members = Array.isArray(dl.users) ? dl.users.map((u: any) => ({
-              loginNo: u.loginNo,
-              userName: u.loginId,
-              displayName: u.printingName || u.loginId,
-              email: u.email || ''
-            })) : [];
-            setSelectedUsers(members);
-          }
-        }
-      }).catch(err => console.error("Failed to load user group details:", err));
-    } else if (type === 'benefit-type') {
-      apiService.get<any>(`/api/master/business-benefit-types/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
-        if (response) {
-          const body = response.data || response;
-          const dl = body.data || body;
-          if (dl) {
-            setName(dl.businessBenefitTypeName || dl.name || '');
-            setValuationtypeNo(dl.valuationType ? (dl.valuationType.valuationTypeNo ?? dl.valuationType ?? '').toString() : '');
-          }
-        }
-      }).catch(err => console.error("Failed to load benefit type details:", err));
-    } else if (type === 'type') {
-      apiService.get<any>(`/api/master/task-types/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
-        if (response) {
-          const body = response.data || response;
-          const dl = body.data || body;
-          if (dl) {
-            setName(dl.operTaskTypeName || dl.name || '');
-          }
-        }
-      }).catch(err => console.error("Failed to load type details:", err));
-    } else if (type === 'location') {
-      const loc = item as LocationMaster;
-      setParentLocationNo(loc.parentLocationNo || 'none');
-      setInchargeNo(loc.inchargeNo || 'none');
-      setAddress1(loc.address1);
-      setAddress2(loc.address2);
-      setAddress3(loc.address3);
-      setCountryNo(loc.countryNo);
-      setStateNo(loc.stateNo);
-      setCityNo(loc.cityNo);
-      setPinCode(loc.pinCode);
-      setLocationRegion(loc.locationRegion);
-
-      // Fetch detail load from backend GET /api/master/task-locations/load-data/{id}
-      apiService.get<any>(`/api/master/task-locations/load-data/${item.id}?companyNo=${companyNo}`).then((response) => {
-        if (response) {
-          const body = response.data || response;
-          const dl = body.data || body;
-
-          if (dl) {
-            // Parent Location No
-            const parentVal = dl.parentLocationNo || dl.parentLocation || 'none';
-            setParentLocationNo(parentVal.toString());
-
-            // Incharge No
-            const inchargeVal = dl.operLocationIncharge?.loginNo || dl.locationIncharge || dl.inchargeNo || 'none';
-            setInchargeNo(inchargeVal.toString());
-            const inchargeName = dl.operLocationIncharge?.printingName || dl.operLocationIncharge?.loginId || dl.locationIncharge || '';
-            setInchargeLabel(inchargeName.toString());
-
-            // Address details
-            const addr = dl.address || dl;
-            setAddress1(addr.address1 || '');
-            setAddress2(addr.address2 || '');
-            setAddress3(addr.address3 || '');
-
-            // Country, State, City, Pin, Region
-            const countryVal = addr.country?.countryNo || addr.countryNo || '';
-            setCountryNo(countryVal.toString());
-
-            const stateVal = addr.state?.stateNo || addr.stateNo || '';
-            setStateNo(stateVal.toString());
-
-            const cityVal = addr.city?.cityNo || addr.cityNo || '';
-            setCityNo(cityVal.toString());
-
-            setPinCode(addr.pinCode || addr.pincode || '');
-
-            const regionVal = addr.region?.regionNo || addr.regionNo || '';
-            setLocationRegion(regionVal.toString());
-          }
-        }
-      }).catch(err => console.error("Failed to load location details:", err));
-    }
-
-    setIsModalOpen(true);
+    navigate(`/master/${type}/edit/${item.id}`);
   };
 
   // Delete Record
@@ -857,7 +865,6 @@ export function MasterManager({ type }: MasterManagerProps) {
           await fetchLocations();
         }
       }
-      setIsModalOpen(false);
       setShowSuccessAlert(true);
     } catch (err: any) {
       console.error("Save failed:", err);
@@ -988,6 +995,674 @@ export function MasterManager({ type }: MasterManagerProps) {
   };
 
 
+  const renderFormContent = () => {
+    return (
+      <>
+        {/* Disabled System Code */}
+        <div className="space-y-1">
+          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Code</label>
+          <Input
+            disabled
+            value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
+            className="bg-slate-100/80 border-slate-200/50 h-10 text-xs font-bold text-slate-500 rounded-xl cursor-not-allowed select-none"
+          />
+        </div>
+
+        {/* Standard Name Input */}
+        <div className="space-y-1">
+          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Name / Label</label>
+          <Input
+            placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
+            value={name}
+            maxLength={50}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+            }}
+            className={cn(
+              "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+              errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+            )}
+          />
+          {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
+        </div>
+
+        {/* Color Coding Option (Category only) */}
+        {type === 'category' && (
+          <div className="space-y-2.5">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 block">Color Code</label>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Premium Color Presets */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setColor('')}
+                  className={cn(
+                    "h-7 w-7 rounded-full border-2 transition-all hover:scale-110 active:scale-95 flex items-center justify-center bg-slate-100 text-slate-400",
+                    color === '' ? "border-slate-800 scale-105" : "border-slate-200 hover:border-slate-300"
+                  )}
+                  title="No Color"
+                >
+                  <X size={12} strokeWidth={3} />
+                </button>
+                {[
+                  { hex: '#3b82f6', name: 'Blue' },
+                  { hex: '#ef4444', name: 'Red' },
+                  { hex: '#10b981', name: 'Green' },
+                  { hex: '#f59e0b', name: 'Orange' },
+                  { hex: '#8b5cf6', name: 'Purple' },
+                  { hex: '#ec4899', name: 'Pink' },
+                  { hex: '#6366f1', name: 'Indigo' },
+                  { hex: '#06b6d4', name: 'Cyan' },
+                ].map((preset) => (
+                  <button
+                    key={preset.hex}
+                    type="button"
+                    onClick={() => setColor(preset.hex)}
+                    className={cn(
+                      "h-7 w-7 rounded-full border-2 transition-all hover:scale-110 active:scale-95",
+                      color === preset.hex ? "border-slate-800 scale-105" : "border-transparent"
+                    )}
+                    style={{ backgroundColor: preset.hex }}
+                    title={preset.name}
+                  />
+                ))}
+              </div>
+              {/* Custom Color Input */}
+              <div className="flex items-center gap-2 ml-auto border border-slate-200 rounded-xl px-2.5 py-1 bg-slate-50/50">
+                <input
+                  type="color"
+                  value={color || '#000000'}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-6 h-6 border-0 bg-transparent cursor-pointer rounded"
+                />
+                <span className="text-[10px] font-mono font-black text-slate-500 uppercase">{color || 'NONE'}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ----------------- CATEGORY EXTRA FIELDS ----------------- */}
+        {type === 'category' && (
+          <div className="space-y-5 pt-2">
+            <div className="flex flex-col sm:flex-row gap-6 pt-1">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="business-benefit"
+                  checked={isBusinessBenefitApplicable}
+                  onCheckedChange={(checked) => setIsBusinessBenefitApplicable(!!checked)}
+                />
+                <label htmlFor="business-benefit" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
+                  Business Benefit
+                </label>
+              </div>
+            </div>
+
+            {/* Checklist Descriptions Array Editor */}
+            <div className="space-y-2.5">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 block">Checklist Items (Descriptions Array)</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add description..."
+                  value={newChecklistItem}
+                  onChange={(e) => setNewChecklistItem(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addChecklistItem();
+                    }
+                  }}
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                />
+                <Button
+                  type="button"
+                  onClick={addChecklistItem}
+                  className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                >
+                  Add
+                </Button>
+              </div>
+
+              {checklist.length > 0 && (
+                <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-150/60 max-h-40 overflow-y-auto space-y-1.5 scrollbar-thin">
+                  {checklist.map((item, index) => {
+                    const desc = typeof item === 'string' ? item : item.description;
+                    const isChecked = typeof item === 'string' ? false : item.isChecked;
+                    return (
+                      <div key={index} className="flex items-center justify-between gap-3 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Checkbox
+                            id={`cl-item-${index}`}
+                            checked={isChecked}
+                            onCheckedChange={() => toggleChecklistItem(index)}
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                          <label htmlFor={`cl-item-${index}`} className="text-[11px] font-bold text-slate-700 truncate cursor-pointer select-none">
+                            {desc}
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeChecklistItem(index)}
+                          className="text-red-500 hover:text-red-700 p-0.5 rounded-full hover:bg-slate-100/80 shrink-0"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ----------------- PRIORITY EXTRA FIELDS ----------------- */}
+        {type === 'priority' && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Priority Duration Value</label>
+              <Input
+                type="number"
+                min={1}
+                value={priorityDuration ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? null : Number(e.target.value);
+                  setPriorityDuration(val);
+                  if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
+                }}
+                className={cn(
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.priorityDuration && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Frequency Unit</label>
+              <Combobox
+                options={(fillValues?.frequency || []).map((f: any) => ({
+                  label: f.FrequencyName || f.Frequency || f.name || '',
+                  value: (f.FrequencyNo || f.id || '').toString()
+                }))}
+                value={priorityFrequencyNo}
+                onChange={(val) => {
+                  setPriorityFrequencyNo(val);
+                  if (errors.priorityFrequencyNo) setErrors(prev => ({ ...prev, priorityFrequencyNo: '' }));
+                }}
+                placeholder="Select frequency..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.priorityFrequencyNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.priorityFrequencyNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityFrequencyNo}</p>}
+            </div>
+            <div className="space-y-1 col-span-2">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Number</label>
+              <Input
+                type="number"
+                min={1}
+                value={sequence ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? null : Number(e.target.value);
+                  setSequence(val);
+                  if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
+                }}
+                className={cn(
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.sequence && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ----------------- FOLDER EXTRA FIELDS ----------------- */}
+        {type === 'folder' && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Folder Description</label>
+              <Input
+                placeholder="Enter short directory purpose..."
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                }}
+                className={cn(
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.description && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Parent Folder</label>
+                <Combobox
+                  options={[
+                    { label: 'No Parent (Root)', value: 'none' },
+                    ...(Array.isArray(folderFillValues?.folders) ? folderFillValues.folders :
+                      Array.isArray(folderFillValues?.parentFolder) ? folderFillValues.parentFolder :
+                        Array.isArray(folderFillValues?.data) ? folderFillValues.data :
+                          Array.isArray(folderFillValues) ? folderFillValues : []).map((f: any) => ({
+                            label: f.folderName || f.taskFolderName || f.FolderName || f.name || '',
+                            value: (f.taskFolderNo || f.TaskFolderNo || f.id || '').toString()
+                          }))
+                  ]}
+                  value={parentFolderNo}
+                  onChange={setParentFolderNo}
+                  placeholder="Select Parent Folder..."
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Order</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={sequence ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? null : Number(e.target.value);
+                    setSequence(val);
+                    if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
+                  }}
+                  className={cn(
+                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                    errors.sequence && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  )}
+                />
+                {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ----------------- USER GROUP EXTRA FIELDS ----------------- */}
+        {type === 'user-group' && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Group Description</label>
+              <Input
+                placeholder="E.g., Core team that reviews task approvals..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
+            </div>
+
+            <div className="space-y-3" id="form-group-members">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Group Members</h4>
+                  {errors.selectedUsers && <p className="text-[10px] text-red-500 font-semibold">{errors.selectedUsers}</p>}
+                </div>
+                <Button type="button" onClick={addGridUser} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
+                  <UserPlus size={12} /> Add
+                </Button>
+              </div>
+              <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all">
+                <table className="w-full text-left text-[11px] border-collapse">
+                  <thead className="bg-slate-100/80 border-b border-slate-200">
+                    <tr>
+                      <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
+                      <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
+                      <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                      <th className="px-2 py-1.5 w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {selectedUsers.map((field, index) => (
+                      <tr key={index} className="group hover:bg-white transition-colors">
+                        <td className="px-2 py-1">
+                          <UserCombobox
+                            value={field.userName}
+                            onChange={(user) => updateGridUser(index, user)}
+                            placeholder="User Name"
+                            className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                            initialLabel={field.userName}
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Input disabled value={field.displayName} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                        </td>
+                        <td className="px-2 py-1">
+                          <Input disabled value={field.email} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                        </td>
+                        <td className="px-1 py-1 text-center">
+                          <button type="button" onClick={() => removeGridUser(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                            <Trash2 size={12} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {selectedUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No members.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ----------------- BENEFIT TYPE EXTRA FIELDS ----------------- */}
+        {type === 'benefit-type' && (
+          <div className="space-y-1">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Valuation Scale / Type</label>
+            <Combobox
+              options={(benefitFillValues?.valuationTypes || []).map((v: any) => ({
+                label: v.valuationTypeName || v.name || '',
+                value: (v.valuationTypeNo || v.id || '').toString()
+              }))}
+              value={valuationtypeNo}
+              onChange={setValuationtypeNo}
+              placeholder="Select Valuation Type..."
+              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+            />
+          </div>
+        )}
+
+        {/* ----------------- LOCATION EXTRA FIELDS ----------------- */}
+        {type === 'location' && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Parent Location</label>
+                <Combobox
+                  options={[
+                    { label: "No Parent (Root)", value: "none" },
+                    ...(locationFillValues?.data?.locations || locationFillValues?.locations || apiLocations || []).filter((l: any) => (l.operLocationNo || l.id || '').toString() !== editingId).map((l: any) => ({
+                      label: l.operLocationName || l.locationName || l.name || '',
+                      value: (l.operLocationNo || l.id || '').toString()
+                    }))
+                  ]}
+                  value={parentLocationNo}
+                  onChange={setParentLocationNo}
+                  placeholder="Select Parent"
+                  searchPlaceholder="Search parent..."
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Incharge Lead</label>
+                <UserCombobox
+                  value={inchargeNo}
+                  onChange={(user) => {
+                    setInchargeNo(user.loginNo.toString());
+                    setInchargeLabel(user.printingName);
+                    if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
+                  }}
+                  initialLabel={inchargeLabel}
+                  placeholder="Search Incharge Lead..."
+                  className={cn(
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                    errors.inchargeNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500 focus-visible:ring-red-500/10 focus-visible:border-red-500"
+                  )}
+                />
+                {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Location Region</label>
+              <Combobox
+                options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
+                  label: r.regionName || '',
+                  value: (r.regionNo || '').toString()
+                }))}
+                value={locationRegion}
+                onChange={setLocationRegion}
+                placeholder="Select Region"
+                searchPlaceholder="Search region..."
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address</label>
+              <div className="space-y-2">
+                <Input
+                  placeholder="Address Line 1"
+                  value={address1}
+                  maxLength={150}
+                  onChange={(e) => {
+                    setAddress1(e.target.value);
+                    if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
+                  }}
+                  className={cn(
+                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                    errors.address1 && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  )}
+                />
+                {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
+                <Input
+                  placeholder="Address Line 2 (Optional)"
+                  value={address2}
+                  maxLength={150}
+                  onChange={(e) => setAddress2(e.target.value)}
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                />
+                <Input
+                  placeholder="Address Line 3 (Optional)"
+                  value={address3}
+                  maxLength={150}
+                  onChange={(e) => setAddress3(e.target.value)}
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
+                <Combobox
+                  options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                    label: c.countryName || '',
+                    value: (c.countryNo || '').toString()
+                  }))}
+                  value={countryNo}
+                  onChange={(val) => {
+                    setCountryNo(val);
+                    if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
+                  }}
+                  placeholder="Select Country"
+                  searchPlaceholder="Search country..."
+                  className={cn(
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                    errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  )}
+                />
+                {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
+                <Combobox
+                  options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                    label: s.stateName || '',
+                    value: (s.stateNo || '').toString()
+                  }))}
+                  value={stateNo}
+                  onChange={(val) => {
+                    setStateNo(val);
+                    if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
+                  }}
+                  placeholder="Select State"
+                  searchPlaceholder="Search state..."
+                  className={cn(
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                    errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  )}
+                />
+                {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="space-y-1 col-span-2">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
+                <Combobox
+                  options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+                    label: c.cityName || '',
+                    value: (c.cityNo || '').toString()
+                  }))}
+                  value={cityNo}
+                  onChange={(val) => {
+                    setCityNo(val);
+                    if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
+                  }}
+                  placeholder="Select City"
+                  searchPlaceholder="Search city..."
+                  className={cn(
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                    errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  )}
+                />
+                {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</label>
+                <Input
+                  placeholder="ZIP"
+                  value={pinCode}
+                  maxLength={10}
+                  onChange={(e) => {
+                    setPinCode(e.target.value);
+                    if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
+                  }}
+                  className={cn(
+                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                    errors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  )}
+                />
+                {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  if (isFormPage) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-6 gap-4 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+        {/* Breadcrumb Header */}
+        <div className="flex items-start shrink-0 mb-1 px-1 justify-between">
+          <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            <span onClick={() => navigate(`/master/${type}`)} className="hover:text-slate-700 cursor-pointer transition-colors">Masters</span>
+            <span className="text-slate-300 font-normal">/</span>
+            <span onClick={() => navigate(`/master/${type}`)} className="hover:text-slate-700 cursor-pointer transition-colors">{title}</span>
+            <span className="text-slate-300 font-normal">/</span>
+            <span className="text-[#006699] font-black">{editingId ? 'Edit Record' : 'Add New Record'}</span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate(`/master/${type}`)}
+              className="rounded-xl h-9 px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs flex items-center"
+            >
+              <X size={16} />
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSaving}
+              className="rounded-xl h-9 px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold text-white shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  {editingId ? 'Update' : 'Save'}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Master Form Card */}
+        <Card className="flex-1 rounded-[28px] border-none shadow-xl shadow-slate-200/40 bg-white flex flex-col p-0 outline-none overflow-hidden max-w-4xl w-full mx-auto">
+
+          {/* Form Content Area */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
+            {renderFormContent()}
+          </form>
+
+          {serverError && (
+            <div className="mx-6 mb-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-2 shadow-sm animate-pulse shrink-0">
+              <span className="font-extrabold select-none">⚠️ Error:</span>
+              <span className="flex-1 whitespace-pre-wrap leading-relaxed">{serverError}</span>
+            </div>
+          )}
+
+        </Card>
+
+        {/* Save/Update Confirmation Dialog */}
+        <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+          <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl">
+            <DialogHeader className="p-6 pb-4">
+              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+                Confirm Save
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500 mt-2">
+                Are you sure you want to save these changes?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+              <Button variant="ghost" onClick={() => setShowConfirm(false)} className="rounded-xl h-9 text-xs font-bold text-slate-500 hover:bg-slate-100">
+                No, Cancel
+              </Button>
+              <Button onClick={handleConfirmSave} className="rounded-xl h-9 text-xs font-bold bg-[#006699] hover:bg-[#005580] text-white shadow-md">
+                Yes, Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Success Alert Dialog */}
+        <Dialog open={showSuccessAlert} onOpenChange={setShowSuccessAlert}>
+          <DialogContent className="rounded-3xl max-w-xs p-0 border-none shadow-2xl bg-white/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
+            <div className="p-6 flex flex-col items-center text-center">
+              <div className="w-14 h-14 bg-emerald-50 rounded-full border border-emerald-100/80 flex items-center justify-center mb-4 shadow-sm relative">
+                <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping"></div>
+                <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
+              </div>
+              <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">Success</h3>
+              <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">Data saved successfully.</p>
+            </div>
+            <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 flex justify-center">
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowSuccessAlert(false);
+                  navigate(`/master/${type}`);
+                }}
+                className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
+              >
+                OK
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-6 gap-4 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
       {/* Breadcrumb Header */}
@@ -1002,7 +1677,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       {/* Filters & Actions Section */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
         {/* Search Input Card */}
-        <Card className="flex-1 p-3.5 border-none shadow-md shadow-slate-200/20 bg-white/90 backdrop-blur-md rounded-2xl flex items-center gap-3 h-10 sm:h-12">
+        <Card className="flex-1 p-3.5 border-none shadow-md shadow-slate-200/20 bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl flex items-center gap-3 h-10 sm:h-11">
           <Search size={16} className="text-slate-400 ml-1 shrink-0" />
           <Input
             placeholder={`Search ${title.toLowerCase()} records by name, code...`}
@@ -1025,24 +1700,24 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* Add Record Button */}
         <Button
           onClick={handleAddClick}
-          className="h-10 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-lg shadow-[#006699]/15 font-black text-xs uppercase tracking-widest gap-2 shrink-0 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center"
+          className="h-10 sm:h-11 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] text-white shadow-lg shadow-[#006699]/15 font-black text-xs uppercase tracking-widest gap-2 shrink-0 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center"
         >
-          <Plus size={15} strokeWidth={3.5} />
+          <Plus size={14} strokeWidth={3.5} />
           Add Record
         </Button>
       </div>
 
       {/* Tabular Search Grid Display List */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      <div className="flex-1 min-h-0 flex flex-col">
         {(type === 'location' && isLoadingLocations) || (type === 'type' && isLoadingTypes) || (type === 'priority' && isLoadingPriorities) ? (
-          <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl overflow-hidden p-6 space-y-4 animate-pulse">
+          <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl overflow-hidden p-6 space-y-4 animate-pulse flex-1">
             <div className="h-10 bg-slate-100 rounded-xl w-full" />
             <div className="h-12 bg-slate-50 rounded-xl w-full" />
             <div className="h-12 bg-slate-50 rounded-xl w-full" />
             <div className="h-12 bg-slate-50 rounded-xl w-full" />
           </div>
         ) : filteredList.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
+          <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
             <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
               <Icon size={32} />
             </div>
@@ -1050,10 +1725,10 @@ export function MasterManager({ type }: MasterManagerProps) {
             <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No master records match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
           </div>
         ) : (
-          <div className="bg-white/80 backdrop-blur-md rounded-[24px] border border-slate-100 shadow-xl shadow-slate-100/30 overflow-hidden flex flex-col">
-            <div className="overflow-x-auto">
+          <div className="bg-white/80 backdrop-blur-md rounded-[24px] border border-slate-100 shadow-xl shadow-slate-100/30 overflow-hidden flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin min-h-0">
               <table className="w-full border-collapse text-left">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
                   <tr className="border-b border-slate-100 bg-slate-50/50">
                     <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4">Code</th>
                     <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</th>
@@ -1092,7 +1767,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/60 bg-white">
-                  {filteredList.map((item: any) => (
+                  {paginatedList.map((item: any) => (
                     <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-3.5 py-2 text-[11px] font-black text-slate-700 pl-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-slate-100 text-slate-600 border border-slate-200/50">
@@ -1191,626 +1866,110 @@ export function MasterManager({ type }: MasterManagerProps) {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Control Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-4 select-none">
+              {/* Left Side: Range Info */}
+              <div className="text-[11px] text-slate-500 font-bold">
+                Showing <span className="text-slate-800 font-black">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
+                <span className="text-slate-800 font-black">{endIndex}</span> of{" "}
+                <span className="text-slate-800 font-black">{totalItems}</span> records
+              </div>
+
+              {/* Center: Items Per Page Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Per Page:</span>
+                <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+                  {[10, 25, 50].map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => {
+                        setItemsPerPage(size);
+                        setCurrentPage(1);
+                      }}
+                      className={cn(
+                        "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
+                        itemsPerPage === size
+                          ? "bg-[#006699] text-white shadow-sm font-black"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                      )}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Side: Page Controls */}
+              <div className="flex items-center gap-1">
+                {/* Previous Page Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={safeCurrentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                >
+                  <ChevronLeft size={14} strokeWidth={2.5} />
+                </Button>
+
+                {/* Direct Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => {
+                      // Show first, last, and pages around current page
+                      return (
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - safeCurrentPage) <= 1
+                      );
+                    })
+                    .map((page, idx, arr) => {
+                      const isPageActive = safeCurrentPage === page;
+                      const hasGap = idx > 0 && page - arr[idx - 1] > 1;
+
+                      return (
+                        <React.Fragment key={page}>
+                          {hasGap && (
+                            <span className="text-[10px] font-bold text-slate-400 px-1 select-none">
+                              ...
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPage(page)}
+                            className={cn(
+                              "h-7 w-7 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border shadow-sm",
+                              isPageActive
+                                ? "bg-[#006699] border-[#006699] text-white font-black shadow-md shadow-[#006699]/10"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            )}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+
+                {/* Next Page Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={safeCurrentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                >
+                  <ChevronRight size={14} strokeWidth={2.5} />
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Dynamic Add / Edit Dialog */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="rounded-[28px] max-w-3xl w-full max-h-[85vh] flex flex-col p-0 border-none shadow-2xl bg-white outline-none overflow-hidden">
-          <DialogHeader className="p-6 pb-4 border-b border-slate-100/60 bg-gradient-to-br from-slate-50/50 to-white">
-            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
-              <Icon size={18} className="text-[#006699]" />
-              {editingId ? `Edit ${title.replace(' Master', '')}` : `Add New ${title.replace(' Master', '')}`}
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Fill in details for {title}.
-            </DialogDescription>
-          </DialogHeader>
 
-          {/* Form Content Area */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-3.5 scrollbar-thin">
-            {/* Disabled System Code */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Code</label>
-              <Input
-                disabled
-                value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
-                className="bg-slate-100/80 border-slate-200/50 h-10 text-xs font-bold text-slate-500 rounded-xl cursor-not-allowed select-none"
-              />
-            </div>
-
-            {/* Standard Name Input */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Name / Label</label>
-              <Input
-                placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
-                value={name}
-                maxLength={50}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-                }}
-                className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
-              />
-              {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
-            </div>
-
-            {/* Color Coding Option (Category only) */}
-            {type === 'category' && (
-              <div className="space-y-2.5">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 block">Color Code</label>
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Premium Color Presets */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setColor('')}
-                      className={cn(
-                        "h-7 w-7 rounded-full border-2 transition-all hover:scale-110 active:scale-95 flex items-center justify-center bg-slate-100 text-slate-400",
-                        color === '' ? "border-slate-800 scale-105" : "border-slate-200 hover:border-slate-300"
-                      )}
-                      title="No Color"
-                    >
-                      <X size={12} strokeWidth={3} />
-                    </button>
-                    {[
-                      { hex: '#3b82f6', name: 'Blue' },
-                      { hex: '#ef4444', name: 'Red' },
-                      { hex: '#10b981', name: 'Green' },
-                      { hex: '#f59e0b', name: 'Orange' },
-                      { hex: '#8b5cf6', name: 'Purple' },
-                      { hex: '#ec4899', name: 'Pink' },
-                      { hex: '#6366f1', name: 'Indigo' },
-                      { hex: '#06b6d4', name: 'Cyan' },
-                    ].map((preset) => (
-                      <button
-                        key={preset.hex}
-                        type="button"
-                        onClick={() => setColor(preset.hex)}
-                        className={cn(
-                          "h-7 w-7 rounded-full border-2 transition-all hover:scale-110 active:scale-95",
-                          color === preset.hex ? "border-slate-800 scale-105" : "border-transparent"
-                        )}
-                        style={{ backgroundColor: preset.hex }}
-                        title={preset.name}
-                      />
-                    ))}
-                  </div>
-                  {/* Custom Color Input */}
-                  <div className="flex items-center gap-2 ml-auto border border-slate-200 rounded-xl px-2.5 py-1 bg-slate-50/50">
-                    <input
-                      type="color"
-                      value={color || '#000000'}
-                      onChange={(e) => setColor(e.target.value)}
-                      className="w-6 h-6 border-0 bg-transparent cursor-pointer rounded"
-                    />
-                    <span className="text-[10px] font-mono font-black text-slate-500 uppercase">{color || 'NONE'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ----------------- CATEGORY EXTRA FIELDS ----------------- */}
-            {type === 'category' && (
-              <div className="space-y-5 pt-2">
-                <div className="flex flex-col sm:flex-row gap-6 pt-1">
-                  {/* <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="need-approval"
-                      checked={isApprovalApplicable}
-                      onCheckedChange={(checked) => setIsApprovalApplicable(!!checked)}
-                    />
-                    <label htmlFor="need-approval" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
-                      Need Approval
-                    </label>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="need-review"
-                      checked={isInReviewRequired}
-                      onCheckedChange={(checked) => setIsInReviewRequired(!!checked)}
-                    />
-                    <label htmlFor="need-review" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
-                      Need Review
-                    </label>
-                  </div> */}
-
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="business-benefit"
-                      checked={isBusinessBenefitApplicable}
-                      onCheckedChange={(checked) => setIsBusinessBenefitApplicable(!!checked)}
-                    />
-                    <label htmlFor="business-benefit" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
-                      Business Benefit
-                    </label>
-                  </div>
-                </div>
-
-                {/* Checklist Descriptions Array Editor */}
-                <div className="space-y-2.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 block">Checklist Items (Descriptions Array)</label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add description..."
-                      value={newChecklistItem}
-                      onChange={(e) => setNewChecklistItem(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addChecklistItem();
-                        }
-                      }}
-                      className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-                    />
-                    <Button
-                      type="button"
-                      onClick={addChecklistItem}
-                      className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
-                    >
-                      Add
-                    </Button>
-                  </div>
-
-                  {checklist.length > 0 && (
-                    <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-150/60 max-h-40 overflow-y-auto space-y-1.5 scrollbar-thin">
-                      {checklist.map((item, index) => {
-                        const desc = typeof item === 'string' ? item : item.description;
-                        const isChecked = typeof item === 'string' ? false : item.isChecked;
-                        return (
-                          <div key={index} className="flex items-center justify-between gap-3 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <Checkbox
-                                id={`cl-item-${index}`}
-                                checked={isChecked}
-                                onCheckedChange={() => toggleChecklistItem(index)}
-                                className="h-4 w-4 rounded border-slate-300"
-                              />
-                              <label htmlFor={`cl-item-${index}`} className="text-[11px] font-bold text-slate-700 truncate cursor-pointer select-none">
-                                {desc}
-                              </label>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeChecklistItem(index)}
-                              className="text-red-500 hover:text-red-700 p-0.5 rounded-full hover:bg-slate-100/80 shrink-0"
-                            >
-                              <X size={13} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ----------------- PRIORITY EXTRA FIELDS ----------------- */}
-            {type === 'priority' && (
-              <div className="grid grid-cols-2 gap-3">
-                 <div className="space-y-1">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Priority Duration Value</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={priorityDuration ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? null : Number(e.target.value);
-                      setPriorityDuration(val);
-                      if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
-                    }}
-                    className={cn(
-                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                      errors.priorityDuration && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                    )}
-                  />
-                  {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
-                </div>
-                 <div className="space-y-1">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Frequency Unit</label>
-                  <Combobox
-                    options={(fillValues?.frequency || []).map((f: any) => ({
-                      label: f.FrequencyName || f.Frequency || f.name || '',
-                      value: (f.FrequencyNo || f.id || '').toString()
-                    }))}
-                    value={priorityFrequencyNo}
-                    onChange={(val) => {
-                      setPriorityFrequencyNo(val);
-                      if (errors.priorityFrequencyNo) setErrors(prev => ({ ...prev, priorityFrequencyNo: '' }));
-                    }}
-                    placeholder="Select frequency..."
-                    className={cn(
-                      "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                      errors.priorityFrequencyNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                    )}
-                  />
-                  {errors.priorityFrequencyNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityFrequencyNo}</p>}
-                </div>
-                 <div className="space-y-1 col-span-2">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Number</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={sequence ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? null : Number(e.target.value);
-                      setSequence(val);
-                      if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
-                    }}
-                    className={cn(
-                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                      errors.sequence && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                    )}
-                  />
-                  {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
-                </div>
-              </div>
-            )}
-
-             {/* ----------------- FOLDER EXTRA FIELDS ----------------- */}
-            {type === 'folder' && (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Folder Description</label>
-                  <Input
-                    placeholder="Enter short directory purpose..."
-                    value={description}
-                    onChange={(e) => {
-                      setDescription(e.target.value);
-                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
-                    }}
-                    className={cn(
-                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                      errors.description && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                    )}
-                  />
-                  {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
-                </div>
-
-                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Parent Folder</label>
-                    <Combobox
-                      options={[
-                        { label: 'No Parent (Root)', value: 'none' },
-                        ...(Array.isArray(folderFillValues?.folders) ? folderFillValues.folders :
-                          Array.isArray(folderFillValues?.parentFolder) ? folderFillValues.parentFolder :
-                            Array.isArray(folderFillValues?.data) ? folderFillValues.data :
-                              Array.isArray(folderFillValues) ? folderFillValues : []).map((f: any) => ({
-                                label: f.folderName || f.taskFolderName || f.FolderName || f.name || '',
-                                value: (f.taskFolderNo || f.TaskFolderNo || f.id || '').toString()
-                              }))
-                      ]}
-                      value={parentFolderNo}
-                      onChange={setParentFolderNo}
-                      placeholder="Select Parent Folder..."
-                      className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-                    />
-                  </div>
-
-                   <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Order</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={sequence ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? null : Number(e.target.value);
-                        setSequence(val);
-                        if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
-                      }}
-                      className={cn(
-                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                        errors.sequence && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                      )}
-                    />
-                    {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ----------------- USER GROUP EXTRA FIELDS ----------------- */}
-            {type === 'user-group' && (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Group Description</label>
-                  <Input
-                    placeholder="E.g., Core team that reviews task approvals..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-                  />
-                </div>
-
-                <div className="space-y-3" id="form-group-members">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Group Members</h4>
-                      {errors.selectedUsers && <p className="text-[10px] text-red-500 font-semibold">{errors.selectedUsers}</p>}
-                    </div>
-                    <Button type="button" onClick={addGridUser} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
-                      <UserPlus size={12} /> Add
-                    </Button>
-                  </div>
-                  <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all">
-                    <table className="w-full text-left text-[11px] border-collapse">
-                      <thead className="bg-slate-100/80 border-b border-slate-200">
-                        <tr>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                          <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
-                          <th className="px-2 py-1.5 w-8"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {selectedUsers.map((field, index) => (
-                          <tr key={index} className="group hover:bg-white transition-colors">
-                            <td className="px-2 py-1">
-                              <UserCombobox
-                                value={field.userName}
-                                onChange={(user) => updateGridUser(index, user)}
-                                placeholder="User Name"
-                                className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
-                                initialLabel={field.userName}
-                              />
-                            </td>
-                            <td className="px-2 py-1">
-                              <Input disabled value={field.displayName} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                            </td>
-                            <td className="px-2 py-1">
-                              <Input disabled value={field.email} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                            </td>
-                            <td className="px-1 py-1 text-center">
-                              <button type="button" onClick={() => removeGridUser(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                <Trash2 size={12} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                        {selectedUsers.length === 0 && (
-                          <tr>
-                            <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No members.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ----------------- BENEFIT TYPE EXTRA FIELDS ----------------- */}
-            {type === 'benefit-type' && (
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Valuation Scale / Type</label>
-                <Combobox
-                  options={(benefitFillValues?.valuationTypes || []).map((v: any) => ({
-                    label: v.valuationTypeName || v.name || '',
-                    value: (v.valuationTypeNo || v.id || '').toString()
-                  }))}
-                  value={valuationtypeNo}
-                  onChange={setValuationtypeNo}
-                  placeholder="Select Valuation Type..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-                />
-              </div>
-            )}
-
-             {/* ----------------- LOCATION EXTRA FIELDS ----------------- */}
-            {type === 'location' && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Parent Location</label>
-                    <Combobox
-                      options={[
-                        { label: "No Parent (Root)", value: "none" },
-                        ...(locationFillValues?.data?.locations || locationFillValues?.locations || apiLocations || []).filter((l: any) => (l.operLocationNo || l.id || '').toString() !== editingId).map((l: any) => ({
-                          label: l.operLocationName || l.locationName || l.name || '',
-                          value: (l.operLocationNo || l.id || '').toString()
-                        }))
-                      ]}
-                      value={parentLocationNo}
-                      onChange={setParentLocationNo}
-                      placeholder="Select Parent"
-                      searchPlaceholder="Search parent..."
-                      className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-                    />
-                  </div>
-
-                   <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Incharge Lead</label>
-                    <UserCombobox
-                      value={inchargeNo}
-                      onChange={(user) => {
-                        setInchargeNo(user.loginNo.toString());
-                        setInchargeLabel(user.printingName);
-                        if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
-                      }}
-                      initialLabel={inchargeLabel}
-                      placeholder="Search Incharge Lead..."
-                      className={cn(
-                        "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                        errors.inchargeNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500 focus-visible:ring-red-500/10 focus-visible:border-red-500"
-                      )}
-                    />
-                    {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Location Region</label>
-                  <Combobox
-                    options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
-                      label: r.regionName || '',
-                      value: (r.regionNo || '').toString()
-                    }))}
-                    value={locationRegion}
-                    onChange={setLocationRegion}
-                    placeholder="Select Region"
-                    searchPlaceholder="Search region..."
-                    className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-                  />
-                </div>
-
-                 <div className="space-y-1">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address</label>
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="Address Line 1"
-                      value={address1}
-                      maxLength={150}
-                      onChange={(e) => {
-                        setAddress1(e.target.value);
-                        if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
-                      }}
-                      className={cn(
-                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                        errors.address1 && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                      )}
-                    />
-                    {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
-                    <Input
-                      placeholder="Address Line 2 (Optional)"
-                      value={address2}
-                      maxLength={150}
-                      onChange={(e) => setAddress2(e.target.value)}
-                      className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-                    />
-                    <Input
-                      placeholder="Address Line 3 (Optional)"
-                      value={address3}
-                      maxLength={150}
-                      onChange={(e) => setAddress3(e.target.value)}
-                      className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-                    />
-                  </div>
-                </div>
-
-                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
-                    <Combobox
-                      options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-                        label: c.countryName || '',
-                        value: (c.countryNo || '').toString()
-                      }))}
-                      value={countryNo}
-                      onChange={(val) => {
-                        setCountryNo(val);
-                        if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
-                      }}
-                      placeholder="Select Country"
-                      searchPlaceholder="Search country..."
-                      className={cn(
-                        "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                        errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                      )}
-                    />
-                    {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
-                  </div>
-                   <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
-                    <Combobox
-                      options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
-                        label: s.stateName || '',
-                        value: (s.stateNo || '').toString()
-                      }))}
-                      value={stateNo}
-                      onChange={(val) => {
-                        setStateNo(val);
-                        if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
-                      }}
-                      placeholder="Select State"
-                      searchPlaceholder="Search state..."
-                      className={cn(
-                        "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                        errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                      )}
-                    />
-                    {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
-                  </div>
-                </div>
-
-                 <div className="grid grid-cols-3 gap-2.5">
-                  <div className="space-y-1 col-span-2">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
-                    <Combobox
-                      options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
-                        label: c.cityName || '',
-                        value: (c.cityNo || '').toString()
-                      }))}
-                      value={cityNo}
-                      onChange={(val) => {
-                        setCityNo(val);
-                        if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
-                      }}
-                      placeholder="Select City"
-                      searchPlaceholder="Search city..."
-                      className={cn(
-                        "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                        errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                      )}
-                    />
-                    {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</label>
-                    <Input
-                      placeholder="ZIP"
-                      value={pinCode}
-                      maxLength={10}
-                      onChange={(e) => {
-                        setPinCode(e.target.value);
-                        if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
-                      }}
-                      className={cn(
-                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                        errors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                      )}
-                    />
-                    {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-          </form>
-
-          {serverError && (
-            <div className="mx-6 mb-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-2 shadow-sm animate-pulse shrink-0">
-              <span className="font-extrabold select-none">⚠️ Error:</span>
-              <span className="flex-1 whitespace-pre-wrap leading-relaxed">{serverError}</span>
-            </div>
-          )}
-
-          {/* Form Footer Action triggers */}
-          <DialogFooter className="p-6 border-t border-slate-100/60 bg-gradient-to-tr from-slate-50/50 to-white flex items-center justify-between gap-3 shrink-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-              className="h-11 px-5 rounded-2xl border-slate-200 text-xs font-extrabold text-slate-500 hover:bg-slate-50"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isSaving}
-              className="h-11 px-6 rounded-2xl bg-[#006699] hover:bg-[#005580] text-white shadow-lg shadow-[#006699]/15 font-black text-xs uppercase tracking-widest gap-2 transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:hover:scale-100"
-            >
-              {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} strokeWidth={3} />}
-              {editingId ? 'Save Changes' : 'Create Record'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
@@ -1885,11 +2044,11 @@ export function MasterManager({ type }: MasterManagerProps) {
               <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping"></div>
               <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
             </div>
-            
+
             <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">
               Success
             </h3>
-            
+
             <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">
               Data save sucessfully.
             </p>

@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useTaskStore } from '@/store/useTaskStore';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface TaskDetailModalProps {
   taskNo: number | null;
@@ -120,7 +121,8 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           id: (c.operTaskCommentDetailNo || Math.floor(Math.random() * 10000)).toString(),
           author: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || 'Unknown',
           text: c.description || c.comment || '',
-          timestamp: c.createdDate || new Date().toISOString()
+          timestamp: c.createdDate || new Date().toISOString(),
+          loginNo: c.createdBy?.id || c.loginNo || null
         }));
 
         // Map actual efforts
@@ -209,16 +211,6 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
       setTask(undefined);
     }
   }, [isOpen, taskNo]);
-
-  const getInitials = (name?: string) => {
-    if (!name) return '??';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -339,9 +331,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <div className="space-y-2">
                           {task.collaborators.map((c, i) => (
                             <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                              <div className="h-6 w-6 rounded-full bg-[#006699]/10 text-[#006699] flex items-center justify-center text-[9px] font-black uppercase border border-[#006699]/20">
-                                {getInitials(c.displayName)}
-                              </div>
+                              <UserAvatar
+                                loginNo={c.loginNo}
+                                displayName={c.displayName}
+                                size="sm"
+                              />
                               <div className="min-w-0">
                                 <p className="text-[10px] font-black text-slate-900 truncate leading-none">{c.displayName}</p>
                                 <span className="text-[8px] font-extrabold text-slate-600 truncate">{c.email}</span>
@@ -361,9 +355,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <div className="space-y-2">
                           {task.informed_to.map((inf, i) => (
                             <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                              <div className="h-6 w-6 rounded-full bg-[#00b4d8]/10 text-[#00b4d8] flex items-center justify-center text-[9px] font-black uppercase border border-[#00b4d8]/20">
-                                {getInitials(inf.displayName)}
-                              </div>
+                              <UserAvatar
+                                loginNo={inf.loginNo}
+                                displayName={inf.displayName}
+                                size="sm"
+                              />
                               <div className="min-w-0">
                                 <p className="text-[10px] font-black text-slate-900 truncate leading-none">{inf.displayName}</p>
                                 <span className="text-[8px] font-extrabold text-slate-600 truncate">{inf.email}</span>
@@ -427,9 +423,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
                     {/* Owner Block */}
                     <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
-                      <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#006699] to-[#00b4d8] flex items-center justify-center text-xs font-black text-white shadow-md shadow-[#006699]/15 border border-[#006699]/20">
-                        {getInitials(task.assignedDisplayName)}
-                      </div>
+                      <UserAvatar
+                        loginNo={task.owner_user_No}
+                        displayName={task.assignedDisplayName}
+                        size="lg"
+                      />
                       <div>
                         <span className="text-[8px] font-black text-slate-600 uppercase tracking-wider block">Owner</span>
                         <h4 className="text-xs font-black text-slate-900 leading-tight">{task.assignedDisplayName || 'Unassigned'}</h4>
@@ -537,9 +535,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <div className="space-y-2">
                           {task.collaborators.map((c, i) => (
                             <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                              <div className="h-6 w-6 rounded-full bg-[#006699]/10 text-[#006699] flex items-center justify-center text-[9px] font-black uppercase border border-[#006699]/20">
-                                {getInitials(c.displayName)}
-                              </div>
+                              <UserAvatar
+                                loginNo={c.loginNo}
+                                displayName={c.displayName}
+                                size="sm"
+                              />
                               <div className="min-w-0">
                                 <p className="text-[10px] font-black text-slate-900 truncate leading-none">{c.displayName}</p>
                                 <span className="text-[8px] font-extrabold text-slate-600 truncate">{c.email}</span>
@@ -559,9 +559,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <div className="space-y-2">
                           {task.informed_to.map((inf, i) => (
                             <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                              <div className="h-6 w-6 rounded-full bg-[#00b4d8]/10 text-[#00b4d8] flex items-center justify-center text-[9px] font-black uppercase border border-[#00b4d8]/20">
-                                {getInitials(inf.displayName)}
-                              </div>
+                              <UserAvatar
+                                loginNo={inf.loginNo}
+                                displayName={inf.displayName}
+                                size="sm"
+                              />
                               <div className="min-w-0">
                                 <p className="text-[10px] font-black text-slate-900 truncate leading-none">{inf.displayName}</p>
                                 <span className="text-[8px] font-extrabold text-slate-600 truncate">{inf.email}</span>

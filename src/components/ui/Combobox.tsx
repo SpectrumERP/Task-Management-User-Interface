@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,7 @@ interface ComboboxProps {
   emptyMessage?: string
   className?: string
   disabled?: boolean
+  isClearable?: boolean
 }
 
 export function Combobox({
@@ -37,6 +38,7 @@ export function Combobox({
   emptyMessage = "No option found.",
   className,
   disabled = false,
+  isClearable = true,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -51,13 +53,27 @@ export function Combobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-medium text-sm rounded-xl h-9 border-slate-300 shadow-sm transition-all",
+            "w-full justify-between font-medium text-sm rounded-xl h-9 shadow-sm transition-all border relative pr-8",
+            !className?.includes("border-") && "border-slate-300",
             !value && "text-slate-400",
             className
           )}
         >
-          <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <span className="truncate pr-2">{selectedOption ? selectedOption.label : placeholder}</span>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
+            {value && !disabled && isClearable && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange("");
+                }}
+                className="p-0.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="h-3 w-3" />
+              </span>
+            )}
+            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 text-slate-400" />
+          </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">

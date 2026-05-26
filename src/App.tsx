@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, usePa
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
-import { Clock } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import Login from '@/pages/Login';
 import TaskDetail from '@/pages/TaskDetail';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
@@ -19,11 +19,11 @@ import {
 import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
 import { useTaskStore } from '@/store/useTaskStore';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TaskCalendarView } from '@/components/task/TaskCalendarView';
 import { cn } from '@/lib/utils';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { MasterManager } from '@/components/master/MasterManager';
+import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('tasks');
@@ -165,64 +165,79 @@ function Dashboard() {
           )}
         </div>
 
-        {/* Glacier Pagination Bar */}
+        {/* Pagination Control Bar */}
         {viewMode === 'list' && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3.5 mt-4 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-150/80 shadow-md shadow-slate-100/30 shrink-0">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Page Size:</span>
-                <Select
-                  value={pageSize.toString()}
-                  onValueChange={(val) => {
-                    setPageSize(Number(val));
-                    setPageNo(1);
-                  }}
-                >
-                  <SelectTrigger className="h-8.5 w-20 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 focus:ring-1 focus:ring-[#006699]/15">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
-                    <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
-                    <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
-                    <SelectItem value="100" className="text-xs font-medium">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 mt-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl shadow-sm shrink-0 select-none">
+            {/* Left Side: Range Info */}
+            <div className="text-[11px] text-slate-500 font-bold">
               {tasks.length > 0 ? (
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                  Showing {((pageNo - 1) * pageSize) + 1} - {((pageNo - 1) * pageSize) + tasks.length} records
-                </span>
+                <>
+                  Showing <span className="text-slate-800 font-black">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
+                  <span className="text-slate-800 font-black">{((pageNo - 1) * pageSize) + tasks.length}</span> records
+                </>
               ) : (
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                  No records found
-                </span>
+                "No records found"
               )}
             </div>
 
-            <div className="flex items-center gap-2.5">
+            {/* Center: Items Per Page Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Per Page:</span>
+              <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+                {[10, 25, 50, 100].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => {
+                      setPageSize(size);
+                      setPageNo(1);
+                    }}
+                    className={cn(
+                      "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
+                      pageSize === size
+                        ? "bg-[#006699] text-white shadow-sm font-black"
+                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                    )}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Side: Page Controls */}
+            <div className="flex items-center gap-1">
+              {/* Previous Page Button */}
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 disabled={pageNo === 1 || isLoading}
-                onClick={() => setPageNo(prev => Math.max(prev - 1, 1))}
-                className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+                onClick={() => setPageNo((prev) => Math.max(1, prev - 1))}
+                className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
               >
-                Previous
+                <ChevronLeft size={14} strokeWidth={2.5} />
               </Button>
 
-              <div className="h-8.5 px-4 bg-[#e1ecf7]/50 rounded-xl flex items-center justify-center border border-[#006699]/10">
-                <span className="text-xs font-black text-[#006699]">Page {pageNo}</span>
+              {/* Direct Page Numbers (only current page displayed) */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled
+                  className="h-7 w-7 rounded-lg text-[10px] font-black bg-[#006699] border border-[#006699] text-white shadow-md shadow-[#006699]/10 flex items-center justify-center cursor-default"
+                >
+                  {pageNo}
+                </button>
               </div>
 
+              {/* Next Page Button */}
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 disabled={tasks.length < pageSize || isLoading}
-                onClick={() => setPageNo(prev => prev + 1)}
-                className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+                onClick={() => setPageNo((prev) => prev + 1)}
+                className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
               >
-                Next
+                <ChevronRight size={14} strokeWidth={2.5} />
               </Button>
             </div>
           </div>
@@ -350,6 +365,22 @@ function App() {
             }
           />
           <Route
+            path="/master/:form/new"
+            element={
+              <PrivateRoute>
+                <MasterPageRoute />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/master/:form/edit/:id"
+            element={
+              <PrivateRoute>
+                <MasterPageRoute />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/task/:id"
             element={
               <PrivateRoute>
@@ -359,6 +390,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <PWAInstallBanner />
       </SessionTimeoutGuard>
     </BrowserRouter>
   );

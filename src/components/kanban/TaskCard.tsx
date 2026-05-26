@@ -4,6 +4,7 @@ import { Task } from '@/types/task';
 import { MessageSquare, Clock, AlertCircle, AlertTriangle, Info, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 import { useTaskStore } from '@/store/useTaskStore';
 
@@ -43,16 +44,6 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
     2: () => <Info className="text-blue-500" size={18} />, // Medium
     1: () => null, // Low
   }[task.priority_No] || (() => null);
-
-  const getInitials = (name?: string) => {
-    if (!name) return '??';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
 
   const displayCode = task.code || `CP-${100 + task.taskNo}`;
 
@@ -131,10 +122,13 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
               </div>
 
               <div className="flex items-center justify-between pt-1">
-                <div className="flex -space-x-1.5">
-                  <div className="h-6 w-6 rounded-full border border-white bg-gradient-to-br from-[#006699] to-[#00b4d8] flex items-center justify-center overflow-hidden shadow-sm">
-                    <span className="text-[8px] font-black text-white">{getInitials(task.assignedDisplayName)}</span>
-                  </div>
+                <div className="flex -space-x-1.5 items-center">
+                  <UserAvatar
+                    loginNo={task.owner_user_No}
+                    displayName={task.assignedDisplayName}
+                    size="sm"
+                    className="border border-white shadow-sm"
+                  />
                   {task.collaborators && task.collaborators.length > 0 && (
                     <div className="h-5.5 w-5.5 rounded-full border border-white bg-slate-200 flex items-center justify-center text-[7px] font-black text-slate-700">
                       +{task.collaborators.length}

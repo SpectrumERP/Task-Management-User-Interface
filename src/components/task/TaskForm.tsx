@@ -1081,7 +1081,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   return (
     <Card className="border-none shadow-none bg-transparent">
-      <form id="task-form" onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="space-y-8 divide-y divide-slate-100">
+      <form id="task-form" onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="space-y-8 divide-y divide-slate-400">
 
         {/* 1. Basic Information */}
         <FormSection
@@ -1144,7 +1144,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
                   Task Title {isSubTask && <span className="text-red-500 font-black">*</span>}
                 </Label>
-                <Input placeholder="Enter task title" {...form.register('title')} className={cn("rounded-xl border-slate-300 h-9 focus:ring-primary/20 focus:border-[#006699] text-slate-900 font-medium text-sm shadow-sm", form.formState.errors.title && "border-red-500")} />
+                <Input
+                  placeholder="Enter task title"
+                  {...form.register('title')}
+                  className={cn(
+                    "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm transition-all",
+                    form.formState.errors.title
+                      ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                      : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                  )}
+                />
                 {form.formState.errors.title && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.title.message}</p>}
               </div>
             </div>
@@ -1155,8 +1164,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               <Textarea
                 placeholder="Describe the task in detail..."
                 className={cn(
-                  "min-h-[100px] rounded-xl border-slate-300 focus:ring-primary/20 focus:border-[#006699] p-3 leading-relaxed text-slate-900 font-medium text-sm shadow-sm",
-                  form.formState.errors.description && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                  "min-h-[100px] rounded-xl p-3 leading-relaxed text-slate-900 font-medium text-sm shadow-sm transition-all",
+                  form.formState.errors.description
+                    ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                    : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                 )}
                 {...form.register('description')}
               />
@@ -1182,7 +1193,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         handleCategoryChange(val);
                       }}
                       placeholder="Select category"
-                      className={form.formState.errors.category_No ? "border-red-500" : ""}
+                      className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                     />
                   )}
                 />
@@ -1202,7 +1213,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Select type"
-                      className={form.formState.errors.type_No ? "border-red-500" : ""}
+                      className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                     />
                   )}
                 />
@@ -1221,7 +1232,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Select folder"
-                      className={form.formState.errors.folder_No ? "border-red-500" : ""}
+                      className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      isClearable={false}
                     />
                   )}
                 />
@@ -1241,7 +1253,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Select priority"
-                      className={form.formState.errors.priority_No ? "border-red-500" : ""}
+                      className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                     />
                   )}
                 />
@@ -1284,7 +1296,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Search company..."
-                      className={form.formState.errors.company ? "border-red-500" : ""}
+                      className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                     />
                   )}
                 />
@@ -1304,7 +1316,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Select location"
-                      className={form.formState.errors.location_No ? "border-red-500" : ""}
+                      className={form.formState.errors.location_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                     />
                   )}
                 />
@@ -1323,7 +1335,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={(user) => field.onChange(user.loginNo.toString())}
                       placeholder="Search member..."
                       initialLabel={initialData?.assignedDisplayName || undefined}
-                      className={form.formState.errors.owner_user_No ? "border-red-500" : ""}
+                      className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                       disabled={isPrivateTask}
                     />
                   )}
@@ -1341,7 +1353,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={(user) => field.onChange(user.loginNo.toString())}
                       placeholder="Search member..."
                       initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
-                      className={form.formState.errors.originator_user_No ? "border-red-500" : ""}
+                      className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      isClearable={false}
                     />
                   )}
                 />
@@ -1537,7 +1550,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={(date) => field.onChange(date ? date.toISOString() : '')}
                       placeholder={isAllDay ? "Select start date" : "Select start date & time"}
                       hideTime={isAllDay}
-                      className={form.formState.errors.start_date ? "border-red-500" : ""}
+                      className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                     />
                   )}
                 />
@@ -1557,7 +1570,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={(date) => field.onChange(date ? date.toISOString() : '')}
                       placeholder={isAllDay ? "Select due date" : "Select due date & time"}
                       hideTime={isAllDay}
-                      className={form.formState.errors.end_date ? "border-red-500" : ""}
+                      className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                     />
                   )}
                 />
@@ -1597,8 +1610,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       {...form.register('estimated_effort_value')}
                       onInput={(e) => handleNumericInput(e, 0)}
                       className={cn(
-                        "rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm text-right w-full",
-                        form.formState.errors.estimated_effort_value && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                        "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right w-full transition-all",
+                        form.formState.errors.estimated_effort_value
+                          ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                          : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                       )}
                     />
                   </div>
@@ -1607,7 +1622,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     control={form.control}
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className={cn("rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm w-32", form.formState.errors.estimated_effort_unit && "border-red-500")}>
+                        <SelectTrigger className={cn(
+                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm w-32 transition-all",
+                          form.formState.errors.estimated_effort_unit
+                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                        )}>
                           <SelectValue placeholder="Unit" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl bg-white border border-slate-200">
@@ -1632,14 +1652,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   control={form.control}
                   render={({ field }) => (
                     <div className="relative flex items-center bg-white border border-slate-350 rounded-xl h-9 px-3.5 shadow-sm hover:bg-slate-50 transition-all cursor-pointer select-none">
-                      <div 
-                        className="w-4 h-4 rounded-full border border-slate-200 shadow-sm shrink-0 mr-3" 
+                      <div
+                        className="w-4 h-4 rounded-full border border-slate-200 shadow-sm shrink-0 mr-3"
                         style={{ backgroundColor: field.value && field.value !== 'none' ? field.value : "#cbd5e1" }}
                       />
                       <span className="text-slate-900 font-bold text-sm flex-1">
                         {field.value && field.value !== 'none' ? field.value : "None"}
                       </span>
-                      
+
                       <input
                         type="color"
                         value={field.value && field.value !== 'none' ? field.value : "#006699"}
@@ -1699,7 +1719,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     control={form.control}
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className={cn("rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm", form.formState.errors.business_benefit_type_No && "border-red-500")}>
+                        <SelectTrigger className={cn(
+                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm transition-all",
+                          form.formState.errors.business_benefit_type_No
+                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                        )}>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -1731,7 +1756,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     control={form.control}
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className={cn("rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm", form.formState.errors.benefit_period && "border-red-500")}>
+                        <SelectTrigger className={cn(
+                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm transition-all",
+                          form.formState.errors.benefit_period
+                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                        )}>
                           <SelectValue placeholder="Select period" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -1755,8 +1785,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         {...form.register('estimated_benefit_amount')}
                         onInput={(e) => handleNumericInput(e, 2)}
                         className={cn(
-                          "rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm text-right",
-                          form.formState.errors.estimated_benefit_amount && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
+                          form.formState.errors.estimated_benefit_amount
+                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                         )}
                       />
                       {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
@@ -1770,8 +1802,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         {...form.register('actual_benefit_amount')}
                         onInput={(e) => handleNumericInput(e, 2)}
                         className={cn(
-                          "rounded-xl h-9 border-slate-300 text-slate-900 font-medium text-sm shadow-sm text-right",
-                          form.formState.errors.actual_benefit_amount && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
+                          form.formState.errors.actual_benefit_amount
+                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                         )}
                       />
                       {form.formState.errors.actual_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.actual_benefit_amount.message}</p>}
@@ -1784,8 +1818,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     placeholder="Describe the business benefit in detail..."
                     {...form.register('business_benefit_description')}
                     className={cn(
-                      "min-h-[80px] rounded-xl border-slate-300 text-slate-900 font-medium text-sm shadow-sm",
-                      form.formState.errors.business_benefit_description && "border-red-500 focus:border-red-500 focus:ring-red-500/10"
+                      "min-h-[80px] rounded-xl text-slate-900 font-medium text-sm shadow-sm transition-all",
+                      form.formState.errors.business_benefit_description
+                        ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                        : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                     )}
                   />
                   {form.formState.errors.business_benefit_description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_description.message}</p>}
@@ -2214,11 +2250,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping"></div>
               <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
             </div>
-            
+
             <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">
               Success
             </h3>
-            
+
             <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">
               Data save sucessfully.
             </p>

@@ -14,17 +14,22 @@ export default defineConfig({
         name: 'TaskFlow',
         short_name: 'TaskFlow',
         description: 'Premium Task Management App',
-        theme_color: '#ffffff',
+        start_url: '/',
+        display: 'standalone',
+        background_color: '#e2e9fa',
+        theme_color: '#008cd2',
         icons: [
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }

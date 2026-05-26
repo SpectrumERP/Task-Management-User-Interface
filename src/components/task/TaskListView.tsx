@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 import { useTaskStore } from '@/store/useTaskStore';
 
@@ -36,16 +37,6 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
     
     const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
     return yiq >= 140 ? '#0f172a' : '#ffffff';
-  };
-
-  const getInitials = (name?: string) => {
-    if (!name) return '??';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
   };
 
   if (isLoading) {
@@ -153,12 +144,11 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
 
             {/* 4. Owner Avatar */}
             <div className="flex items-center justify-center pl-4 border-l border-slate-100 shrink-0">
-              <div 
-                className="h-7 w-7 rounded-full bg-gradient-to-br from-[#006699] to-[#00b4d8] flex items-center justify-center text-[10px] font-black text-white shadow-md shadow-[#006699]/10 cursor-help"
-                title={task.assignedDisplayName ? `Owner: ${task.assignedDisplayName}` : 'Unassigned'}
-              >
-                {getInitials(task.assignedDisplayName)}
-              </div>
+              <UserAvatar
+                loginNo={task.owner_user_No}
+                displayName={task.assignedDisplayName}
+                size="md"
+              />
             </div>
 
             {/* 5. Quick Actions / Edit */}
