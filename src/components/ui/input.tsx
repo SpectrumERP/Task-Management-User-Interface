@@ -55,7 +55,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         }
       }
       if (onInput) {
-        onInput(e);
+        onInput(e as any);
       }
     };
 

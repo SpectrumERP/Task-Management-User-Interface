@@ -67,6 +67,56 @@ export interface LocationMaster {
   locationRegion: string;
 }
 
+export interface CompanyLocation {
+  type: string;
+  address: string;
+  country: string;
+  state: string;
+  city: string;
+  pinCode: string;
+}
+
+export interface CompanyContact {
+  name: string;
+  address: string;
+  country: string;
+  state: string;
+  city: string;
+  pinCode: string;
+  phone?: string;
+  email: string;
+  designation?: string;
+  department?: string;
+}
+
+export interface CompanyPort {
+  name: string;
+}
+
+export interface CompanyAttachment {
+  name: string;
+  size: number;
+}
+
+export interface CompanyMaster {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  pinCode: string;
+  vatGst?: string;
+  creditLimit?: number;
+  status: string;
+  locations: CompanyLocation[];
+  contacts: CompanyContact[];
+  ports: CompanyPort[];
+  attachments: CompanyAttachment[];
+}
+
 interface MasterState {
   categories: CategoryMaster[];
   types: TypeMaster[];
@@ -75,6 +125,7 @@ interface MasterState {
   userGroups: UserGroupMaster[];
   businessBenefitTypes: BusinessBenefitTypeMaster[];
   locations: LocationMaster[];
+  companies: CompanyMaster[];
 
   // CRUD for Categories
   addCategory: (item: Omit<CategoryMaster, 'id' | 'code'>) => void;
@@ -110,6 +161,11 @@ interface MasterState {
   addLocation: (item: Omit<LocationMaster, 'id' | 'code'>) => void;
   updateLocation: (id: string, item: Partial<LocationMaster>) => void;
   deleteLocation: (id: string) => void;
+
+  // CRUD for Companies
+  addCompany: (item: Omit<CompanyMaster, 'id' | 'code'>) => void;
+  updateCompany: (id: string, item: Partial<CompanyMaster>) => void;
+  deleteCompany: (id: string) => void;
 }
 
 const generateCode = (prefix: string, listLength: number) => {
@@ -211,6 +267,52 @@ export const useMasterStore = create<MasterState>()(
           locationRegion: 'EMEA'
         }
       ],
+      companies: [
+        {
+          id: 'comp-1',
+          code: 'COMP-0001',
+          name: 'Acme Global Inc.',
+          type: 'Buy',
+          address: '456 Innovation Way',
+          city: 'New York',
+          state: 'New York State',
+          country: 'United States',
+          pinCode: '10001',
+          vatGst: 'US987654321',
+          creditLimit: 500000,
+          status: 'Active',
+          locations: [
+            {
+              type: 'Office',
+              address: '789 Corporate Tower, 12th Floor',
+              country: 'United States',
+              state: 'New York State',
+              city: 'New York',
+              pinCode: '10001'
+            }
+          ],
+          contacts: [
+            {
+              name: 'John Doe',
+              address: '789 Corporate Tower, 12th Floor',
+              country: 'United States',
+              state: 'New York State',
+              city: 'New York',
+              pinCode: '10001',
+              phone: '123-456-7890',
+              email: 'john.doe@acme.com',
+              designation: 'Purchasing Manager',
+              department: 'Procurement'
+            }
+          ],
+          ports: [
+            { name: 'Port of Los Angeles' }
+          ],
+          attachments: [
+            { name: 'acme_certificate.pdf', size: 1048576 }
+          ]
+        }
+      ],
 
       // Categories actions
       addCategory: (item) => set((state) => {
@@ -301,6 +403,19 @@ export const useMasterStore = create<MasterState>()(
       })),
       deleteLocation: (id) => set((state) => ({
         locations: state.locations.filter((l) => l.id !== id),
+      })),
+
+      // Companies actions
+      addCompany: (item) => set((state) => {
+        const id = `comp-${Date.now()}`;
+        const code = generateCode('COMP', state.companies.length);
+        return { companies: [...state.companies, { ...item, id, code }] };
+      }),
+      updateCompany: (id, item) => set((state) => ({
+        companies: state.companies.map((c) => (c.id === id ? { ...c, ...item } : c)),
+      })),
+      deleteCompany: (id) => set((state) => ({
+        companies: state.companies.filter((c) => c.id !== id),
       })),
     }),
     {

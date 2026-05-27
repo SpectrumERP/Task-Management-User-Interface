@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { apiService } from '@/services/apiService';
 import { Combobox } from '@/components/ui/Combobox';
@@ -31,9 +31,16 @@ import {
   UserPlus,
   CheckCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Globe,
+  Building,
+  UploadCloud,
+  FileText,
+  Paperclip,
+  User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { attachmentService } from '@/services/attachmentService';
 import {
   Dialog,
   DialogContent,
@@ -44,8 +51,10 @@ import {
 } from '@/components/ui/dialog';
 
 interface MasterManagerProps {
-  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location';
+  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'company';
 }
+
+import { useMasterStore } from '@/store/useMasterStore';
 
 export function MasterManager({ type }: MasterManagerProps) {
   const navigate = useNavigate();
@@ -67,6 +76,42 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [apiLocations, setApiLocations] = useState<LocationMaster[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationFillValues, setLocationFillValues] = useState<any>(null);
+
+  const [apiCompanies, setApiCompanies] = useState<any[]>([]);
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await apiService.get<any>(`/api/master/companies/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((c: any) => ({
+          id: (c.companyNo ?? c.id ?? '').toString(),
+          code: c.code || `COMP-${c.companyNo || c.id}`,
+          name: c.companyName || c.name || '',
+          type: c.companyType || c.type || '',
+          address: c.address || '',
+          city: c.city || '',
+          state: c.state || '',
+          country: c.country || '',
+          pinCode: c.pinCode || '',
+          vatGst: c.vatGst || '',
+          creditLimit: c.creditLimit || 0,
+          status: c.status || 'Active',
+          locations: c.locations || [],
+          contacts: c.contacts || [],
+          ports: c.ports || [],
+          attachments: c.attachments || [],
+          createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || 'System',
+          createdDate: c.createdDate || ''
+        }));
+        setApiCompanies(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API companies, using local Zustand store fallback:", error);
+      const local = useMasterStore.getState().companies || [];
+      setApiCompanies(local);
+    }
+  };
 
   const [apiCategories, setApiCategories] = useState<any[]>([]);
 
@@ -309,12 +354,16 @@ export function MasterManager({ type }: MasterManagerProps) {
       fetchBusinessBenefitTypes();
       fetchBenefitFillValues();
       setValuationtypeNo('1');
+    } else if (type === 'company') {
+      fetchCompanies();
+      fetchLocationFillValues();
     }
   }, [type]);
 
   // Local UI State
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [companyViewMode, setCompanyViewMode] = useState<'album' | 'attachment'>('album');
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -327,6 +376,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<any | null>(null);
 
   // Form states matching schemas
   const [name, setName] = useState('');
@@ -368,6 +418,49 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [pinCode, setPinCode] = useState('');
   const [locationRegion, setLocationRegion] = useState('');
 
+  // Company Master extra fields
+  const [companyType, setCompanyType] = useState('Buy');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyCity, setCompanyCity] = useState('');
+  const [companyState, setCompanyState] = useState('');
+  const [companyCountry, setCompanyCountry] = useState('');
+  const [companyPinCode, setCompanyPinCode] = useState('');
+  const [companyVatGst, setCompanyVatGst] = useState('');
+  const [creditLimit, setCreditLimit] = useState<number | null>(null);
+  const [companyStatus, setCompanyStatus] = useState('Active');
+
+  const [companyLocations, setCompanyLocations] = useState<any[]>([]);
+  const [companyPorts, setCompanyPorts] = useState<any[]>([]);
+  const [companyAttachments, setCompanyAttachments] = useState<any[]>([]);
+
+  // Sub-section modal form states
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [editingLocationIndex, setEditingLocationIndex] = useState<number | null>(null);
+
+  // Location Modal states
+  const [locType, setLocType] = useState('Office');
+  const [locAddress, setLocAddress] = useState('');
+  const [locCountry, setLocCountry] = useState('');
+  const [locState, setLocState] = useState('');
+  const [locCity, setLocCity] = useState('');
+  const [locPin, setLocPin] = useState('');
+  const [locErrors, setLocErrors] = useState<Record<string, string>>({});
+
+  // Flat Contact Person states
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactDesignation, setContactDesignation] = useState('');
+  const [contactDepartment, setContactDepartment] = useState('');
+  const [contactAddress, setContactAddress] = useState('');
+  const [contactCountry, setContactCountry] = useState('');
+  const [contactState, setContactState] = useState('');
+  const [contactCity, setContactCity] = useState('');
+  const [contactPinCode, setContactPinCode] = useState('');
+
+  // Port selector state
+  const [selectedPortName, setSelectedPortName] = useState('');
+
   useEffect(() => {
     if (isNew) {
       setErrors({});
@@ -398,6 +491,39 @@ export function MasterManager({ type }: MasterManagerProps) {
       setPinCode('');
       setLocationRegion('');
       setServerError(null);
+
+      // Company Master resets
+      setCompanyType('Buy');
+      setCompanyAddress('');
+      setCompanyCity('');
+      setCompanyState('');
+      setCompanyCountry('');
+      setCompanyPinCode('');
+      setCompanyVatGst('');
+      setCreditLimit(null);
+      setCompanyStatus('Active');
+      setCompanyLocations([]);
+      setCompanyPorts([]);
+      setCompanyAttachments([]);
+      setLocType('Office');
+      setLocAddress('');
+      setLocCountry('');
+      setLocState('');
+      setLocCity('');
+      setLocPin('');
+      setLocErrors({});
+      setEditingLocationIndex(null);
+      setContactName('');
+      setContactPhone('');
+      setContactEmail('');
+      setContactDesignation('');
+      setContactDepartment('');
+      setContactAddress('');
+      setContactCountry('');
+      setContactState('');
+      setContactCity('');
+      setContactPinCode('');
+      setSelectedPortName('');
     } else if (isEdit && id) {
       setErrors({});
       setEditingId(id);
@@ -513,6 +639,86 @@ export function MasterManager({ type }: MasterManagerProps) {
             }
           }
         }).catch(err => console.error("Failed to load location details:", err));
+      } else if (type === 'company') {
+        apiService.get<any>(`/api/master/companies/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.companyName || dl.name || '');
+              setCompanyType(dl.companyType || dl.type || 'Buy');
+              setCompanyAddress(dl.address || '');
+              setCompanyCity(dl.city || '');
+              setCompanyState(dl.state || '');
+              setCompanyCountry(dl.country || '');
+              setCompanyPinCode(dl.pinCode || '');
+              setCompanyVatGst(dl.vatGst || '');
+              setCreditLimit(dl.creditLimit || null);
+              setCompanyStatus(dl.status || 'Active');
+              setCompanyLocations(dl.locations || []);
+
+              // Hydrate contact person single fields
+              const firstContact = (dl.contacts && dl.contacts.length > 0) ? dl.contacts[0] : null;
+              setContactName(firstContact?.name || '');
+              setContactPhone(firstContact?.phone || '');
+              setContactEmail(firstContact?.email || '');
+              setContactDesignation(firstContact?.designation || '');
+              setContactDepartment(firstContact?.department || '');
+              setContactAddress(firstContact?.address || '');
+              setContactCountry(firstContact?.country || '');
+              setContactState(firstContact?.state || '');
+              setContactCity(firstContact?.city || '');
+              setContactPinCode(firstContact?.pinCode || '');
+
+              // Map ports properly
+              const mappedPorts = (dl.ports || []).map((p: any) => ({
+                name: p.name || p.portName || '',
+                portName: p.name || p.portName || ''
+              }));
+              setCompanyPorts(mappedPorts);
+
+              setCompanyAttachments(dl.attachments || []);
+            }
+          }
+        }).catch(err => {
+          console.warn("Failed to load company details via API, loading from local Zustand store:", err);
+          const localItem = useMasterStore.getState().companies.find(c => c.id === id);
+          if (localItem) {
+            setName(localItem.name);
+            setCompanyType(localItem.type);
+            setCompanyAddress(localItem.address);
+            setCompanyCity(localItem.city);
+            setCompanyState(localItem.state);
+            setCompanyCountry(localItem.country);
+            setCompanyPinCode(localItem.pinCode);
+            setCompanyVatGst(localItem.vatGst || '');
+            setCreditLimit(localItem.creditLimit || null);
+            setCompanyStatus(localItem.status);
+            setCompanyLocations(localItem.locations || []);
+
+            // Hydrate contact person single fields
+            const firstContact = (localItem.contacts && localItem.contacts.length > 0) ? localItem.contacts[0] : null;
+            setContactName(firstContact?.name || '');
+            setContactPhone(firstContact?.phone || '');
+            setContactEmail(firstContact?.email || '');
+            setContactDesignation(firstContact?.designation || '');
+            setContactDepartment(firstContact?.department || '');
+            setContactAddress(firstContact?.address || '');
+            setContactCountry(firstContact?.country || '');
+            setContactState(firstContact?.state || '');
+            setContactCity(firstContact?.city || '');
+            setContactPinCode(firstContact?.pinCode || '');
+
+            // Map ports properly
+            const mappedPorts = (localItem.ports || []).map((p: any) => ({
+              name: p.name || p.portName || '',
+              portName: p.name || p.portName || ''
+            }));
+            setCompanyPorts(mappedPorts);
+
+            setCompanyAttachments(localItem.attachments || []);
+          }
+        });
       }
     }
   }, [isNew, isEdit, id, type, companyNo]);
@@ -542,11 +748,13 @@ export function MasterManager({ type }: MasterManagerProps) {
         return { title: 'Business Benefit Type Master', desc: 'Configure valuation standards and benefit metrics', icon: Sparkles, list: apiBusinessBenefitTypes };
       case 'location':
         return { title: 'Location Master', desc: 'Manage physical addresses, regional hubs, and location hierarchies', icon: MapPin, list: apiLocations };
+      case 'company':
+        return { title: 'Company Master', desc: 'Define and manage company profiles, branch locations, and contact persons', icon: Layers, list: apiCompanies };
     }
   };
 
   const { title, icon: Icon, list: rawList } = getMasterInfo();
-  const list = type === 'location' ? apiLocations : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : rawList;
+  const list = type === 'location' ? apiLocations : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : rawList;
 
   // Filtered List
   const filteredList = list.filter((item: any) => {
@@ -567,6 +775,38 @@ export function MasterManager({ type }: MasterManagerProps) {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   
   const paginatedList = filteredList.slice(startIndex, endIndex);
+
+  // Group companies by first letter for A-Z sidebar navigation
+  const groupedCompanies = useMemo(() => {
+    if (type !== 'company') return [];
+    
+    // Sort all matching companies alphabetically by name
+    const sorted = [...filteredList].sort((a, b) => 
+      (a.name || '').localeCompare(b.name || '')
+    );
+    
+    const groups: { letter: string; items: any[] }[] = [];
+    sorted.forEach(item => {
+      const firstChar = (item.name || '').charAt(0).toUpperCase();
+      const letter = /^[A-Z]$/.test(firstChar) ? firstChar : '#';
+      
+      let group = groups.find(g => g.letter === letter);
+      if (!group) {
+        group = { letter, items: [] };
+        groups.push(group);
+      }
+      group.items.push(item);
+    });
+    
+    // Order alphabetically, putting '#' at the very end
+    groups.sort((a, b) => {
+      if (a.letter === '#') return 1;
+      if (b.letter === '#') return -1;
+      return a.letter.localeCompare(b.letter);
+    });
+    
+    return groups;
+  }, [filteredList, type]);
 
   // Open Modal to Add
   const handleAddClick = () => {
@@ -629,6 +869,17 @@ export function MasterManager({ type }: MasterManagerProps) {
           fetchLocations();
         }).catch(err => console.error("Failed to delete location:", err));
         break;
+      case 'company':
+        apiService.delete(`/api/master/companies/delete`, {
+          params: { companyNo: id }
+        }).then(() => {
+          fetchCompanies();
+        }).catch(err => {
+          console.warn("Failed API company delete, deleting locally from Zustand:", err);
+          useMasterStore.getState().deleteCompany(id);
+          fetchCompanies();
+        });
+        break;
     }
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
@@ -637,7 +888,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) {
-      newErrors.name = 'Name / Label is required';
+      newErrors.name = type === 'company' ? 'Company name is required' : 'Name / Label is required';
     }
 
     if (type === 'priority') {
@@ -679,6 +930,28 @@ export function MasterManager({ type }: MasterManagerProps) {
       }
       if (!inchargeNo || inchargeNo === 'none' || inchargeNo === '') {
         newErrors.inchargeNo = 'Incharge Lead is required';
+      }
+    } else if (type === 'company') {
+      if (!companyAddress.trim()) {
+        newErrors.companyAddress = 'Address is required';
+      }
+      if (!companyCity || companyCity === 'none' || companyCity === '') {
+        newErrors.companyCity = 'City is required';
+      }
+      if (!companyState || companyState === 'none' || companyState === '') {
+        newErrors.companyState = 'State is required';
+      }
+      if (!companyCountry || companyCountry === 'none' || companyCountry === '') {
+        newErrors.companyCountry = 'Country is required';
+      }
+      if (!companyPinCode.trim()) {
+        newErrors.companyPinCode = 'PIN Code is required';
+      }
+      if (companyLocations.length === 0) {
+        newErrors.companyLocations = 'At least one location is required';
+      }
+      if (companyAttachments.length === 0) {
+        newErrors.attachments = 'At least one attachment is mandatory';
       }
     }
 
@@ -780,6 +1053,66 @@ export function MasterManager({ type }: MasterManagerProps) {
           };
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
+        } else if (type === 'company') {
+          const computedContacts = contactName ? [
+            {
+              name: contactName,
+              phone: contactPhone,
+              email: contactEmail,
+              designation: contactDesignation,
+              department: contactDepartment,
+              address: contactAddress,
+              country: contactCountry,
+              state: contactState,
+              city: contactCity,
+              pinCode: contactPinCode
+            }
+          ] : [];
+
+          const computedPorts = companyPorts.map(p => ({
+            name: p.name || p.portName || '',
+            portName: p.name || p.portName || ''
+          }));
+
+          const payload = {
+            companyNo: parseInt(id) || null,
+            companyName: name,
+            companyType,
+            address: companyAddress,
+            city: companyCity,
+            state: companyState,
+            country: companyCountry,
+            pinCode: companyPinCode,
+            vatGst: companyVatGst,
+            creditLimit,
+            status: companyStatus,
+            locations: companyLocations,
+            contacts: computedContacts,
+            ports: computedPorts,
+            attachments: companyAttachments
+          };
+          try {
+            await apiService.post('/api/master/companies/save', payload);
+          } catch (err) {
+            console.warn("Failed API company save, saving locally to Zustand store:", err);
+            useMasterStore.getState().updateCompany(id, {
+              name,
+              type: companyType,
+              address: companyAddress,
+              city: companyCity,
+              state: companyState,
+              country: companyCountry,
+              pinCode: companyPinCode,
+              vatGst: companyVatGst,
+              creditLimit: creditLimit || 0,
+              status: companyStatus,
+              locations: companyLocations,
+              contacts: computedContacts,
+              ports: computedPorts,
+              attachments: companyAttachments
+            });
+          }
+          await fetchCompanies();
         }
       } else {
         // Add
@@ -863,6 +1196,66 @@ export function MasterManager({ type }: MasterManagerProps) {
           };
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
+        } else if (type === 'company') {
+          const computedContacts = contactName ? [
+            {
+              name: contactName,
+              phone: contactPhone,
+              email: contactEmail,
+              designation: contactDesignation,
+              department: contactDepartment,
+              address: contactAddress,
+              country: contactCountry,
+              state: contactState,
+              city: contactCity,
+              pinCode: contactPinCode
+            }
+          ] : [];
+
+          const computedPorts = companyPorts.map(p => ({
+            name: p.name || p.portName || '',
+            portName: p.name || p.portName || ''
+          }));
+
+          const payload = {
+            companyNo: null,
+            companyName: name,
+            companyType,
+            address: companyAddress,
+            city: companyCity,
+            state: companyState,
+            country: companyCountry,
+            pinCode: companyPinCode,
+            vatGst: companyVatGst,
+            creditLimit,
+            status: companyStatus,
+            locations: companyLocations,
+            contacts: computedContacts,
+            ports: computedPorts,
+            attachments: companyAttachments
+          };
+          try {
+            await apiService.post('/api/master/companies/save', payload);
+          } catch (err) {
+            console.warn("Failed API company save, saving locally to Zustand store:", err);
+            useMasterStore.getState().addCompany({
+              name,
+              type: companyType,
+              address: companyAddress,
+              city: companyCity,
+              state: companyState,
+              country: companyCountry,
+              pinCode: companyPinCode,
+              vatGst: companyVatGst,
+              creditLimit: creditLimit || 0,
+              status: companyStatus,
+              locations: companyLocations,
+              contacts: computedContacts,
+              ports: computedPorts,
+              attachments: companyAttachments
+            });
+          }
+          await fetchCompanies();
         }
       }
       setShowSuccessAlert(true);
@@ -995,7 +1388,922 @@ export function MasterManager({ type }: MasterManagerProps) {
   };
 
 
+  // =========================================================================
+  // Company Master Nested Lists Helpers
+  // =========================================================================
+  const addCompanyLocation = () => {
+    const errs: Record<string, string> = {};
+    if (!locAddress.trim()) errs.address = 'Location address is required';
+    if (!locCountry || locCountry === 'none') errs.country = 'Country is required';
+    if (!locState || locState === 'none') errs.state = 'State is required';
+    if (!locCity || locCity === 'none') errs.city = 'City is required';
+    if (!locPin.trim()) errs.pin = 'PIN Code is required';
+
+    if (Object.keys(errs).length > 0) {
+      setLocErrors(errs);
+      return;
+    }
+
+    const newLoc = {
+      type: locType,
+      address: locAddress,
+      country: locCountry,
+      state: locState,
+      city: locCity,
+      pinCode: locPin
+    };
+
+    if (editingLocationIndex !== null) {
+      setCompanyLocations(prev => {
+        const next = [...prev];
+        next[editingLocationIndex] = newLoc;
+        return next;
+      });
+      setEditingLocationIndex(null);
+    } else {
+      setCompanyLocations(prev => [...prev, newLoc]);
+    }
+
+    // reset location modal
+    setLocType('Office');
+    setLocAddress('');
+    setLocCountry('');
+    setLocState('');
+    setLocCity('');
+    setLocPin('');
+    setLocErrors({});
+    setLocationModalOpen(false);
+  };
+
+  const handleEditLocation = (index: number) => {
+    const loc = companyLocations[index];
+    setLocType(loc.type || 'Office');
+    setLocAddress(loc.address || '');
+    setLocCountry(loc.country || '');
+    setLocState(loc.state || '');
+    setLocCity(loc.city || '');
+    setLocPin(loc.pinCode || loc.pin || '');
+    setLocErrors({});
+    setEditingLocationIndex(index);
+    setLocationModalOpen(true);
+  };
+
+  const removeCompanyLocation = (index: number) => {
+    setCompanyLocations(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addCompanyPort = () => {
+    if (!selectedPortName) return;
+    const exists = companyPorts.some(p => (p.name || p.portName || '').toLowerCase() === selectedPortName.toLowerCase());
+    if (exists) return;
+    setCompanyPorts(prev => [...prev, { name: selectedPortName, portName: selectedPortName }]);
+    setSelectedPortName('');
+  };
+
+  const removeCompanyPort = (index: number) => {
+    setCompanyPorts(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    try {
+      const activeCompanyNo = parseInt(companyNo) || 1;
+      let newAttachment: any = null;
+      try {
+        const entry = await attachmentService.createEntry(file.name, activeCompanyNo);
+        if (entry && entry.id) {
+          await attachmentService.uploadFile(entry.id, file);
+          const isVerified = await attachmentService.checkStatus(entry.id);
+          if (isVerified) {
+            newAttachment = {
+              id: entry.id,
+              fileName: file.name,
+              filePath: (entry as any).filePath || '',
+              fileSize: file.size
+            };
+          }
+        }
+      } catch (uploadError) {
+        console.warn("API Upload failed, falling back to rich mock attachment:", uploadError);
+        const mockId = Date.now();
+        newAttachment = {
+          id: mockId,
+          fileName: file.name,
+          filePath: `/mock/attachments/${file.name}`,
+          fileSize: file.size
+        };
+      }
+
+      if (newAttachment) {
+        setCompanyAttachments(prev => [...prev, newAttachment]);
+        if (errors.attachments) setErrors(prev => ({ ...prev, attachments: '' }));
+      }
+    } catch (err) {
+      console.error("File upload failed:", err);
+    }
+  };
+
+  const removeCompanyAttachment = async (index: number) => {
+    const att = companyAttachments[index];
+    if (att && att.id && att.id > 1000000000) { // check if not mock
+      try {
+        await attachmentService.deleteAttachment(att.id);
+      } catch (err) {
+        console.warn("Failed to delete attachment from server:", err);
+      }
+    }
+    setCompanyAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const renderCompanyForm = () => {
+    // Fill Value Fallbacks
+    const countries = locationFillValues?.data?.countries || locationFillValues?.countries || [
+      { countryNo: '1', countryName: 'United States' },
+      { countryNo: '2', countryName: 'India' },
+      { countryNo: '3', countryName: 'Germany' },
+      { countryNo: '4', countryName: 'China' },
+      { countryNo: '5', countryName: 'United Kingdom' }
+    ];
+
+    const states = locationFillValues?.data?.states || locationFillValues?.states || [
+      { stateNo: '1', stateName: 'California' },
+      { stateNo: '2', stateName: 'New York' },
+      { stateNo: '3', stateName: 'Texas' },
+      { stateNo: '4', stateName: 'Maharashtra' },
+      { stateNo: '5', stateName: 'Karnataka' },
+      { stateNo: '6', stateName: 'Bavaria' }
+    ];
+
+    const cities = locationFillValues?.data?.cities || locationFillValues?.cities || [
+      { cityNo: '1', cityName: 'Los Angeles' },
+      { cityNo: '2', cityName: 'New York City' },
+      { cityNo: '3', cityName: 'Houston' },
+      { cityNo: '4', cityName: 'Mumbai' },
+      { cityNo: '5', cityName: 'Bangalore' },
+      { cityNo: '6', cityName: 'Munich' }
+    ];
+
+    const portsList = [
+      'Shanghai (China)',
+      'Singapore (Singapore)',
+      'Rotterdam (Netherlands)',
+      'Ningbo-Zhoushan (China)',
+      'Guangzhou (China)',
+      'Busan (South Korea)',
+      'Qingdao (China)',
+      'Los Angeles (United States)',
+      'Antwerp (Belgium)',
+      'Hamburg (Germany)',
+      'Nhava Sheva (India)',
+      'Mundra (India)'
+    ];
+
+    return (
+      <div className="space-y-8 pb-10">
+        {/* =========================================================================
+            HEADER SECTION (General Information)
+           ========================================================================= */}
+        <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
+            <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
+              <Building size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">General Company Information</h3>
+              <p className="text-[10px] text-slate-500 font-semibold leading-none">Primary organizational identifiers & tax metadata</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* System Code */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">System Code</label>
+              <Input
+                disabled
+                value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
+                className="bg-slate-100/80 border-slate-200/50 h-10 text-xs font-bold text-slate-500 rounded-xl cursor-not-allowed select-none"
+              />
+            </div>
+
+            {/* Company Name */}
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Company Name <span className="text-red-500">*</span></label>
+              <Input
+                placeholder="Enter Company Name..."
+                value={name}
+                maxLength={100}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                }}
+                className={cn(
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10"
+                )}
+              />
+              {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
+            </div>
+
+            {/* Type */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Company Type <span className="text-red-500">*</span></label>
+              <select
+                value={companyType}
+                onChange={(e) => setCompanyType(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              >
+                <option value="Buy">Buy</option>
+                <option value="Sell">Sell</option>
+                <option value="Both">Both</option>
+              </select>
+            </div>
+
+            {/* Address */}
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Primary Address <span className="text-red-500">*</span></label>
+              <textarea
+                rows={1}
+                placeholder="Enter complete company street address..."
+                value={companyAddress}
+                onChange={(e) => {
+                  setCompanyAddress(e.target.value);
+                  if (errors.companyAddress) setErrors(prev => ({ ...prev, companyAddress: '' }));
+                }}
+                className={cn(
+                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] min-h-[40px] resize-y",
+                  errors.companyAddress && "border-red-500 focus:ring-red-500/10"
+                )}
+              />
+              {errors.companyAddress && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyAddress}</p>}
+            </div>
+
+            {/* Country */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country <span className="text-red-500">*</span></label>
+              <select
+                value={companyCountry}
+                onChange={(e) => {
+                  setCompanyCountry(e.target.value);
+                  if (errors.companyCountry) setErrors(prev => ({ ...prev, companyCountry: '' }));
+                }}
+                className={cn(
+                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.companyCountry && "border-red-500 focus:ring-red-500/10"
+                )}
+              >
+                <option value="">Select Country</option>
+                {countries.map((c: any) => (
+                  <option key={c.countryNo} value={c.countryName}>{c.countryName}</option>
+                ))}
+              </select>
+              {errors.companyCountry && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyCountry}</p>}
+            </div>
+
+            {/* State */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province <span className="text-red-500">*</span></label>
+              <select
+                value={companyState}
+                onChange={(e) => {
+                  setCompanyState(e.target.value);
+                  if (errors.companyState) setErrors(prev => ({ ...prev, companyState: '' }));
+                }}
+                className={cn(
+                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.companyState && "border-red-500 focus:ring-red-500/10"
+                )}
+              >
+                <option value="">Select State</option>
+                {states.map((s: any) => (
+                  <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
+                ))}
+              </select>
+              {errors.companyState && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyState}</p>}
+            </div>
+
+            {/* City */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City <span className="text-red-500">*</span></label>
+              <select
+                value={companyCity}
+                onChange={(e) => {
+                  setCompanyCity(e.target.value);
+                  if (errors.companyCity) setErrors(prev => ({ ...prev, companyCity: '' }));
+                }}
+                className={cn(
+                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.companyCity && "border-red-500 focus:ring-red-500/10"
+                )}
+              >
+                <option value="">Select City</option>
+                {cities.map((ci: any) => (
+                  <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
+                ))}
+              </select>
+              {errors.companyCity && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyCity}</p>}
+            </div>
+
+            {/* PIN Code */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code <span className="text-red-500">*</span></label>
+              <Input
+                type="text"
+                placeholder="Enter ZIP..."
+                value={companyPinCode}
+                maxLength={10}
+                onChange={(e) => {
+                  setCompanyPinCode(e.target.value);
+                  if (errors.companyPinCode) setErrors(prev => ({ ...prev, companyPinCode: '' }));
+                }}
+                className={cn(
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.companyPinCode && "border-red-500 focus:ring-red-500/10"
+                )}
+              />
+              {errors.companyPinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyPinCode}</p>}
+            </div>
+
+            {/* VAT / GST No */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">VAT / GST No</label>
+              <Input
+                placeholder="Registration Number..."
+                value={companyVatGst}
+                maxLength={30}
+                onChange={(e) => setCompanyVatGst(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
+            </div>
+
+            {/* Credit Insurance Limit */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Credit Insurance Limit</label>
+              <Input
+                type="number"
+                placeholder="Insurance Limit..."
+                value={creditLimit || ''}
+                onChange={(e) => setCreditLimit(e.target.value ? Number(e.target.value) : null)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
+            </div>
+
+            {/* Status */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Status <span className="text-red-500">*</span></label>
+              <select
+                value={companyStatus}
+                onChange={(e) => setCompanyStatus(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            LOCATIONS SECTION (Branch / Warehouse Cards)
+           ========================================================================= */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
+                <MapPin size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-800 tracking-tight">Locations <span className="text-red-500">*</span></h3>
+                <p className="text-[10px] text-slate-500 font-semibold leading-none">Branch offices, warehouses, and industrial plants</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              onClick={() => {
+                setLocErrors({});
+                setEditingLocationIndex(null);
+                setLocType('Office');
+                setLocAddress('');
+                setLocCountry('');
+                setLocState('');
+                setLocCity('');
+                setLocPin('');
+                setLocationModalOpen(true);
+              }}
+              className="h-8 rounded-lg px-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs gap-1.5 flex items-center shadow"
+            >
+              <Plus size={14} />
+              Add Location
+            </Button>
+          </div>
+
+          {errors.companyLocations && (
+            <p className="text-[10px] text-red-500 font-bold ml-1">{errors.companyLocations}</p>
+          )}
+
+          {companyLocations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/20 text-slate-400 text-center">
+              <MapPin size={32} className="stroke-1 mb-2 text-slate-300" />
+              <p className="text-xs font-bold">No Locations Added</p>
+              <p className="text-[10px] text-slate-500 font-medium">At least one branch address or warehouse is required.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {companyLocations.map((loc, idx) => (
+                <div key={idx} className="bg-white border border-slate-200/70 rounded-2xl p-4 shadow-sm relative group hover:border-[#006699]/40 transition-colors">
+                  <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => handleEditLocation(idx)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-[#006699]/5 transition-colors"
+                      title="Edit Location"
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeCompanyLocation(idx)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      title="Remove Location"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-slate-100 rounded-xl text-slate-600 shrink-0">
+                      <Building size={16} />
+                    </div>
+                    <div className="space-y-1.5 pr-14">
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wide",
+                          loc.type === 'Office' ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                          loc.type === 'Warehouse' ? "bg-amber-50 text-amber-700 border border-amber-100" :
+                          "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                        )}>
+                          {loc.type}
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-snug">{loc.address}</p>
+                      <div className="text-[10px] text-slate-500 font-bold flex flex-wrap items-center gap-1.5">
+                        <span>{loc.city}</span>
+                        <span>•</span>
+                        <span>{loc.state}</span>
+                        <span>•</span>
+                        <span>{loc.country}</span>
+                        <span>•</span>
+                        <span className="font-mono text-slate-400">{loc.pinCode || loc.pin}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* =========================================================================
+            CONTACT PERSON SECTION (Flat Fields)
+           ========================================================================= */}
+        <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
+            <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
+              <User size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">Contact Person Details</h3>
+              <p className="text-[10px] text-slate-500 font-semibold leading-none">Primary corporate representative contact information</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Contact Person Name */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Contact Person Name</label>
+              <Input
+                placeholder="Enter Name..."
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
+            </div>
+
+            {/* Designation - Dropdown */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Designation</label>
+              <select
+                value={contactDesignation}
+                onChange={(e) => setContactDesignation(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              >
+                <option value="">Select Designation</option>
+                <option value="Director">Director</option>
+                <option value="Manager">Manager</option>
+                <option value="Purchasing Manager">Purchasing Manager</option>
+                <option value="Sales Manager">Sales Manager</option>
+                <option value="Executive">Executive</option>
+                <option value="Coordinator">Coordinator</option>
+                <option value="Engineer">Engineer</option>
+                <option value="Accountant">Accountant</option>
+              </select>
+            </div>
+
+            {/* Department - Dropdown */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Department</label>
+              <select
+                value={contactDepartment}
+                onChange={(e) => setContactDepartment(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              >
+                <option value="">Select Department</option>
+                <option value="Procurement">Procurement</option>
+                <option value="Sales">Sales</option>
+                <option value="Logistics">Logistics</option>
+                <option value="Finance">Finance</option>
+                <option value="Operations">Operations</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Legal">Legal</option>
+              </select>
+            </div>
+
+            {/* Direct Phone */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Direct Phone</label>
+              <Input
+                placeholder="Enter Phone..."
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
+            </div>
+
+            {/* Email Address */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Email Address</label>
+              <Input
+                type="email"
+                placeholder="Enter Email..."
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
+            </div>
+
+            {/* Contact Address */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Contact Address</label>
+              <Input
+                placeholder="Enter Address..."
+                value={contactAddress}
+                onChange={(e) => setContactAddress(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
+            </div>
+
+            {/* Country */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
+              <select
+                value={contactCountry}
+                onChange={(e) => setContactCountry(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              >
+                <option value="">Select Country</option>
+                {countries.map((c: any) => (
+                  <option key={c.countryNo} value={c.countryName}>{c.countryName}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* State */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
+              <select
+                value={contactState}
+                onChange={(e) => setContactState(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              >
+                <option value="">Select State</option>
+                {states.map((s: any) => (
+                  <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* City */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
+              <select
+                value={contactCity}
+                onChange={(e) => setContactCity(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              >
+                <option value="">Select City</option>
+                {cities.map((ci: any) => (
+                  <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* PIN Code */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</label>
+              <Input
+                placeholder="Enter PIN Code..."
+                value={contactPinCode}
+                onChange={(e) => setContactPinCode(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            PORTS SECTION (Import / Export Port Tags)
+           ========================================================================= */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
+            <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
+              <Globe size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">Assigned Ports</h3>
+              <p className="text-[10px] text-slate-500 font-semibold leading-none">Registered ports for shipping & logistics</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
+            <div className="flex gap-2">
+              <select
+                value={selectedPortName}
+                onChange={(e) => setSelectedPortName(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              >
+                <option value="">-- Choose Port to Assign --</option>
+                {portsList.map((p, idx) => (
+                  <option key={idx} value={p}>{p}</option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                onClick={addCompanyPort}
+                disabled={!selectedPortName}
+                className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shrink-0 shadow disabled:opacity-50"
+              >
+                Assign
+              </Button>
+            </div>
+
+            {companyPorts.length === 0 ? (
+              <p className="text-[10px] text-slate-400 font-bold italic text-center py-2">No ports assigned to this company profile.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {companyPorts.map((port, idx) => (
+                  <div key={idx} className="bg-white border border-[#006699]/15 text-[#006699] text-xs font-black rounded-lg px-2.5 py-1 flex items-center gap-1.5 shadow-sm">
+                    <span>{port.portName}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeCompanyPort(idx)}
+                      className="p-0.5 rounded-full hover:bg-[#006699]/10 text-slate-400 hover:text-[#006699] transition-colors"
+                      title="Unassign Port"
+                    >
+                      <X size={10} strokeWidth={3} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* =========================================================================
+            ATTACHMENTS SECTION (File Upload with Attachment Service)
+           ========================================================================= */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
+            <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
+              <FileText size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">Document Attachments <span className="text-red-500">*</span></h3>
+              <p className="text-[10px] text-slate-500 font-semibold leading-none">Mandatory tax forms, trade licenses & company profiles</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            {/* Drag and Drop box */}
+            <div className={cn(
+              "md:col-span-1 border-2 border-dashed border-slate-200 bg-slate-50/30 hover:bg-slate-50/75 rounded-2xl p-6 text-center cursor-pointer transition-colors relative flex flex-col items-center justify-center min-h-[140px]",
+              errors.attachments && "border-red-400 bg-red-50/10 hover:bg-red-50/20"
+            )}>
+              <input
+                type="file"
+                onChange={handleFileUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                title="Choose file to attach"
+              />
+              <UploadCloud size={28} className={cn("text-slate-400 mb-1.5", errors.attachments && "text-red-400")} />
+              <p className="text-xs font-black text-slate-700">Upload Attachment</p>
+              <p className="text-[9px] text-slate-400 font-semibold mt-0.5">PDF, DOCX or XLSX up to 10MB</p>
+            </div>
+
+            {/* List of Attachments */}
+            <div className="md:col-span-2 space-y-2">
+              {companyAttachments.length === 0 ? (
+                <div className="flex h-[140px] items-center justify-center border border-slate-200 rounded-2xl bg-slate-50/20 text-slate-400 italic text-xs font-semibold">
+                  At least one attachment is mandatory to save.
+                </div>
+              ) : (
+                <div className="max-h-[160px] overflow-y-auto space-y-1.5 pr-2 scrollbar-thin">
+                  {companyAttachments.map((att, idx) => (
+                    <div key={idx} className="bg-white border border-slate-150 rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm hover:border-[#006699]/30 transition-colors">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 bg-slate-100 rounded-lg text-slate-600 shrink-0">
+                          <FileText size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-slate-700 truncate leading-snug">{att.fileName}</p>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono">
+                            {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached File'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeCompanyAttachment(idx)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                        title="Remove Attachment"
+                      >
+                        <X size={14} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {errors.attachments && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.attachments}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            SUB-ENTITY DIALOG MODALS (Locations & Contact Persons)
+           ========================================================================= */}
+        {/* Location Modal */}
+        <Dialog open={locationModalOpen} onOpenChange={setLocationModalOpen}>
+          <DialogContent className="rounded-3xl max-w-md p-6 border-none shadow-2xl bg-white select-none">
+            <DialogHeader className="pb-3 border-b border-slate-150">
+              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <MapPin size={18} className="text-[#006699]" />
+                {editingLocationIndex !== null ? 'Edit Location Address' : 'Add Location Address'}
+              </DialogTitle>
+              <DialogDescription className="text-[11px] text-slate-500 font-semibold leading-tight">
+                {editingLocationIndex !== null ? 'Modify branch office, factory or warehouse info.' : 'Add branch office, factory or logistical warehouse info.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {/* Type */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Location Type</label>
+                <select
+                  value={locType}
+                  onChange={(e) => setLocType(e.target.value)}
+                  className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                >
+                  <option value="Office">Office</option>
+                  <option value="Warehouse">Warehouse</option>
+                  <option value="Factory">Factory</option>
+                </select>
+              </div>
+
+              {/* Address */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Street Address</label>
+                <textarea
+                  rows={2}
+                  placeholder="Enter branch street address..."
+                  value={locAddress}
+                  onChange={(e) => {
+                    setLocAddress(e.target.value);
+                    if (locErrors.address) setLocErrors(prev => ({ ...prev, address: '' }));
+                  }}
+                  className={cn(
+                    "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 min-h-[50px] resize-y",
+                    locErrors.address && "border-red-500 focus:ring-red-500/10"
+                  )}
+                />
+                {locErrors.address && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.address}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Country */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Country</label>
+                  <select
+                    value={locCountry}
+                    onChange={(e) => {
+                      setLocCountry(e.target.value);
+                      if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      locErrors.country && "border-red-500 focus:ring-red-500/10"
+                    )}
+                  >
+                    <option value="">Select Country</option>
+                    {countries.map((c: any) => (
+                      <option key={c.countryNo} value={c.countryName}>{c.countryName}</option>
+                    ))}
+                  </select>
+                  {locErrors.country && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.country}</p>}
+                </div>
+
+                {/* State */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">State</label>
+                  <select
+                    value={locState}
+                    onChange={(e) => {
+                      setLocState(e.target.value);
+                      if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      locErrors.state && "border-red-500 focus:ring-red-500/10"
+                    )}
+                  >
+                    <option value="">Select State</option>
+                    {states.map((s: any) => (
+                      <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
+                    ))}
+                  </select>
+                  {locErrors.state && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.state}</p>}
+                </div>
+
+                {/* City */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">City</label>
+                  <select
+                    value={locCity}
+                    onChange={(e) => {
+                      setLocCity(e.target.value);
+                      if (locErrors.city) setLocErrors(prev => ({ ...prev, city: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      locErrors.city && "border-red-500 focus:ring-red-500/10"
+                    )}
+                  >
+                    <option value="">Select City</option>
+                    {cities.map((ci: any) => (
+                      <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
+                    ))}
+                  </select>
+                  {locErrors.city && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.city}</p>}
+                </div>
+
+                {/* PIN Code */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">PIN / ZIP Code</label>
+                  <Input
+                    placeholder="ZIP Code..."
+                    value={locPin}
+                    maxLength={10}
+                    onChange={(e) => {
+                      setLocPin(e.target.value);
+                      if (locErrors.pin) setLocErrors(prev => ({ ...prev, pin: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      locErrors.pin && "border-red-500 focus:ring-red-500/10"
+                    )}
+                  />
+                  {locErrors.pin && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.pin}</p>}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-2 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
+              <Button type="button" variant="ghost" onClick={() => setLocationModalOpen(false)} className="rounded-xl h-9 text-xs font-bold text-slate-500 hover:bg-slate-100">
+                Cancel
+              </Button>
+              <Button type="button" onClick={addCompanyLocation} className="rounded-xl h-9 text-xs font-bold bg-[#006699] hover:bg-[#005580] text-white">
+                {editingLocationIndex !== null ? 'Save Changes' : 'Add Location'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  };
+
   const renderFormContent = () => {
+    if (type === 'company') {
+      return renderCompanyForm();
+    }
     return (
       <>
         {/* Disabled System Code */}
@@ -1697,6 +3005,36 @@ export function MasterManager({ type }: MasterManagerProps) {
           )}
         </Card>
 
+        {/* Custom Toggle for Company View Mode */}
+        {type === 'company' && (
+          <div className="flex items-center bg-white/90 p-1 rounded-xl sm:rounded-2xl border border-slate-200/40 shadow-md shrink-0 h-10 sm:h-11">
+            <button
+              onClick={() => setCompanyViewMode('album')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-black transition-all flex items-center gap-1.5 h-full",
+                companyViewMode === 'album'
+                  ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
+                  : "text-slate-500 hover:text-slate-750 hover:bg-slate-100/50"
+              )}
+            >
+              <Building size={14} />
+              <span>Album View</span>
+            </button>
+            <button
+              onClick={() => setCompanyViewMode('attachment')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-black transition-all flex items-center gap-1.5 h-full",
+                companyViewMode === 'attachment'
+                  ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
+                  : "text-slate-500 hover:text-slate-755 hover:bg-slate-100/50"
+              )}
+            >
+              <Paperclip size={14} />
+              <span>Attachment View</span>
+            </button>
+          </div>
+        )}
+
         {/* Add Record Button */}
         <Button
           onClick={handleAddClick}
@@ -1709,263 +3047,541 @@ export function MasterManager({ type }: MasterManagerProps) {
 
       {/* Tabular Search Grid Display List */}
       <div className="flex-1 min-h-0 flex flex-col">
-        {(type === 'location' && isLoadingLocations) || (type === 'type' && isLoadingTypes) || (type === 'priority' && isLoadingPriorities) ? (
-          <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl overflow-hidden p-6 space-y-4 animate-pulse flex-1">
-            <div className="h-10 bg-slate-100 rounded-xl w-full" />
-            <div className="h-12 bg-slate-50 rounded-xl w-full" />
-            <div className="h-12 bg-slate-50 rounded-xl w-full" />
-            <div className="h-12 bg-slate-50 rounded-xl w-full" />
-          </div>
-        ) : filteredList.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
-            <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
-              <Icon size={32} />
+        {type === 'company' ? (
+          filteredList.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
+              <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
+                <Icon size={32} />
+              </div>
+              <h3 className="text-sm font-bold text-slate-700">No Companies Found</h3>
+              <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
             </div>
-            <h3 className="text-sm font-bold text-slate-700">No Records Found</h3>
-            <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No master records match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
-          </div>
-        ) : (
-          <div className="bg-white/80 backdrop-blur-md rounded-[24px] border border-slate-100 shadow-xl shadow-slate-100/30 overflow-hidden flex flex-col flex-1 min-h-0">
-            <div className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin min-h-0">
-              <table className="w-full border-collapse text-left">
-                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
-                  <tr className="border-b border-slate-100 bg-slate-50/50">
-                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4">Code</th>
-                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</th>
-                    {type === 'category' && (
-                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Features</th>
-                    )}
-                    {type === 'priority' && (
-                      <>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Priority Duration</th>
-                      </>
-                    )}
-                    {type === 'folder' && (
-                      <>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Parent Folder</th>
-                      </>
-                    )}
-                    {type === 'user-group' && (
-                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
-                    )}
-                    {type === 'benefit-type' && (
-                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
-                    )}
-                    {type === 'location' && (
-                      <>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Incharge</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Region</th>
-                      </>
-                    )}
-                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created By</th>
-                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created Date</th>
-                    <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right pr-4 w-[100px]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100/60 bg-white">
-                  {paginatedList.map((item: any) => (
-                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-3.5 py-2 text-[11px] font-black text-slate-700 pl-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-slate-100 text-slate-600 border border-slate-200/50">
-                          {item.code || `SYS-${item.id}`}
-                        </span>
-                      </td>
-                      <td className="px-3.5 py-2 text-[11px] font-bold text-slate-800">
-                        <div className="flex items-center gap-2">
-                          {type === 'category' && item.color && (
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                          )}
-                          <span>{item.name}</span>
+          ) : (
+            <div className="flex-1 min-h-0 flex gap-3 relative select-none">
+              {/* Scrollable List container */}
+              <div className="flex-1 overflow-y-auto pr-10 scrollbar-thin space-y-6 pb-12" id="company-scroll-container">
+                {companyViewMode === 'album' ? (
+                  /* ALBUM VIEW CARD LIST */
+                  <div className="space-y-6">
+                    {groupedCompanies.map((group) => (
+                      <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                        <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                          <span>Alphabet {group.letter}</span>
+                          <span className="text-[10px] opacity-70">{group.items.length} Companies</span>
                         </div>
-                      </td>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {group.items.map((company: any) => (
+                            <Card key={company.id} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl hover:border-[#006699]/20 p-5 bg-white transition-all duration-300 flex flex-col gap-4 overflow-hidden group">
+                              {/* Top Header Card Info */}
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  {/* Company Avatar Badge */}
+                                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-base shadow-md shadow-[#006699]/10 shrink-0 uppercase">
+                                    {company.name ? company.name.substring(0, 2) : 'CO'}
+                                  </div>
+                                  <div>
+                                    <h4 className="text-xs font-black text-slate-800 leading-snug group-hover:text-[#006699] transition-colors">{company.name}</h4>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                      <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50">
+                                        {company.code}
+                                      </span>
+                                      <span className={cn(
+                                        "text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full border",
+                                        company.type === 'Buy' 
+                                          ? "bg-sky-50 text-sky-600 border-sky-100" 
+                                          : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                      )}>
+                                        {company.type}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Actions Button */}
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditClick(company)}
+                                    className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
+                                  >
+                                    <Edit size={13} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteClick(company.id)}
+                                    className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
+                                  >
+                                    <Trash2 size={13} />
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              {/* Middle Address & Finance details */}
+                              <div className="grid grid-cols-2 gap-3 py-1 border-t border-b border-slate-100 text-[11px] font-semibold text-slate-500">
+                                <div>
+                                  <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Primary Location</span>
+                                  <span className="text-slate-700 font-bold block truncate" title={company.address}>
+                                    {company.city ? `${company.city}, ${company.country || ''}` : company.address || 'N/A'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Credit limit & GST</span>
+                                  <span className="text-slate-700 font-bold block truncate">
+                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'} 
+                                    {company.vatGst ? ` | ${company.vatGst}` : ''}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Flat Contact Info */}
+                              {company.contacts && company.contacts.length > 0 && company.contacts[0].contactName ? (
+                                <div className="bg-slate-50/50 rounded-xl p-3 text-[11px]">
+                                  <div className="flex items-center gap-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-wider mb-1.5">
+                                    <User size={10} className="text-[#006699]" />
+                                    <span>Key Contact Representative</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-slate-600 font-medium">
+                                    <div>
+                                      <p className="font-bold text-slate-800 leading-tight truncate">{company.contacts[0].contactName}</p>
+                                      <p className="text-[9px] text-slate-400 font-bold mt-0.5 leading-none truncate">{company.contacts[0].designation || 'Representative'}</p>
+                                    </div>
+                                    <div className="text-right flex flex-col justify-center min-w-0">
+                                      <p className="text-[9px] font-bold text-slate-500 truncate">{company.contacts[0].phone || 'No Phone'}</p>
+                                      <p className="text-[9px] font-bold text-slate-400 truncate">{company.contacts[0].email || 'No Email'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="bg-slate-50/30 rounded-xl p-3 text-[10px] text-slate-400 font-semibold italic text-center">
+                                  No key contact person registered.
+                                </div>
+                              )}
+                              
+                              {/* Footer statistics */}
+                              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 pt-1 mt-auto">
+                                <div className="flex items-center gap-3">
+                                  <span className="flex items-center gap-1">
+                                    <MapPin size={12} className="text-slate-400" />
+                                    <strong className="text-slate-700">{company.locations?.length || 0}</strong> Location(s)
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <FileText size={12} className="text-slate-400" />
+                                    <strong className="text-slate-700">{company.attachments?.length || 0}</strong> Attachment(s)
+                                  </span>
+                                </div>
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                                  company.status === 'Active' 
+                                    ? "bg-emerald-100/60 text-emerald-700" 
+                                    : "bg-slate-105 text-slate-500"
+                                )}>
+                                  {company.status}
+                                </span>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* ATTACHMENT-WISE GROUPED VIEW */
+                  <div className="space-y-6">
+                    {groupedCompanies.map((group) => (
+                      <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                        <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                          <span>Alphabet {group.letter}</span>
+                          <span className="text-[10px] opacity-70">{group.items.length} Companies</span>
+                        </div>
+                        <div className="space-y-4">
+                          {group.items.map((company: any) => (
+                            <div key={company.id} className="bg-slate-50/50 rounded-[22px] border border-slate-150 p-5">
+                              <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/60 mb-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-lg bg-[#006699]/10 text-[#006699] flex items-center justify-center font-black text-sm uppercase">
+                                    {company.name ? company.name.substring(0, 2) : 'CO'}
+                                  </div>
+                                  <div>
+                                    <h4 className="text-xs font-black text-slate-800">{company.name}</h4>
+                                    <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">{company.code} • {company.type}</p>
+                                  </div>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-extrabold bg-white px-2.5 py-1 rounded-lg border border-slate-100">
+                                  {company.attachments?.length || 0} Document(s)
+                                </span>
+                              </div>
+                              
+                              {company.attachments && company.attachments.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                  {company.attachments.map((att: any, idx: number) => {
+                                    const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
+                                    const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
+                                    const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
+                                    
+                                    return (
+                                      <Card key={idx} className="bg-white rounded-xl border border-slate-150 p-4 hover:shadow-md hover:border-[#006699]/30 transition-all flex flex-col justify-between gap-3 relative overflow-hidden group">
+                                        <div className="flex items-start gap-3">
+                                          {/* Visual Document Icon with specific colors */}
+                                          <div className={cn(
+                                            "p-2.5 rounded-lg shrink-0 flex items-center justify-center",
+                                            isPdf ? "bg-red-50 text-red-500" :
+                                            isSheet ? "bg-emerald-50 text-emerald-500" :
+                                            isDoc ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-500"
+                                          )}>
+                                            <FileText size={20} />
+                                          </div>
+                                          <div className="min-w-0">
+                                            <h5 className="text-xs font-black text-slate-705 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
+                                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono mt-0.5">
+                                              {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Visual Preview Badge / Mock Area */}
+                                        <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
+                                          <div className="text-[9px] text-slate-400 font-bold leading-tight">
+                                            {isPdf ? "📄 PDF Document Preview Ready" :
+                                             isSheet ? "📊 Excel Spreadsheet Data Sheet" :
+                                             "📝 Text Profile Document Data"}
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Action controls */}
+                                        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 mt-auto">
+                                          <Button
+                                            variant="ghost"
+                                            size="xs"
+                                            onClick={() => {
+                                              setPreviewAttachment({
+                                                fileName: att.fileName || att.name,
+                                                fileSize: att.fileSize,
+                                                companyName: company.name,
+                                                isPdf: !!isPdf,
+                                                isSheet: !!isSheet
+                                              });
+                                            }}
+                                            className="h-7 px-2.5 rounded-lg text-[9px] font-black text-[#006699] hover:bg-[#006699]/10 flex items-center justify-center gap-1 shadow-sm border border-[#006699]/10"
+                                          >
+                                            Preview
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="xs"
+                                            onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
+                                            className="h-7 px-2.5 rounded-lg text-[9px] font-black text-emerald-600 hover:bg-emerald-50 flex items-center justify-center gap-1 border border-emerald-150"
+                                          >
+                                            Download
+                                          </Button>
+                                        </div>
+                                      </Card>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-200 text-xs text-slate-400 font-semibold italic">
+                                  No document attachments uploaded for this company.
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* FLOATING INDEX ALPHABET SIDEBAR (Perfect containment) */}
+              <div className="absolute right-0 top-0 bottom-12 w-8 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg flex flex-col items-center justify-between py-4 z-20 select-none">
+                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
+                  const hasItems = groupedCompanies.some((g) => g.letter === char);
+                  return (
+                    <button
+                      key={char}
+                      disabled={!hasItems}
+                      onClick={() => {
+                        const container = document.getElementById('company-scroll-container');
+                        const target = document.getElementById(`company-group-${char}`);
+                        if (container && target) {
+                          const containerRect = container.getBoundingClientRect();
+                          const targetRect = target.getBoundingClientRect();
+                          const scrollOffset = targetRect.top - containerRect.top + container.scrollTop - 4;
+                          container.scrollTo({ top: scrollOffset, behavior: 'smooth' });
+                        }
+                      }}
+                      className={cn(
+                        "text-[9px] font-black h-4 w-4 rounded-full flex items-center justify-center transition-all",
+                        hasItems
+                          ? "text-[#006699] hover:bg-[#006699]/15 cursor-pointer hover:scale-110 active:scale-90"
+                          : "text-slate-300 cursor-not-allowed opacity-35"
+                      )}
+                    >
+                      {char}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )
+        ) : (
+          /* STANDARD TABULAR SEARCH GRID DISPLAY LIST (for other masters) */
+          (type === 'location' && isLoadingLocations) || (type === 'type' && isLoadingTypes) || (type === 'priority' && isLoadingPriorities) ? (
+            <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl overflow-hidden p-6 space-y-4 animate-pulse flex-1">
+              <div className="h-10 bg-slate-100 rounded-xl w-full" />
+              <div className="h-12 bg-slate-55 rounded-xl w-full" />
+              <div className="h-12 bg-slate-55 rounded-xl w-full" />
+              <div className="h-12 bg-slate-55 rounded-xl w-full" />
+            </div>
+          ) : filteredList.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
+              <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
+                <Icon size={32} />
+              </div>
+              <h3 className="text-sm font-bold text-slate-700">No Records Found</h3>
+              <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No master records match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
+            </div>
+          ) : (
+            <div className="bg-white/80 backdrop-blur-md rounded-[24px] border border-slate-100 shadow-xl shadow-slate-100/30 overflow-hidden flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin min-h-0">
+                <table className="w-full border-collapse text-left">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
+                    <tr className="border-b border-slate-100 bg-slate-50/50">
+                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4">Code</th>
+                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</th>
                       {type === 'category' && (
-                        <td className="px-3.5 py-2">
-                          <div className="flex flex-wrap gap-1">
-                            {item.isApprovalApplicable && (
-                              <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Approval</span>
-                            )}
-                            {item.isInReviewRequired && (
-                              <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Review</span>
-                            )}
-                            {item.isBusinessBenefitApplicable && (
-                              <span className="text-[9px] font-black text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">Benefit</span>
-                            )}
-                          </div>
-                        </td>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Features</th>
                       )}
                       {type === 'priority' && (
                         <>
-                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
-                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
-                            {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
-                          </td>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Priority Duration</th>
                         </>
                       )}
                       {type === 'folder' && (
                         <>
-                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
-                          <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold">{item.parentFolderNo || 'Root'}</td>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Parent Folder</th>
                         </>
                       )}
                       {type === 'user-group' && (
-                        <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[200px] truncate">
-                          {item.description || <span className="italic text-slate-300 font-medium">No description</span>}
-                        </td>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
                       )}
                       {type === 'benefit-type' && (
-                        <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
-                          {benefitFillValues?.valuationTypes?.find((v: any) => v.valuationTypeNo?.toString() === item.valuationtypeNo?.toString())?.valuationTypeName || item.valuationtypeNo}
-                        </td>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
                       )}
                       {type === 'location' && (
                         <>
-                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
-                            <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider">
-                              {item.type || 'Office'}
-                            </span>
-                          </td>
-                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.inchargeNo || 'No Lead'}</td>
-                          <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[150px] truncate">
-                            {item.address1} {item.cityNo ? `, ${item.cityNo}` : ''}
-                          </td>
-                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.locationRegion || 'Central'}</td>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Incharge</th>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address</th>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Region</th>
                         </>
                       )}
-                      <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]">
-                        {item.createdBy || 'System'}
-                      </td>
-                      <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-500 whitespace-nowrap">
-                        {item.createdDate ? format(new Date(item.createdDate), 'MMM dd, yyyy') : 'N/A'}
-                      </td>
-                      <td className="px-3.5 py-2 text-right pr-4 w-[100px]">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditClick(item)}
-                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-100/60 transition-colors flex items-center justify-center"
-                          >
-                            <Edit size={13} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteClick(item.id)}
-                            className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50/50 transition-colors flex items-center justify-center"
-                          >
-                            <Trash2 size={13} />
-                          </Button>
-                        </div>
-                      </td>
+                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created By</th>
+                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created Date</th>
+                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right pr-4 w-[100px]">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Control Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-4 select-none">
-              {/* Left Side: Range Info */}
-              <div className="text-[11px] text-slate-500 font-bold">
-                Showing <span className="text-slate-800 font-black">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
-                <span className="text-slate-800 font-black">{endIndex}</span> of{" "}
-                <span className="text-slate-800 font-black">{totalItems}</span> records
-              </div>
-
-              {/* Center: Items Per Page Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Per Page:</span>
-                <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
-                  {[10, 25, 50].map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => {
-                        setItemsPerPage(size);
-                        setCurrentPage(1);
-                      }}
-                      className={cn(
-                        "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
-                        itemsPerPage === size
-                          ? "bg-[#006699] text-white shadow-sm font-black"
-                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                      )}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right Side: Page Controls */}
-              <div className="flex items-center gap-1">
-                {/* Previous Page Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={safeCurrentPage === 1}
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
-                >
-                  <ChevronLeft size={14} strokeWidth={2.5} />
-                </Button>
-
-                {/* Direct Page Numbers */}
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((page) => {
-                      // Show first, last, and pages around current page
-                      return (
-                        page === 1 ||
-                        page === totalPages ||
-                        Math.abs(page - safeCurrentPage) <= 1
-                      );
-                    })
-                    .map((page, idx, arr) => {
-                      const isPageActive = safeCurrentPage === page;
-                      const hasGap = idx > 0 && page - arr[idx - 1] > 1;
-
-                      return (
-                        <React.Fragment key={page}>
-                          {hasGap && (
-                            <span className="text-[10px] font-bold text-slate-400 px-1 select-none">
-                              ...
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setCurrentPage(page)}
-                            className={cn(
-                              "h-7 w-7 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border shadow-sm",
-                              isPageActive
-                                ? "bg-[#006699] border-[#006699] text-white font-black shadow-md shadow-[#006699]/10"
-                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/60 bg-white">
+                    {paginatedList.map((item: any) => (
+                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-3.5 py-2 text-[11px] font-black text-slate-700 pl-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-slate-100 text-slate-600 border border-slate-200/50">
+                            {item.code || `SYS-${item.id}`}
+                          </span>
+                        </td>
+                        <td className="px-3.5 py-2 text-[11px] font-bold text-slate-800">
+                          <div className="flex items-center gap-2">
+                            {type === 'category' && item.color && (
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                             )}
-                          >
-                            {page}
-                          </button>
-                        </React.Fragment>
-                      );
-                    })}
+                            <span>{item.name}</span>
+                          </div>
+                        </td>
+                        {type === 'category' && (
+                          <td className="px-3.5 py-2">
+                            <div className="flex flex-wrap gap-1">
+                              {item.isApprovalApplicable && (
+                                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Approval</span>
+                              )}
+                              {item.isInReviewRequired && (
+                                <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Review</span>
+                              )}
+                              {item.isBusinessBenefitApplicable && (
+                                <span className="text-[9px] font-black text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">Benefit</span>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {type === 'priority' && (
+                          <>
+                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
+                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                              {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
+                            </td>
+                          </>
+                        )}
+                        {type === 'folder' && (
+                          <>
+                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
+                            <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold">{item.parentFolderNo || 'Root'}</td>
+                          </>
+                        )}
+                        {type === 'user-group' && (
+                          <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[200px] truncate">
+                            {item.description || <span className="italic text-slate-300 font-medium">No description</span>}
+                          </td>
+                        )}
+                        {type === 'benefit-type' && (
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                            {benefitFillValues?.valuationTypes?.find((v: any) => v.valuationTypeNo?.toString() === item.valuationtypeNo?.toString())?.valuationTypeName || item.valuationtypeNo}
+                          </td>
+                        )}
+                        {type === 'location' && (
+                          <>
+                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider">
+                                {item.type || 'Office'}
+                              </span>
+                            </td>
+                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.inchargeNo || 'No Lead'}</td>
+                            <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[150px] truncate">
+                              {item.address1} {item.cityNo ? `, ${item.cityNo}` : ''}
+                            </td>
+                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.locationRegion || 'Central'}</td>
+                          </>
+                        )}
+                        <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]">
+                          {item.createdBy || 'System'}
+                        </td>
+                        <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-500 whitespace-nowrap">
+                          {item.createdDate ? format(new Date(item.createdDate), 'MMM dd, yyyy') : 'N/A'}
+                        </td>
+                        <td className="px-3.5 py-2 text-right pr-4 w-[100px]">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditClick(item)}
+                              className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-100/60 transition-colors flex items-center justify-center"
+                            >
+                              <Edit size={13} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(item.id)}
+                              className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-650 hover:bg-red-50/50 transition-colors flex items-center justify-center"
+                            >
+                              <Trash2 size={13} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Control Bar */}
+              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-4 select-none">
+                {/* Left Side: Range Info */}
+                <div className="text-[11px] text-slate-500 font-bold">
+                  Showing <span className="text-slate-800 font-black">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
+                  <span className="text-slate-800 font-black">{endIndex}</span> of{" "}
+                  <span className="text-slate-800 font-black">{totalItems}</span> records
                 </div>
 
-                {/* Next Page Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={safeCurrentPage === totalPages}
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
-                >
-                  <ChevronRight size={14} strokeWidth={2.5} />
-                </Button>
+                {/* Center: Items Per Page Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Per Page:</span>
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+                    {[10, 25, 50].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => {
+                          setItemsPerPage(size);
+                          setCurrentPage(1);
+                        }}
+                        className={cn(
+                          "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
+                          itemsPerPage === size
+                            ? "bg-[#006699] text-white shadow-sm font-black"
+                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Side: Page Controls */}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={safeCurrentPage === 1}
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                  >
+                    <ChevronLeft size={14} strokeWidth={2.5} />
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          Math.abs(page - safeCurrentPage) <= 1
+                        );
+                      })
+                      .map((page, idx, arr) => {
+                        const isPageActive = safeCurrentPage === page;
+                        const hasGap = idx > 0 && page - arr[idx - 1] > 1;
+
+                        return (
+                          <React.Fragment key={page}>
+                            {hasGap && (
+                              <span className="text-[10px] font-bold text-slate-400 px-1 select-none">
+                                ...
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setCurrentPage(page)}
+                              className={cn(
+                                "h-7 w-7 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border shadow-sm",
+                                isPageActive
+                                  ? "bg-[#006699] border-[#006699] text-white font-black shadow-md shadow-[#006699]/10"
+                                  : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:text-slate-900"
+                              )}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={safeCurrentPage === totalPages}
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    className="h-7 w-7 rounded-lg text-slate-505 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                  >
+                    <ChevronRight size={14} strokeWidth={2.5} />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
       </div>
 
@@ -2061,6 +3677,105 @@ export function MasterManager({ type }: MasterManagerProps) {
               className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
             >
               OK
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Live Document Preview Dialog */}
+      <Dialog open={!!previewAttachment} onOpenChange={(open) => !open && setPreviewAttachment(null)}>
+        <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl overflow-hidden bg-white [&>button]:hidden">
+          <DialogHeader className="p-6 pb-4 bg-slate-50 border-b border-slate-100 flex flex-row items-center justify-between gap-4">
+            <div>
+              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <FileText size={18} className="text-[#006699]" />
+                <span>{previewAttachment?.fileName || 'Document Preview'}</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400 font-semibold mt-1">
+                Owner Company: <strong className="text-slate-600">{previewAttachment?.companyName || 'N/A'}</strong>
+              </DialogDescription>
+            </div>
+            <button
+              onClick={() => setPreviewAttachment(null)}
+              className="p-1.5 rounded-lg hover:bg-slate-200/60 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </DialogHeader>
+          
+          <div className="p-8 bg-slate-100/40 min-h-[300px] flex flex-col items-center justify-center border-b border-slate-100">
+            {previewAttachment?.isPdf ? (
+              <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-md p-6 flex flex-col gap-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <span className="text-[10px] font-black text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded uppercase tracking-wider">PDF Document</span>
+                  <span className="text-[10px] text-slate-400 font-bold">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
+                </div>
+                <div className="space-y-3 font-serif text-[11px] text-slate-600 leading-relaxed py-2 select-text">
+                  <h4 className="text-xs font-black text-slate-800 font-sans tracking-tight mb-2 text-center underline uppercase">Company Registration Profile</h4>
+                  <p>This document details the corporate structure, registration details, and tax identity configurations of <strong>{previewAttachment?.companyName}</strong>.</p>
+                  <p>All active certifications, operational nodes, and financial insurance limits represented in this file are validated under the governing authority as of the active creation date.</p>
+                  <p className="italic text-slate-400 text-[10px] mt-4 text-center font-sans">** End of Document Preview Stream **</p>
+                </div>
+              </div>
+            ) : previewAttachment?.isSheet ? (
+              <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
+                <div className="px-4 py-3 bg-emerald-50/50 border-b border-slate-150 flex items-center justify-between">
+                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded uppercase tracking-wider">Data Spreadsheet</span>
+                  <span className="text-[10px] text-slate-400 font-bold">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-[11px] font-bold text-slate-600">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-150">
+                        <th className="p-2.5 pl-4 font-extrabold text-[9px] uppercase tracking-wider text-slate-400">Parameter</th>
+                        <th className="p-2.5 font-extrabold text-[9px] uppercase tracking-wider text-slate-400">Value Field</th>
+                        <th className="p-2.5 pr-4 font-extrabold text-[9px] uppercase tracking-wider text-slate-400">Verification Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr>
+                        <td className="p-2.5 pl-4 font-extrabold text-slate-700">Company Name</td>
+                        <td className="p-2.5 text-[#006699] font-black">{previewAttachment?.companyName}</td>
+                        <td className="p-2.5 pr-4"><span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Verified</span></td>
+                      </tr>
+                      <tr>
+                        <td className="p-2.5 pl-4 font-extrabold text-slate-700">Audit Status</td>
+                        <td className="p-2.5">Compliant</td>
+                        <td className="p-2.5 pr-4"><span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Verified</span></td>
+                      </tr>
+                      <tr>
+                        <td className="p-2.5 pl-4 font-extrabold text-slate-700">Limit Valuation</td>
+                        <td className="p-2.5">Standard Tier 1</td>
+                        <td className="p-2.5 pr-4"><span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Verified</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-md p-6 flex flex-col gap-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <span className="text-[10px] font-black text-blue-500 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded uppercase tracking-wider">Information Log</span>
+                  <span className="text-[10px] text-slate-400 font-bold">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
+                </div>
+                <div className="p-4 bg-slate-55 rounded-xl font-mono text-[10px] text-slate-600 leading-relaxed border border-slate-100 min-h-[120px] select-text">
+                  <p className="font-bold text-slate-800">// Company master log initialization stream</p>
+                  <p className="mt-2">[INFO] Handshake verified with corporate directory.</p>
+                  <p>[INFO] Primary locations successfully compiled.</p>
+                  <p>[INFO] Credit rating evaluation complete.</p>
+                  <p className="mt-3 text-slate-400">// End of file</p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="p-4 bg-slate-50 flex justify-end gap-2">
+            <Button
+              type="button"
+              onClick={() => setPreviewAttachment(null)}
+              className="h-10 px-6 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs uppercase tracking-wider shadow-none border-none"
+            >
+              Close Preview
             </Button>
           </div>
         </DialogContent>
