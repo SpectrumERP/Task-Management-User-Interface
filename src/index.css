@@ -62,7 +62,7 @@
     --destructive-foreground: 210 40% 98%;
 
     --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --input: 220 14.3% 95.9%;
     --ring: 224.3 76.3% 48%;
   }
 }
@@ -111,11 +111,9 @@
 input:not([type="checkbox"]):not([type="radio"]),
 textarea,
 select,
+.input-section,
 [role="combobox"],
-[data-radix-select-trigger],
-.border-slate-200,
-.border-slate-200\/60,
-.border-slate-200\/80 {
-  border-color: #cbd5e1;
+[data-radix-select-trigger] {
+  border-color: #a8afb7;
   /* Elegant slate-300 border for superior readability and crisp visual definition */
 }

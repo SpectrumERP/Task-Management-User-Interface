@@ -306,6 +306,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     errorMessage?: string;
     fileObject: File;
   }>>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
+  const [invalidFiles, setInvalidFiles] = useState<Array<{
+    name: string;
+    size: number;
+    reason: string;
+  }>>([]);
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const dateParam = searchParams.get('date');
@@ -657,24 +665,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
   };
 
-  const handleNumericInput = (e: React.FormEvent<HTMLInputElement>, precision: number = 2) => {
-    let value = e.currentTarget.value;
 
-    if (precision === 0) {
-      // For 0 precision, strip everything after and including the decimal point
-      if (value.includes('.')) {
-        e.currentTarget.value = value.split('.')[0];
-      }
-      return;
-    }
-
-    if (value.includes('.')) {
-      const [intPart, decimalPart] = value.split('.');
-      if (decimalPart.length > precision) {
-        e.currentTarget.value = `${intPart}.${decimalPart.substring(0, precision)}`;
-      }
-    }
-  };
 
   const onValidationError = (errors: any) => {
     console.error('Form Validation Errors:', errors);
@@ -766,14 +757,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
   };
 
-  const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const processFiles = (files: File[]) => {
+    const validFiles: File[] = [];
+    const failed: Array<{ name: string; size: number; reason: string }> = [];
 
-    Array.from(files).forEach(file => {
+    files.forEach(file => {
       // Validation: Max 10MB
       if (file.size > 10 * 1024 * 1024) {
-        toast.error(`"${file.name}" exceeds the 10MB limit.`);
+        failed.push({
+          name: file.name,
+          size: file.size,
+          reason: "File size exceeds the 10MB limit."
+        });
         return;
       }
 
@@ -781,10 +776,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
       const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
       if (!isImage && !isPdf) {
-        toast.error(`"${file.name}" is not a supported file type. Only PDF and Image files are allowed.`);
+        failed.push({
+          name: file.name,
+          size: file.size,
+          reason: "Unsupported file type. Only PDF and Image files are allowed."
+        });
         return;
       }
 
+      validFiles.push(file);
+    });
+
+    if (failed.length > 0) {
+      setInvalidFiles(failed);
+      setShowWarningDialog(true);
+    }
+
+    // Process valid files
+    validFiles.forEach(file => {
       const tempId = Math.random().toString(36).substring(2, 9);
 
       // Add to queue
@@ -798,9 +807,51 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       // Start upload sequence
       startUpload(tempId, file);
     });
+  };
+
+  const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    processFiles(Array.from(files));
 
     // Reset input
     e.target.value = '';
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter.current = 0;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      processFiles(Array.from(files));
+    }
   };
 
   const handleRetryUpload = (tempId: string) => {
@@ -1080,8 +1131,32 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const hasInformError = informError && !Array.isArray(informError) && (informError as any).message;
 
   return (
-    <Card className="border-none shadow-none bg-transparent">
-      <form id="task-form" onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="space-y-8 divide-y divide-slate-400">
+    <Card className="border-none shadow-none bg-transparent relative">
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-slate-900/10 backdrop-blur-md border-2 border-dashed border-[#006699] rounded-3xl flex flex-col items-center justify-center pointer-events-none transition-all duration-300 animate-in fade-in zoom-in-95">
+          <div className="bg-white/95 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm text-center border border-slate-100">
+            <div className="h-16 w-16 bg-sky-50 rounded-2xl flex items-center justify-center text-[#006699] border border-sky-100 shadow-sm animate-bounce">
+              <UploadCloud size={32} />
+            </div>
+            <h3 className="mt-4 text-base font-black text-slate-800 uppercase tracking-wider">Drop to Upload</h3>
+            <p className="mt-2 text-xs font-bold text-slate-500">Release files anywhere to attach to this task.</p>
+            <div className="mt-4 flex items-center gap-4 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+              <span>PDF & Images Only</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-300"></span>
+              <span>Max 10MB</span>
+            </div>
+          </div>
+        </div>
+      )}
+      <form
+        id="task-form"
+        onSubmit={form.handleSubmit(onSubmit, onValidationError)}
+        className="space-y-8 divide-y divide-slate-400"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
 
         {/* 1. Basic Information */}
         <FormSection
@@ -1134,7 +1209,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   disabled
                   {...form.register('code')}
                   className={cn(
-                    "rounded-xl border-slate-300 h-9 font-mono text-slate-900 font-medium text-sm shadow-sm",
+                    "rounded-xl h-9 font-mono text-slate-900 font-medium text-sm shadow-sm",
                     form.formState.errors.code && "border-red-500"
                   )}
                 />
@@ -1153,6 +1228,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
                       : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                   )}
+                  maxLength={200}
                 />
                 {form.formState.errors.title && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.title.message}</p>}
               </div>
@@ -1170,6 +1246,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                 )}
                 {...form.register('description')}
+                maxLength={1000}
               />
               {form.formState.errors.description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.description.message}</p>}
             </div>
@@ -1272,7 +1349,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     tags={field.value || []}
                     onChange={field.onChange}
                     placeholder="Press enter or comma to add tags"
-                    className="min-h-[36px] py-1 border-slate-300 shadow-sm"
+                    className="min-h-[36px] py-1 border-slate-300 shadow-sm input-section"
                   />
                 )}
               />
@@ -1599,7 +1676,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
             {/* Row 2: Estimated Effort, Calendar Color */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
-              <div className="space-y-1.5 md:col-span-2" id="form-group-estimated_effort_value">
+              <div className="space-y-1.5 md:col-span-1" id="form-group-estimated_effort_value">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Effort</Label>
                 <div className="flex gap-2">
                   <div className="flex-1 space-y-1">
@@ -1608,13 +1685,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       step="0"
                       placeholder=""
                       {...form.register('estimated_effort_value')}
-                      onInput={(e) => handleNumericInput(e, 0)}
+                      isDecimal={false}
                       className={cn(
                         "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right w-full transition-all",
                         form.formState.errors.estimated_effort_value
                           ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
                           : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                       )}
+                      maxLength={8}
                     />
                   </div>
                   <Controller
@@ -1783,13 +1861,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         step="0.01"
                         placeholder=""
                         {...form.register('estimated_benefit_amount')}
-                        onInput={(e) => handleNumericInput(e, 2)}
+                        isDecimal={true}
+                        decimalPlaces={2}
                         className={cn(
                           "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
                           form.formState.errors.estimated_benefit_amount
                             ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
                             : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                         )}
+                        maxLength={8}
                       />
                       {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
                     </div>
@@ -1800,13 +1880,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         step="0.01"
                         placeholder=""
                         {...form.register('actual_benefit_amount')}
-                        onInput={(e) => handleNumericInput(e, 2)}
+                        isDecimal={true}
+                        decimalPlaces={2}
                         className={cn(
                           "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
                           form.formState.errors.actual_benefit_amount
                             ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
                             : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
                         )}
+                        maxLength={8}
                       />
                       {form.formState.errors.actual_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.actual_benefit_amount.message}</p>}
                     </div>
@@ -1818,10 +1900,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     placeholder="Describe the business benefit in detail..."
                     {...form.register('business_benefit_description')}
                     className={cn(
-                      "min-h-[80px] rounded-xl text-slate-900 font-medium text-sm shadow-sm transition-all",
+                      "min-h-[80px] rounded-xl input-section text-slate-900 font-medium text-sm shadow-sm transition-all",
                       form.formState.errors.business_benefit_description
                         ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                        : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                        : "focus:ring-[#006699]/15 focus:border-[#006699]"
                     )}
                   />
                   {form.formState.errors.business_benefit_description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_description.message}</p>}
@@ -1979,7 +2061,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <Textarea
                     {...field}
                     placeholder="Enter detailed execution notes, outcomes, or observations here..."
-                    className="min-h-[100px] text-xs font-semibold rounded-2xl border-slate-200 bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0 text-slate-800"
+                    className="min-h-[100px] text-xs font-semibold input-section bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0 text-slate-800"
                   />
                 )}
               />
@@ -2272,6 +2354,72 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               OK
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Criteria Warning Dialog */}
+      <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+        <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-2xl bg-white/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
+          <div className="p-6 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-100 shadow-sm animate-pulse shrink-0">
+                <Info size={24} />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-black text-slate-800 tracking-tight uppercase">
+                  File Upload Blocked
+                </DialogTitle>
+                <DialogDescription className="text-xs font-bold text-slate-500 mt-0.5">
+                  Some files do not meet the upload criteria.
+                </DialogDescription>
+              </div>
+            </div>
+
+            {/* List of failed files */}
+            <div className="mt-4 max-h-[160px] overflow-y-auto space-y-2 border border-slate-100/80 rounded-2xl p-3 bg-slate-50/50">
+              {invalidFiles.map((file, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-xs">
+                  <span className="text-red-500 font-extrabold shrink-0 mt-0.5">✕</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-700 truncate leading-tight">{file.name}</p>
+                    <p className="text-[10px] font-bold text-red-500 leading-none mt-0.5">{file.reason}</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 shrink-0 self-center">
+                    {formatFileSize(file.size)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Criteria requirements list */}
+            <div className="mt-5 space-y-3.5">
+              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                Attachment Criteria Requirements
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100/60 shadow-sm">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider leading-none mb-1.5">Allowed Types</p>
+                  <p className="text-xs font-black text-slate-700">PDF & Images</p>
+                  <p className="text-[9px] font-bold text-slate-400 mt-1">.pdf, .jpg, .jpeg, .png, .gif, .webp</p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100/60 shadow-sm">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider leading-none mb-1.5">Maximum Size</p>
+                  <p className="text-xs font-black text-slate-700">10 MB</p>
+                  <p className="text-[9px] font-bold text-slate-400 mt-1">Per individual file</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+            <Button
+              type="button"
+              onClick={() => setShowWarningDialog(false)}
+              className="w-full sm:w-auto h-9 text-xs font-black uppercase tracking-wider rounded-xl bg-slate-800 text-white hover:bg-slate-900 border-none shadow-sm transition-all"
+            >
+              OK
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>

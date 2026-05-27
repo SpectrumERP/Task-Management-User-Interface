@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { MasterManager } from '@/components/master/MasterManager';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
+import { Toaster } from 'sonner';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('tasks');
@@ -391,6 +392,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <PWAInstallBanner />
+        <Toaster position="top-right" richColors closeButton />
       </SessionTimeoutGuard>
     </BrowserRouter>
   );
