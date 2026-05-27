@@ -20,8 +20,8 @@ export function PWAInstallBanner() {
   useEffect(() => {
     // Check if running in standalone/installed mode
     const checkStandalone = () => {
-      const isStandaloneMode = 
-        window.matchMedia('(display-mode: standalone)').matches || 
+      const isStandaloneMode =
+        window.matchMedia('(display-mode: standalone)').matches ||
         (navigator as any).standalone === true ||
         document.referrer.includes('android-app://');
       setIsStandalone(isStandaloneMode);
@@ -42,7 +42,7 @@ export function PWAInstallBanner() {
       e.preventDefault();
       // Store the event so it can be triggered later
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      
+
       // Only show banner if not standalone and not dismissed recently
       const isDismissed = localStorage.getItem('taskflow_pwa_dismissed') === 'true';
       if (!isDismissed) {
@@ -58,7 +58,7 @@ export function PWAInstallBanner() {
       const userAgent = window.navigator.userAgent.toLowerCase();
       const isApple = /iphone|ipad|ipod/.test(userAgent);
       const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
-      
+
       if (isApple && !isStandaloneMode && !isDismissed) {
         setIsVisible(true);
       }
@@ -72,20 +72,20 @@ export function PWAInstallBanner() {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
-    
+
     // Trigger the browser's install dialog prompt
     await deferredPrompt.prompt();
-    
+
     // Wait for the user to respond to the prompt
     const choiceResult = await deferredPrompt.userChoice;
-    
+
     if (choiceResult.outcome === 'accepted') {
       console.log('User accepted the PWA install prompt');
       setIsVisible(false);
     } else {
       console.log('User dismissed the PWA install prompt');
     }
-    
+
     // Clear the prompt since it can only be used once
     setDeferredPrompt(null);
   };
@@ -107,19 +107,19 @@ export function PWAInstallBanner() {
       <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 shadow-2xl shadow-slate-950/50 flex flex-col gap-3 relative overflow-hidden">
         {/* Decorative subtle top glow */}
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#00b4d8] to-transparent opacity-60" />
-        
+
         {/* Header Block */}
         <div className="flex items-start justify-between gap-2.5">
           <div className="flex items-center gap-3">
             {/* App Icon Container */}
-            <img 
-              src="/pwa-192x192.png" 
-              alt="Steel Mont" 
-              className="h-11 w-11 rounded-xl object-cover border border-slate-700/50 shadow-md shadow-[#006699]/10 shrink-0" 
+            <img
+              src="/pwa-192x192.png"
+              alt="Steel Mont"
+              className="h-11 w-11 rounded-xl object-cover border border-slate-700/50 shadow-md shadow-[#006699]/10 shrink-0"
             />
             <div className="min-w-0">
               <h4 className="text-sm font-black text-white leading-snug flex items-center gap-1.5">
-                Install TaskFlow App
+                Install Task & Planner App
                 <Sparkles size={12} className="text-[#00b4d8] animate-pulse" />
               </h4>
               <p className="text-[10.5px] font-bold text-slate-400 leading-normal">
@@ -127,8 +127,8 @@ export function PWAInstallBanner() {
               </p>
             </div>
           </div>
-          
-          <button 
+
+          <button
             type="button"
             onClick={handleDismiss}
             className="text-slate-500 hover:text-white hover:bg-slate-800/80 p-1.5 rounded-lg transition-all"

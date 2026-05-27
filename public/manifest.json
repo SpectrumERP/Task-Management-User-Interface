@@ -1,7 +1,7 @@
 {
-  "name": "TaskFlow",
-  "short_name": "TaskFlow",
-  "description": "Premium Task Management App",
+  "name": "SteelMont - Spectrum",
+  "short_name": "Spectrum",
+  "description": "Task & Planner",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#e2e9fa",
