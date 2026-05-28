@@ -68,53 +68,61 @@ export interface LocationMaster {
 }
 
 export interface CompanyLocation {
-  type: string;
+  locationTypeNo: number;
   address: string;
-  country: string;
-  state: string;
-  city: string;
+  countryNo: number;
+  stateNo: number;
+  cityNo: number;
   pinCode: string;
+  countryName?: string;
+  stateName?: string;
+  cityName?: string;
+  locationTypeName?: string;
 }
 
 export interface CompanyContact {
-  name: string;
+  contactPersonName: string;
   address: string;
-  country: string;
-  state: string;
-  city: string;
+  countryNo: number;
+  stateNo: number;
+  cityNo: number;
   pinCode: string;
-  phone?: string;
+  phoneNo: string;
   email: string;
-  designation?: string;
-  department?: string;
+  designation: string;
+  department: string;
+  countryName?: string;
+  stateName?: string;
+  cityName?: string;
+  status?: string;
 }
 
 export interface CompanyPort {
-  name: string;
+  portNo: number;
+  portName?: string;
 }
 
 export interface CompanyAttachment {
-  name: string;
-  size: number;
+  docNo: number;
+  fileName?: string;
+  filePath?: string;
+  fileSize?: number;
 }
 
 export interface CompanyMaster {
   id: string;
-  code: string;
-  name: string;
-  type: string;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  pinCode: string;
-  vatGst?: string;
-  creditLimit?: number;
-  status: string;
+  businessEntityNo: number;
+  businessEntityName: string;
+  crmBusinessEntityTypeNo: number;
+  crmTimeZoneNo: number;
+  vatgstNo: string;
+  creditInsuranceLimit: number;
+  contactPersons: CompanyContact[];
   locations: CompanyLocation[];
-  contacts: CompanyContact[];
   ports: CompanyPort[];
-  attachments: CompanyAttachment[];
+  attachment: CompanyAttachment[];
+  code?: string;
+  status?: string;
 }
 
 interface MasterState {
@@ -163,7 +171,7 @@ interface MasterState {
   deleteLocation: (id: string) => void;
 
   // CRUD for Companies
-  addCompany: (item: Omit<CompanyMaster, 'id' | 'code'>) => void;
+  addCompany: (item: CompanyMaster) => void;
   updateCompany: (id: string, item: Partial<CompanyMaster>) => void;
   deleteCompany: (id: string) => void;
 }
@@ -269,48 +277,124 @@ export const useMasterStore = create<MasterState>()(
       ],
       companies: [
         {
-          id: 'comp-1',
-          code: 'COMP-0001',
-          name: 'Acme Global Inc.',
-          type: 'Buy',
-          address: '456 Innovation Way',
-          city: 'New York',
-          state: 'New York State',
-          country: 'United States',
-          pinCode: '10001',
-          vatGst: 'US987654321',
-          creditLimit: 500000,
+          id: 'be-1',
+          businessEntityNo: 1,
+          businessEntityName: 'Acme Logistics Corporation',
+          crmBusinessEntityTypeNo: 1,
+          crmTimeZoneNo: 1,
+          vatgstNo: 'GSTIN987654321A',
+          creditInsuranceLimit: 500000,
           status: 'Active',
-          locations: [
+          contactPersons: [
             {
-              type: 'Office',
-              address: '789 Corporate Tower, 12th Floor',
-              country: 'United States',
-              state: 'New York State',
-              city: 'New York',
-              pinCode: '10001'
+              contactPersonName: 'Sarah Jenkins',
+              address: '742 Evergreen Terrace',
+              countryNo: 2,
+              stateNo: 4,
+              cityNo: 4,
+              pinCode: '400001',
+              phoneNo: '+91 98765 43210',
+              email: 'sarah.jenkins@acmelogistics.com',
+              designation: 'VP of Procurement',
+              department: 'Logistics',
+              status: 'Active'
+            },
+            {
+              contactPersonName: 'John Doe',
+              address: '100 Baker Street',
+              countryNo: 2,
+              stateNo: 4,
+              cityNo: 4,
+              pinCode: '400002',
+              phoneNo: '+91 99999 88888',
+              email: 'john.doe@acmelogistics.com',
+              designation: 'Supply Chain Coordinator',
+              department: 'Operations',
+              status: 'Active'
             }
           ],
-          contacts: [
+          locations: [
             {
-              name: 'John Doe',
-              address: '789 Corporate Tower, 12th Floor',
-              country: 'United States',
-              state: 'New York State',
-              city: 'New York',
-              pinCode: '10001',
-              phone: '123-456-7890',
-              email: 'john.doe@acme.com',
-              designation: 'Purchasing Manager',
-              department: 'Procurement'
+              locationTypeNo: 1,
+              address: 'Acme Tower, BKC Phase 1',
+              countryNo: 2,
+              stateNo: 4,
+              cityNo: 4,
+              pinCode: '400051',
+              countryName: 'India',
+              stateName: 'Maharashtra',
+              cityName: 'Mumbai',
+              locationTypeName: 'Office'
+            },
+            {
+              locationTypeNo: 2,
+              address: 'Plot 42, Nhava Sheva SEZ',
+              countryNo: 2,
+              stateNo: 4,
+              cityNo: 4,
+              pinCode: '400707',
+              countryName: 'India',
+              stateName: 'Maharashtra',
+              cityName: 'Mumbai',
+              locationTypeName: 'Warehouse'
             }
           ],
           ports: [
-            { name: 'Port of Los Angeles' }
+            { portNo: 11, portName: 'Nhava Sheva (India)' },
+            { portNo: 12, portName: 'Mundra (India)' }
           ],
-          attachments: [
-            { name: 'acme_certificate.pdf', size: 1048576 }
-          ]
+          attachment: [
+            { docNo: 101, fileName: 'business_license.pdf', filePath: '/attachments/business_license.pdf', fileSize: 102456 }
+          ],
+          code: 'BE-0001'
+        },
+        {
+          id: 'be-2',
+          businessEntityNo: 2,
+          businessEntityName: 'Global Shipping Solutions Ltd',
+          crmBusinessEntityTypeNo: 3,
+          crmTimeZoneNo: 2,
+          vatgstNo: 'VAT987612345',
+          creditInsuranceLimit: 1200000,
+          status: 'Active',
+          contactPersons: [
+            {
+              contactPersonName: 'Marcus Aurelius',
+              address: 'Via dei Fori Imperiali',
+              countryNo: 1,
+              stateNo: 1,
+              cityNo: 1,
+              pinCode: '900011',
+              phoneNo: '+1 234 567 8900',
+              email: 'marcus@globalshipping.io',
+              designation: 'Operations Director',
+              department: 'Logistics Management',
+              status: 'Active'
+            }
+          ],
+          locations: [
+            {
+              locationTypeNo: 1,
+              address: '500 Silicon Valley Blvd',
+              countryNo: 1,
+              stateNo: 1,
+              cityNo: 1,
+              pinCode: '94025',
+              countryName: 'United States',
+              stateName: 'California',
+              cityName: 'Los Angeles',
+              locationTypeName: 'Office'
+            }
+          ],
+          ports: [
+            { portNo: 1, portName: 'Shanghai (China)' },
+            { portNo: 2, portName: 'Singapore (Singapore)' }
+          ],
+          attachment: [
+            { docNo: 102, fileName: 'insurance_policy.pdf', filePath: '/attachments/insurance_policy.pdf', fileSize: 2048560 },
+            { docNo: 103, fileName: 'credit_report.pdf', filePath: '/attachments/credit_report.pdf', fileSize: 512000 }
+          ],
+          code: 'BE-0002'
         }
       ],
 
@@ -407,9 +491,8 @@ export const useMasterStore = create<MasterState>()(
 
       // Companies actions
       addCompany: (item) => set((state) => {
-        const id = `comp-${Date.now()}`;
-        const code = generateCode('COMP', state.companies.length);
-        return { companies: [...state.companies, { ...item, id, code }] };
+        const code = item.code || generateCode('BE', state.companies.length);
+        return { companies: [...state.companies, { ...item, code }] };
       }),
       updateCompany: (id, item) => set((state) => ({
         companies: state.companies.map((c) => (c.id === id ? { ...c, ...item } : c)),

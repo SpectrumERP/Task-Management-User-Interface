@@ -37,7 +37,8 @@ import {
   UploadCloud,
   FileText,
   Paperclip,
-  User
+  User,
+  List
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { attachmentService } from '@/services/attachmentService';
@@ -81,35 +82,55 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   const fetchCompanies = async () => {
     try {
-      const response = await apiService.get<any>(`/api/master/companies/search-data?companyNo=${companyNo}`);
-      if (response) {
-        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
-        const mapped = rawItems.map((c: any) => ({
-          id: (c.companyNo ?? c.id ?? '').toString(),
-          code: c.code || `COMP-${c.companyNo || c.id}`,
-          name: c.companyName || c.name || '',
-          type: c.companyType || c.type || '',
-          address: c.address || '',
-          city: c.city || '',
-          state: c.state || '',
-          country: c.country || '',
-          pinCode: c.pinCode || '',
-          vatGst: c.vatGst || '',
-          creditLimit: c.creditLimit || 0,
-          status: c.status || 'Active',
-          locations: c.locations || [],
-          contacts: c.contacts || [],
-          ports: c.ports || [],
-          attachments: c.attachments || [],
-          createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || 'System',
-          createdDate: c.createdDate || ''
-        }));
-        setApiCompanies(mapped);
+      let rawItems: any[] = [];
+      try {
+        const response = null
+        if (response) {
+          rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        }
+      } catch (apiErr) {
+        console.warn("Backend companies fetch failed, falling back to store merging:", apiErr);
       }
+
+      // Read from Zustand store
+      const storeCompanies = useMasterStore.getState().companies || [];
+
+      // Merge: avoid duplicates by matching businessEntityNo / ID
+      const allCompanies = [...rawItems];
+      storeCompanies.forEach((sc: any) => {
+        const exists = allCompanies.some((c: any) =>
+          (c.businessEntityNo?.toString() === sc.businessEntityNo?.toString()) ||
+          (c.id?.toString() === sc.id?.toString())
+        );
+        if (!exists) {
+          allCompanies.push(sc);
+        }
+      });
+
+      const mapped = allCompanies.map((c: any) => ({
+        id: (c.businessEntityNo ?? c.companyNo ?? c.id ?? '').toString(),
+        code: c.code || `BE-${c.businessEntityNo || c.companyNo || c.id}`,
+        name: c.businessEntityName || c.companyName || c.name || '',
+        type: c.businessEntityType?.businessEntityTypeName || c.businessEntityTypeName || c.companyType || c.type || '',
+        address: c.address || '',
+        city: c.city || '',
+        state: c.state || '',
+        country: c.country || '',
+        pinCode: c.pinCode || '',
+        vatGst: c.vatgstNo || c.vatGst || '',
+        creditLimit: c.creditInsuranceLimit || c.creditLimit || 0,
+        status: c.status || 'Active',
+        locations: c.locations || [],
+        contacts: c.contactPersons || c.contacts || [],
+        ports: c.ports || [],
+        attachments: c.attachments || c.attachment || [],
+        createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || 'System',
+        createdDate: c.createdDate || ''
+      }));
+      setApiCompanies(mapped);
     } catch (error) {
-      console.error("Failed to fetch API companies, using local Zustand store fallback:", error);
-      const local = useMasterStore.getState().companies || [];
-      setApiCompanies(local);
+      console.error("Failed to fetch API companies:", error);
+      setApiCompanies([]);
     }
   };
 
@@ -335,6 +356,17 @@ export function MasterManager({ type }: MasterManagerProps) {
     }
   };
 
+  const fetchBusinessEntityFillValues = async () => {
+    try {
+      const response = await apiService.get<any>(`/api/master/business-entities/fill-values?companyNo=${companyNo}`);
+      if (response) {
+        setBusinessEntityFillValues(response);
+      }
+    } catch (error) {
+      console.error("Failed to fetch business entity fill-values:", error);
+    }
+  };
+
   useEffect(() => {
     if (type === 'location') {
       fetchLocations();
@@ -356,14 +388,14 @@ export function MasterManager({ type }: MasterManagerProps) {
       setValuationtypeNo('1');
     } else if (type === 'company') {
       fetchCompanies();
-      fetchLocationFillValues();
+      fetchBusinessEntityFillValues();
     }
   }, [type]);
 
   // Local UI State
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [companyViewMode, setCompanyViewMode] = useState<'album' | 'attachment'>('album');
+  const [companyViewMode, setCompanyViewMode] = useState<'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment'>('list');
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -458,8 +490,85 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [contactCity, setContactCity] = useState('');
   const [contactPinCode, setContactPinCode] = useState('');
 
-  // Port selector state
+  const [companyContacts, setCompanyContacts] = useState<any[]>([]);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [editingContactIndex, setEditingContactIndex] = useState<number | null>(null);
+  const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
+  const [contactStatus, setContactStatus] = useState('Active');
   const [selectedPortName, setSelectedPortName] = useState('');
+
+  // Business Entity Fill Values and lists
+  const [businessEntityFillValues, setBusinessEntityFillValues] = useState<any>(null);
+  const [companyTimeZoneNo, setCompanyTimeZoneNo] = useState<string>('');
+
+  // Dynamic Country-State-City lists for different forms
+  const [companyStatesList, setCompanyStatesList] = useState<any[]>([]);
+  const [companyCitiesList, setCompanyCitiesList] = useState<any[]>([]);
+
+  const [locStatesList, setLocStatesList] = useState<any[]>([]);
+  const [locCitiesList, setLocCitiesList] = useState<any[]>([]);
+
+  const [contactStatesList, setContactStatesList] = useState<any[]>([]);
+  const [contactCitiesList, setContactCitiesList] = useState<any[]>([]);
+
+  const fetchStatesByCountry = async (countryNo: number | string) => {
+    if (!countryNo) return [];
+    try {
+      const response = await apiService.get<any>(`/api/master/states/by-country/${countryNo}`);
+      if (response) {
+        return response.data || response || [];
+      }
+    } catch (error) {
+      console.error(`Failed to fetch states for countryNo ${countryNo}:`, error);
+    }
+    return [];
+  };
+
+  const fetchCitiesByState = async (stateNo: number | string) => {
+    if (!stateNo) return [];
+    try {
+      const response = await apiService.get<any>(`/api/master/cities/by-state/${stateNo}`);
+      if (response) {
+        return response.data || response || [];
+      }
+    } catch (error) {
+      console.error(`Failed to fetch cities for stateNo ${stateNo}:`, error);
+    }
+    return [];
+  };
+
+  const getCountryNo = (name: string) => {
+    const list = businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries || [];
+    const found = list.find((x: any) => x.countryName?.toLowerCase() === name?.toLowerCase());
+    return found ? parseInt(found.countryNo) : null;
+  };
+  const getStateNo = (name: string) => {
+    const list = companyStatesList.length ? companyStatesList : (locStatesList.length ? locStatesList : (contactStatesList.length ? contactStatesList : []));
+    const found = list.find((x: any) => x.stateName?.toLowerCase() === name?.toLowerCase());
+    return found ? parseInt(found.stateNo) : null;
+  };
+  const getCityNo = (name: string) => {
+    const list = companyCitiesList.length ? companyCitiesList : (locCitiesList.length ? locCitiesList : (contactCitiesList.length ? contactCitiesList : []));
+    const found = list.find((x: any) => x.cityName?.toLowerCase() === name?.toLowerCase());
+    return found ? parseInt(found.cityNo) : null;
+  };
+  const getPortNo = (name: string) => {
+    const list = businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || [];
+    const found = list.find((x: any) => x.portName?.toLowerCase() === name?.toLowerCase());
+    return found ? parseInt(found.portNo) : null;
+  };
+
+  const getLocationTypeName = (no: string | number) => {
+    const list = businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || [];
+    const found = list.find((x: any) => x.locationTypeNo?.toString() === no?.toString());
+    return found ? found.locationTypeName : no;
+  };
+
+  const getLocationTypeNo = (name: string) => {
+    const list = businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || [];
+    const found = list.find((x: any) => x.locationTypeName?.toLowerCase() === name?.toLowerCase());
+    return found ? found.locationTypeNo : null;
+  };
 
   useEffect(() => {
     if (isNew) {
@@ -493,7 +602,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       setServerError(null);
 
       // Company Master resets
-      setCompanyType('Buy');
+      setCompanyType('');
       setCompanyAddress('');
       setCompanyCity('');
       setCompanyState('');
@@ -523,7 +632,19 @@ export function MasterManager({ type }: MasterManagerProps) {
       setContactState('');
       setContactCity('');
       setContactPinCode('');
+      setCompanyContacts([]);
+      setContactModalOpen(false);
+      setEditingContactIndex(null);
+      setContactErrors({});
+      setContactStatus('Active');
       setSelectedPortName('');
+      setCompanyTimeZoneNo('');
+      setCompanyStatesList([]);
+      setCompanyCitiesList([]);
+      setLocStatesList([]);
+      setLocCitiesList([]);
+      setContactStatesList([]);
+      setContactCitiesList([]);
     } else if (isEdit && id) {
       setErrors({});
       setEditingId(id);
@@ -640,40 +761,80 @@ export function MasterManager({ type }: MasterManagerProps) {
           }
         }).catch(err => console.error("Failed to load location details:", err));
       } else if (type === 'company') {
-        apiService.get<any>(`/api/master/companies/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+        apiService.get<any>(`/api/master/business-entities/load-data/${id}`).then((response) => {
           if (response) {
             const body = response.data || response;
             const dl = body.data || body;
             if (dl) {
-              setName(dl.companyName || dl.name || '');
-              setCompanyType(dl.companyType || dl.type || 'Buy');
+              setName(dl.businessEntityName || dl.name || '');
+              setCompanyType(dl.crmBusinessEntityTypeNo?.toString() || dl.businessEntityType?.operCRMBusinessEntityTypeNo?.toString() || dl.companyType || '');
               setCompanyAddress(dl.address || '');
-              setCompanyCity(dl.city || '');
-              setCompanyState(dl.state || '');
-              setCompanyCountry(dl.country || '');
-              setCompanyPinCode(dl.pinCode || '');
-              setCompanyVatGst(dl.vatGst || '');
-              setCreditLimit(dl.creditLimit || null);
+              setCompanyVatGst(dl.vatgstNo || dl.vatGst || '');
+              setCreditLimit(dl.creditInsuranceLimit || dl.creditLimit || null);
               setCompanyStatus(dl.status || 'Active');
-              setCompanyLocations(dl.locations || []);
+              setCompanyTimeZoneNo(dl.crmTimeZoneNo?.toString() || '');
 
-              // Hydrate contact person single fields
-              const firstContact = (dl.contacts && dl.contacts.length > 0) ? dl.contacts[0] : null;
-              setContactName(firstContact?.name || '');
-              setContactPhone(firstContact?.phone || '');
-              setContactEmail(firstContact?.email || '');
-              setContactDesignation(firstContact?.designation || '');
-              setContactDepartment(firstContact?.department || '');
-              setContactAddress(firstContact?.address || '');
-              setContactCountry(firstContact?.country || '');
-              setContactState(firstContact?.state || '');
-              setContactCity(firstContact?.city || '');
-              setContactPinCode(firstContact?.pinCode || '');
+              // Dynamic Country, State, City fetching and loading
+              const fetchedCountryName = dl.country || '';
+              const fetchedStateName = dl.state || '';
+              setCompanyCountry(fetchedCountryName);
+              setCompanyState(fetchedStateName);
+              setCompanyCity(dl.city || '');
+              setCompanyPinCode(dl.pinCode || '');
+
+              const activeFillValues = businessEntityFillValues || locationFillValues;
+              const fillCountries = activeFillValues?.data?.countries || activeFillValues?.countries || [];
+
+              if (fetchedCountryName) {
+                const foundCountry = fillCountries.find((c: any) => c.countryName?.toLowerCase() === fetchedCountryName.toLowerCase());
+                if (foundCountry) {
+                  fetchStatesByCountry(foundCountry.countryNo).then((states) => {
+                    setCompanyStatesList(states);
+                    if (fetchedStateName) {
+                      const foundState = states.find((s: any) => s.stateName?.toLowerCase() === fetchedStateName.toLowerCase());
+                      if (foundState) {
+                        fetchCitiesByState(foundState.stateNo).then((cities) => {
+                          setCompanyCitiesList(cities);
+                        });
+                      }
+                    }
+                  });
+                }
+              }
+
+              // Map locations properly
+              const mappedLocations = (dl.locations || []).map((l: any) => ({
+                type: l.locationTypeNo?.toString() || l.locationType?.addressTypeName || 'Office',
+                address: l.address || '',
+                country: l.country?.countryName || '',
+                state: l.state?.stateName || '',
+                city: l.city?.cityName || '',
+                pinCode: l.pinCode || ''
+              }));
+              setCompanyLocations(mappedLocations);
+
+              // Map contact persons properly
+              const mappedContacts = (dl.contactPersons || []).map((c: any) => ({
+                contactName: c.contactPersonName || '',
+                name: c.contactPersonName || '',
+                phone: c.phoneNo || '',
+                email: c.email || '',
+                designation: c.designation || '',
+                department: c.department || '',
+                address: c.address || '',
+                country: c.country?.countryName || '',
+                state: c.state?.stateName || '',
+                city: c.city?.cityName || '',
+                pinCode: c.pinCode || '',
+                status: c.status || 'Active'
+              }));
+              setCompanyContacts(mappedContacts);
 
               // Map ports properly
               const mappedPorts = (dl.ports || []).map((p: any) => ({
-                name: p.name || p.portName || '',
-                portName: p.name || p.portName || ''
+                name: p.port?.portName || p.portName || '',
+                portName: p.port?.portName || p.portName || '',
+                portNo: p.port?.portNo || p.port?.portId || p.portNo || 0
               }));
               setCompanyPorts(mappedPorts);
 
@@ -681,43 +842,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             }
           }
         }).catch(err => {
-          console.warn("Failed to load company details via API, loading from local Zustand store:", err);
-          const localItem = useMasterStore.getState().companies.find(c => c.id === id);
-          if (localItem) {
-            setName(localItem.name);
-            setCompanyType(localItem.type);
-            setCompanyAddress(localItem.address);
-            setCompanyCity(localItem.city);
-            setCompanyState(localItem.state);
-            setCompanyCountry(localItem.country);
-            setCompanyPinCode(localItem.pinCode);
-            setCompanyVatGst(localItem.vatGst || '');
-            setCreditLimit(localItem.creditLimit || null);
-            setCompanyStatus(localItem.status);
-            setCompanyLocations(localItem.locations || []);
-
-            // Hydrate contact person single fields
-            const firstContact = (localItem.contacts && localItem.contacts.length > 0) ? localItem.contacts[0] : null;
-            setContactName(firstContact?.name || '');
-            setContactPhone(firstContact?.phone || '');
-            setContactEmail(firstContact?.email || '');
-            setContactDesignation(firstContact?.designation || '');
-            setContactDepartment(firstContact?.department || '');
-            setContactAddress(firstContact?.address || '');
-            setContactCountry(firstContact?.country || '');
-            setContactState(firstContact?.state || '');
-            setContactCity(firstContact?.city || '');
-            setContactPinCode(firstContact?.pinCode || '');
-
-            // Map ports properly
-            const mappedPorts = (localItem.ports || []).map((p: any) => ({
-              name: p.name || p.portName || '',
-              portName: p.name || p.portName || ''
-            }));
-            setCompanyPorts(mappedPorts);
-
-            setCompanyAttachments(localItem.attachments || []);
-          }
+          console.error("Failed to load company details via API:", err);
         });
       }
     }
@@ -749,7 +874,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       case 'location':
         return { title: 'Location Master', desc: 'Manage physical addresses, regional hubs, and location hierarchies', icon: MapPin, list: apiLocations };
       case 'company':
-        return { title: 'Company Master', desc: 'Define and manage company profiles, branch locations, and contact persons', icon: Layers, list: apiCompanies };
+        return { title: 'Business Entity Master', desc: 'Define and manage business entity profiles, branch locations, and contact persons', icon: Layers, list: apiCompanies };
     }
   };
 
@@ -768,28 +893,28 @@ export function MasterManager({ type }: MasterManagerProps) {
   // Pagination Calculations
   const totalItems = filteredList.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-  
+
   // Safe page boundary checks
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  
+
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
   // Group companies by first letter for A-Z sidebar navigation
   const groupedCompanies = useMemo(() => {
     if (type !== 'company') return [];
-    
+
     // Sort all matching companies alphabetically by name
-    const sorted = [...filteredList].sort((a, b) => 
+    const sorted = [...filteredList].sort((a, b) =>
       (a.name || '').localeCompare(b.name || '')
     );
-    
+
     const groups: { letter: string; items: any[] }[] = [];
     sorted.forEach(item => {
       const firstChar = (item.name || '').charAt(0).toUpperCase();
       const letter = /^[A-Z]$/.test(firstChar) ? firstChar : '#';
-      
+
       let group = groups.find(g => g.letter === letter);
       if (!group) {
         group = { letter, items: [] };
@@ -797,14 +922,14 @@ export function MasterManager({ type }: MasterManagerProps) {
       }
       group.items.push(item);
     });
-    
+
     // Order alphabetically, putting '#' at the very end
     groups.sort((a, b) => {
       if (a.letter === '#') return 1;
       if (b.letter === '#') return -1;
       return a.letter.localeCompare(b.letter);
     });
-    
+
     return groups;
   }, [filteredList, type]);
 
@@ -870,12 +995,13 @@ export function MasterManager({ type }: MasterManagerProps) {
         }).catch(err => console.error("Failed to delete location:", err));
         break;
       case 'company':
-        apiService.delete(`/api/master/companies/delete`, {
-          params: { companyNo: id }
+        apiService.delete(`/api/master/business-entities/delete`, {
+          params: { businessEntityNo: id }
         }).then(() => {
+          useMasterStore.getState().deleteCompany(id);
           fetchCompanies();
         }).catch(err => {
-          console.warn("Failed API company delete, deleting locally from Zustand:", err);
+          console.warn("Failed to delete company via API, clearing from store:", err);
           useMasterStore.getState().deleteCompany(id);
           fetchCompanies();
         });
@@ -888,7 +1014,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) {
-      newErrors.name = type === 'company' ? 'Company name is required' : 'Name / Label is required';
+      newErrors.name = type === 'company' ? 'Business Entity name is required' : 'Name / Label is required';
     }
 
     if (type === 'priority') {
@@ -918,6 +1044,8 @@ export function MasterManager({ type }: MasterManagerProps) {
       }
       if (!pinCode.trim()) {
         newErrors.pinCode = 'PIN / ZIP Code is required';
+      } else if (pinCode.trim().length !== 6) {
+        newErrors.pinCode = 'PIN / ZIP Code must be exactly 6 characters';
       }
       if (!countryNo || countryNo === 'none' || countryNo === '') {
         newErrors.countryNo = 'Country is required';
@@ -946,6 +1074,8 @@ export function MasterManager({ type }: MasterManagerProps) {
       }
       if (!companyPinCode.trim()) {
         newErrors.companyPinCode = 'PIN Code is required';
+      } else if (companyPinCode.trim().length !== 6) {
+        newErrors.companyPinCode = 'PIN Code must be exactly 6 characters';
       }
       if (companyLocations.length === 0) {
         newErrors.companyLocations = 'At least one location is required';
@@ -1054,64 +1184,110 @@ export function MasterManager({ type }: MasterManagerProps) {
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
         } else if (type === 'company') {
-          const computedContacts = contactName ? [
-            {
-              name: contactName,
-              phone: contactPhone,
-              email: contactEmail,
-              designation: contactDesignation,
-              department: contactDepartment,
-              address: contactAddress,
-              country: contactCountry,
-              state: contactState,
-              city: contactCity,
-              pinCode: contactPinCode
-            }
-          ] : [];
+          const computedContacts = companyContacts.map(c => ({
+            contactPersonName: c.contactName || c.name || '',
+            address: c.address || '',
+            countryNo: getCountryNo(c.country) || null,
+            stateNo: getStateNo(c.state) || null,
+            cityNo: getCityNo(c.city) || null,
+            pinCode: c.pinCode || c.pin || '',
+            phoneNo: c.phone || '',
+            email: c.email || '',
+            designation: c.designation || '',
+            department: c.department || ''
+          }));
+
+          const computedLocations = companyLocations.map(l => ({
+            locationTypeNo: getLocationTypeNo(l.type) || parseInt(l.type) || null,
+            address: l.address || '',
+            countryNo: getCountryNo(l.country) || null,
+            stateNo: getStateNo(l.state) || null,
+            cityNo: getCityNo(l.city) || null,
+            pinCode: l.pinCode || l.pin || ''
+          }));
 
           const computedPorts = companyPorts.map(p => ({
-            name: p.name || p.portName || '',
-            portName: p.name || p.portName || ''
+            portNo: p.portNo || getPortNo(p.name || p.portName) || parseInt(p.portNo) || null
+          }));
+
+          const computedAttachments = companyAttachments.map(a => ({
+            docNo: a.docNo || a.id || null
           }));
 
           const payload = {
-            companyNo: parseInt(id) || null,
-            companyName: name,
-            companyType,
-            address: companyAddress,
-            city: companyCity,
-            state: companyState,
-            country: companyCountry,
-            pinCode: companyPinCode,
-            vatGst: companyVatGst,
-            creditLimit,
-            status: companyStatus,
-            locations: companyLocations,
-            contacts: computedContacts,
+            businessEntityNo: parseInt(id) || null,
+            businessEntityName: name,
+            crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : null,
+            crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : null,
+            vatgstNo: companyVatGst || null,
+            creditInsuranceLimit: creditLimit ?? null,
+            address: companyAddress || null,
+            countryNo: getCountryNo(companyCountry) || null,
+            stateNo: getStateNo(companyState) || null,
+            cityNo: getCityNo(companyCity) || null,
+            pinCode: companyPinCode || null,
+            contactPersons: computedContacts,
+            locations: computedLocations,
             ports: computedPorts,
-            attachments: companyAttachments
+            attachment: computedAttachments
           };
           try {
-            await apiService.post('/api/master/companies/save', payload);
-          } catch (err) {
-            console.warn("Failed API company save, saving locally to Zustand store:", err);
-            useMasterStore.getState().updateCompany(id, {
-              name,
-              type: companyType,
-              address: companyAddress,
-              city: companyCity,
-              state: companyState,
-              country: companyCountry,
-              pinCode: companyPinCode,
-              vatGst: companyVatGst,
-              creditLimit: creditLimit || 0,
-              status: companyStatus,
-              locations: companyLocations,
-              contacts: computedContacts,
-              ports: computedPorts,
-              attachments: companyAttachments
-            });
+            await apiService.post('/api/master/business-entities/save', payload);
+          } catch (apiErr) {
+            console.warn("Update API save failed, performing store-only update for preview:", apiErr);
           }
+
+          useMasterStore.getState().updateCompany(id, {
+            id,
+            businessEntityNo: parseInt(id) || 0,
+            businessEntityName: name,
+            crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : 0,
+            crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : 0,
+            vatgstNo: companyVatGst || '',
+            creditInsuranceLimit: creditLimit ?? 0,
+            locations: computedLocations.map(l => ({
+              ...l,
+              countryNo: l.countryNo || 0,
+              stateNo: l.stateNo || 0,
+              cityNo: l.cityNo || 0,
+              locationTypeNo: l.locationTypeNo || 0,
+              countryName: companyCountry || '',
+              stateName: companyState || '',
+              cityName: companyCity || '',
+              locationTypeName: getLocationTypeName(l.locationTypeNo || 0)
+            })),
+            contactPersons: companyContacts.map(c => ({
+              contactPersonName: c.contactName || c.name || '',
+              address: c.address || '',
+              countryNo: getCountryNo(c.country) || 0,
+              stateNo: getStateNo(c.state) || 0,
+              cityNo: getCityNo(c.city) || 0,
+              pinCode: c.pinCode || c.pin || '',
+              phoneNo: c.phone || '',
+              email: c.email || '',
+              designation: c.designation || '',
+              department: c.department || '',
+              countryName: c.country || '',
+              stateName: c.state || '',
+              cityName: c.city || '',
+              status: c.status || 'Active'
+            })),
+            ports: computedPorts.map(p => ({
+              portNo: p.portNo || 0,
+              portName: (portsList.find((pl: any) => getPortNo(pl) === p.portNo) || p.portNo || '').toString()
+            })),
+            attachment: computedAttachments.map(a => {
+              const match = companyAttachments.find(ca => (ca.docNo || ca.id) === a.docNo);
+              return {
+                docNo: a.docNo || 0,
+                fileName: match?.fileName || match?.name || 'attachment.pdf',
+                filePath: match?.filePath || '',
+                fileSize: match?.fileSize || match?.size || 0
+              };
+            }),
+            status: companyStatus || 'Active'
+          });
+
           await fetchCompanies();
         }
       } else {
@@ -1197,64 +1373,114 @@ export function MasterManager({ type }: MasterManagerProps) {
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
         } else if (type === 'company') {
-          const computedContacts = contactName ? [
-            {
-              name: contactName,
-              phone: contactPhone,
-              email: contactEmail,
-              designation: contactDesignation,
-              department: contactDepartment,
-              address: contactAddress,
-              country: contactCountry,
-              state: contactState,
-              city: contactCity,
-              pinCode: contactPinCode
-            }
-          ] : [];
+          const computedContacts = companyContacts.map(c => ({
+            contactPersonName: c.contactName || c.name || '',
+            address: c.address || '',
+            countryNo: getCountryNo(c.country) || null,
+            stateNo: getStateNo(c.state) || null,
+            cityNo: getCityNo(c.city) || null,
+            pinCode: c.pinCode || c.pin || '',
+            phoneNo: c.phone || '',
+            email: c.email || '',
+            designation: c.designation || '',
+            department: c.department || ''
+          }));
+
+          const computedLocations = companyLocations.map(l => ({
+            locationTypeNo: getLocationTypeNo(l.type) || parseInt(l.type) || null,
+            address: l.address || '',
+            countryNo: getCountryNo(l.country) || null,
+            stateNo: getStateNo(l.state) || null,
+            cityNo: getCityNo(l.city) || null,
+            pinCode: l.pinCode || l.pin || ''
+          }));
 
           const computedPorts = companyPorts.map(p => ({
-            name: p.name || p.portName || '',
-            portName: p.name || p.portName || ''
+            portNo: p.portNo || getPortNo(p.name || p.portName) || parseInt(p.portNo) || null
+          }));
+
+          const computedAttachments = companyAttachments.map(a => ({
+            docNo: a.docNo || a.id || null
           }));
 
           const payload = {
-            companyNo: null,
-            companyName: name,
-            companyType,
-            address: companyAddress,
-            city: companyCity,
-            state: companyState,
-            country: companyCountry,
-            pinCode: companyPinCode,
-            vatGst: companyVatGst,
-            creditLimit,
-            status: companyStatus,
-            locations: companyLocations,
-            contacts: computedContacts,
+            businessEntityNo: null,
+            businessEntityName: name,
+            crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : null,
+            crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : null,
+            vatgstNo: companyVatGst || null,
+            creditInsuranceLimit: creditLimit ?? null,
+            address: companyAddress || null,
+            countryNo: getCountryNo(companyCountry) || null,
+            stateNo: getStateNo(companyState) || null,
+            cityNo: getCityNo(companyCity) || null,
+            pinCode: companyPinCode || null,
+            contactPersons: computedContacts,
+            locations: computedLocations,
             ports: computedPorts,
-            attachments: companyAttachments
+            attachment: computedAttachments
           };
+          let createdNo = Date.now();
           try {
-            await apiService.post('/api/master/companies/save', payload);
-          } catch (err) {
-            console.warn("Failed API company save, saving locally to Zustand store:", err);
-            useMasterStore.getState().addCompany({
-              name,
-              type: companyType,
-              address: companyAddress,
-              city: companyCity,
-              state: companyState,
-              country: companyCountry,
-              pinCode: companyPinCode,
-              vatGst: companyVatGst,
-              creditLimit: creditLimit || 0,
-              status: companyStatus,
-              locations: companyLocations,
-              contacts: computedContacts,
-              ports: computedPorts,
-              attachments: companyAttachments
-            });
+            const apiRes = await apiService.post<any>('/api/master/business-entities/save', payload);
+            if (apiRes && apiRes.data && apiRes.data.businessEntityNo) {
+              createdNo = apiRes.data.businessEntityNo;
+            }
+          } catch (apiErr) {
+            console.warn("Add API save failed, performing store-only add for preview:", apiErr);
           }
+
+          useMasterStore.getState().addCompany({
+            id: createdNo.toString(),
+            businessEntityNo: createdNo,
+            businessEntityName: name,
+            crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : 0,
+            crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : 0,
+            vatgstNo: companyVatGst || '',
+            creditInsuranceLimit: creditLimit ?? 0,
+            locations: computedLocations.map(l => ({
+              ...l,
+              countryNo: l.countryNo || 0,
+              stateNo: l.stateNo || 0,
+              cityNo: l.cityNo || 0,
+              locationTypeNo: l.locationTypeNo || 0,
+              countryName: companyCountry || '',
+              stateName: companyState || '',
+              cityName: companyCity || '',
+              locationTypeName: getLocationTypeName(l.locationTypeNo || 0)
+            })),
+            contactPersons: companyContacts.map(c => ({
+              contactPersonName: c.contactName || c.name || '',
+              address: c.address || '',
+              countryNo: getCountryNo(c.country) || 0,
+              stateNo: getStateNo(c.state) || 0,
+              cityNo: getCityNo(c.city) || 0,
+              pinCode: c.pinCode || c.pin || '',
+              phoneNo: c.phone || '',
+              email: c.email || '',
+              designation: c.designation || '',
+              department: c.department || '',
+              countryName: c.country || '',
+              stateName: c.state || '',
+              cityName: c.city || '',
+              status: c.status || 'Active'
+            })),
+            ports: computedPorts.map(p => ({
+              portNo: p.portNo || 0,
+              portName: (portsList.find((pl: any) => getPortNo(pl) === p.portNo) || p.portNo || '').toString()
+            })),
+            attachment: computedAttachments.map(a => {
+              const match = companyAttachments.find(ca => (ca.docNo || ca.id) === a.docNo);
+              return {
+                docNo: a.docNo || 0,
+                fileName: match?.fileName || match?.name || 'attachment.pdf',
+                filePath: match?.filePath || '',
+                fileSize: match?.fileSize || match?.size || 0
+              };
+            }),
+            status: companyStatus || 'Active'
+          });
+
           await fetchCompanies();
         }
       }
@@ -1397,7 +1623,11 @@ export function MasterManager({ type }: MasterManagerProps) {
     if (!locCountry || locCountry === 'none') errs.country = 'Country is required';
     if (!locState || locState === 'none') errs.state = 'State is required';
     if (!locCity || locCity === 'none') errs.city = 'City is required';
-    if (!locPin.trim()) errs.pin = 'PIN Code is required';
+    if (!locPin.trim()) {
+      errs.pin = 'PIN Code is required';
+    } else if (locPin.trim().length !== 6) {
+      errs.pin = 'PIN Code must be exactly 6 characters';
+    }
 
     if (Object.keys(errs).length > 0) {
       setLocErrors(errs);
@@ -1446,10 +1676,153 @@ export function MasterManager({ type }: MasterManagerProps) {
     setLocErrors({});
     setEditingLocationIndex(index);
     setLocationModalOpen(true);
+
+    const activeFillValues = businessEntityFillValues || locationFillValues;
+    const countries = activeFillValues?.data?.countries || activeFillValues?.countries || [];
+    if (loc.country) {
+      const foundCountry = countries.find((c: any) => c.countryName?.toLowerCase() === loc.country.toLowerCase());
+      if (foundCountry) {
+        fetchStatesByCountry(foundCountry.countryNo).then((states) => {
+          setLocStatesList(states);
+          if (loc.state) {
+            const foundState = states.find((s: any) => s.stateName?.toLowerCase() === loc.state.toLowerCase());
+            if (foundState) {
+              fetchCitiesByState(foundState.stateNo).then((cities) => {
+                setLocCitiesList(cities);
+              });
+            }
+          }
+        });
+      }
+    }
   };
 
   const removeCompanyLocation = (index: number) => {
     setCompanyLocations(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const validateEmailBlur = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contactEmail)) {
+      setContactErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+      return false;
+    }
+    setContactErrors(prev => ({ ...prev, email: '' }));
+    return true;
+  };
+
+  const addCompanyContact = () => {
+    const errs: Record<string, string> = {};
+    if (!contactName.trim()) errs.name = 'Representative Name is required';
+    if (!contactPhone.trim()) errs.phone = 'Phone number is required';
+
+    // Email validations
+    if (!contactEmail.trim()) {
+      errs.email = 'Email address is required';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(contactEmail)) {
+        errs.email = 'Please enter a valid email address';
+      }
+    }
+
+    if (!contactDesignation.trim()) errs.designation = 'Designation is required';
+    if (!contactDepartment.trim()) errs.department = 'Department is required';
+    if (!contactCountry.trim() || contactCountry === 'none') errs.country = 'Country is required';
+    if (!contactState.trim() || contactState === 'none') errs.state = 'State is required';
+    if (!contactCity.trim() || contactCity === 'none') errs.city = 'City is required';
+    if (!contactPinCode.trim()) {
+      errs.pinCode = 'PIN Code is required';
+    } else if (contactPinCode.trim().length !== 6) {
+      errs.pinCode = 'PIN Code must be exactly 6 characters';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setContactErrors(errs);
+      return;
+    }
+
+    const newContact = {
+      contactName,
+      name: contactName,
+      phone: contactPhone,
+      email: contactEmail,
+      designation: contactDesignation,
+      department: contactDepartment,
+      address: contactAddress,
+      country: contactCountry,
+      state: contactState,
+      city: contactCity,
+      pinCode: contactPinCode,
+      status: contactStatus
+    };
+
+    if (editingContactIndex !== null) {
+      setCompanyContacts(prev => {
+        const next = [...prev];
+        next[editingContactIndex] = newContact;
+        return next;
+      });
+      setEditingContactIndex(null);
+    } else {
+      setCompanyContacts(prev => [...prev, newContact]);
+    }
+
+    // reset contact modal
+    setContactName('');
+    setContactPhone('');
+    setContactEmail('');
+    setContactDesignation('');
+    setContactDepartment('');
+    setContactAddress('');
+    setContactCountry('');
+    setContactState('');
+    setContactCity('');
+    setContactPinCode('');
+    setContactStatus('Active');
+    setContactErrors({});
+    setContactModalOpen(false);
+  };
+
+  const handleEditContact = (index: number) => {
+    const c = companyContacts[index];
+    setContactName(c.contactName || c.name || '');
+    setContactPhone(c.phone || '');
+    setContactEmail(c.email || '');
+    setContactDesignation(c.designation || '');
+    setContactDepartment(c.department || '');
+    setContactAddress(c.address || '');
+    setContactCountry(c.country || '');
+    setContactState(c.state || '');
+    setContactCity(c.city || '');
+    setContactPinCode(c.pinCode || c.pin || '');
+    setContactStatus(c.status || 'Active');
+    setContactErrors({});
+    setEditingContactIndex(index);
+    setContactModalOpen(true);
+
+    const activeFillValues = businessEntityFillValues || locationFillValues;
+    const countries = activeFillValues?.data?.countries || activeFillValues?.countries || [];
+    if (c.country) {
+      const foundCountry = countries.find((cnt: any) => cnt.countryName?.toLowerCase() === c.country.toLowerCase());
+      if (foundCountry) {
+        fetchStatesByCountry(foundCountry.countryNo).then((states) => {
+          setContactStatesList(states);
+          if (c.state) {
+            const foundState = states.find((s: any) => s.stateName?.toLowerCase() === c.state.toLowerCase());
+            if (foundState) {
+              fetchCitiesByState(foundState.stateNo).then((cities) => {
+                setContactCitiesList(cities);
+              });
+            }
+          }
+        });
+      }
+    }
+  };
+
+  const removeCompanyContact = (index: number) => {
+    setCompanyContacts(prev => prev.filter((_, i) => i !== index));
   };
 
   const addCompanyPort = () => {
@@ -1518,80 +1891,47 @@ export function MasterManager({ type }: MasterManagerProps) {
   };
 
   const renderCompanyForm = () => {
-    // Fill Value Fallbacks
-    const countries = locationFillValues?.data?.countries || locationFillValues?.countries || [
-      { countryNo: '1', countryName: 'United States' },
-      { countryNo: '2', countryName: 'India' },
-      { countryNo: '3', countryName: 'Germany' },
-      { countryNo: '4', countryName: 'China' },
-      { countryNo: '5', countryName: 'United Kingdom' }
-    ];
+    // Fill Values exclusively from API
+    const countries = businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries || [];
+    const states = companyStatesList;
+    const cities = companyCitiesList;
 
-    const states = locationFillValues?.data?.states || locationFillValues?.states || [
-      { stateNo: '1', stateName: 'California' },
-      { stateNo: '2', stateName: 'New York' },
-      { stateNo: '3', stateName: 'Texas' },
-      { stateNo: '4', stateName: 'Maharashtra' },
-      { stateNo: '5', stateName: 'Karnataka' },
-      { stateNo: '6', stateName: 'Bavaria' }
-    ];
+    const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
+    const timeZones = businessEntityFillValues?.data?.timeZones || businessEntityFillValues?.timeZones || [];
 
-    const cities = locationFillValues?.data?.cities || locationFillValues?.cities || [
-      { cityNo: '1', cityName: 'Los Angeles' },
-      { cityNo: '2', cityName: 'New York City' },
-      { cityNo: '3', cityName: 'Houston' },
-      { cityNo: '4', cityName: 'Mumbai' },
-      { cityNo: '5', cityName: 'Bangalore' },
-      { cityNo: '6', cityName: 'Munich' }
-    ];
-
-    const portsList = [
-      'Shanghai (China)',
-      'Singapore (Singapore)',
-      'Rotterdam (Netherlands)',
-      'Ningbo-Zhoushan (China)',
-      'Guangzhou (China)',
-      'Busan (South Korea)',
-      'Qingdao (China)',
-      'Los Angeles (United States)',
-      'Antwerp (Belgium)',
-      'Hamburg (Germany)',
-      'Nhava Sheva (India)',
-      'Mundra (India)'
-    ];
+    const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
 
     return (
-      <div className="space-y-8 pb-10">
+      <div className="space-y-5 pb-5">
         {/* =========================================================================
             HEADER SECTION (General Information)
            ========================================================================= */}
-        <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
+        <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
             <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
               <Building size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">General Company Information</h3>
-              <p className="text-[10px] text-slate-500 font-semibold leading-none">Primary organizational identifiers & tax metadata</p>
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">General Business Entity Information</h3>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* System Code */}
             <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">System Code</label>
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Code</label>
               <Input
                 disabled
-                value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
+                value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : ''}
                 className="bg-slate-100/80 border-slate-200/50 h-10 text-xs font-bold text-slate-500 rounded-xl cursor-not-allowed select-none"
               />
             </div>
 
-            {/* Company Name */}
+            {/* Business Entity Name */}
             <div className="space-y-1 md:col-span-2">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Company Name <span className="text-red-500">*</span></label>
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Business Entity Name <span className="text-red-500">*</span></label>
               <Input
-                placeholder="Enter Company Name..."
+                placeholder="Enter Business Entity Name..."
                 value={name}
                 maxLength={100}
                 onChange={(e) => {
@@ -1600,7 +1940,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 }}
                 className={cn(
                   "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10"
+                  errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
               {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
@@ -1608,16 +1948,55 @@ export function MasterManager({ type }: MasterManagerProps) {
 
             {/* Type */}
             <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Company Type <span className="text-red-500">*</span></label>
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Business Entity Type <span className="text-red-500">*</span></label>
               <select
                 value={companyType}
-                onChange={(e) => setCompanyType(e.target.value)}
+                onChange={(e) => {
+                  setCompanyType(e.target.value);
+                  if (errors.companyType) setErrors(prev => ({ ...prev, companyType: '' }));
+                }}
+                className={cn(
+                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.companyType && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              >
+                <option value="">Select Business Entity Type</option>
+                {businessEntityTypes.map((t: any) => (
+                  <option key={t.operCRMBusinessEntityTypeNo} value={t.operCRMBusinessEntityTypeNo.toString()}>
+                    {t.operCRMBusinessEntityTypeName}
+                  </option>
+                ))}
+              </select>
+              {errors.companyType && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyType}</p>}
+            </div>
+
+            {/* Timezone */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Timezone</label>
+              <select
+                value={companyTimeZoneNo}
+                onChange={(e) => setCompanyTimeZoneNo(e.target.value)}
                 className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
               >
-                <option value="Buy">Buy</option>
-                <option value="Sell">Sell</option>
-                <option value="Both">Both</option>
+                <option value="">Select Timezone</option>
+                {timeZones.map((tz: any) => (
+                  <option key={tz.crmTimeZoneNo} value={tz.crmTimeZoneNo.toString()}>
+                    {tz.crmTimeZoneName}
+                  </option>
+                ))}
               </select>
+            </div>
+
+            {/* Credit Insurance Limit */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Credit Insurance Limit</label>
+              <Input
+                type="number"
+                placeholder="Insurance Limit..."
+                value={creditLimit || ''}
+                onChange={(e) => setCreditLimit(e.target.value ? Number(e.target.value) : null)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
             </div>
 
             {/* Address */}
@@ -1633,10 +2012,22 @@ export function MasterManager({ type }: MasterManagerProps) {
                 }}
                 className={cn(
                   "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] min-h-[40px] resize-y",
-                  errors.companyAddress && "border-red-500 focus:ring-red-500/10"
+                  errors.companyAddress && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
               {errors.companyAddress && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyAddress}</p>}
+            </div>
+
+            {/* VAT / GST No */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">VAT / GST No</label>
+              <Input
+                placeholder="Registration Number..."
+                value={companyVatGst}
+                maxLength={30}
+                onChange={(e) => setCompanyVatGst(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+              />
             </div>
 
             {/* Country */}
@@ -1644,13 +2035,24 @@ export function MasterManager({ type }: MasterManagerProps) {
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country <span className="text-red-500">*</span></label>
               <select
                 value={companyCountry}
-                onChange={(e) => {
-                  setCompanyCountry(e.target.value);
+                onChange={async (e) => {
+                  const countryName = e.target.value;
+                  setCompanyCountry(countryName);
+                  setCompanyState('');
+                  setCompanyCity('');
+                  setCompanyStatesList([]);
+                  setCompanyCitiesList([]);
                   if (errors.companyCountry) setErrors(prev => ({ ...prev, companyCountry: '' }));
+
+                  const foundCountry = countries.find((c: any) => c.countryName === countryName);
+                  if (foundCountry) {
+                    const statesData = await fetchStatesByCountry(foundCountry.countryNo);
+                    setCompanyStatesList(statesData);
+                  }
                 }}
                 className={cn(
                   "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.companyCountry && "border-red-500 focus:ring-red-500/10"
+                  errors.companyCountry && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               >
                 <option value="">Select Country</option>
@@ -1666,13 +2068,22 @@ export function MasterManager({ type }: MasterManagerProps) {
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province <span className="text-red-500">*</span></label>
               <select
                 value={companyState}
-                onChange={(e) => {
-                  setCompanyState(e.target.value);
+                onChange={async (e) => {
+                  const stateName = e.target.value;
+                  setCompanyState(stateName);
+                  setCompanyCity('');
+                  setCompanyCitiesList([]);
                   if (errors.companyState) setErrors(prev => ({ ...prev, companyState: '' }));
+
+                  const foundState = states.find((s: any) => s.stateName === stateName);
+                  if (foundState) {
+                    const citiesData = await fetchCitiesByState(foundState.stateNo);
+                    setCompanyCitiesList(citiesData);
+                  }
                 }}
                 className={cn(
                   "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.companyState && "border-red-500 focus:ring-red-500/10"
+                  errors.companyState && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               >
                 <option value="">Select State</option>
@@ -1694,7 +2105,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 }}
                 className={cn(
                   "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.companyCity && "border-red-500 focus:ring-red-500/10"
+                  errors.companyCity && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               >
                 <option value="">Select City</option>
@@ -1719,47 +2130,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                 }}
                 className={cn(
                   "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.companyPinCode && "border-red-500 focus:ring-red-500/10"
+                  errors.companyPinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
               {errors.companyPinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyPinCode}</p>}
-            </div>
-
-            {/* VAT / GST No */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">VAT / GST No</label>
-              <Input
-                placeholder="Registration Number..."
-                value={companyVatGst}
-                maxLength={30}
-                onChange={(e) => setCompanyVatGst(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              />
-            </div>
-
-            {/* Credit Insurance Limit */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Credit Insurance Limit</label>
-              <Input
-                type="number"
-                placeholder="Insurance Limit..."
-                value={creditLimit || ''}
-                onChange={(e) => setCreditLimit(e.target.value ? Number(e.target.value) : null)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              />
-            </div>
-
-            {/* Status */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Status <span className="text-red-500">*</span></label>
-              <select
-                value={companyStatus}
-                onChange={(e) => setCompanyStatus(e.target.value)}
-                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
             </div>
           </div>
         </div>
@@ -1775,7 +2149,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
               <div>
                 <h3 className="text-sm font-black text-slate-800 tracking-tight">Locations <span className="text-red-500">*</span></h3>
-                <p className="text-[10px] text-slate-500 font-semibold leading-none">Branch offices, warehouses, and industrial plants</p>
+                {/* <p className="text-[10px] text-slate-500 font-semibold leading-none">Branch offices, warehouses, and industrial plants</p> */}
               </div>
             </div>
             <Button
@@ -1840,8 +2214,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                         <span className={cn(
                           "px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wide",
                           loc.type === 'Office' ? "bg-blue-50 text-blue-700 border border-blue-100" :
-                          loc.type === 'Warehouse' ? "bg-amber-50 text-amber-700 border border-amber-100" :
-                          "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            loc.type === 'Warehouse' ? "bg-amber-50 text-amber-700 border border-amber-100" :
+                              "bg-emerald-50 text-emerald-700 border border-emerald-100"
                         )}>
                           {loc.type}
                         </span>
@@ -1865,160 +2239,109 @@ export function MasterManager({ type }: MasterManagerProps) {
         </div>
 
         {/* =========================================================================
-            CONTACT PERSON SECTION (Flat Fields)
+            CONTACT PERSON SECTION (Multiple Display Cards)
            ========================================================================= */}
-        <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
-            <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
-              <User size={18} />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
+                <User size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-800 tracking-tight">Contact Persons</h3>
+                <p className="text-[10px] text-slate-500 font-semibold leading-none">Corporate representatives & point of contacts</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">Contact Person Details</h3>
-              <p className="text-[10px] text-slate-500 font-semibold leading-none">Primary corporate representative contact information</p>
-            </div>
+            <Button
+              type="button"
+              onClick={() => {
+                setEditingContactIndex(null);
+                setContactName('');
+                setContactPhone('');
+                setContactEmail('');
+                setContactDesignation('');
+                setContactDepartment('');
+                setContactAddress('');
+                setContactCountry('');
+                setContactState('');
+                setContactCity('');
+                setContactPinCode('');
+                setContactErrors({});
+                setContactModalOpen(true);
+              }}
+              className="h-8 rounded-lg px-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs gap-1.5 flex items-center shadow"
+            >
+              <Plus size={14} />
+              Add Contact Person
+            </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* Contact Person Name */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Contact Person Name</label>
-              <Input
-                placeholder="Enter Name..."
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              />
+          {companyContacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/20 text-slate-400 text-center">
+              <User size={32} className="stroke-1 mb-2 text-slate-300" />
+              <p className="text-xs font-bold">No Contact Persons Added</p>
+              <p className="text-[10px] text-slate-500 font-medium">Add representative contacts for active business communications.</p>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {companyContacts.map((c, idx) => (
+                <div key={idx} className="bg-white border border-slate-200/70 rounded-2xl p-4 shadow-sm relative group hover:border-[#006699]/40 transition-colors">
+                  <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => handleEditContact(idx)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-[#006699]/5 transition-colors"
+                      title="Edit Contact"
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeCompanyContact(idx)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      title="Remove Contact"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
 
-            {/* Designation - Dropdown */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Designation</label>
-              <select
-                value={contactDesignation}
-                onChange={(e) => setContactDesignation(e.target.value)}
-                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              >
-                <option value="">Select Designation</option>
-                <option value="Director">Director</option>
-                <option value="Manager">Manager</option>
-                <option value="Purchasing Manager">Purchasing Manager</option>
-                <option value="Sales Manager">Sales Manager</option>
-                <option value="Executive">Executive</option>
-                <option value="Coordinator">Coordinator</option>
-                <option value="Engineer">Engineer</option>
-                <option value="Accountant">Accountant</option>
-              </select>
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#006699]/10 text-[#006699] flex items-center justify-center font-black text-xs shrink-0 uppercase">
+                      {c.name ? c.name.substring(0, 2) : 'CP'}
+                    </div>
+                    <div className="space-y-1.5 pr-14 min-w-0">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 leading-snug truncate">{c.name || c.contactName}</h4>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200/50">
+                            {c.designation}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200/50">
+                            {c.department}
+                          </span>
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border",
+                            (c.status || 'Active') === 'Active'
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                              : "bg-slate-50 text-slate-500 border-slate-200/60"
+                          )}>
+                            {c.status || 'Active'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-semibold space-y-1 text-slate-500">
+                        <p className="flex items-center gap-1"><span className="text-slate-400">Phone:</span> <strong className="text-slate-700">{c.phone}</strong></p>
+                        <p className="flex items-center gap-1"><span className="text-slate-400">Email:</span> <strong className="text-[#006699] select-all">{c.email}</strong></p>
+                        {c.address && (
+                          <p className="text-[9px] text-slate-400 italic line-clamp-1 mt-1">{c.address}, {c.city}, {c.state}, {c.country}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-
-            {/* Department - Dropdown */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Department</label>
-              <select
-                value={contactDepartment}
-                onChange={(e) => setContactDepartment(e.target.value)}
-                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              >
-                <option value="">Select Department</option>
-                <option value="Procurement">Procurement</option>
-                <option value="Sales">Sales</option>
-                <option value="Logistics">Logistics</option>
-                <option value="Finance">Finance</option>
-                <option value="Operations">Operations</option>
-                <option value="Engineering">Engineering</option>
-                <option value="Legal">Legal</option>
-              </select>
-            </div>
-
-            {/* Direct Phone */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Direct Phone</label>
-              <Input
-                placeholder="Enter Phone..."
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              />
-            </div>
-
-            {/* Email Address */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Email Address</label>
-              <Input
-                type="email"
-                placeholder="Enter Email..."
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              />
-            </div>
-
-            {/* Contact Address */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Contact Address</label>
-              <Input
-                placeholder="Enter Address..."
-                value={contactAddress}
-                onChange={(e) => setContactAddress(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              />
-            </div>
-
-            {/* Country */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
-              <select
-                value={contactCountry}
-                onChange={(e) => setContactCountry(e.target.value)}
-                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              >
-                <option value="">Select Country</option>
-                {countries.map((c: any) => (
-                  <option key={c.countryNo} value={c.countryName}>{c.countryName}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* State */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
-              <select
-                value={contactState}
-                onChange={(e) => setContactState(e.target.value)}
-                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              >
-                <option value="">Select State</option>
-                {states.map((s: any) => (
-                  <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* City */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
-              <select
-                value={contactCity}
-                onChange={(e) => setContactCity(e.target.value)}
-                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              >
-                <option value="">Select City</option>
-                {cities.map((ci: any) => (
-                  <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* PIN Code */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</label>
-              <Input
-                placeholder="Enter PIN Code..."
-                value={contactPinCode}
-                onChange={(e) => setContactPinCode(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              />
-            </div>
-          </div>
+          )}
         </div>
 
         {/* =========================================================================
@@ -2030,8 +2353,8 @@ export function MasterManager({ type }: MasterManagerProps) {
               <Globe size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">Assigned Ports</h3>
-              <p className="text-[10px] text-slate-500 font-semibold leading-none">Registered ports for shipping & logistics</p>
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">Preffered Ports</h3>
+              <p className="text-[10px] text-slate-500 font-semibold leading-none">Preffered ports for shipping & logistics</p>
             </div>
           </div>
 
@@ -2089,7 +2412,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Document Attachments <span className="text-red-500">*</span></h3>
-              <p className="text-[10px] text-slate-500 font-semibold leading-none">Mandatory tax forms, trade licenses & company profiles</p>
+
             </div>
           </div>
 
@@ -2173,9 +2496,18 @@ export function MasterManager({ type }: MasterManagerProps) {
                   onChange={(e) => setLocType(e.target.value)}
                   className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
                 >
-                  <option value="Office">Office</option>
-                  <option value="Warehouse">Warehouse</option>
-                  <option value="Factory">Factory</option>
+                  <option value="">Select Location Type</option>
+                  {(businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []).length > 0 ? (
+                    (businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []).map((lt: any) => (
+                      <option key={lt.locationTypeNo} value={lt.locationTypeNo.toString()}>{lt.locationTypeName}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Office">Office</option>
+                      <option value="Warehouse">Warehouse</option>
+                      <option value="Factory">Factory</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -2192,7 +2524,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                   }}
                   className={cn(
                     "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 min-h-[50px] resize-y",
-                    locErrors.address && "border-red-500 focus:ring-red-500/10"
+                    locErrors.address && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
                 />
                 {locErrors.address && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.address}</p>}
@@ -2204,13 +2536,24 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Country</label>
                   <select
                     value={locCountry}
-                    onChange={(e) => {
-                      setLocCountry(e.target.value);
+                    onChange={async (e) => {
+                      const countryName = e.target.value;
+                      setLocCountry(countryName);
+                      setLocState('');
+                      setLocCity('');
+                      setLocStatesList([]);
+                      setLocCitiesList([]);
                       if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
+
+                      const foundCountry = countries.find((c: any) => c.countryName === countryName);
+                      if (foundCountry) {
+                        const statesData = await fetchStatesByCountry(foundCountry.countryNo);
+                        setLocStatesList(statesData);
+                      }
                     }}
                     className={cn(
                       "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                      locErrors.country && "border-red-500 focus:ring-red-500/10"
+                      locErrors.country && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   >
                     <option value="">Select Country</option>
@@ -2226,17 +2569,26 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">State</label>
                   <select
                     value={locState}
-                    onChange={(e) => {
-                      setLocState(e.target.value);
+                    onChange={async (e) => {
+                      const stateName = e.target.value;
+                      setLocState(stateName);
+                      setLocCity('');
+                      setLocCitiesList([]);
                       if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
+
+                      const foundState = locStatesList.find((s: any) => s.stateName === stateName);
+                      if (foundState) {
+                        const citiesData = await fetchCitiesByState(foundState.stateNo);
+                        setLocCitiesList(citiesData);
+                      }
                     }}
                     className={cn(
                       "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                      locErrors.state && "border-red-500 focus:ring-red-500/10"
+                      locErrors.state && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   >
                     <option value="">Select State</option>
-                    {states.map((s: any) => (
+                    {locStatesList.map((s: any) => (
                       <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
                     ))}
                   </select>
@@ -2254,11 +2606,11 @@ export function MasterManager({ type }: MasterManagerProps) {
                     }}
                     className={cn(
                       "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                      locErrors.city && "border-red-500 focus:ring-red-500/10"
+                      locErrors.city && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   >
                     <option value="">Select City</option>
-                    {cities.map((ci: any) => (
+                    {locCitiesList.map((ci: any) => (
                       <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
                     ))}
                   </select>
@@ -2278,7 +2630,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                     }}
                     className={cn(
                       "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                      locErrors.pin && "border-red-500 focus:ring-red-500/10"
+                      locErrors.pin && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
                   {locErrors.pin && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.pin}</p>}
@@ -2292,6 +2644,252 @@ export function MasterManager({ type }: MasterManagerProps) {
               </Button>
               <Button type="button" onClick={addCompanyLocation} className="rounded-xl h-9 text-xs font-bold bg-[#006699] hover:bg-[#005580] text-white">
                 {editingLocationIndex !== null ? 'Save Changes' : 'Add Location'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Contact Person Modal */}
+        <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
+          <DialogContent className="rounded-3xl max-w-lg p-6 border-none shadow-2xl bg-white select-none">
+            <DialogHeader className="pb-3 border-b border-slate-150">
+              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <User size={18} className="text-[#006699]" />
+                {editingContactIndex !== null ? 'Edit Contact Person' : 'Add Contact Person'}
+              </DialogTitle>
+              <DialogDescription className="text-[11px] text-slate-500 font-semibold leading-tight">
+                {editingContactIndex !== null ? 'Modify representative profile.' : 'Add representative profile and point of contact details.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4 max-h-[380px] overflow-y-auto pr-2 scrollbar-thin">
+              <div className="grid grid-cols-2 gap-3">
+                {/* Contact Name */}
+                <div className="space-y-1 col-span-2">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Representative Name</label>
+                  <Input
+                    placeholder="Enter full name..."
+                    value={contactName}
+                    onChange={(e) => {
+                      setContactName(e.target.value);
+                      if (contactErrors.name) setContactErrors(prev => ({ ...prev, name: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  />
+                  {contactErrors.name && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.name}</p>}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Designation</label>
+                  <Input
+                    placeholder="Enter designation..."
+                    value={contactDesignation}
+                    onChange={(e) => {
+                      setContactDesignation(e.target.value);
+                      if (contactErrors.designation) setContactErrors(prev => ({ ...prev, designation: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.designation && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  />
+                  {contactErrors.designation && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.designation}</p>}
+                </div>
+
+                {/* Department - Text Field */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Department</label>
+                  <Input
+                    placeholder="Enter department..."
+                    value={contactDepartment}
+                    onChange={(e) => {
+                      setContactDepartment(e.target.value);
+                      if (contactErrors.department) setContactErrors(prev => ({ ...prev, department: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.department && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  />
+                  {contactErrors.department && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.department}</p>}
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Direct Phone</label>
+                  <Input
+                    placeholder="Enter phone number..."
+                    value={contactPhone}
+                    onChange={(e) => {
+                      setContactPhone(e.target.value);
+                      if (contactErrors.phone) setContactErrors(prev => ({ ...prev, phone: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.phone && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  />
+                  {contactErrors.phone && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.phone}</p>}
+                </div>
+
+                {/* Email */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Email Address</label>
+                  <Input
+                    placeholder="Enter email address..."
+                    value={contactEmail}
+                    onBlur={validateEmailBlur}
+                    onChange={(e) => {
+                      setContactEmail(e.target.value);
+                      if (contactErrors.email) setContactErrors(prev => ({ ...prev, email: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 hover:border-slate-355 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.email && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  />
+                  {contactErrors.email && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.email}</p>}
+                </div>
+
+                {/* Address */}
+                <div className="space-y-1 col-span-2">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Contact Address</label>
+                  <Input
+                    placeholder="Enter street address..."
+                    value={contactAddress}
+                    onChange={(e) => setContactAddress(e.target.value)}
+                    className="bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                  />
+                </div>
+
+                {/* Country */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Country</label>
+                  <select
+                    value={contactCountry}
+                    onChange={async (e) => {
+                      const countryName = e.target.value;
+                      setContactCountry(countryName);
+                      setContactState('');
+                      setContactCity('');
+                      setContactStatesList([]);
+                      setContactCitiesList([]);
+                      if (contactErrors.country) setContactErrors(prev => ({ ...prev, country: '' }));
+
+                      const foundCountry = countries.find((c: any) => c.countryName === countryName);
+                      if (foundCountry) {
+                        const statesData = await fetchStatesByCountry(foundCountry.countryNo);
+                        setContactStatesList(statesData);
+                      }
+                    }}
+                    className={cn(
+                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.country && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  >
+                    <option value="">Select Country</option>
+                    {countries.map((c: any) => (
+                      <option key={c.countryNo} value={c.countryName}>{c.countryName}</option>
+                    ))}
+                  </select>
+                  {contactErrors.country && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.country}</p>}
+                </div>
+
+                {/* State */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">State</label>
+                  <select
+                    value={contactState}
+                    onChange={async (e) => {
+                      const stateName = e.target.value;
+                      setContactState(stateName);
+                      setContactCity('');
+                      setContactCitiesList([]);
+                      if (contactErrors.state) setContactErrors(prev => ({ ...prev, state: '' }));
+
+                      const foundState = contactStatesList.find((s: any) => s.stateName === stateName);
+                      if (foundState) {
+                        const citiesData = await fetchCitiesByState(foundState.stateNo);
+                        setContactCitiesList(citiesData);
+                      }
+                    }}
+                    className={cn(
+                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.state && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  >
+                    <option value="">Select State</option>
+                    {contactStatesList.map((s: any) => (
+                      <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
+                    ))}
+                  </select>
+                  {contactErrors.state && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.state}</p>}
+                </div>
+
+                {/* City */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">City</label>
+                  <select
+                    value={contactCity}
+                    onChange={(e) => {
+                      setContactCity(e.target.value);
+                      if (contactErrors.city) setContactErrors(prev => ({ ...prev, city: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.city && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  >
+                    <option value="">Select City</option>
+                    {contactCitiesList.map((ci: any) => (
+                      <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
+                    ))}
+                  </select>
+                  {contactErrors.city && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.city}</p>}
+                </div>
+
+                {/* PIN Code */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">PIN Code <span className="text-red-500">*</span></label>
+                  <Input
+                    placeholder="Enter PIN Code..."
+                    value={contactPinCode}
+                    maxLength={10}
+                    onChange={(e) => {
+                      setContactPinCode(e.target.value);
+                      if (contactErrors.pinCode) setContactErrors(prev => ({ ...prev, pinCode: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      contactErrors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  />
+                  {contactErrors.pinCode && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.pinCode}</p>}
+                </div>
+
+                {/* Status dropdown */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Status</label>
+                  <select
+                    value={contactStatus}
+                    onChange={(e) => setContactStatus(e.target.value)}
+                    className="bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-2 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
+              <Button type="button" variant="ghost" onClick={() => setContactModalOpen(false)} className="rounded-xl h-9 text-xs font-bold text-slate-500 hover:bg-slate-100">
+                Cancel
+              </Button>
+              <Button type="button" onClick={addCompanyContact} className="rounded-xl h-9 text-xs font-bold bg-[#006699] hover:bg-[#005580] text-white">
+                {editingContactIndex !== null ? 'Save Changes' : 'Add Contact'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -2904,7 +3502,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         </div>
 
         {/* Master Form Card */}
-        <Card className="flex-1 rounded-[28px] border-none shadow-xl shadow-slate-200/40 bg-white flex flex-col p-0 outline-none overflow-hidden max-w-4xl w-full mx-auto">
+        <Card className="flex-1 rounded-[28px] border-none shadow-xl shadow-slate-200/40 bg-white flex flex-col p-0 outline-none overflow-hidden max-w-6xl w-full mx-auto">
 
           {/* Form Content Area */}
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
@@ -3007,30 +3605,66 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* Custom Toggle for Company View Mode */}
         {type === 'company' && (
-          <div className="flex items-center bg-white/90 p-1 rounded-xl sm:rounded-2xl border border-slate-200/40 shadow-md shrink-0 h-10 sm:h-11">
+          <div className="flex flex-wrap items-center bg-white/90 p-1 rounded-xl sm:rounded-2xl border border-slate-200/40 shadow-md shrink-0 gap-1">
+            <button
+              onClick={() => setCompanyViewMode('list')}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
+                companyViewMode === 'list'
+                  ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
+                  : "text-slate-500 hover:text-slate-750 hover:bg-slate-100/50"
+              )}
+            >
+              <List size={12} />
+              <span>Grid List</span>
+            </button>
             <button
               onClick={() => setCompanyViewMode('album')}
               className={cn(
-                "px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-black transition-all flex items-center gap-1.5 h-full",
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
                 companyViewMode === 'album'
                   ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
                   : "text-slate-500 hover:text-slate-750 hover:bg-slate-100/50"
               )}
             >
-              <Building size={14} />
+              <Building size={12} />
               <span>Album View</span>
+            </button>
+            <button
+              onClick={() => setCompanyViewMode('contact-list')}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
+                companyViewMode === 'contact-list'
+                  ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
+                  : "text-slate-500 hover:text-slate-755 hover:bg-slate-100/50"
+              )}
+            >
+              <Users size={12} />
+              <span>Contact List</span>
+            </button>
+            <button
+              onClick={() => setCompanyViewMode('contact-album')}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
+                companyViewMode === 'contact-album'
+                  ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
+                  : "text-slate-500 hover:text-slate-755 hover:bg-slate-100/50"
+              )}
+            >
+              <User size={12} />
+              <span>Contact Album</span>
             </button>
             <button
               onClick={() => setCompanyViewMode('attachment')}
               className={cn(
-                "px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-black transition-all flex items-center gap-1.5 h-full",
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
                 companyViewMode === 'attachment'
                   ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
                   : "text-slate-500 hover:text-slate-755 hover:bg-slate-100/50"
               )}
             >
-              <Paperclip size={14} />
-              <span>Attachment View</span>
+              <Paperclip size={12} />
+              <span>Attachments</span>
             </button>
           </div>
         )}
@@ -3060,14 +3694,102 @@ export function MasterManager({ type }: MasterManagerProps) {
             <div className="flex-1 min-h-0 flex gap-3 relative select-none">
               {/* Scrollable List container */}
               <div className="flex-1 overflow-y-auto pr-10 scrollbar-thin space-y-6 pb-12" id="company-scroll-container">
-                {companyViewMode === 'album' ? (
+                {companyViewMode === 'list' ? (
+                  /* GRID LIST VIEW */
+                  <div className="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-left">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                          <tr>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Code</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity Name</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Address</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">VAT/GST No</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Credit Limit</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Contacts</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Locations</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Attachments</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredList.map((company: any) => {
+                            const firstLoc = company.locations && company.locations[0];
+                            const locStr = firstLoc ? `${firstLoc.address || ''}, ${firstLoc.city || ''}, ${firstLoc.state || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') : company.address || 'N/A';
+                            return (
+                              <tr key={company.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
+                                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/50 text-[10px]">
+                                    {company.code}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-xs font-bold text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                  {company.name}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
+                                    company.type === 'Buy'
+                                      ? "bg-sky-50 text-sky-600 border-sky-100"
+                                      : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                  )}>
+                                    {company.type}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[200px] truncate" title={locStr}>
+                                  {locStr}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
+                                  {company.vatGst || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-extrabold text-slate-700">
+                                  {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
+                                  {company.contacts?.length || 0}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
+                                  {company.locations?.length || 0}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
+                                  {company.attachments?.length || 0}
+                                </td>
+                                <td className="px-4 py-3 text-xs text-center pr-5">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleEditClick(company)}
+                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
+                                    >
+                                      <Edit size={13} />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteClick(company.id)}
+                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
+                                    >
+                                      <Trash2 size={13} />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : companyViewMode === 'album' ? (
                   /* ALBUM VIEW CARD LIST */
                   <div className="space-y-6">
                     {groupedCompanies.map((group) => (
                       <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
                         <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
                           <span>Alphabet {group.letter}</span>
-                          <span className="text-[10px] opacity-70">{group.items.length} Companies</span>
+                          <span className="text-[10px] opacity-70">{group.items.length} Entities</span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {group.items.map((company: any) => (
@@ -3077,7 +3799,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                 <div className="flex items-center gap-3">
                                   {/* Company Avatar Badge */}
                                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-base shadow-md shadow-[#006699]/10 shrink-0 uppercase">
-                                    {company.name ? company.name.substring(0, 2) : 'CO'}
+                                    {company.name ? company.name.substring(0, 2) : 'BE'}
                                   </div>
                                   <div>
                                     <h4 className="text-xs font-black text-slate-800 leading-snug group-hover:text-[#006699] transition-colors">{company.name}</h4>
@@ -3087,8 +3809,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                                       </span>
                                       <span className={cn(
                                         "text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full border",
-                                        company.type === 'Buy' 
-                                          ? "bg-sky-50 text-sky-600 border-sky-100" 
+                                        company.type === 'Buy'
+                                          ? "bg-sky-50 text-sky-600 border-sky-100"
                                           : "bg-emerald-50 text-emerald-600 border-emerald-100"
                                       )}>
                                         {company.type}
@@ -3096,7 +3818,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                     </div>
                                   </div>
                                 </div>
-                                
+
                                 {/* Actions Button */}
                                 <div className="flex items-center gap-1 shrink-0">
                                   <Button
@@ -3117,26 +3839,32 @@ export function MasterManager({ type }: MasterManagerProps) {
                                   </Button>
                                 </div>
                               </div>
-                              
+
                               {/* Middle Address & Finance details */}
                               <div className="grid grid-cols-2 gap-3 py-1 border-t border-b border-slate-100 text-[11px] font-semibold text-slate-500">
                                 <div>
                                   <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Primary Location</span>
-                                  <span className="text-slate-700 font-bold block truncate" title={company.address}>
-                                    {company.city ? `${company.city}, ${company.country || ''}` : company.address || 'N/A'}
+                                  <span className="text-slate-700 font-bold block truncate" title={(() => {
+                                    const firstLoc = company.locations && company.locations[0];
+                                    return firstLoc ? `${firstLoc.address || ''}, ${firstLoc.city || ''}, ${firstLoc.state || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') : company.address || 'N/A';
+                                  })()}>
+                                    {(() => {
+                                      const firstLoc = company.locations && company.locations[0];
+                                      return firstLoc ? `${firstLoc.city || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') || firstLoc.address : company.city ? `${company.city}, ${company.country || ''}` : company.address || 'N/A';
+                                    })()}
                                   </span>
                                 </div>
                                 <div>
                                   <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Credit limit & GST</span>
                                   <span className="text-slate-700 font-bold block truncate">
-                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'} 
+                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
                                     {company.vatGst ? ` | ${company.vatGst}` : ''}
                                   </span>
                                 </div>
                               </div>
-                              
+
                               {/* Flat Contact Info */}
-                              {company.contacts && company.contacts.length > 0 && company.contacts[0].contactName ? (
+                              {company.contacts && company.contacts.length > 0 && (company.contacts[0].contactName || company.contacts[0].name) ? (
                                 <div className="bg-slate-50/50 rounded-xl p-3 text-[11px]">
                                   <div className="flex items-center gap-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-wider mb-1.5">
                                     <User size={10} className="text-[#006699]" />
@@ -3144,11 +3872,11 @@ export function MasterManager({ type }: MasterManagerProps) {
                                   </div>
                                   <div className="grid grid-cols-2 gap-2 text-slate-600 font-medium">
                                     <div>
-                                      <p className="font-bold text-slate-800 leading-tight truncate">{company.contacts[0].contactName}</p>
+                                      <p className="font-bold text-slate-800 leading-tight truncate">{company.contacts[0].contactPersonName || company.contacts[0].contactName || company.contacts[0].name}</p>
                                       <p className="text-[9px] text-slate-400 font-bold mt-0.5 leading-none truncate">{company.contacts[0].designation || 'Representative'}</p>
                                     </div>
                                     <div className="text-right flex flex-col justify-center min-w-0">
-                                      <p className="text-[9px] font-bold text-slate-500 truncate">{company.contacts[0].phone || 'No Phone'}</p>
+                                      <p className="text-[9px] font-bold text-slate-500 truncate">{company.contacts[0].phoneNo || company.contacts[0].phone || 'No Phone'}</p>
                                       <p className="text-[9px] font-bold text-slate-400 truncate">{company.contacts[0].email || 'No Email'}</p>
                                     </div>
                                   </div>
@@ -3158,7 +3886,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                   No key contact person registered.
                                 </div>
                               )}
-                              
+
                               {/* Footer statistics */}
                               <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 pt-1 mt-auto">
                                 <div className="flex items-center gap-3">
@@ -3173,8 +3901,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                                 </div>
                                 <span className={cn(
                                   "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
-                                  company.status === 'Active' 
-                                    ? "bg-emerald-100/60 text-emerald-700" 
+                                  company.status === 'Active'
+                                    ? "bg-emerald-100/60 text-emerald-700"
                                     : "bg-slate-105 text-slate-500"
                                 )}>
                                   {company.status}
@@ -3186,110 +3914,269 @@ export function MasterManager({ type }: MasterManagerProps) {
                       </div>
                     ))}
                   </div>
+                ) : companyViewMode === 'contact-list' ? (
+                  /* CONTACT PERSON LIST VIEW */
+                  <div className="space-y-6">
+                    {groupedCompanies.map((group) => {
+                      const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
+                      if (!hasContacts) return null;
+
+                      return (
+                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                            <span>Alphabet {group.letter}</span>
+                            <span className="text-[10px] opacity-70">Contacts</span>
+                          </div>
+
+                          <div className="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                  <tr>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Contact Name</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Designation</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Department</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Email</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Parent Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {group.items.map((company: any) =>
+                                    (company.contacts || []).map((contact: any, cIdx: number) => (
+                                      <tr key={`${company.id}-${cIdx}`} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
+                                          {contact.contactPersonName || contact.contactName || contact.name}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-bold text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                          {company.name}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                          {contact.designation || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+                                          {contact.department || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
+                                          {contact.phoneNo || contact.phone || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-slate-550">
+                                          {contact.email || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs">
+                                          <span className={cn(
+                                            "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                                            (contact.status || 'Active') === 'Active'
+                                              ? "bg-emerald-100/60 text-emerald-700"
+                                              : "bg-slate-105 text-slate-500"
+                                          )}>
+                                            {contact.status || 'Active'}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-xs text-center pr-5">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEditClick(company)}
+                                            className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
+                                          >
+                                            <Edit size={13} />
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    ))
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : companyViewMode === 'contact-album' ? (
+                  /* CONTACT PERSON ALBUM VIEW */
+                  <div className="space-y-6">
+                    {groupedCompanies.map((group) => {
+                      const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
+                      if (!hasContacts) return null;
+
+                      return (
+                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                            <span>Alphabet {group.letter}</span>
+                            <span className="text-[10px] opacity-70">Contact Cards</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {group.items.map((company: any) =>
+                              (company.contacts || []).map((contact: any, cIdx: number) => {
+                                const cName = contact.contactPersonName || contact.contactName || contact.name;
+                                return (
+                                  <Card key={`${company.id}-${cIdx}`} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl p-4 bg-white transition-all flex flex-col gap-3 group">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-sm shadow-md shrink-0 uppercase">
+                                          {cName ? cName.substring(0, 2) : 'CP'}
+                                        </div>
+                                        <div>
+                                          <h4 className="text-xs font-black text-slate-800 leading-tight">{cName}</h4>
+                                          <p className="text-[9px] font-bold text-slate-400 mt-0.5">{contact.designation || 'Representative'} ({contact.department || 'General'})</p>
+                                        </div>
+                                      </div>
+                                      <span className={cn(
+                                        "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shrink-0",
+                                        (contact.status || 'Active') === 'Active'
+                                          ? "bg-emerald-100/60 text-emerald-700"
+                                          : "bg-slate-105 text-slate-500"
+                                      )}>
+                                        {contact.status || 'Active'}
+                                      </span>
+                                    </div>
+
+                                    <div className="border-t border-slate-100 pt-2 text-[10px] font-semibold text-slate-500 space-y-1.5">
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-400">Business Entity:</span>
+                                        <span className="text-[#006699] font-bold hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-400">Phone:</span>
+                                        <span className="text-slate-700 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-400">Email:</span>
+                                        <span className="text-slate-700 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="pt-2 mt-auto flex items-center justify-between border-t border-slate-100">
+                                      <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleEditClick(company)}
+                                        className="h-7 rounded-lg text-slate-500 hover:text-[#006699] hover:bg-slate-100 text-[10px] font-bold flex items-center gap-1"
+                                      >
+                                        <Edit size={11} />
+                                        Edit Entity
+                                      </Button>
+                                    </div>
+                                  </Card>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   /* ATTACHMENT-WISE GROUPED VIEW */
                   <div className="space-y-6">
-                    {groupedCompanies.map((group) => (
-                      <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                        <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                          <span>Alphabet {group.letter}</span>
-                          <span className="text-[10px] opacity-70">{group.items.length} Companies</span>
-                        </div>
-                        <div className="space-y-4">
-                          {group.items.map((company: any) => (
-                            <div key={company.id} className="bg-slate-50/50 rounded-[22px] border border-slate-150 p-5">
-                              <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/60 mb-4">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-8 h-8 rounded-lg bg-[#006699]/10 text-[#006699] flex items-center justify-center font-black text-sm uppercase">
-                                    {company.name ? company.name.substring(0, 2) : 'CO'}
+                    {groupedCompanies.map((group) => {
+                      const hasAttachments = group.items.some(c => c.attachments && c.attachments.length > 0);
+                      if (!hasAttachments) return null;
+
+                      return (
+                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                            <span>Alphabet {group.letter}</span>
+                            <span className="text-[10px] opacity-70">Attachments</span>
+                          </div>
+                          <div className="space-y-4">
+                            {group.items.map((company: any) => {
+                              if (!company.attachments || company.attachments.length === 0) return null;
+                              return (
+                                <div key={company.id} className="bg-slate-50/50 rounded-[22px] border border-slate-150 p-5">
+                                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/60 mb-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-8 h-8 rounded-lg bg-[#006699]/10 text-[#006699] flex items-center justify-center font-black text-sm uppercase">
+                                        {company.name ? company.name.substring(0, 2) : 'BE'}
+                                      </div>
+                                      <div>
+                                        <h4 className="text-xs font-black text-slate-800">{company.name}</h4>
+                                        <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">{company.code} • {company.type}</p>
+                                      </div>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-extrabold bg-white px-2.5 py-1 rounded-lg border border-slate-100">
+                                      {company.attachments?.length || 0} Document(s)
+                                    </span>
                                   </div>
-                                  <div>
-                                    <h4 className="text-xs font-black text-slate-800">{company.name}</h4>
-                                    <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">{company.code} • {company.type}</p>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                    {company.attachments.map((att: any, idx: number) => {
+                                      const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
+                                      const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
+                                      const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
+
+                                      return (
+                                        <Card key={idx} className="bg-white rounded-xl border border-slate-150 p-4 hover:shadow-md hover:border-[#006699]/30 transition-all flex flex-col justify-between gap-3 relative overflow-hidden group">
+                                          <div className="flex items-start gap-3">
+                                            <div className={cn(
+                                              "p-2.5 rounded-lg shrink-0 flex items-center justify-center",
+                                              isPdf ? "bg-red-50 text-red-500" :
+                                                isSheet ? "bg-emerald-50 text-emerald-500" :
+                                                  isDoc ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-500"
+                                            )}>
+                                              <FileText size={20} />
+                                            </div>
+                                            <div className="min-w-0">
+                                              <h5 className="text-xs font-black text-slate-705 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
+                                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono mt-0.5">
+                                                {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
+                                              </p>
+                                            </div>
+                                          </div>
+
+                                          {/* Visual Preview Badge / Mock Area */}
+                                          <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
+                                            <div className="text-[9px] text-slate-400 font-bold leading-tight">
+                                              {isPdf ? "📄 PDF Document Preview Ready" :
+                                                isSheet ? "📊 Excel Spreadsheet Data Sheet" :
+                                                  "📝 Text Profile Document Data"}
+                                            </div>
+                                          </div>
+
+                                          {/* Action controls */}
+                                          <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 mt-auto">
+                                            <Button
+                                              variant="ghost"
+                                              size="xs"
+                                              onClick={() => {
+                                                setPreviewAttachment({
+                                                  fileName: att.fileName || att.name,
+                                                  fileSize: att.fileSize,
+                                                  companyName: company.name,
+                                                  isPdf: !!isPdf,
+                                                  isSheet: !!isSheet
+                                                });
+                                              }}
+                                              className="h-7 px-2.5 rounded-lg text-[9px] font-black text-[#006699] hover:bg-[#006699]/10 flex items-center justify-center gap-1 shadow-sm border border-[#006699]/10"
+                                            >
+                                              Preview
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="xs"
+                                              onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
+                                              className="h-7 px-2.5 rounded-lg text-[9px] font-black text-emerald-600 hover:bg-emerald-50 flex items-center justify-center gap-1 border border-emerald-150"
+                                            >
+                                              Download
+                                            </Button>
+                                          </div>
+                                        </Card>
+                                      );
+                                    })}
                                   </div>
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-extrabold bg-white px-2.5 py-1 rounded-lg border border-slate-100">
-                                  {company.attachments?.length || 0} Document(s)
-                                </span>
-                              </div>
-                              
-                              {company.attachments && company.attachments.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                  {company.attachments.map((att: any, idx: number) => {
-                                    const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
-                                    const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
-                                    const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
-                                    
-                                    return (
-                                      <Card key={idx} className="bg-white rounded-xl border border-slate-150 p-4 hover:shadow-md hover:border-[#006699]/30 transition-all flex flex-col justify-between gap-3 relative overflow-hidden group">
-                                        <div className="flex items-start gap-3">
-                                          {/* Visual Document Icon with specific colors */}
-                                          <div className={cn(
-                                            "p-2.5 rounded-lg shrink-0 flex items-center justify-center",
-                                            isPdf ? "bg-red-50 text-red-500" :
-                                            isSheet ? "bg-emerald-50 text-emerald-500" :
-                                            isDoc ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-500"
-                                          )}>
-                                            <FileText size={20} />
-                                          </div>
-                                          <div className="min-w-0">
-                                            <h5 className="text-xs font-black text-slate-705 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
-                                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono mt-0.5">
-                                              {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
-                                            </p>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Visual Preview Badge / Mock Area */}
-                                        <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
-                                          <div className="text-[9px] text-slate-400 font-bold leading-tight">
-                                            {isPdf ? "📄 PDF Document Preview Ready" :
-                                             isSheet ? "📊 Excel Spreadsheet Data Sheet" :
-                                             "📝 Text Profile Document Data"}
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Action controls */}
-                                        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 mt-auto">
-                                          <Button
-                                            variant="ghost"
-                                            size="xs"
-                                            onClick={() => {
-                                              setPreviewAttachment({
-                                                fileName: att.fileName || att.name,
-                                                fileSize: att.fileSize,
-                                                companyName: company.name,
-                                                isPdf: !!isPdf,
-                                                isSheet: !!isSheet
-                                              });
-                                            }}
-                                            className="h-7 px-2.5 rounded-lg text-[9px] font-black text-[#006699] hover:bg-[#006699]/10 flex items-center justify-center gap-1 shadow-sm border border-[#006699]/10"
-                                          >
-                                            Preview
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="xs"
-                                            onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
-                                            className="h-7 px-2.5 rounded-lg text-[9px] font-black text-emerald-600 hover:bg-emerald-50 flex items-center justify-center gap-1 border border-emerald-150"
-                                          >
-                                            Download
-                                          </Button>
-                                        </div>
-                                      </Card>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="text-center py-6 bg-white rounded-xl border border-dashed border-slate-200 text-xs text-slate-400 font-semibold italic">
-                                  No document attachments uploaded for this company.
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -3702,7 +4589,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               <X size={16} />
             </button>
           </DialogHeader>
-          
+
           <div className="p-8 bg-slate-100/40 min-h-[300px] flex flex-col items-center justify-center border-b border-slate-100">
             {previewAttachment?.isPdf ? (
               <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-md p-6 flex flex-col gap-4">
@@ -3768,7 +4655,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
             )}
           </div>
-          
+
           <div className="p-4 bg-slate-50 flex justify-end gap-2">
             <Button
               type="button"
