@@ -1,3 +1,4 @@
+import React from "react"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -26,11 +27,12 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ date, onChange, placeholder, className, disabled, hideTime = false }: DateTimePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
   const defaultPlaceholder = hideTime ? "Pick a date" : "Pick a date and time";
   const displayPlaceholder = placeholder || defaultPlaceholder;
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
@@ -60,6 +62,9 @@ export function DateTimePicker({ date, onChange, placeholder, className, disable
                 selectedDate.setHours(date.getHours(), date.getMinutes())
               }
               onChange?.(selectedDate)
+              if (hideTime) {
+                setIsOpen(false);
+              }
             } else {
               onChange?.(undefined)
             }
