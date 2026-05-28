@@ -31,7 +31,9 @@ import {
   UserPlus,
   CheckCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Check,
+  ChevronsUpDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -42,6 +44,20 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 
 interface MasterManagerProps {
   type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location';
@@ -290,6 +306,43 @@ export function MasterManager({ type }: MasterManagerProps) {
     }
   };
 
+  const fetchCategoryFillValues = async () => {
+    try {
+      const response = await apiService.get<any>(`/api/master/task-categories/fill-values?companyNo=${companyNo}`);
+      if (response) {
+        setCategoryFillValues(response.data || response);
+      }
+    } catch (error) {
+      console.error("Failed to fetch category fill-values:", error);
+    }
+  };
+
+  // Sub-task list helpers
+  const addSubtaskItem = () => {
+    if (newSubtaskItem.trim()) {
+      setSubtasks([...subtasks, { description: newSubtaskItem.trim(), isChecked: false }]);
+      setNewSubtaskItem('');
+    }
+  };
+
+  const removeSubtaskItem = (index: number) => {
+    setSubtasks(subtasks.filter((_, i) => i !== index));
+  };
+
+  const toggleSubtaskItem = (index: number) => {
+    setSubtasks(subtasks.map((s, i) => {
+      if (i === index) {
+        if (typeof s === 'string') {
+          return { description: s, isChecked: true };
+        }
+        return { ...s, isChecked: !s.isChecked };
+      }
+      return s;
+    }));
+  };
+
+  // Reusable custom fields managed via CustomFieldsSection
+
   useEffect(() => {
     if (type === 'location') {
       fetchLocations();
@@ -303,6 +356,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       fetchFolderFillValues();
     } else if (type === 'category') {
       fetchCategories();
+      fetchCategoryFillValues();
     } else if (type === 'user-group') {
       fetchUserGroups();
     } else if (type === 'benefit-type') {
@@ -339,6 +393,13 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [checklist, setChecklist] = useState<{ description: string; isChecked: boolean }[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [color, setColor] = useState('');
+  const [subtasks, setSubtasks] = useState<{ description: string; isChecked: boolean }[]>([]);
+  const [newSubtaskItem, setNewSubtaskItem] = useState('');
+  const [categoryFillValues, setCategoryFillValues] = useState<any>(null);
+  const [categoryCustomFields, setCategoryCustomFields] = useState<{ customFieldNo: string; fieldValue: string }[]>([]);
+  const [editingChecklistIdx, setEditingChecklistIdx] = useState<number | null>(null);
+  const [editingSubtaskIdx, setEditingSubtaskIdx] = useState<number | null>(null);
+  const [tempEditText, setTempEditText] = useState('');
 
   // Priority extra fields
   const [priorityDuration, setPriorityDuration] = useState<number | null>(null);
@@ -378,6 +439,12 @@ export function MasterManager({ type }: MasterManagerProps) {
       setIsBusinessBenefitApplicable(false);
       setChecklist([]);
       setNewChecklistItem('');
+      setSubtasks([]);
+      setNewSubtaskItem('');
+      setCategoryCustomFields([]);
+      setEditingChecklistIdx(null);
+      setEditingSubtaskIdx(null);
+      setTempEditText('');
       setColor('');
       setPriorityDuration(null);
       setPriorityFrequencyNo('');
@@ -415,8 +482,15 @@ export function MasterManager({ type }: MasterManagerProps) {
               setIsInReviewRequired(dl.isInReviewApplicable || false);
               setIsBusinessBenefitApplicable(dl.isBusinessBenefitApplicable || false);
               setChecklist(Array.isArray(dl.checkLists) ? dl.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : []);
+              const rawSubtasks = dl.subtasks || dl.subTasks;
+              setSubtasks(Array.isArray(rawSubtasks) ? rawSubtasks.map((st: any) => ({ description: st.title || st.subtaskTitle || st.description || st.taskName || st.subTaskName || (typeof st === 'string' ? st : ''), isChecked: !!st.isChecked })) : []);
+              setCategoryCustomFields(Array.isArray(dl.customFields) ? dl.customFields.map((cf: any) => ({
+                customFieldNo: (cf.customFieldNo ?? cf.customFieldNo ?? '').toString(),
+                fieldValue: cf.fieldValue || cf.value || ''
+              })) : []);
               setColor(dl.colorCoding || '');
               setNewChecklistItem('');
+              setNewSubtaskItem('');
             }
           }
         }).catch(err => console.error("Failed to load category details:", err));
@@ -707,11 +781,17 @@ export function MasterManager({ type }: MasterManagerProps) {
             isMultiLevelApproval: isApprovalApplicable,
             isInReviewApplicable: isInReviewRequired,
             isBusinessBenefitApplicable: isBusinessBenefitApplicable,
-            checkLists: checklist.map(c => {
-              const desc = typeof c === 'string' ? c : c.description;
-              const checked = typeof c === 'string' ? false : c.isChecked;
-              return { description: desc, checkListDescription: desc, isChecked: checked };
-            }),
+            checkLists: checklist.map(c => ({
+              description: typeof c === 'string' ? c : c.description,
+              isChecked: typeof c === 'string' ? false : c.isChecked
+            })),
+            subtasks: subtasks.map(s => ({
+              subtaskTitle: typeof s === 'string' ? s : s.description
+            })),
+            customFields: categoryCustomFields.map(cf => ({
+              customFieldNo: parseInt(cf.customFieldNo) || null,
+              fieldValue: cf.fieldValue
+            })),
             colorCoding: color || null
           };
           await apiService.post('/api/master/task-categories/save', payload);
@@ -790,11 +870,17 @@ export function MasterManager({ type }: MasterManagerProps) {
             isMultiLevelApproval: isApprovalApplicable,
             isInReviewApplicable: isInReviewRequired,
             isBusinessBenefitApplicable: isBusinessBenefitApplicable,
-            checkLists: checklist.map(c => {
-              const desc = typeof c === 'string' ? c : c.description;
-              const checked = typeof c === 'string' ? false : c.isChecked;
-              return { description: desc, checkListDescription: desc, isChecked: checked };
-            }),
+            checkLists: checklist.map(c => ({
+              description: typeof c === 'string' ? c : c.description,
+              isChecked: typeof c === 'string' ? false : c.isChecked
+            })),
+            subtasks: subtasks.map(s => ({
+              subtaskTitle: typeof s === 'string' ? s : s.description
+            })),
+            customFields: categoryCustomFields.map(cf => ({
+              customFieldNo: parseInt(cf.customFieldNo) || null,
+              fieldValue: cf.fieldValue
+            })),
             colorCoding: color || null
           };
           await apiService.post('/api/master/task-categories/save', payload);
@@ -1100,7 +1186,12 @@ export function MasterManager({ type }: MasterManagerProps) {
 
             {/* Checklist Descriptions Array Editor */}
             <div className="space-y-2.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 block">Checklist Items (Descriptions Array)</label>
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center">
+                Checklist Items (Descriptions Array)
+                <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+                  {checklist.length}
+                </span>
+              </label>
               <div className="flex gap-2">
                 <Input
                   placeholder="Add description..."
@@ -1124,36 +1215,288 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
 
               {checklist.length > 0 && (
-                <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-150/60 max-h-40 overflow-y-auto space-y-1.5 scrollbar-thin">
-                  {checklist.map((item, index) => {
-                    const desc = typeof item === 'string' ? item : item.description;
-                    const isChecked = typeof item === 'string' ? false : item.isChecked;
-                    return (
-                      <div key={index} className="flex items-center justify-between gap-3 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <Checkbox
-                            id={`cl-item-${index}`}
-                            checked={isChecked}
-                            onCheckedChange={() => toggleChecklistItem(index)}
-                            className="h-4 w-4 rounded border-slate-300"
-                          />
-                          <label htmlFor={`cl-item-${index}`} className="text-[11px] font-bold text-slate-700 truncate cursor-pointer select-none">
-                            {desc}
-                          </label>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeChecklistItem(index)}
-                          className="text-red-500 hover:text-red-700 p-0.5 rounded-full hover:bg-slate-100/80 shrink-0"
+                <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all w-full">
+                  <div className="max-h-[250px] overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
+                    {checklist.map((item, index) => {
+                      const desc = typeof item === 'string' ? item : item.description;
+                      const isChecked = typeof item === 'string' ? false : item.isChecked;
+                      const isEditing = editingChecklistIdx === index;
+
+                      return (
+                        <div
+                          key={index}
+                          className={cn(
+                            "flex items-center justify-between gap-3 px-4 py-2.5 transition-colors",
+                            isEditing ? "bg-slate-50/70" : "bg-white hover:bg-slate-50/30"
+                          )}
                         >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    );
-                  })}
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <Checkbox
+                              id={`cl-item-${index}`}
+                              checked={isChecked}
+                              onCheckedChange={() => toggleChecklistItem(index)}
+                              className="h-4 w-4 rounded border-slate-300 shrink-0"
+                            />
+                            {isEditing ? (
+                              <Input
+                                value={tempEditText}
+                                onChange={(e) => setTempEditText(e.target.value)}
+                                placeholder="Edit checklist item..."
+                                className={cn(
+                                  "h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
+                                  !tempEditText.trim() && "border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400"
+                                )}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...checklist];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setChecklist(next);
+                                    setEditingChecklistIdx(null);
+                                    setTempEditText('');
+                                  } else if (e.key === 'Escape') {
+                                    setEditingChecklistIdx(null);
+                                    setTempEditText('');
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            ) : (
+                              <span className={cn("text-xs font-bold text-slate-750 truncate", isChecked && "line-through text-slate-400 font-semibold")}>
+                                {desc}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={!tempEditText.trim()}
+                                  onClick={() => {
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...checklist];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setChecklist(next);
+                                    setEditingChecklistIdx(null);
+                                    setTempEditText('');
+                                  }}
+                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed p-1.5 rounded-lg transition-all"
+                                  title="Save"
+                                >
+                                  <CheckCircle size={14} strokeWidth={2.5} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingChecklistIdx(null);
+                                    setTempEditText('');
+                                  }}
+                                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-all"
+                                  title="Cancel"
+                                >
+                                  <X size={14} strokeWidth={2.5} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingChecklistIdx(index);
+                                    setTempEditText(desc);
+                                  }}
+                                  className="text-slate-400 hover:text-[#006699] hover:bg-[#e1ecf7]/50 p-1.5 rounded-lg transition-all"
+                                  title="Edit"
+                                >
+                                  <Edit size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeChecklistItem(index)}
+                                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
+
+            {/* Sub-tasks Descriptions Array Editor */}
+            <div className="space-y-2.5">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center">
+                Sub-tasks (Descriptions Array)
+                <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+                  {subtasks.length}
+                </span>
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add sub-task description..."
+                  value={newSubtaskItem}
+                  onChange={(e) => setNewSubtaskItem(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addSubtaskItem();
+                    }
+                  }}
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                />
+                <Button
+                  type="button"
+                  onClick={addSubtaskItem}
+                  className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                >
+                  Add
+                </Button>
+              </div>
+
+              {subtasks.length > 0 && (
+                <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all w-full">
+                  <div className="max-h-[250px] overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
+                    {subtasks.map((item, index) => {
+                      const desc = typeof item === 'string' ? item : item.description;
+                      const isEditing = editingSubtaskIdx === index;
+
+                      return (
+                        <div
+                          key={index}
+                          className={cn(
+                            "flex items-center justify-between gap-3 px-4 py-2.5 transition-colors",
+                            isEditing ? "bg-slate-50/70" : "bg-white hover:bg-slate-50/30"
+                          )}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1 pl-1">
+                            {isEditing ? (
+                              <Input
+                                value={tempEditText}
+                                onChange={(e) => setTempEditText(e.target.value)}
+                                placeholder="Edit sub-task description..."
+                                className={cn(
+                                  "h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
+                                  !tempEditText.trim() && "border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400"
+                                )}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...subtasks];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setSubtasks(next);
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  } else if (e.key === 'Escape') {
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-slate-750 truncate">
+                                {desc}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={!tempEditText.trim()}
+                                  onClick={() => {
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...subtasks];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setSubtasks(next);
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  }}
+                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed p-1.5 rounded-lg transition-all"
+                                  title="Save"
+                                >
+                                  <CheckCircle size={14} strokeWidth={2.5} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  }}
+                                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-all"
+                                  title="Cancel"
+                                >
+                                  <X size={14} strokeWidth={2.5} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSubtaskIdx(index);
+                                    setTempEditText(desc);
+                                  }}
+                                  className="text-slate-400 hover:text-[#006699] hover:bg-[#e1ecf7]/50 p-1.5 rounded-lg transition-all"
+                                  title="Edit"
+                                >
+                                  <Edit size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeSubtaskItem(index)}
+                                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Category Custom Fields Section */}
+            <CustomFieldsSection
+              customFields={categoryCustomFields}
+              onChange={setCategoryCustomFields}
+              categoryFillValues={categoryFillValues}
+            />
           </div>
         )}
 

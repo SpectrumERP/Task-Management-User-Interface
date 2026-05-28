@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, X } from "lucide-react"
+import { Check, ChevronsUpDown, X, Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,8 @@ interface ComboboxProps {
   className?: string
   disabled?: boolean
   isClearable?: boolean
+  onAddNew?: () => void
+  addNewLabel?: string
 }
 
 export function Combobox({
@@ -39,6 +41,8 @@ export function Combobox({
   className,
   disabled = false,
   isClearable = true,
+  onAddNew,
+  addNewLabel = "Add New",
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -79,7 +83,7 @@ export function Combobox({
       <PopoverContent className="w-full p-0" align="start">
         <Command className="rounded-xl border-slate-200">
           <CommandInput placeholder={searchPlaceholder} className="h-9 border-none focus:ring-0" />
-          <CommandList className="max-h-60 scrollbar-hide">
+          <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
@@ -103,8 +107,26 @@ export function Combobox({
               ))}
             </CommandGroup>
           </CommandList>
+          {onAddNew && (
+            <div className="p-1 border-t border-slate-150 bg-slate-50/50">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddNew();
+                  setOpen(false);
+                }}
+                className="w-full justify-start text-[#006699] hover:text-[#005580] hover:bg-slate-100/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-lg transition-all active:scale-[0.98] select-none"
+              >
+                <Plus className="h-3.5 w-3.5 stroke-[3]" />
+                {addNewLabel}
+              </Button>
+            </div>
+          )}
         </Command>
       </PopoverContent>
     </Popover>
   )
 }
+

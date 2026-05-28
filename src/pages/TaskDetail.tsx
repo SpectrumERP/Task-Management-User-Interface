@@ -4,7 +4,7 @@ import { TaskForm } from '@/components/task/TaskForm';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import {
@@ -78,133 +78,136 @@ export default function TaskDetail() {
     }
   };
 
-  useEffect(() => {
+  const fetchTaskDetails = useCallback(async () => {
     if (!isEdit) {
       setTask(undefined);
       setIsFetching(false);
       return;
     }
 
-    const fetchTaskDetails = async () => {
-      try {
-        setIsFetching(true);
-        const response = await apiService.get<{ success: boolean; data: any; message?: string }>(`/api/crm/tasks/load-data/${id}`);
-        if (response.success && response.data) {
-          const d = response.data;
+    try {
+      setIsFetching(true);
+      const response = await apiService.get<{ success: boolean; data: any; message?: string }>(`/api/crm/tasks/load-data/${id}`);
+      if (response.success && response.data) {
+        const d = response.data;
 
-          // Map collaborators (isCollaborator === true)
-          const mappedCollabs = (d.collaborators || [])
-            .filter((c: any) => c.isCollaborator === true)
-            .map((c: any) => ({
-              userName: c.user?.userName || '',
-              displayName: c.user?.displayName || '',
-              email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
-              loginNo: c.user?.id
-            }));
-
-          // Map informed to (isCollaborator === false)
-          const mappedInformTo = (d.collaborators || [])
-            .filter((c: any) => c.isCollaborator === false)
-            .map((c: any) => ({
-              userName: c.user?.userName || '',
-              displayName: c.user?.displayName || '',
-              email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
-              loginNo: c.user?.id
-            }));
-
-          // Map checklist
-          const mappedCheckList = (d.checkList || []).map((c: any) => ({
-            id: (c.operTaskCheckListDetailNo || Math.floor(Math.random() * 10000)).toString(),
-            description: c.description || '',
-            completed: c.isChecked || false
+        // Map collaborators (isCollaborator === true)
+        const mappedCollabs = (d.collaborators || [])
+          .filter((c: any) => c.isCollaborator === true)
+          .map((c: any) => ({
+            userName: c.user?.userName || '',
+            displayName: c.user?.displayName || '',
+            email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
+            loginNo: c.user?.id
           }));
 
-          // Map comments
-          const mappedComments = (d.comments || []).map((c: any) => ({
-            id: (c.operTaskCommentDetailNo || Math.floor(Math.random() * 10000)).toString(),
-            author: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || 'Unknown',
-            text: c.description || c.comment || '',
-            timestamp: c.createdDate || new Date().toISOString(),
-            loginNo: c.createdBy?.id || c.loginNo || null
+        // Map informed to (isCollaborator === false)
+        const mappedInformTo = (d.collaborators || [])
+          .filter((c: any) => c.isCollaborator === false)
+          .map((c: any) => ({
+            userName: c.user?.userName || '',
+            displayName: c.user?.displayName || '',
+            email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
+            loginNo: c.user?.id
           }));
 
-          // Map actual efforts
-          const mappedEfforts = (d.effortLogs || []).map((e: any) => ({
-            date: e.effortDate || e.logDate || '',
-            hours: e.effortHours || e.efforts || null,
-            description: e.effortDescription || e.description || ''
-          }));
+        // Map checklist
+        const mappedCheckList = (d.checkList || []).map((c: any) => ({
+          id: (c.operTaskCheckListDetailNo || Math.floor(Math.random() * 10000)).toString(),
+          description: c.description || '',
+          completed: c.isChecked || false
+        }));
 
-          const mappedTask: Task = {
-            taskNo: d.operTaskNo,
-            code: d.code || '',
-            title: d.title || '',
-            description: d.description || '',
-            isPrivate: d.isPrivate || false,
-            priority_No: d.priority?.operTaskPriorityNo || 1,
-            category_No: d.category?.operTaskCategoryNo || null,
-            type_No: d.type?.operTaskTypeNo || null,
-            project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || null,
-            tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
-            originator_user_No: d.originator?.id || 1,
-            owner_user_No: d.owner?.id || null,
-            location_No: d.location?.operTaskLocationNo || null,
-            company: d.company || 'Glacier',
-            start_date: d.startDate,
-            end_date: d.endDate,
-            isAllDay: d.isAllday ?? d.isAllDay ?? false,
-            calendarColor: d.colorCoding || '',
-            estimated_effort_value: d.estimatedEfforts?.hours ?? null,
-            estimated_effort_unit: reverseEffortFrequencyMap[d.estimatedEfforts?.frequency?.frequencyNo || 2] || 'hours',
-            is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,
-            business_benefit_type_No: d.businessBenefit?.businessBenefitType?.businessBenefitTypeNo || d.businessBenefit?.businessBenefitTypeNo || null,
-            business_benefit_description: d.businessBenefit?.businessBenefitDescription || '',
-            estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount ?? null,
-            actual_benefit_amount: d.businessBenefit?.actualBenefitAmount ?? null,
-            benefit_period: reverseBenefitFrequencyMap[d.businessBenefit?.benefitFrequency?.frequencyNo || 1] || 'One Time',
-            status_No: d.status?.operTaskStatusNo || 1,
-            status: d.status?.statusName || 'Draft',
-            priority: d.priority?.priorityName || 'Low Priority',
-            categoryName: d.category?.categoryName || '',
-            typeName: d.type?.typeName || '',
-            assignedDisplayName: d.owner?.displayName || '',
-            originatorDisplayName: d.originator?.displayName || '',
-            collaborators: mappedCollabs,
-            informed_to: mappedInformTo,
-            check_list: mappedCheckList,
-            task_comments: mappedComments,
-            actual_efforts: mappedEfforts,
-            executionNotes: d.executionNotes || d.execution_notes || '',
-            execution_notes: d.executionNotes || d.execution_notes || '',
-            subTasks: d.subTasks || [],
-            collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
-            infromToUserGroupNo: d.infromToUserGroupNo || null
-          };
+        // Map comments
+        const mappedComments = (d.comments || []).map((c: any) => ({
+          id: (c.operTaskCommentDetailNo || Math.floor(Math.random() * 10000)).toString(),
+          author: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || 'Unknown',
+          text: c.description || c.comment || '',
+          timestamp: c.createdDate || new Date().toISOString(),
+          loginNo: c.createdBy?.id || c.loginNo || null
+        }));
 
-          // Call attachments list API after successful task load-data
-          try {
-            const attachmentList = await attachmentService.getAttachments(mappedTask.taskNo);
-            mappedTask.attachments = attachmentList;
-          } catch (attError) {
-            console.error('Failed to load attachments during task load-data:', attError);
-          }
+        // Map actual efforts
+        const mappedEfforts = (d.effortLogs || []).map((e: any) => ({
+          date: e.effortDate || e.logDate || '',
+          hours: e.effortHours || e.efforts || null,
+          description: e.effortDescription || e.description || ''
+        }));
 
-          setTask(mappedTask);
-        } else {
-          setNotFoundMessage(response.message || "Task not found.");
-          setIsNotFoundDialogOpen(true);
+        const mappedTask: Task = {
+          taskNo: d.operTaskNo,
+          code: d.code || '',
+          title: d.title || '',
+          description: d.description || '',
+          isPrivate: d.isPrivate || false,
+          priority_No: d.priority?.operTaskPriorityNo || 1,
+          category_No: d.category?.operTaskCategoryNo || null,
+          type_No: d.type?.operTaskTypeNo || null,
+          project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || null,
+          tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
+          originator_user_No: d.originator?.id || 1,
+          owner_user_No: d.owner?.id || null,
+          location_No: d.location?.operTaskLocationNo || null,
+          company: d.company || 'Glacier',
+          start_date: d.startDate,
+          end_date: d.endDate,
+          completionDate: d.completionDate,
+          completionRemark: d.completionRemark,
+          isAllDay: d.isAllday ?? d.isAllDay ?? false,
+          calendarColor: d.colorCoding || '',
+          estimated_effort_value: d.estimatedEfforts?.hours ?? null,
+          estimated_effort_unit: reverseEffortFrequencyMap[d.estimatedEfforts?.frequency?.frequencyNo || 2] || 'hours',
+          is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,
+          business_benefit_type_No: d.businessBenefit?.businessBenefitType?.businessBenefitTypeNo || d.businessBenefit?.businessBenefitTypeNo || null,
+          business_benefit_description: d.businessBenefit?.businessBenefitDescription || '',
+          estimated_benefit_amount: d.businessBenefit?.estimatedBenefitAmount ?? null,
+          actual_benefit_amount: d.businessBenefit?.actualBenefitAmount ?? null,
+          benefit_period: reverseBenefitFrequencyMap[d.businessBenefit?.benefitFrequency?.frequencyNo || 1] || 'One Time',
+          status_No: d.status?.operTaskStatusNo || 1,
+          status: d.status?.statusName || 'Draft',
+          priority: d.priority?.priorityName || 'Low Priority',
+          categoryName: d.category?.categoryName || '',
+          typeName: d.type?.typeName || '',
+          assignedDisplayName: d.owner?.displayName || '',
+          originatorDisplayName: d.originator?.displayName || '',
+          collaborators: mappedCollabs,
+          informed_to: mappedInformTo,
+          check_list: mappedCheckList,
+          task_comments: mappedComments,
+          actual_efforts: mappedEfforts,
+          executionNotes: d.executionNotes || d.execution_notes || '',
+          execution_notes: d.executionNotes || d.execution_notes || '',
+          subTasks: d.subTasks || [],
+          collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
+          infromToUserGroupNo: d.infromToUserGroupNo || null,
+          customFields: d.customFields || []
+        };
+
+        // Call attachments list API after successful task load-data
+        try {
+          const attachmentList = await attachmentService.getAttachments(mappedTask.taskNo);
+          mappedTask.attachments = attachmentList;
+        } catch (attError) {
+          console.error('Failed to load attachments during task load-data:', attError);
         }
-      } catch (error: any) {
-        console.error('Failed to load task details:', error);
-        setNotFoundMessage(error?.message || "The requested task could not be found.");
-        setIsNotFoundDialogOpen(true);
-      } finally {
-        setIsFetching(false);
-      }
-    };
 
-    fetchTaskDetails();
+        setTask(mappedTask);
+      } else {
+        setNotFoundMessage(response.message || "Task not found.");
+        setIsNotFoundDialogOpen(true);
+      }
+    } catch (error: any) {
+      console.error('Failed to load task details:', error);
+      setNotFoundMessage(error?.message || "The requested task could not be found.");
+      setIsNotFoundDialogOpen(true);
+    } finally {
+      setIsFetching(false);
+    }
   }, [id, isEdit]);
+
+  useEffect(() => {
+    fetchTaskDetails();
+  }, [fetchTaskDetails]);
 
   return (
     <MainLayout
@@ -314,6 +317,7 @@ export default function TaskDetail() {
                   initialStatus={initialStatus}
                   onComplete={() => navigate('/')}
                   onSaveStateChange={setIsSaving}
+                  onRefreshData={fetchTaskDetails}
                 />
               )}
             </div>
