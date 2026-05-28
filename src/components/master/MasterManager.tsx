@@ -34,9 +34,7 @@ import {
   UserPlus,
   CheckCircle,
   ChevronLeft,
-  ChevronRight,
-  Check,
-  ChevronsUpDown
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -47,19 +45,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 
 interface MasterManagerProps {
@@ -338,18 +323,6 @@ export function MasterManager({ type }: MasterManagerProps) {
     setSubtasks(subtasks.filter((_, i) => i !== index));
   };
 
-  const toggleSubtaskItem = (index: number) => {
-    setSubtasks(subtasks.map((s, i) => {
-      if (i === index) {
-        if (typeof s === 'string') {
-          return { description: s, isChecked: true };
-        }
-        return { ...s, isChecked: !s.isChecked };
-      }
-      return s;
-    }));
-  };
-
   // Reusable custom fields managed via CustomFieldsSection
 
   const fetchVessels = async () => {
@@ -409,9 +382,9 @@ export function MasterManager({ type }: MasterManagerProps) {
       if (response) {
         const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
         const mapped = rawItems.map((b: any) => ({
-          id: (b.businessEntityTypeNo ?? b.BusinessEntityTypeNo ?? b.id ?? '').toString(),
+          id: (b.operCRMBusinessEntityTypeNo ?? b.OperCRMBusinessEntityTypeNo ?? b.id ?? '').toString(),
           code: b.code || b.Code || '',
-          name: b.businessEntityTypeName || b.BusinessEntityTypeName || b.name || '',
+          name: b.operCRMBusinessEntityTypeName || b.OperCRMBusinessEntityTypeName || b.name || '',
           createdBy: b.createdBy?.printingName || b.createdBy?.displayName || b.createdBy?.loginId || b.createdByName || (typeof b.createdBy === 'string' || typeof b.createdBy === 'number' ? b.createdBy : '') || 'System',
           createdDate: b.createdDate || b.createdDateTime || b.createdOn || ''
         }));
@@ -669,7 +642,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             const body = response.data || response;
             const dl = body.data || body;
             if (dl) {
-              setName(dl.businessEntityTypeName || dl.BusinessEntityTypeName || dl.name || '');
+              setName(dl.operCRMBusinessEntityTypeName || dl.OperCRMBusinessEntityTypeName || dl.name || '');
             }
           }
         }).catch(err => console.error("Failed to load business entity type details:", err));
@@ -837,7 +810,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         break;
       case 'business-entity-type':
         apiService.delete(`/api/master/business-entity-types/delete`, {
-          params: { businessEntityTypeNo: id }
+          params: { operCRMBusinessEntityTypeNo: id }
         }).then(() => fetchBusinessEntityTypes()).catch(err => console.error("Failed to delete business entity type:", err));
         break;
       case 'location':
@@ -1018,8 +991,8 @@ export function MasterManager({ type }: MasterManagerProps) {
           await fetchPorts();
         } else if (type === 'business-entity-type') {
           const payload = {
-            businessEntityTypeNo: parseInt(id) || null,
-            businessEntityTypeName: name
+            operCRMBusinessEntityTypeNo: parseInt(id) || null,
+            operCRMBusinessEntityTypeName: name
           };
           await apiService.post('/api/master/business-entity-types/save', payload);
           await fetchBusinessEntityTypes();
@@ -1131,8 +1104,8 @@ export function MasterManager({ type }: MasterManagerProps) {
           await fetchPorts();
         } else if (type === 'business-entity-type') {
           const payload = {
-            businessEntityTypeNo: null,
-            businessEntityTypeName: name
+            operCRMBusinessEntityTypeNo: null,
+            operCRMBusinessEntityTypeName: name
           };
           await apiService.post('/api/master/business-entity-types/save', payload);
           await fetchBusinessEntityTypes();

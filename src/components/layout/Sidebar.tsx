@@ -2,6 +2,7 @@ import {
   LayoutGrid,
   Plus,
   X,
+  Briefcase,
   Layers,
   Sliders,
   AlertCircle,
@@ -31,7 +32,7 @@ const masterItems = [
   { icon: MapPin, label: 'Locations', id: 'master-location' },
   { icon: Ship, label: 'Vessels', id: 'master-vessel' },
   { icon: Anchor, label: 'Ports', id: 'master-port' },
-  { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type' }
+  { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type' },
 ];
 
 const bottomItems: { icon: any; label: string; id: string }[] = [];
