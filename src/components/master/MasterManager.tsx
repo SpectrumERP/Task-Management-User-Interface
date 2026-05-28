@@ -25,6 +25,9 @@ import {
   Users,
   Sparkles,
   MapPin,
+  Ship,
+  Anchor,
+  Building2,
   X,
   Loader2,
   Save,
@@ -44,7 +47,7 @@ import {
 } from '@/components/ui/dialog';
 
 interface MasterManagerProps {
-  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location';
+  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type';
 }
 
 export function MasterManager({ type }: MasterManagerProps) {
@@ -67,6 +70,12 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [apiLocations, setApiLocations] = useState<LocationMaster[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationFillValues, setLocationFillValues] = useState<any>(null);
+  const [apiVessels, setApiVessels] = useState<any[]>([]);
+  const [isLoadingVessels, setIsLoadingVessels] = useState(false);
+  const [apiPorts, setApiPorts] = useState<any[]>([]);
+  const [isLoadingPorts, setIsLoadingPorts] = useState(false);
+  const [apiBusinessEntityTypes, setApiBusinessEntityTypes] = useState<any[]>([]);
+  const [isLoadingBusinessEntityTypes, setIsLoadingBusinessEntityTypes] = useState(false);
 
   const [apiCategories, setApiCategories] = useState<any[]>([]);
 
@@ -290,10 +299,89 @@ export function MasterManager({ type }: MasterManagerProps) {
     }
   };
 
+  const fetchVessels = async () => {
+    setIsLoadingVessels(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/vessels/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((v: any) => ({
+          id: (v.vesselNo ?? v.VesselNo ?? v.id ?? '').toString(),
+          code: v.code || v.Code || '',
+          name: v.vesselName || v.VesselName || v.name || '',
+          createdBy: v.createdBy?.printingName || v.createdBy?.displayName || v.createdBy?.loginId || v.createdByName || (typeof v.createdBy === 'string' || typeof v.createdBy === 'number' ? v.createdBy : '') || 'System',
+          createdDate: v.createdDate || v.createdDateTime || v.createdOn || ''
+        }));
+        setApiVessels(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API vessels:", error);
+    } finally {
+      setIsLoadingVessels(false);
+    }
+  };
+
+  const fetchPorts = async () => {
+    setIsLoadingPorts(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/ports/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((p: any) => ({
+          id: (p.portNo ?? p.PortNo ?? p.id ?? '').toString(),
+          code: p.code || p.Code || '',
+          name: p.portName || p.PortName || p.name || '',
+          countryNo: (p.countryNo ?? p.CountryNo ?? '').toString(),
+          countryName: p.countryName || p.CountryName || '',
+          stateNo: (p.stateNo ?? p.StateNo ?? '').toString(),
+          stateName: p.stateName || p.StateName || '',
+          cityNo: (p.cityNo ?? p.CityNo ?? '').toString(),
+          cityName: p.cityName || p.CityName || '',
+          createdBy: p.createdBy?.printingName || p.createdBy?.displayName || p.createdBy?.loginId || p.createdByName || (typeof p.createdBy === 'string' || typeof p.createdBy === 'number' ? p.createdBy : '') || 'System',
+          createdDate: p.createdDate || p.createdDateTime || p.createdOn || ''
+        }));
+        setApiPorts(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API ports:", error);
+    } finally {
+      setIsLoadingPorts(false);
+    }
+  };
+
+  const fetchBusinessEntityTypes = async () => {
+    setIsLoadingBusinessEntityTypes(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/business-entity-types/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((b: any) => ({
+          id: (b.businessEntityTypeNo ?? b.BusinessEntityTypeNo ?? b.id ?? '').toString(),
+          code: b.code || b.Code || '',
+          name: b.businessEntityTypeName || b.BusinessEntityTypeName || b.name || '',
+          createdBy: b.createdBy?.printingName || b.createdBy?.displayName || b.createdBy?.loginId || b.createdByName || (typeof b.createdBy === 'string' || typeof b.createdBy === 'number' ? b.createdBy : '') || 'System',
+          createdDate: b.createdDate || b.createdDateTime || b.createdOn || ''
+        }));
+        setApiBusinessEntityTypes(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API business entity types:", error);
+    } finally {
+      setIsLoadingBusinessEntityTypes(false);
+    }
+  };
+
   useEffect(() => {
     if (type === 'location') {
       fetchLocations();
       fetchLocationFillValues();
+    } else if (type === 'vessel') {
+      fetchVessels();
+    } else if (type === 'port') {
+      fetchPorts();
+      fetchLocationFillValues();
+    } else if (type === 'business-entity-type') {
+      fetchBusinessEntityTypes();
     } else if (type === 'type') {
       fetchTypes();
     } else if (type === 'priority') {
@@ -475,6 +563,39 @@ export function MasterManager({ type }: MasterManagerProps) {
             }
           }
         }).catch(err => console.error("Failed to load benefit type details:", err));
+      } else if (type === 'vessel') {
+        apiService.get<any>(`/api/master/vessels/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.vesselName || dl.VesselName || dl.name || '');
+            }
+          }
+        }).catch(err => console.error("Failed to load vessel details:", err));
+      } else if (type === 'port') {
+        apiService.get<any>(`/api/master/ports/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.portName || dl.PortName || dl.name || '');
+              setCountryNo((dl.countryNo ?? dl.CountryNo ?? '').toString());
+              setStateNo((dl.stateNo ?? dl.StateNo ?? '').toString());
+              setCityNo((dl.cityNo ?? dl.CityNo ?? '').toString());
+            }
+          }
+        }).catch(err => console.error("Failed to load port details:", err));
+      } else if (type === 'business-entity-type') {
+        apiService.get<any>(`/api/master/business-entity-types/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.businessEntityTypeName || dl.BusinessEntityTypeName || dl.name || '');
+            }
+          }
+        }).catch(err => console.error("Failed to load business entity type details:", err));
       } else if (type === 'type') {
         apiService.get<any>(`/api/master/task-types/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
           if (response) {
@@ -542,11 +663,17 @@ export function MasterManager({ type }: MasterManagerProps) {
         return { title: 'Business Benefit Type Master', desc: 'Configure valuation standards and benefit metrics', icon: Sparkles, list: apiBusinessBenefitTypes };
       case 'location':
         return { title: 'Location Master', desc: 'Manage physical addresses, regional hubs, and location hierarchies', icon: MapPin, list: apiLocations };
+      case 'vessel':
+        return { title: 'Vessel Master', desc: 'Manage vessel names and generated vessel codes', icon: Ship, list: apiVessels };
+      case 'port':
+        return { title: 'Port Master', desc: 'Manage port names with optional country, state, and city references', icon: Anchor, list: apiPorts };
+      case 'business-entity-type':
+        return { title: 'Business Entity Type Master', desc: 'Manage business entity type names and generated codes', icon: Building2, list: apiBusinessEntityTypes };
     }
   };
 
   const { title, icon: Icon, list: rawList } = getMasterInfo();
-  const list = type === 'location' ? apiLocations : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : rawList;
+  const list = type === 'location' ? apiLocations : type === 'vessel' ? apiVessels : type === 'port' ? apiPorts : type === 'business-entity-type' ? apiBusinessEntityTypes : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : rawList;
 
   // Filtered List
   const filteredList = list.filter((item: any) => {
@@ -554,7 +681,10 @@ export function MasterManager({ type }: MasterManagerProps) {
     const matchesName = item.name?.toLowerCase().includes(query);
     const matchesCode = item.code?.toLowerCase().includes(query);
     const matchesDesc = item.description?.toLowerCase().includes(query);
-    return matchesName || matchesCode || matchesDesc;
+    const matchesCountry = item.countryName?.toString().toLowerCase().includes(query) || item.countryNo?.toString().toLowerCase().includes(query);
+    const matchesState = item.stateName?.toString().toLowerCase().includes(query) || item.stateNo?.toString().toLowerCase().includes(query);
+    const matchesCity = item.cityName?.toString().toLowerCase().includes(query) || item.cityNo?.toString().toLowerCase().includes(query);
+    return matchesName || matchesCode || matchesDesc || matchesCountry || matchesState || matchesCity;
   });
 
   // Pagination Calculations
@@ -617,6 +747,21 @@ export function MasterManager({ type }: MasterManagerProps) {
         apiService.delete(`/api/master/business-benefit-types/delete`, {
           params: { businessBenefitTypeNo: id }
         }).then(() => fetchBusinessBenefitTypes()).catch(err => console.error("Failed to delete benefit type:", err));
+        break;
+      case 'vessel':
+        apiService.delete(`/api/master/vessels/delete`, {
+          params: { vesselNo: id }
+        }).then(() => fetchVessels()).catch(err => console.error("Failed to delete vessel:", err));
+        break;
+      case 'port':
+        apiService.delete(`/api/master/ports/delete`, {
+          params: { portNo: id }
+        }).then(() => fetchPorts()).catch(err => console.error("Failed to delete port:", err));
+        break;
+      case 'business-entity-type':
+        apiService.delete(`/api/master/business-entity-types/delete`, {
+          params: { businessEntityTypeNo: id }
+        }).then(() => fetchBusinessEntityTypes()).catch(err => console.error("Failed to delete business entity type:", err));
         break;
       case 'location':
         apiService.delete(`/api/master/task-locations/delete`, {
@@ -761,6 +906,30 @@ export function MasterManager({ type }: MasterManagerProps) {
           };
           await apiService.post('/api/master/business-benefit-types/save', payload);
           await fetchBusinessBenefitTypes();
+        } else if (type === 'vessel') {
+          const payload = {
+            vesselNo: parseInt(id) || null,
+            vesselName: name
+          };
+          await apiService.post('/api/master/vessels/save', payload);
+          await fetchVessels();
+        } else if (type === 'port') {
+          const payload = {
+            portNo: parseInt(id) || null,
+            portName: name,
+            countryNo: parseInt(countryNo) || null,
+            stateNo: parseInt(stateNo) || null,
+            cityNo: parseInt(cityNo) || null
+          };
+          await apiService.post('/api/master/ports/save', payload);
+          await fetchPorts();
+        } else if (type === 'business-entity-type') {
+          const payload = {
+            businessEntityTypeNo: parseInt(id) || null,
+            businessEntityTypeName: name
+          };
+          await apiService.post('/api/master/business-entity-types/save', payload);
+          await fetchBusinessEntityTypes();
         } else if (type === 'location') {
           const cleanParent = parentLocationNo === 'none' ? '' : parentLocationNo;
           const cleanIncharge = inchargeNo === 'none' ? '' : inchargeNo;
@@ -844,6 +1013,30 @@ export function MasterManager({ type }: MasterManagerProps) {
           };
           await apiService.post('/api/master/business-benefit-types/save', payload);
           await fetchBusinessBenefitTypes();
+        } else if (type === 'vessel') {
+          const payload = {
+            vesselNo: null,
+            vesselName: name
+          };
+          await apiService.post('/api/master/vessels/save', payload);
+          await fetchVessels();
+        } else if (type === 'port') {
+          const payload = {
+            portNo: null,
+            portName: name,
+            countryNo: parseInt(countryNo) || null,
+            stateNo: parseInt(stateNo) || null,
+            cityNo: parseInt(cityNo) || null
+          };
+          await apiService.post('/api/master/ports/save', payload);
+          await fetchPorts();
+        } else if (type === 'business-entity-type') {
+          const payload = {
+            businessEntityTypeNo: null,
+            businessEntityTypeName: name
+          };
+          await apiService.post('/api/master/business-entity-types/save', payload);
+          await fetchBusinessEntityTypes();
         } else if (type === 'location') {
           const cleanParent = parentLocationNo === 'none' ? '' : parentLocationNo;
           const cleanIncharge = inchargeNo === 'none' ? '' : inchargeNo;
@@ -1026,6 +1219,77 @@ export function MasterManager({ type }: MasterManagerProps) {
           />
           {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
         </div>
+
+        {/* ----------------- PORT EXTRA FIELDS ----------------- */}
+        {type === 'port' && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
+              <Combobox
+                options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                  label: c.countryName || '',
+                  value: (c.countryNo || '').toString()
+                }))}
+                value={countryNo}
+                onChange={(val) => {
+                  setCountryNo(val);
+                  if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
+                }}
+                placeholder="Select Country"
+                searchPlaceholder="Search country..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
+              <Combobox
+                options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                  label: s.stateName || '',
+                  value: (s.stateNo || '').toString()
+                }))}
+                value={stateNo}
+                onChange={(val) => {
+                  setStateNo(val);
+                  if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
+                }}
+                placeholder="Select State"
+                searchPlaceholder="Search state..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
+              <Combobox
+                options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+                  label: c.cityName || '',
+                  value: (c.cityNo || '').toString()
+                }))}
+                value={cityNo}
+                onChange={(val) => {
+                  setCityNo(val);
+                  if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
+                }}
+                placeholder="Select City"
+                searchPlaceholder="Search city..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
+            </div>
+          </div>
+        )}
 
         {/* Color Coding Option (Category only) */}
         {type === 'category' && (
@@ -1709,7 +1973,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
       {/* Tabular Search Grid Display List */}
       <div className="flex-1 min-h-0 flex flex-col">
-        {(type === 'location' && isLoadingLocations) || (type === 'type' && isLoadingTypes) || (type === 'priority' && isLoadingPriorities) ? (
+        {(type === 'location' && isLoadingLocations) || (type === 'vessel' && isLoadingVessels) || (type === 'port' && isLoadingPorts) || (type === 'business-entity-type' && isLoadingBusinessEntityTypes) || (type === 'type' && isLoadingTypes) || (type === 'priority' && isLoadingPriorities) ? (
           <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl overflow-hidden p-6 space-y-4 animate-pulse flex-1">
             <div className="h-10 bg-slate-100 rounded-xl w-full" />
             <div className="h-12 bg-slate-50 rounded-xl w-full" />
@@ -1752,6 +2016,13 @@ export function MasterManager({ type }: MasterManagerProps) {
                     )}
                     {type === 'benefit-type' && (
                       <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
+                    )}
+                    {type === 'port' && (
+                      <>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Country No</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">State No</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">City No</th>
+                      </>
                     )}
                     {type === 'location' && (
                       <>
@@ -1820,6 +2091,19 @@ export function MasterManager({ type }: MasterManagerProps) {
                         <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
                           {benefitFillValues?.valuationTypes?.find((v: any) => v.valuationTypeNo?.toString() === item.valuationtypeNo?.toString())?.valuationTypeName || item.valuationtypeNo}
                         </td>
+                      )}
+                      {type === 'port' && (
+                        <>
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                            {item.countryNo || <span className="italic text-slate-300 font-medium">Not set</span>}
+                          </td>
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                            {item.stateNo || <span className="italic text-slate-300 font-medium">Not set</span>}
+                          </td>
+                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                            {item.cityNo || <span className="italic text-slate-300 font-medium">Not set</span>}
+                          </td>
+                        </>
                       )}
                       {type === 'location' && (
                         <>
