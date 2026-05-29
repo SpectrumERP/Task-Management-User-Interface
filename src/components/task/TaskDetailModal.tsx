@@ -184,7 +184,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
         // Fetch dedicated attachments list from the new attachments API after successfully loading the task data
         try {
-          const attachmentList = await attachmentService.getAttachments(mappedTask.taskNo);
+          const attachmentList = await attachmentService.getAttachments(mappedTask.taskNo, 1547); // Note: 1547 task form number hardcoded, need to update with dynamic value
           if (attachmentList && attachmentList.length > 0) {
             mappedTask.attachments = attachmentList;
           }
