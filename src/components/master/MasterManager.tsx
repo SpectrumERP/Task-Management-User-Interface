@@ -172,12 +172,12 @@ export function MasterManager({ type }: MasterManagerProps) {
           : `/api/master/business-entities/search/business-entity-wise`;
 
       const response = await apiService.get<any>(endpoint, { params: queryParams });
-      
+
       let rawItems: any[] = [];
       if (response) {
         const body = response.data || response;
         rawItems = Array.isArray(body) ? body : (body.data && Array.isArray(body.data) ? body.data : []);
-        
+
         if (response.alphabets) {
           setApiAlphabets(response.alphabets);
         }
@@ -431,7 +431,7 @@ export function MasterManager({ type }: MasterManagerProps) {
     if (isLoadingRef.current) return;
     const isClearing = currentStartsWith === letter;
     const targetLetter = isClearing ? '' : letter;
-    
+
     // Clear loaded range cache for the new filter
     loadedRanges.current = { min: 999999, max: 0 };
 
@@ -1409,7 +1409,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
               // Map locations properly
               const mappedLocations = (dl.locations || []).map((l: any) => ({
-                type: l.locationType?.addressTypeName || '',
+                type: l.locationType?.addressTypeNo?.toString() || l.locationType?.addressTypeName || '',
                 address: l.address || '',
                 country: l.country?.countryName || '',
                 state: l.state?.stateName || '',
@@ -1501,14 +1501,14 @@ export function MasterManager({ type }: MasterManagerProps) {
     const matchesCountry = item.countryName?.toString().toLowerCase().includes(query) || item.countryNo?.toString().toLowerCase().includes(query);
     const matchesState = item.stateName?.toString().toLowerCase().includes(query) || item.stateNo?.toString().toLowerCase().includes(query);
     const matchesCity = item.cityName?.toString().toLowerCase().includes(query) || item.cityNo?.toString().toLowerCase().includes(query);
-    
+
     // Add match for contact person name specifically
-    const matchesContactName = item.contacts?.some((c: any) => 
+    const matchesContactName = item.contacts?.some((c: any) =>
       (c.contactPersonName || c.contactName || c.name)?.toLowerCase().includes(query)
     );
 
     // Add match for attachment file name specifically
-    const matchesAttachmentName = item.attachments?.some((a: any) => 
+    const matchesAttachmentName = item.attachments?.some((a: any) =>
       (a.fileName || a.name)?.toLowerCase().includes(query)
     );
 
@@ -2686,11 +2686,11 @@ export function MasterManager({ type }: MasterManagerProps) {
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wide",
-                          loc.type === 'Office' ? "bg-blue-50 text-blue-700 border border-blue-100" :
-                            loc.type === 'Warehouse' ? "bg-amber-50 text-amber-700 border border-amber-100" :
+                          getLocationTypeName(loc.type) === 'Office' ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                            getLocationTypeName(loc.type) === 'Warehouse' ? "bg-amber-50 text-amber-700 border border-amber-100" :
                               "bg-emerald-50 text-emerald-700 border border-emerald-100"
                         )}>
-                          {loc.type}
+                          {getLocationTypeName(loc.type)}
                         </span>
                       </div>
                       <p className="text-xs font-bold text-slate-700 leading-snug">{loc.address}</p>
@@ -3400,21 +3400,21 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* ----------------- PORT EXTRA FIELDS ----------------- */}
         {type === 'port' && (<>
-        <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Port Alias</label>
-              <Input
-                placeholder="Enter Port Alias"
-                value={portAlias}
-                maxLength={10}
-                onChange={(e) => {
-                  setPortAlias(e.target.value);
-                  if (errors.portAlias) setErrors(prev => ({ ...prev, portAlias: '' }));
-                }}
-                className={cn("bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                  errors.portAlias && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500")}
-              />
-              {errors.portAlias && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.portAlias}</p>}
-            </div>
+          <div className="space-y-1">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Port Alias</label>
+            <Input
+              placeholder="Enter Port Alias"
+              value={portAlias}
+              maxLength={10}
+              onChange={(e) => {
+                setPortAlias(e.target.value);
+                if (errors.portAlias) setErrors(prev => ({ ...prev, portAlias: '' }));
+              }}
+              className={cn("bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                errors.portAlias && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500")}
+            />
+            {errors.portAlias && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.portAlias}</p>}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
@@ -3477,9 +3477,9 @@ export function MasterManager({ type }: MasterManagerProps) {
               />
               {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
             </div>
-            
+
           </div>
-          </>
+        </>
         )}
 
         {/* Color Coding Option (Category only) */}
@@ -4524,7 +4524,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
                   <Icon size={32} />
                 </div>
-<h3 className="text-sm font-bold text-slate-700">No Companies Found</h3>
+                <h3 className="text-sm font-bold text-slate-700">No Companies Found</h3>
                 <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
               </div>
             ) : (
@@ -4559,75 +4559,75 @@ export function MasterManager({ type }: MasterManagerProps) {
                   {companyViewMode === 'list' ? (
                     /* GRID LIST VIEW */
                     <div className="bg-white rounded-2xl border border-slate-150 shadow-md flex flex-col overflow-visible">
-                        <table className="w-full border-collapse text-left">
-                          <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
-                            <tr>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Code</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity Name</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Address</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">VAT/GST No</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Credit Limit</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {filteredList.map((company: any) => {
-                              const locStr = [company.address, company.cityName, company.stateName, company.countryName].filter(Boolean).join(', ') || 'N/A';
-                              return (
-                                <tr key={company.id} className="hover:bg-slate-50/50 transition-colors">
-                                  <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
-                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/50 text-[10px]">
-                                      {company.code}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
-                                    {company.name}
-                                  </td>
-                                  <td className="px-4 py-3 text-xs font-semibold text-slate-600">
-                                    <span className={cn(
-                                      "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
-                                      company.type === 'Buy'
-                                        ? "bg-sky-50 text-sky-600 border-sky-100"
-                                        : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                    )}>
-                                      {company.type}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[200px] truncate" title={locStr}>
-                                    {locStr}
-                                  </td>
-                                  <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
-                                    {company.vatGst || 'N/A'}
-                                  </td>
-                                  <td className="px-4 py-3 text-xs font-extrabold text-slate-700">
-                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                  </td>
-                                  <td className="px-4 py-3 text-xs text-center pr-5">
-                                    <div className="flex items-center justify-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleEditClick(company)}
-                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
-                                      >
-                                        <Edit size={13} />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleDeleteClick(company.id)}
-                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
-                                      >
-                                        <Trash2 size={13} />
-                                      </Button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                      <table className="w-full border-collapse text-left">
+                        <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
+                          <tr>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Code</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity Name</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Address</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">VAT/GST No</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Credit Limit</th>
+                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredList.map((company: any) => {
+                            const locStr = [company.address, company.cityName, company.stateName, company.countryName].filter(Boolean).join(', ') || 'N/A';
+                            return (
+                              <tr key={company.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
+                                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/50 text-[10px]">
+                                    {company.code}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                  {company.name}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
+                                    company.type === 'Buy'
+                                      ? "bg-sky-50 text-sky-600 border-sky-100"
+                                      : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                  )}>
+                                    {company.type}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[200px] truncate" title={locStr}>
+                                  {locStr}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
+                                  {company.vatGst || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-extrabold text-slate-700">
+                                  {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
+                                </td>
+                                <td className="px-4 py-3 text-xs text-center pr-5">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleEditClick(company)}
+                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
+                                    >
+                                      <Edit size={13} />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteClick(company.id)}
+                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
+                                    >
+                                      <Trash2 size={13} />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   ) : companyViewMode === 'album' ? (
                     /* ALBUM VIEW CARD LIST */
@@ -4638,24 +4638,24 @@ export function MasterManager({ type }: MasterManagerProps) {
                             <span>Alphabet {group.letter}</span>
                             <span className="text-[10px] opacity-70">{group.items.length} Entities</span>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {group.items.map((company: any) => (
-                              <Card key={company.id} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl hover:border-[#006699]/20 p-5 bg-white transition-all duration-300 flex flex-col gap-4 overflow-hidden group">
+                              <Card key={company.id} className="relative rounded-xl border border-slate-150 shadow-sm hover:shadow-lg hover:border-[#006699]/20 p-3.5 bg-white transition-all duration-300 flex flex-col gap-3 overflow-hidden group">
                                 {/* Top Header Card Info */}
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex items-center gap-3">
+                                <div className="flex items-start justify-between gap-2.5">
+                                  <div className="flex items-center gap-2.5 min-w-0">
                                     {/* Company Avatar Badge */}
-                                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-base shadow-md shadow-[#006699]/10 shrink-0 uppercase">
+                                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-xs shadow-md shadow-[#006699]/10 shrink-0 uppercase">
                                       {company.name ? company.name.substring(0, 2) : 'BE'}
                                     </div>
-                                    <div>
-                                      <h4 className="text-xs font-black text-slate-900 leading-snug group-hover:text-[#006699] transition-colors">{company.name}</h4>
-                                      <div className="flex items-center gap-1.5 mt-1">
-                                        <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50">
+                                    <div className="min-w-0">
+                                      <h4 className="text-[11px] font-black text-slate-900 leading-tight group-hover:text-[#006699] transition-colors truncate" title={company.name}>{company.name}</h4>
+                                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                        <span className="text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/50">
                                           {company.code}
                                         </span>
                                         <span className={cn(
-                                          "text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full border",
+                                          "text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded border",
                                           company.type === 'Buy'
                                             ? "bg-sky-50 text-sky-600 border-sky-100"
                                             : "bg-emerald-50 text-emerald-600 border-emerald-100"
@@ -4667,49 +4667,49 @@ export function MasterManager({ type }: MasterManagerProps) {
                                   </div>
 
                                   {/* Actions Button */}
-                                  <div className="flex items-center gap-1 shrink-0">
+                                  <div className="flex items-center gap-0.5 shrink-0">
                                     <Button
                                       variant="ghost"
                                       size="icon"
                                       onClick={() => handleEditClick(company)}
-                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
+                                      className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
                                     >
-                                      <Edit size={13} />
+                                      <Edit size={11} />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
                                       onClick={() => handleDeleteClick(company.id)}
-                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
+                                      className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
                                     >
-                                      <Trash2 size={13} />
+                                      <Trash2 size={11} />
                                     </Button>
                                   </div>
                                 </div>
 
                                 {/* Middle Address & Finance details */}
-                                <div className="grid grid-cols-2 gap-3 py-2 border-t border-b border-slate-100 text-[11px] font-semibold text-slate-500">
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 py-1.5 border-t border-b border-slate-100 text-[10px] font-semibold text-slate-500">
                                   <div className="col-span-2">
-                                    <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Primary Location</span>
-                                    <span className="text-slate-700 font-bold block whitespace-pre-wrap leading-snug">
+                                    <span className="text-[8px] font-extrabold uppercase text-[#006699] block tracking-wider mb-0.5">Primary Location</span>
+                                    <span className="text-slate-800 font-bold block truncate leading-snug" title={company.address || 'N/A'}>
                                       {company.address || 'N/A'}
                                     </span>
                                   </div>
-                                  <div>
+                                  <div className="min-w-0">
                                     <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">City & PIN Code</span>
-                                    <span className="text-slate-700 font-bold block truncate">
+                                    <span className="text-slate-700 font-bold block truncate" title={[company.city, company.pinCode].filter(Boolean).join(' - ')}>
                                       {[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'}
                                     </span>
                                   </div>
-                                  <div>
+                                  <div className="min-w-0">
                                     <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">State & Country</span>
-                                    <span className="text-slate-700 font-bold block truncate">
+                                    <span className="text-slate-700 font-bold block truncate" title={[company.state, company.country].filter(Boolean).join(', ')}>
                                       {[company.state, company.country].filter(Boolean).join(', ') || 'N/A'}
                                     </span>
                                   </div>
-                                  <div className="col-span-2">
+                                  <div className="col-span-2 min-w-0">
                                     <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Credit limit & GST</span>
-                                    <span className="text-slate-700 font-bold block truncate">
+                                    <span className="text-slate-700 font-bold block truncate" title={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}>
                                       {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
                                       {company.vatGst ? ` | GST: ${company.vatGst}` : ''}
                                     </span>
@@ -4717,12 +4717,12 @@ export function MasterManager({ type }: MasterManagerProps) {
                                 </div>
 
                                 {/* Footer statistics */}
-                                <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 pt-1 mt-auto">
-                                  <span className="flex items-center gap-1">
-                                    <User size={12} className="text-slate-400 shrink-0" />
-                                    Created By: <strong className="text-slate-600 truncate max-w-[120px]">{company.displayName || company.userName || 'System'}</strong>
+                                <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 pt-0.5 mt-auto">
+                                  <span className="flex items-center gap-1 min-w-0">
+                                    <User size={10} className="text-slate-400 shrink-0" />
+                                    Created By: <strong className="text-slate-600 truncate max-w-[100px]">{company.displayName || company.userName || 'System'}</strong>
                                   </span>
-                                  <span className="text-[9px] text-slate-400 font-semibold">
+                                  <span className="text-[8px] text-slate-400 font-semibold shrink-0">
                                     {company.createdDate ? new Date(company.createdDate).toLocaleDateString() : ''}
                                   </span>
                                 </div>
@@ -4747,66 +4747,66 @@ export function MasterManager({ type }: MasterManagerProps) {
                             </div>
 
                             <div className="bg-white rounded-2xl border border-slate-150 shadow-md flex flex-col overflow-visible">
-                                <table className="w-full border-collapse text-left">
-                                  <thead className="sticky top-[28px] z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
-                                    <tr>
-                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Contact Name</th>
-                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity</th>
-                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Designation</th>
-                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Department</th>
-                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
-                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Email</th>
-                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Parent Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-100">
-                                    {group.items.map((company: any) =>
-                                      (company.contacts || []).map((contact: any, cIdx: number) => (
-                                        <tr key={`${company.id}-${cIdx}`} className="hover:bg-slate-50/50 transition-colors">
-                                          <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
-                                            {contact.contactPersonName || contact.contactName || contact.name}
-                                          </td>
-                                          <td className="px-4 py-3 text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
-                                            {company.name}
-                                          </td>
-                                          <td className="px-4 py-3 text-xs font-semibold text-slate-600">
-                                            {contact.designation || 'N/A'}
-                                          </td>
-                                          <td className="px-4 py-3 text-xs font-semibold text-slate-500">
-                                            {contact.department || 'N/A'}
-                                          </td>
-                                          <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
-                                            {contact.phoneNo || contact.phone || 'N/A'}
-                                          </td>
-                                          <td className="px-4 py-3 text-xs font-semibold text-slate-550">
-                                            {contact.email || 'N/A'}
-                                          </td>
-                                          <td className="px-4 py-3 text-xs">
-                                            <span className={cn(
-                                              "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
-                                              (contact.status || 'Active') === 'Active'
-                                                ? "bg-emerald-100/60 text-emerald-700"
-                                                : "bg-slate-105 text-slate-500"
-                                            )}>
-                                              {contact.status || 'Active'}
-                                            </span>
-                                          </td>
-                                          <td className="px-4 py-3 text-xs text-center pr-5">
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => handleEditClick(company)}
-                                              className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
-                                            >
-                                              <Edit size={13} />
-                                            </Button>
-                                          </td>
-                                        </tr>
-                                      ))
-                                    )}
-                                  </tbody>
-                                </table>
+                              <table className="w-full border-collapse text-left">
+                                <thead className="sticky top-[28px] z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
+                                  <tr>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Contact Name</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Designation</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Department</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Email</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Parent Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {group.items.map((company: any) =>
+                                    (company.contacts || []).map((contact: any, cIdx: number) => (
+                                      <tr key={`${company.id}-${cIdx}`} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
+                                          {contact.contactPersonName || contact.contactName || contact.name}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                          {company.name}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                          {contact.designation || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+                                          {contact.department || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
+                                          {contact.phoneNo || contact.phone || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-slate-550">
+                                          {contact.email || 'N/A'}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs">
+                                          <span className={cn(
+                                            "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                                            (contact.status || 'Active') === 'Active'
+                                              ? "bg-emerald-100/60 text-emerald-700"
+                                              : "bg-slate-105 text-slate-500"
+                                          )}>
+                                            {contact.status || 'Active'}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-xs text-center pr-5">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEditClick(company)}
+                                            className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
+                                          >
+                                            <Edit size={13} />
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    ))
+                                  )}
+                                </tbody>
+                              </table>
                             </div>
                           </div>
                         );
