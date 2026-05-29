@@ -123,6 +123,11 @@ export interface CompanyMaster {
   attachment: CompanyAttachment[];
   code?: string;
   status?: string;
+  businessEntityType?: {
+    operCRMBusinessEntityTypeNo: number;
+    operCRMBusinessEntityTypeName: string;
+  };
+  businessEntityTypeName?: string;
 }
 
 interface MasterState {
@@ -281,6 +286,11 @@ export const useMasterStore = create<MasterState>()(
           businessEntityNo: 1,
           businessEntityName: 'Acme Logistics Corporation',
           crmBusinessEntityTypeNo: 1,
+          businessEntityType: {
+            operCRMBusinessEntityTypeNo: 1,
+            operCRMBusinessEntityTypeName: 'Operation'
+          },
+          businessEntityTypeName: 'Operation',
           crmTimeZoneNo: 1,
           vatgstNo: 'GSTIN987654321A',
           creditInsuranceLimit: 500000,
@@ -353,6 +363,11 @@ export const useMasterStore = create<MasterState>()(
           businessEntityNo: 2,
           businessEntityName: 'Global Shipping Solutions Ltd',
           crmBusinessEntityTypeNo: 3,
+          businessEntityType: {
+            operCRMBusinessEntityTypeNo: 3,
+            operCRMBusinessEntityTypeName: 'Buy'
+          },
+          businessEntityTypeName: 'Buy',
           crmTimeZoneNo: 2,
           vatgstNo: 'VAT987612345',
           creditInsuranceLimit: 1200000,

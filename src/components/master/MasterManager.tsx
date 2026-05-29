@@ -451,7 +451,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [locationRegion, setLocationRegion] = useState('');
 
   // Company Master extra fields
-  const [companyType, setCompanyType] = useState('Buy');
+  const [companyType, setCompanyType] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
   const [companyCity, setCompanyCity] = useState('');
   const [companyState, setCompanyState] = useState('');
@@ -1184,6 +1184,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
         } else if (type === 'company') {
+          const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
           const computedContacts = companyContacts.map(c => ({
             contactPersonName: c.contactName || c.name || '',
             address: c.address || '',
@@ -1237,11 +1238,20 @@ export function MasterManager({ type }: MasterManagerProps) {
             console.warn("Update API save failed, performing store-only update for preview:", apiErr);
           }
 
+          const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
+          const foundType = businessEntityTypes.find((t: any) => t.operCRMBusinessEntityTypeNo?.toString() === companyType?.toString());
+          const typeName = foundType ? foundType.operCRMBusinessEntityTypeName : '';
+
           useMasterStore.getState().updateCompany(id, {
             id,
             businessEntityNo: parseInt(id) || 0,
             businessEntityName: name,
             crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : 0,
+            businessEntityType: foundType ? {
+              operCRMBusinessEntityTypeNo: foundType.operCRMBusinessEntityTypeNo,
+              operCRMBusinessEntityTypeName: foundType.operCRMBusinessEntityTypeName
+            } : undefined,
+            businessEntityTypeName: typeName || '',
             crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : 0,
             vatgstNo: companyVatGst || '',
             creditInsuranceLimit: creditLimit ?? 0,
@@ -1373,6 +1383,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
         } else if (type === 'company') {
+          const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
           const computedContacts = companyContacts.map(c => ({
             contactPersonName: c.contactName || c.name || '',
             address: c.address || '',
@@ -1430,11 +1441,20 @@ export function MasterManager({ type }: MasterManagerProps) {
             console.warn("Add API save failed, performing store-only add for preview:", apiErr);
           }
 
+          const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
+          const foundType = businessEntityTypes.find((t: any) => t.operCRMBusinessEntityTypeNo?.toString() === companyType?.toString());
+          const typeName = foundType ? foundType.operCRMBusinessEntityTypeName : '';
+
           useMasterStore.getState().addCompany({
             id: createdNo.toString(),
             businessEntityNo: createdNo,
             businessEntityName: name,
             crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : 0,
+            businessEntityType: foundType ? {
+              operCRMBusinessEntityTypeNo: foundType.operCRMBusinessEntityTypeNo,
+              operCRMBusinessEntityTypeName: foundType.operCRMBusinessEntityTypeName
+            } : undefined,
+            businessEntityTypeName: typeName || '',
             crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : 0,
             vatgstNo: companyVatGst || '',
             creditInsuranceLimit: creditLimit ?? 0,
