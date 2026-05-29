@@ -155,7 +155,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       const appendMode = params.appendMode || 'replace';
 
       const queryParams: Record<string, string> = {
-        companyNo: companyNo.toString(),
+        // companyNo: companyNo.toString(),
         PageSize: pSize.toString()
       };
 
@@ -275,6 +275,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             contacts: [],
             ports: [],
             attachments: [{
+              id: detailNo,
               fileName: fName,
               fileSize: fSize,
               fileType: fType,
@@ -1517,7 +1518,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           }
         }).catch(err => console.error("Failed to load location details:", err));
       } else if (type === 'company') {
-        apiService.get<any>(`/api/master/business-entities/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+        apiService.get<any>(`/api/master/business-entities/load-data/${id}?companyNo=${companyNoVal}`).then(async (response) => {
           if (response) {
             const body = response.data || response;
             const dl = body.data || body;
@@ -1565,7 +1566,24 @@ export function MasterManager({ type }: MasterManagerProps) {
               }));
               setCompanyPorts(mappedPorts);
 
-              setCompanyAttachments(dl.attachments || []);
+              // Fetch attachments from dedicated API (formNo 1150 = Business Entity)
+              try {
+                const attachmentList = await attachmentService.getAttachments(parseInt(id), 1550);
+                if (attachmentList && attachmentList.length > 0) {
+                  setCompanyAttachments(attachmentList.map((a: any) => ({
+                    id: a.id || a.docNo || null,
+                    docNo: a.id || a.docNo || null,
+                    fileName: a.name || a.fileName || '',
+                    fileSize: a.size || a.fileSize || 0,
+                    filePath: a.storedFilePath || a.relativePath || ''
+                  })));
+                } else {
+                  setCompanyAttachments([]);
+                }
+              } catch (attErr) {
+                console.error('Failed to load business entity attachments:', attErr);
+                setCompanyAttachments([]);
+              }
             }
           }
         }).catch(err => {
@@ -3193,9 +3211,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                 <MapPin size={18} className="text-[#006699]" />
                 {editingLocationIndex !== null ? 'Edit Location Address' : 'Add Location Address'}
               </DialogTitle>
-              <DialogDescription className="text-[11px] text-slate-500 font-semibold leading-tight">
-                {editingLocationIndex !== null ? 'Modify branch office, factory or warehouse info.' : 'Add branch office, factory or logistical warehouse info.'}
-              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
@@ -5226,7 +5241,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                           className="h-7 rounded-lg text-slate-500 hover:text-[#006699] hover:bg-slate-100 text-[10px] font-bold flex items-center gap-1"
                                         >
                                           <Edit size={11} />
-                                          Edit Entity
+                                          Edit
                                         </Button>
                                       </div>
                                     </Card>
@@ -5242,17 +5257,33 @@ export function MasterManager({ type }: MasterManagerProps) {
                     /* ATTACHMENT-WISE GROUPED VIEW */
                     <div className="space-y-6">
                       {groupedCompanies.map((group) => {
-                        const hasAttachments = group.items.some(c => c.attachments && c.attachments.length > 0);
+                        // Merge multiple rows that share the same business entity into one combined record
+                        const mergedMap = new Map<string, any>();
+                        group.items.forEach((c: any) => {
+                          const key = c.name || c.id;
+                          if (mergedMap.has(key)) {
+                            // Append attachments to the existing entry
+                            mergedMap.get(key).attachments.push(...(c.attachments || []));
+                          } else {
+                            mergedMap.set(key, { ...c, attachments: [...(c.attachments || [])] });
+                          }
+                        });
+                        // Sort merged entities alphabetically by name
+                        const mergedItems = Array.from(mergedMap.values()).sort((a, b) =>
+                          (a.name || '').localeCompare(b.name || '')
+                        );
+
+                        const hasAttachments = mergedItems.some(c => c.attachments && c.attachments.length > 0);
                         if (!hasAttachments) return null;
 
                         return (
                           <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
                             <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
                               <span>Alphabet {group.letter}</span>
-                              <span className="text-[10px] opacity-70">Attachments</span>
+                              <span className="text-[10px] opacity-70">{mergedItems.length} Entities</span>
                             </div>
                             <div className="space-y-4">
-                              {group.items.map((company: any) => {
+                              {mergedItems.map((company: any) => {
                                 if (!company.attachments || company.attachments.length === 0) return null;
                                 return (
                                   <div key={company.id} className="bg-slate-50/50 rounded-[22px] border border-slate-150 p-5">
@@ -5290,24 +5321,31 @@ export function MasterManager({ type }: MasterManagerProps) {
                                               </div>
                                               <div className="min-w-0">
                                                 <h5 className="text-xs font-black text-slate-705 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
-                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono mt-0.5">
-                                                  {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
-                                                </p>
+                                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono">
+                                                    {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
+                                                  </p>
+                                                  {att.fileType && (
+                                                    <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200/50">
+                                                      {att.fileType}
+                                                    </span>
+                                                  )}
+                                                </div>
                                               </div>
                                             </div>
 
                                             {/* Visual Preview Badge / Mock Area */}
-                                            <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
+                                            {/* <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
                                               <div className="text-[9px] text-slate-400 font-bold leading-tight">
                                                 {isPdf ? "📄 PDF Document Preview Ready" :
                                                   isSheet ? "📊 Excel Spreadsheet Data Sheet" :
                                                     "📝 Text Profile Document Data"}
                                               </div>
-                                            </div>
+                                            </div> */}
 
                                             {/* Action controls */}
                                             <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 mt-auto">
-                                              <Button
+                                              {/* <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => {
@@ -5322,7 +5360,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                                 className="h-7 px-2.5 rounded-lg text-[9px] font-black text-[#006699] hover:bg-[#006699]/10 flex items-center justify-center gap-1 shadow-sm border border-[#006699]/10"
                                               >
                                                 Preview
-                                              </Button>
+                                              </Button> */}
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
