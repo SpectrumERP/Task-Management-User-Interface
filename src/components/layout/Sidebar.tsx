@@ -2,7 +2,6 @@ import {
   LayoutGrid,
   Plus,
   X,
-  Briefcase,
   Layers,
   Sliders,
   AlertCircle,
@@ -12,7 +11,8 @@ import {
   MapPin,
   Ship,
   Anchor,
-  Building2
+  Building2,
+  Handshake
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ import LogoImage from '@/assets/SteelMountLogo01.png';
 
 const navItems = [
   { icon: LayoutGrid, label: 'Tasks Dashboard', id: 'tasks' },
+  { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
 ];
 
 const masterItems = [
