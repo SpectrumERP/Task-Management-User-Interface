@@ -46,7 +46,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       }
     };
 
-    const handleInput = (e: React.FormEvent<HTMLInputElement>) => {
+    const handleInput = (e: React.InputEvent<HTMLInputElement>) => {
       if (type === "number") {
         const originalVal = e.currentTarget.value;
         const formattedVal = handleNumericFormatting(originalVal);

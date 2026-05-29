@@ -25,6 +25,9 @@ import {
   Users,
   Sparkles,
   MapPin,
+  Ship,
+  Anchor,
+  Building2,
   X,
   Loader2,
   Save,
@@ -50,9 +53,10 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 
 interface MasterManagerProps {
-  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'company';
+  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company';
 }
 
 import { useMasterStore } from '@/store/useMasterStore';
@@ -77,6 +81,12 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [apiLocations, setApiLocations] = useState<LocationMaster[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationFillValues, setLocationFillValues] = useState<any>(null);
+  const [apiVessels, setApiVessels] = useState<any[]>([]);
+  const [isLoadingVessels, setIsLoadingVessels] = useState(false);
+  const [apiPorts, setApiPorts] = useState<any[]>([]);
+  const [isLoadingPorts, setIsLoadingPorts] = useState(false);
+  const [apiBusinessEntityTypes, setApiBusinessEntityTypes] = useState<any[]>([]);
+  const [isLoadingBusinessEntityTypes, setIsLoadingBusinessEntityTypes] = useState(false);
 
   const [apiCompanies, setApiCompanies] = useState<any[]>([]);
 
@@ -367,10 +377,114 @@ export function MasterManager({ type }: MasterManagerProps) {
     }
   };
 
+  const fetchCategoryFillValues = async () => {
+    try {
+      const response = await apiService.get<any>(`/api/master/task-categories/fill-values?companyNo=${companyNo}`);
+      if (response) {
+        setCategoryFillValues(response.data || response);
+      }
+    } catch (error) {
+      console.error("Failed to fetch category fill-values:", error);
+    }
+  };
+
+  // Sub-task list helpers
+  const addSubtaskItem = () => {
+    if (newSubtaskItem.trim()) {
+      setSubtasks([...subtasks, { description: newSubtaskItem.trim(), isChecked: false }]);
+      setNewSubtaskItem('');
+    }
+  };
+
+  const removeSubtaskItem = (index: number) => {
+    setSubtasks(subtasks.filter((_, i) => i !== index));
+  };
+
+  // Reusable custom fields managed via CustomFieldsSection
+
+  const fetchVessels = async () => {
+    setIsLoadingVessels(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/vessels/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((v: any) => ({
+          id: (v.vesselNo ?? v.VesselNo ?? v.id ?? '').toString(),
+          code: v.code || v.Code || '',
+          name: v.vesselName || v.VesselName || v.name || '',
+          createdBy: v.createdBy?.printingName || v.createdBy?.displayName || v.createdBy?.loginId || v.createdByName || (typeof v.createdBy === 'string' || typeof v.createdBy === 'number' ? v.createdBy : '') || 'System',
+          createdDate: v.createdDate || v.createdDateTime || v.createdOn || ''
+        }));
+        setApiVessels(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API vessels:", error);
+    } finally {
+      setIsLoadingVessels(false);
+    }
+  };
+
+  const fetchPorts = async () => {
+    setIsLoadingPorts(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/ports/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((p: any) => ({
+          id: (p.portNo ?? p.PortNo ?? p.id ?? '').toString(),
+          code: p.code || p.Code || '',
+          name: p.portName || p.PortName || p.name || '',
+          countryNo: (p.countryNo ?? p.CountryNo ?? '').toString(),
+          countryName: p.countryName || p.CountryName || '',
+          stateNo: (p.stateNo ?? p.StateNo ?? '').toString(),
+          stateName: p.stateName || p.StateName || '',
+          cityNo: (p.cityNo ?? p.CityNo ?? '').toString(),
+          cityName: p.cityName || p.CityName || '',
+          createdBy: p.createdBy?.printingName || p.createdBy?.displayName || p.createdBy?.loginId || p.createdByName || (typeof p.createdBy === 'string' || typeof p.createdBy === 'number' ? p.createdBy : '') || 'System',
+          createdDate: p.createdDate || p.createdDateTime || p.createdOn || ''
+        }));
+        setApiPorts(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API ports:", error);
+    } finally {
+      setIsLoadingPorts(false);
+    }
+  };
+
+  const fetchBusinessEntityTypes = async () => {
+    setIsLoadingBusinessEntityTypes(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/business-entity-types/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((b: any) => ({
+          id: (b.operCRMBusinessEntityTypeNo ?? b.OperCRMBusinessEntityTypeNo ?? b.id ?? '').toString(),
+          code: b.code || b.Code || '',
+          name: b.operCRMBusinessEntityTypeName || b.OperCRMBusinessEntityTypeName || b.name || '',
+          createdBy: b.createdBy?.printingName || b.createdBy?.displayName || b.createdBy?.loginId || b.createdByName || (typeof b.createdBy === 'string' || typeof b.createdBy === 'number' ? b.createdBy : '') || 'System',
+          createdDate: b.createdDate || b.createdDateTime || b.createdOn || ''
+        }));
+        setApiBusinessEntityTypes(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API business entity types:", error);
+    } finally {
+      setIsLoadingBusinessEntityTypes(false);
+    }
+  };
+
   useEffect(() => {
     if (type === 'location') {
       fetchLocations();
       fetchLocationFillValues();
+    } else if (type === 'vessel') {
+      fetchVessels();
+    } else if (type === 'port') {
+      fetchPorts();
+      fetchLocationFillValues();
+    } else if (type === 'business-entity-type') {
+      fetchBusinessEntityTypes();
     } else if (type === 'type') {
       fetchTypes();
     } else if (type === 'priority') {
@@ -380,6 +494,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       fetchFolderFillValues();
     } else if (type === 'category') {
       fetchCategories();
+      fetchCategoryFillValues();
     } else if (type === 'user-group') {
       fetchUserGroups();
     } else if (type === 'benefit-type') {
@@ -421,6 +536,13 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [checklist, setChecklist] = useState<{ description: string; isChecked: boolean }[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [color, setColor] = useState('');
+  const [subtasks, setSubtasks] = useState<{ description: string; isChecked: boolean }[]>([]);
+  const [newSubtaskItem, setNewSubtaskItem] = useState('');
+  const [categoryFillValues, setCategoryFillValues] = useState<any>(null);
+  const [categoryCustomFields, setCategoryCustomFields] = useState<{ customFieldNo: string; fieldValue: string }[]>([]);
+  const [editingChecklistIdx, setEditingChecklistIdx] = useState<number | null>(null);
+  const [editingSubtaskIdx, setEditingSubtaskIdx] = useState<number | null>(null);
+  const [tempEditText, setTempEditText] = useState('');
 
   // Priority extra fields
   const [priorityDuration, setPriorityDuration] = useState<number | null>(null);
@@ -580,6 +702,12 @@ export function MasterManager({ type }: MasterManagerProps) {
       setIsBusinessBenefitApplicable(false);
       setChecklist([]);
       setNewChecklistItem('');
+      setSubtasks([]);
+      setNewSubtaskItem('');
+      setCategoryCustomFields([]);
+      setEditingChecklistIdx(null);
+      setEditingSubtaskIdx(null);
+      setTempEditText('');
       setColor('');
       setPriorityDuration(null);
       setPriorityFrequencyNo('');
@@ -662,8 +790,15 @@ export function MasterManager({ type }: MasterManagerProps) {
               setIsInReviewRequired(dl.isInReviewApplicable || false);
               setIsBusinessBenefitApplicable(dl.isBusinessBenefitApplicable || false);
               setChecklist(Array.isArray(dl.checkLists) ? dl.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : []);
+              const rawSubtasks = dl.subtasks || dl.subTasks;
+              setSubtasks(Array.isArray(rawSubtasks) ? rawSubtasks.map((st: any) => ({ description: st.title || st.subtaskTitle || st.description || st.taskName || st.subTaskName || (typeof st === 'string' ? st : ''), isChecked: !!st.isChecked })) : []);
+              setCategoryCustomFields(Array.isArray(dl.customFields) ? dl.customFields.map((cf: any) => ({
+                customFieldNo: (cf.customFieldNo ?? cf.customFieldNo ?? '').toString(),
+                fieldValue: cf.fieldValue || cf.value || ''
+              })) : []);
               setColor(dl.colorCoding || '');
               setNewChecklistItem('');
+              setNewSubtaskItem('');
             }
           }
         }).catch(err => console.error("Failed to load category details:", err));
@@ -722,6 +857,42 @@ export function MasterManager({ type }: MasterManagerProps) {
             }
           }
         }).catch(err => console.error("Failed to load benefit type details:", err));
+      } else if (type === 'vessel') {
+        apiService.get<any>(`/api/master/vessels/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.vesselName || dl.VesselName || dl.name || '');
+            }
+          }
+        }).catch(err => console.error("Failed to load vessel details:", err));
+      } else if (type === 'port') {
+        apiService.get<any>(`/api/master/ports/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.portName || dl.PortName || dl.name || '');
+              const loadedCountry = dl.country?.countryNo ?? dl.countryNo ?? dl.CountryNo ?? '';
+              const loadedState = dl.state?.stateNo ?? dl.stateNo ?? dl.StateNo ?? '';
+              const loadedCity = dl.city?.cityNo ?? dl.cityNo ?? dl.CityNo ?? '';
+              setCountryNo(loadedCountry?.toString?.() ?? '');
+              setStateNo(loadedState?.toString?.() ?? '');
+              setCityNo(loadedCity?.toString?.() ?? '');
+            }
+          }
+        }).catch(err => console.error("Failed to load port details:", err));
+      } else if (type === 'business-entity-type') {
+        apiService.get<any>(`/api/master/business-entity-types/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.operCRMBusinessEntityTypeName || dl.OperCRMBusinessEntityTypeName || dl.name || '');
+            }
+          }
+        }).catch(err => console.error("Failed to load business entity type details:", err));
       } else if (type === 'type') {
         apiService.get<any>(`/api/master/task-types/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
           if (response) {
@@ -875,11 +1046,17 @@ export function MasterManager({ type }: MasterManagerProps) {
         return { title: 'Location Master', desc: 'Manage physical addresses, regional hubs, and location hierarchies', icon: MapPin, list: apiLocations };
       case 'company':
         return { title: 'Business Entity Master', desc: 'Define and manage business entity profiles, branch locations, and contact persons', icon: Layers, list: apiCompanies };
+      case 'vessel':
+        return { title: 'Vessel Master', desc: 'Manage vessel names and generated vessel codes', icon: Ship, list: apiVessels };
+      case 'port':
+        return { title: 'Port Master', desc: 'Manage port names with optional country, state, and city references', icon: Anchor, list: apiPorts };
+      case 'business-entity-type':
+        return { title: 'Business Entity Type Master', desc: 'Manage business entity type names and generated codes', icon: Building2, list: apiBusinessEntityTypes };
     }
   };
 
   const { title, icon: Icon, list: rawList } = getMasterInfo();
-  const list = type === 'location' ? apiLocations : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : rawList;
+  const list = type === 'location' ? apiLocations : type === 'vessel' ? apiVessels : type === 'port' ? apiPorts : type === 'business-entity-type' ? apiBusinessEntityTypes : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : rawList;
 
   // Filtered List
   const filteredList = list.filter((item: any) => {
@@ -887,7 +1064,10 @@ export function MasterManager({ type }: MasterManagerProps) {
     const matchesName = item.name?.toLowerCase().includes(query);
     const matchesCode = item.code?.toLowerCase().includes(query);
     const matchesDesc = item.description?.toLowerCase().includes(query);
-    return matchesName || matchesCode || matchesDesc;
+    const matchesCountry = item.countryName?.toString().toLowerCase().includes(query) || item.countryNo?.toString().toLowerCase().includes(query);
+    const matchesState = item.stateName?.toString().toLowerCase().includes(query) || item.stateNo?.toString().toLowerCase().includes(query);
+    const matchesCity = item.cityName?.toString().toLowerCase().includes(query) || item.cityNo?.toString().toLowerCase().includes(query);
+    return matchesName || matchesCode || matchesDesc || matchesCountry || matchesState || matchesCity;
   });
 
   // Pagination Calculations
@@ -983,6 +1163,21 @@ export function MasterManager({ type }: MasterManagerProps) {
           params: { businessBenefitTypeNo: id }
         }).then(() => fetchBusinessBenefitTypes()).catch(err => console.error("Failed to delete benefit type:", err));
         break;
+      case 'vessel':
+        apiService.delete(`/api/master/vessels/delete`, {
+          params: { vesselNo: id }
+        }).then(() => fetchVessels()).catch(err => console.error("Failed to delete vessel:", err));
+        break;
+      case 'port':
+        apiService.delete(`/api/master/ports/delete`, {
+          params: { portNo: id }
+        }).then(() => fetchPorts()).catch(err => console.error("Failed to delete port:", err));
+        break;
+      case 'business-entity-type':
+        apiService.delete(`/api/master/business-entity-types/delete`, {
+          params: { operCRMBusinessEntityTypeNo: id }
+        }).then(() => fetchBusinessEntityTypes()).catch(err => console.error("Failed to delete business entity type:", err));
+        break;
       case 'location':
         apiService.delete(`/api/master/task-locations/delete`, {
           params: {
@@ -1037,6 +1232,16 @@ export function MasterManager({ type }: MasterManagerProps) {
         if (hasEmpty) {
           newErrors.selectedUsers = 'All group members must have a valid username';
         }
+      }
+    } else if (type === 'port') {
+      if (!countryNo || countryNo === 'none' || countryNo === '') {
+        newErrors.countryNo = 'Country is required';
+      }
+      if (!stateNo || stateNo === 'none' || stateNo === '') {
+        newErrors.stateNo = 'State is required';
+      }
+      if (!cityNo || cityNo === 'none' || cityNo === '') {
+        newErrors.cityNo = 'City is required';
       }
     } else if (type === 'location') {
       if (!address1.trim()) {
@@ -1110,11 +1315,17 @@ export function MasterManager({ type }: MasterManagerProps) {
             isMultiLevelApproval: isApprovalApplicable,
             isInReviewApplicable: isInReviewRequired,
             isBusinessBenefitApplicable: isBusinessBenefitApplicable,
-            checkLists: checklist.map(c => {
-              const desc = typeof c === 'string' ? c : c.description;
-              const checked = typeof c === 'string' ? false : c.isChecked;
-              return { description: desc, checkListDescription: desc, isChecked: checked };
-            }),
+            checkLists: checklist.map(c => ({
+              description: typeof c === 'string' ? c : c.description,
+              isChecked: typeof c === 'string' ? false : c.isChecked
+            })),
+            subtasks: subtasks.map(s => ({
+              subtaskTitle: typeof s === 'string' ? s : s.description
+            })),
+            customFields: categoryCustomFields.map(cf => ({
+              customFieldNo: parseInt(cf.customFieldNo) || null,
+              fieldValue: cf.fieldValue
+            })),
             colorCoding: color || null
           };
           await apiService.post('/api/master/task-categories/save', payload);
@@ -1164,6 +1375,30 @@ export function MasterManager({ type }: MasterManagerProps) {
           };
           await apiService.post('/api/master/business-benefit-types/save', payload);
           await fetchBusinessBenefitTypes();
+        } else if (type === 'vessel') {
+          const payload = {
+            vesselNo: parseInt(id) || null,
+            vesselName: name
+          };
+          await apiService.post('/api/master/vessels/save', payload);
+          await fetchVessels();
+        } else if (type === 'port') {
+          const payload = {
+            portNo: parseInt(id) || null,
+            portName: name,
+            countryNo: parseInt(countryNo) || null,
+            stateNo: parseInt(stateNo) || null,
+            cityNo: parseInt(cityNo) || null
+          };
+          await apiService.post('/api/master/ports/save', payload);
+          await fetchPorts();
+        } else if (type === 'business-entity-type') {
+          const payload = {
+            operCRMBusinessEntityTypeNo: parseInt(id) || null,
+            operCRMBusinessEntityTypeName: name
+          };
+          await apiService.post('/api/master/business-entity-types/save', payload);
+          await fetchBusinessEntityTypes();
         } else if (type === 'location') {
           const cleanParent = parentLocationNo === 'none' ? '' : parentLocationNo;
           const cleanIncharge = inchargeNo === 'none' ? '' : inchargeNo;
@@ -1309,11 +1544,17 @@ export function MasterManager({ type }: MasterManagerProps) {
             isMultiLevelApproval: isApprovalApplicable,
             isInReviewApplicable: isInReviewRequired,
             isBusinessBenefitApplicable: isBusinessBenefitApplicable,
-            checkLists: checklist.map(c => {
-              const desc = typeof c === 'string' ? c : c.description;
-              const checked = typeof c === 'string' ? false : c.isChecked;
-              return { description: desc, checkListDescription: desc, isChecked: checked };
-            }),
+            checkLists: checklist.map(c => ({
+              description: typeof c === 'string' ? c : c.description,
+              isChecked: typeof c === 'string' ? false : c.isChecked
+            })),
+            subtasks: subtasks.map(s => ({
+              subtaskTitle: typeof s === 'string' ? s : s.description
+            })),
+            customFields: categoryCustomFields.map(cf => ({
+              customFieldNo: parseInt(cf.customFieldNo) || null,
+              fieldValue: cf.fieldValue
+            })),
             colorCoding: color || null
           };
           await apiService.post('/api/master/task-categories/save', payload);
@@ -1363,6 +1604,30 @@ export function MasterManager({ type }: MasterManagerProps) {
           };
           await apiService.post('/api/master/business-benefit-types/save', payload);
           await fetchBusinessBenefitTypes();
+        } else if (type === 'vessel') {
+          const payload = {
+            vesselNo: null,
+            vesselName: name
+          };
+          await apiService.post('/api/master/vessels/save', payload);
+          await fetchVessels();
+        } else if (type === 'port') {
+          const payload = {
+            portNo: null,
+            portName: name,
+            countryNo: parseInt(countryNo) || null,
+            stateNo: parseInt(stateNo) || null,
+            cityNo: parseInt(cityNo) || null
+          };
+          await apiService.post('/api/master/ports/save', payload);
+          await fetchPorts();
+        } else if (type === 'business-entity-type') {
+          const payload = {
+            operCRMBusinessEntityTypeNo: null,
+            operCRMBusinessEntityTypeName: name
+          };
+          await apiService.post('/api/master/business-entity-types/save', payload);
+          await fetchBusinessEntityTypes();
         } else if (type === 'location') {
           const cleanParent = parentLocationNo === 'none' ? '' : parentLocationNo;
           const cleanIncharge = inchargeNo === 'none' ? '' : inchargeNo;
@@ -2953,6 +3218,77 @@ export function MasterManager({ type }: MasterManagerProps) {
           {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
         </div>
 
+        {/* ----------------- PORT EXTRA FIELDS ----------------- */}
+        {type === 'port' && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
+              <Combobox
+                options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                  label: c.countryName || '',
+                  value: (c.countryNo || '').toString()
+                }))}
+                value={countryNo}
+                onChange={(val) => {
+                  setCountryNo(val);
+                  if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
+                }}
+                placeholder="Select Country"
+                searchPlaceholder="Search country..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
+              <Combobox
+                options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                  label: s.stateName || '',
+                  value: (s.stateNo || '').toString()
+                }))}
+                value={stateNo}
+                onChange={(val) => {
+                  setStateNo(val);
+                  if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
+                }}
+                placeholder="Select State"
+                searchPlaceholder="Search state..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
+              <Combobox
+                options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+                  label: c.cityName || '',
+                  value: (c.cityNo || '').toString()
+                }))}
+                value={cityNo}
+                onChange={(val) => {
+                  setCityNo(val);
+                  if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
+                }}
+                placeholder="Select City"
+                searchPlaceholder="Search city..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
+            </div>
+          </div>
+        )}
+
         {/* Color Coding Option (Category only) */}
         {type === 'category' && (
           <div className="space-y-2.5">
@@ -3026,7 +3362,12 @@ export function MasterManager({ type }: MasterManagerProps) {
 
             {/* Checklist Descriptions Array Editor */}
             <div className="space-y-2.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 block">Checklist Items (Descriptions Array)</label>
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center">
+                Checklist Items (Descriptions Array)
+                <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+                  {checklist.length}
+                </span>
+              </label>
               <div className="flex gap-2">
                 <Input
                   placeholder="Add description..."
@@ -3050,36 +3391,288 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
 
               {checklist.length > 0 && (
-                <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-150/60 max-h-40 overflow-y-auto space-y-1.5 scrollbar-thin">
-                  {checklist.map((item, index) => {
-                    const desc = typeof item === 'string' ? item : item.description;
-                    const isChecked = typeof item === 'string' ? false : item.isChecked;
-                    return (
-                      <div key={index} className="flex items-center justify-between gap-3 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <Checkbox
-                            id={`cl-item-${index}`}
-                            checked={isChecked}
-                            onCheckedChange={() => toggleChecklistItem(index)}
-                            className="h-4 w-4 rounded border-slate-300"
-                          />
-                          <label htmlFor={`cl-item-${index}`} className="text-[11px] font-bold text-slate-700 truncate cursor-pointer select-none">
-                            {desc}
-                          </label>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeChecklistItem(index)}
-                          className="text-red-500 hover:text-red-700 p-0.5 rounded-full hover:bg-slate-100/80 shrink-0"
+                <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all w-full">
+                  <div className="max-h-[250px] overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
+                    {checklist.map((item, index) => {
+                      const desc = typeof item === 'string' ? item : item.description;
+                      const isChecked = typeof item === 'string' ? false : item.isChecked;
+                      const isEditing = editingChecklistIdx === index;
+
+                      return (
+                        <div
+                          key={index}
+                          className={cn(
+                            "flex items-center justify-between gap-3 px-4 py-2.5 transition-colors",
+                            isEditing ? "bg-slate-50/70" : "bg-white hover:bg-slate-50/30"
+                          )}
                         >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    );
-                  })}
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <Checkbox
+                              id={`cl-item-${index}`}
+                              checked={isChecked}
+                              onCheckedChange={() => toggleChecklistItem(index)}
+                              className="h-4 w-4 rounded border-slate-300 shrink-0"
+                            />
+                            {isEditing ? (
+                              <Input
+                                value={tempEditText}
+                                onChange={(e) => setTempEditText(e.target.value)}
+                                placeholder="Edit checklist item..."
+                                className={cn(
+                                  "h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
+                                  !tempEditText.trim() && "border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400"
+                                )}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...checklist];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setChecklist(next);
+                                    setEditingChecklistIdx(null);
+                                    setTempEditText('');
+                                  } else if (e.key === 'Escape') {
+                                    setEditingChecklistIdx(null);
+                                    setTempEditText('');
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            ) : (
+                              <span className={cn("text-xs font-bold text-slate-750 truncate", isChecked && "line-through text-slate-400 font-semibold")}>
+                                {desc}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={!tempEditText.trim()}
+                                  onClick={() => {
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...checklist];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setChecklist(next);
+                                    setEditingChecklistIdx(null);
+                                    setTempEditText('');
+                                  }}
+                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed p-1.5 rounded-lg transition-all"
+                                  title="Save"
+                                >
+                                  <CheckCircle size={14} strokeWidth={2.5} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingChecklistIdx(null);
+                                    setTempEditText('');
+                                  }}
+                                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-all"
+                                  title="Cancel"
+                                >
+                                  <X size={14} strokeWidth={2.5} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingChecklistIdx(index);
+                                    setTempEditText(desc);
+                                  }}
+                                  className="text-slate-400 hover:text-[#006699] hover:bg-[#e1ecf7]/50 p-1.5 rounded-lg transition-all"
+                                  title="Edit"
+                                >
+                                  <Edit size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeChecklistItem(index)}
+                                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
+
+            {/* Sub-tasks Descriptions Array Editor */}
+            <div className="space-y-2.5">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center">
+                Sub-tasks (Descriptions Array)
+                <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+                  {subtasks.length}
+                </span>
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add sub-task description..."
+                  value={newSubtaskItem}
+                  onChange={(e) => setNewSubtaskItem(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addSubtaskItem();
+                    }
+                  }}
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                />
+                <Button
+                  type="button"
+                  onClick={addSubtaskItem}
+                  className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                >
+                  Add
+                </Button>
+              </div>
+
+              {subtasks.length > 0 && (
+                <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all w-full">
+                  <div className="max-h-[250px] overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
+                    {subtasks.map((item, index) => {
+                      const desc = typeof item === 'string' ? item : item.description;
+                      const isEditing = editingSubtaskIdx === index;
+
+                      return (
+                        <div
+                          key={index}
+                          className={cn(
+                            "flex items-center justify-between gap-3 px-4 py-2.5 transition-colors",
+                            isEditing ? "bg-slate-50/70" : "bg-white hover:bg-slate-50/30"
+                          )}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1 pl-1">
+                            {isEditing ? (
+                              <Input
+                                value={tempEditText}
+                                onChange={(e) => setTempEditText(e.target.value)}
+                                placeholder="Edit sub-task description..."
+                                className={cn(
+                                  "h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
+                                  !tempEditText.trim() && "border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400"
+                                )}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...subtasks];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setSubtasks(next);
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  } else if (e.key === 'Escape') {
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-slate-750 truncate">
+                                {desc}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={!tempEditText.trim()}
+                                  onClick={() => {
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...subtasks];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setSubtasks(next);
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  }}
+                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed p-1.5 rounded-lg transition-all"
+                                  title="Save"
+                                >
+                                  <CheckCircle size={14} strokeWidth={2.5} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  }}
+                                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-all"
+                                  title="Cancel"
+                                >
+                                  <X size={14} strokeWidth={2.5} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSubtaskIdx(index);
+                                    setTempEditText(desc);
+                                  }}
+                                  className="text-slate-400 hover:text-[#006699] hover:bg-[#e1ecf7]/50 p-1.5 rounded-lg transition-all"
+                                  title="Edit"
+                                >
+                                  <Edit size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeSubtaskItem(index)}
+                                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Category Custom Fields Section */}
+            <CustomFieldsSection
+              customFields={categoryCustomFields}
+              onChange={setCategoryCustomFields}
+              categoryFillValues={categoryFillValues}
+            />
           </div>
         )}
 
@@ -3701,87 +4294,152 @@ export function MasterManager({ type }: MasterManagerProps) {
 
       {/* Tabular Search Grid Display List */}
       <div className="flex-1 min-h-0 flex flex-col">
-        {type === 'company' ? (
-          filteredList.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
-              <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
-                <Icon size={32} />
+        {
+          type === 'company' ? (
+            filteredList.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
+                <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
+                  <Icon size={32} />
+                </div>
+                <h3 className="text-sm font-bold text-slate-700">No Companies Found</h3>
+                <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
               </div>
-              <h3 className="text-sm font-bold text-slate-700">No Companies Found</h3>
-              <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
-            </div>
-          ) : (
-            <div className="flex-1 min-h-0 flex gap-3 relative select-none">
-              {/* Scrollable List container */}
-              <div className="flex-1 overflow-y-auto pr-10 scrollbar-thin space-y-6 pb-12" id="company-scroll-container">
-                {companyViewMode === 'list' ? (
-                  /* GRID LIST VIEW */
-                  <div className="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-left">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                          <tr>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Code</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity Name</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Address</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">VAT/GST No</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Credit Limit</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Contacts</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Locations</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Attachments</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {filteredList.map((company: any) => {
-                            const firstLoc = company.locations && company.locations[0];
-                            const locStr = firstLoc ? `${firstLoc.address || ''}, ${firstLoc.city || ''}, ${firstLoc.state || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') : company.address || 'N/A';
-                            return (
-                              <tr key={company.id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
-                                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/50 text-[10px]">
-                                    {company.code}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-xs font-bold text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
-                                  {company.name}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-semibold text-slate-600">
-                                  <span className={cn(
-                                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
-                                    company.type === 'Buy'
-                                      ? "bg-sky-50 text-sky-600 border-sky-100"
-                                      : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                  )}>
-                                    {company.type}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[200px] truncate" title={locStr}>
-                                  {locStr}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
-                                  {company.vatGst || 'N/A'}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-extrabold text-slate-700">
-                                  {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
-                                  {company.contacts?.length || 0}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
-                                  {company.locations?.length || 0}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
-                                  {company.attachments?.length || 0}
-                                </td>
-                                <td className="px-4 py-3 text-xs text-center pr-5">
-                                  <div className="flex items-center justify-center gap-1">
+            ) : (
+              <div className="flex-1 min-h-0 flex gap-3 relative select-none">
+                {/* Scrollable List container */}
+                <div className="flex-1 overflow-y-auto pr-10 scrollbar-thin space-y-6 pb-12" id="company-scroll-container">
+                  {companyViewMode === 'list' ? (
+                    /* GRID LIST VIEW */
+                    <div className="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-left">
+                          <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Code</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity Name</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Address</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">VAT/GST No</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Credit Limit</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Contacts</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Locations</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Attachments</th>
+                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredList.map((company: any) => {
+                              const firstLoc = company.locations && company.locations[0];
+                              const locStr = firstLoc ? `${firstLoc.address || ''}, ${firstLoc.city || ''}, ${firstLoc.state || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') : company.address || 'N/A';
+                              return (
+                                <tr key={company.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
+                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/50 text-[10px]">
+                                      {company.code}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-bold text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                    {company.name}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                    <span className={cn(
+                                      "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
+                                      company.type === 'Buy'
+                                        ? "bg-sky-50 text-sky-600 border-sky-100"
+                                        : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                    )}>
+                                      {company.type}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[200px] truncate" title={locStr}>
+                                    {locStr}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
+                                    {company.vatGst || 'N/A'}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-extrabold text-slate-700">
+                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
+                                    {company.contacts?.length || 0}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
+                                    {company.locations?.length || 0}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
+                                    {company.attachments?.length || 0}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-center pr-5">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleEditClick(company)}
+                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
+                                      >
+                                        <Edit size={13} />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeleteClick(company.id)}
+                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
+                                      >
+                                        <Trash2 size={13} />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : companyViewMode === 'album' ? (
+                    /* ALBUM VIEW CARD LIST */
+                    <div className="space-y-6">
+                      {groupedCompanies.map((group) => (
+                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                            <span>Alphabet {group.letter}</span>
+                            <span className="text-[10px] opacity-70">{group.items.length} Entities</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {group.items.map((company: any) => (
+                              <Card key={company.id} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl hover:border-[#006699]/20 p-5 bg-white transition-all duration-300 flex flex-col gap-4 overflow-hidden group">
+                                {/* Top Header Card Info */}
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-center gap-3">
+                                    {/* Company Avatar Badge */}
+                                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-base shadow-md shadow-[#006699]/10 shrink-0 uppercase">
+                                      {company.name ? company.name.substring(0, 2) : 'BE'}
+                                    </div>
+                                    <div>
+                                      <h4 className="text-xs font-black text-slate-800 leading-snug group-hover:text-[#006699] transition-colors">{company.name}</h4>
+                                      <div className="flex items-center gap-1.5 mt-1">
+                                        <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50">
+                                          {company.code}
+                                        </span>
+                                        <span className={cn(
+                                          "text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full border",
+                                          company.type === 'Buy'
+                                            ? "bg-sky-50 text-sky-600 border-sky-100"
+                                            : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                        )}>
+                                          {company.type}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Actions Button */}
+                                  <div className="flex items-center gap-1 shrink-0">
                                     <Button
                                       variant="ghost"
                                       size="icon"
                                       onClick={() => handleEditClick(company)}
-                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
+                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
                                     >
                                       <Edit size={13} />
                                     </Button>
@@ -3789,707 +4447,663 @@ export function MasterManager({ type }: MasterManagerProps) {
                                       variant="ghost"
                                       size="icon"
                                       onClick={() => handleDeleteClick(company.id)}
-                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
+                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
                                     >
                                       <Trash2 size={13} />
                                     </Button>
                                   </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : companyViewMode === 'album' ? (
-                  /* ALBUM VIEW CARD LIST */
-                  <div className="space-y-6">
-                    {groupedCompanies.map((group) => (
-                      <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                        <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                          <span>Alphabet {group.letter}</span>
-                          <span className="text-[10px] opacity-70">{group.items.length} Entities</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {group.items.map((company: any) => (
-                            <Card key={company.id} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl hover:border-[#006699]/20 p-5 bg-white transition-all duration-300 flex flex-col gap-4 overflow-hidden group">
-                              {/* Top Header Card Info */}
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                  {/* Company Avatar Badge */}
-                                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-base shadow-md shadow-[#006699]/10 shrink-0 uppercase">
-                                    {company.name ? company.name.substring(0, 2) : 'BE'}
-                                  </div>
+                                </div>
+
+                                {/* Middle Address & Finance details */}
+                                <div className="grid grid-cols-2 gap-3 py-1 border-t border-b border-slate-100 text-[11px] font-semibold text-slate-500">
                                   <div>
-                                    <h4 className="text-xs font-black text-slate-800 leading-snug group-hover:text-[#006699] transition-colors">{company.name}</h4>
-                                    <div className="flex items-center gap-1.5 mt-1">
-                                      <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50">
-                                        {company.code}
-                                      </span>
-                                      <span className={cn(
-                                        "text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full border",
-                                        company.type === 'Buy'
-                                          ? "bg-sky-50 text-sky-600 border-sky-100"
-                                          : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                      )}>
-                                        {company.type}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Actions Button */}
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleEditClick(company)}
-                                    className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
-                                  >
-                                    <Edit size={13} />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteClick(company.id)}
-                                    className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
-                                  >
-                                    <Trash2 size={13} />
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {/* Middle Address & Finance details */}
-                              <div className="grid grid-cols-2 gap-3 py-1 border-t border-b border-slate-100 text-[11px] font-semibold text-slate-500">
-                                <div>
-                                  <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Primary Location</span>
-                                  <span className="text-slate-700 font-bold block truncate" title={(() => {
-                                    const firstLoc = company.locations && company.locations[0];
-                                    return firstLoc ? `${firstLoc.address || ''}, ${firstLoc.city || ''}, ${firstLoc.state || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') : company.address || 'N/A';
-                                  })()}>
-                                    {(() => {
+                                    <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Primary Location</span>
+                                    <span className="text-slate-700 font-bold block truncate" title={(() => {
                                       const firstLoc = company.locations && company.locations[0];
-                                      return firstLoc ? `${firstLoc.city || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') || firstLoc.address : company.city ? `${company.city}, ${company.country || ''}` : company.address || 'N/A';
-                                    })()}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Credit limit & GST</span>
-                                  <span className="text-slate-700 font-bold block truncate">
-                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                    {company.vatGst ? ` | ${company.vatGst}` : ''}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Flat Contact Info */}
-                              {company.contacts && company.contacts.length > 0 && (company.contacts[0].contactName || company.contacts[0].name) ? (
-                                <div className="bg-slate-50/50 rounded-xl p-3 text-[11px]">
-                                  <div className="flex items-center gap-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-wider mb-1.5">
-                                    <User size={10} className="text-[#006699]" />
-                                    <span>Key Contact Representative</span>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 text-slate-600 font-medium">
-                                    <div>
-                                      <p className="font-bold text-slate-800 leading-tight truncate">{company.contacts[0].contactPersonName || company.contacts[0].contactName || company.contacts[0].name}</p>
-                                      <p className="text-[9px] text-slate-400 font-bold mt-0.5 leading-none truncate">{company.contacts[0].designation || 'Representative'}</p>
-                                    </div>
-                                    <div className="text-right flex flex-col justify-center min-w-0">
-                                      <p className="text-[9px] font-bold text-slate-500 truncate">{company.contacts[0].phoneNo || company.contacts[0].phone || 'No Phone'}</p>
-                                      <p className="text-[9px] font-bold text-slate-400 truncate">{company.contacts[0].email || 'No Email'}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="bg-slate-50/30 rounded-xl p-3 text-[10px] text-slate-400 font-semibold italic text-center">
-                                  No key contact person registered.
-                                </div>
-                              )}
-
-                              {/* Footer statistics */}
-                              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 pt-1 mt-auto">
-                                <div className="flex items-center gap-3">
-                                  <span className="flex items-center gap-1">
-                                    <MapPin size={12} className="text-slate-400" />
-                                    <strong className="text-slate-700">{company.locations?.length || 0}</strong> Location(s)
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <FileText size={12} className="text-slate-400" />
-                                    <strong className="text-slate-700">{company.attachments?.length || 0}</strong> Attachment(s)
-                                  </span>
-                                </div>
-                                <span className={cn(
-                                  "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
-                                  company.status === 'Active'
-                                    ? "bg-emerald-100/60 text-emerald-700"
-                                    : "bg-slate-105 text-slate-500"
-                                )}>
-                                  {company.status}
-                                </span>
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : companyViewMode === 'contact-list' ? (
-                  /* CONTACT PERSON LIST VIEW */
-                  <div className="space-y-6">
-                    {groupedCompanies.map((group) => {
-                      const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
-                      if (!hasContacts) return null;
-
-                      return (
-                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                            <span>Alphabet {group.letter}</span>
-                            <span className="text-[10px] opacity-70">Contacts</span>
-                          </div>
-
-                          <div className="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
-                            <div className="overflow-x-auto">
-                              <table className="w-full border-collapse text-left">
-                                <thead className="bg-slate-50 border-b border-slate-200">
-                                  <tr>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Contact Name</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Designation</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Department</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Email</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Parent Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                  {group.items.map((company: any) =>
-                                    (company.contacts || []).map((contact: any, cIdx: number) => (
-                                      <tr key={`${company.id}-${cIdx}`} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
-                                          {contact.contactPersonName || contact.contactName || contact.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-bold text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
-                                          {company.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-semibold text-slate-600">
-                                          {contact.designation || 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-semibold text-slate-500">
-                                          {contact.department || 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
-                                          {contact.phoneNo || contact.phone || 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-semibold text-slate-550">
-                                          {contact.email || 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs">
-                                          <span className={cn(
-                                            "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
-                                            (contact.status || 'Active') === 'Active'
-                                              ? "bg-emerald-100/60 text-emerald-700"
-                                              : "bg-slate-105 text-slate-500"
-                                          )}>
-                                            {contact.status || 'Active'}
-                                          </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs text-center pr-5">
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleEditClick(company)}
-                                            className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
-                                          >
-                                            <Edit size={13} />
-                                          </Button>
-                                        </td>
-                                      </tr>
-                                    ))
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : companyViewMode === 'contact-album' ? (
-                  /* CONTACT PERSON ALBUM VIEW */
-                  <div className="space-y-6">
-                    {groupedCompanies.map((group) => {
-                      const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
-                      if (!hasContacts) return null;
-
-                      return (
-                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                            <span>Alphabet {group.letter}</span>
-                            <span className="text-[10px] opacity-70">Contact Cards</span>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {group.items.map((company: any) =>
-                              (company.contacts || []).map((contact: any, cIdx: number) => {
-                                const cName = contact.contactPersonName || contact.contactName || contact.name;
-                                return (
-                                  <Card key={`${company.id}-${cIdx}`} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl p-4 bg-white transition-all flex flex-col gap-3 group">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-sm shadow-md shrink-0 uppercase">
-                                          {cName ? cName.substring(0, 2) : 'CP'}
-                                        </div>
-                                        <div>
-                                          <h4 className="text-xs font-black text-slate-800 leading-tight">{cName}</h4>
-                                          <p className="text-[9px] font-bold text-slate-400 mt-0.5">{contact.designation || 'Representative'} ({contact.department || 'General'})</p>
-                                        </div>
-                                      </div>
-                                      <span className={cn(
-                                        "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shrink-0",
-                                        (contact.status || 'Active') === 'Active'
-                                          ? "bg-emerald-100/60 text-emerald-700"
-                                          : "bg-slate-105 text-slate-500"
-                                      )}>
-                                        {contact.status || 'Active'}
-                                      </span>
-                                    </div>
-
-                                    <div className="border-t border-slate-100 pt-2 text-[10px] font-semibold text-slate-500 space-y-1.5">
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-400">Business Entity:</span>
-                                        <span className="text-[#006699] font-bold hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-400">Phone:</span>
-                                        <span className="text-slate-700 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-400">Email:</span>
-                                        <span className="text-slate-700 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
-                                      </div>
-                                    </div>
-
-                                    <div className="pt-2 mt-auto flex items-center justify-between border-t border-slate-100">
-                                      <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleEditClick(company)}
-                                        className="h-7 rounded-lg text-slate-500 hover:text-[#006699] hover:bg-slate-100 text-[10px] font-bold flex items-center gap-1"
-                                      >
-                                        <Edit size={11} />
-                                        Edit Entity
-                                      </Button>
-                                    </div>
-                                  </Card>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* ATTACHMENT-WISE GROUPED VIEW */
-                  <div className="space-y-6">
-                    {groupedCompanies.map((group) => {
-                      const hasAttachments = group.items.some(c => c.attachments && c.attachments.length > 0);
-                      if (!hasAttachments) return null;
-
-                      return (
-                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                            <span>Alphabet {group.letter}</span>
-                            <span className="text-[10px] opacity-70">Attachments</span>
-                          </div>
-                          <div className="space-y-4">
-                            {group.items.map((company: any) => {
-                              if (!company.attachments || company.attachments.length === 0) return null;
-                              return (
-                                <div key={company.id} className="bg-slate-50/50 rounded-[22px] border border-slate-150 p-5">
-                                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/60 mb-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-8 h-8 rounded-lg bg-[#006699]/10 text-[#006699] flex items-center justify-center font-black text-sm uppercase">
-                                        {company.name ? company.name.substring(0, 2) : 'BE'}
-                                      </div>
-                                      <div>
-                                        <h4 className="text-xs font-black text-slate-800">{company.name}</h4>
-                                        <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">{company.code} • {company.type}</p>
-                                      </div>
-                                    </div>
-                                    <span className="text-[10px] text-slate-400 font-extrabold bg-white px-2.5 py-1 rounded-lg border border-slate-100">
-                                      {company.attachments?.length || 0} Document(s)
+                                      return firstLoc ? `${firstLoc.address || ''}, ${firstLoc.city || ''}, ${firstLoc.state || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') : company.address || 'N/A';
+                                    })()}>
+                                      {(() => {
+                                        const firstLoc = company.locations && company.locations[0];
+                                        return firstLoc ? `${firstLoc.city || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') || firstLoc.address : company.city ? `${company.city}, ${company.country || ''}` : company.address || 'N/A';
+                                      })()}
                                     </span>
                                   </div>
-
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                    {company.attachments.map((att: any, idx: number) => {
-                                      const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
-                                      const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
-                                      const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
-
-                                      return (
-                                        <Card key={idx} className="bg-white rounded-xl border border-slate-150 p-4 hover:shadow-md hover:border-[#006699]/30 transition-all flex flex-col justify-between gap-3 relative overflow-hidden group">
-                                          <div className="flex items-start gap-3">
-                                            <div className={cn(
-                                              "p-2.5 rounded-lg shrink-0 flex items-center justify-center",
-                                              isPdf ? "bg-red-50 text-red-500" :
-                                                isSheet ? "bg-emerald-50 text-emerald-500" :
-                                                  isDoc ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-500"
-                                            )}>
-                                              <FileText size={20} />
-                                            </div>
-                                            <div className="min-w-0">
-                                              <h5 className="text-xs font-black text-slate-705 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
-                                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono mt-0.5">
-                                                {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
-                                              </p>
-                                            </div>
-                                          </div>
-
-                                          {/* Visual Preview Badge / Mock Area */}
-                                          <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
-                                            <div className="text-[9px] text-slate-400 font-bold leading-tight">
-                                              {isPdf ? "📄 PDF Document Preview Ready" :
-                                                isSheet ? "📊 Excel Spreadsheet Data Sheet" :
-                                                  "📝 Text Profile Document Data"}
-                                            </div>
-                                          </div>
-
-                                          {/* Action controls */}
-                                          <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 mt-auto">
-                                            <Button
-                                              variant="ghost"
-                                              size="xs"
-                                              onClick={() => {
-                                                setPreviewAttachment({
-                                                  fileName: att.fileName || att.name,
-                                                  fileSize: att.fileSize,
-                                                  companyName: company.name,
-                                                  isPdf: !!isPdf,
-                                                  isSheet: !!isSheet
-                                                });
-                                              }}
-                                              className="h-7 px-2.5 rounded-lg text-[9px] font-black text-[#006699] hover:bg-[#006699]/10 flex items-center justify-center gap-1 shadow-sm border border-[#006699]/10"
-                                            >
-                                              Preview
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="xs"
-                                              onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
-                                              className="h-7 px-2.5 rounded-lg text-[9px] font-black text-emerald-600 hover:bg-emerald-50 flex items-center justify-center gap-1 border border-emerald-150"
-                                            >
-                                              Download
-                                            </Button>
-                                          </div>
-                                        </Card>
-                                      );
-                                    })}
+                                  <div>
+                                    <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Credit limit & GST</span>
+                                    <span className="text-slate-700 font-bold block truncate">
+                                      {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
+                                      {company.vatGst ? ` | ${company.vatGst}` : ''}
+                                    </span>
                                   </div>
                                 </div>
-                              );
-                            })}
+
+                                {/* Flat Contact Info */}
+                                {company.contacts && company.contacts.length > 0 && (company.contacts[0].contactName || company.contacts[0].name) ? (
+                                  <div className="bg-slate-50/50 rounded-xl p-3 text-[11px]">
+                                    <div className="flex items-center gap-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-wider mb-1.5">
+                                      <User size={10} className="text-[#006699]" />
+                                      <span>Key Contact Representative</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-slate-600 font-medium">
+                                      <div>
+                                        <p className="font-bold text-slate-800 leading-tight truncate">{company.contacts[0].contactPersonName || company.contacts[0].contactName || company.contacts[0].name}</p>
+                                        <p className="text-[9px] text-slate-400 font-bold mt-0.5 leading-none truncate">{company.contacts[0].designation || 'Representative'}</p>
+                                      </div>
+                                      <div className="text-right flex flex-col justify-center min-w-0">
+                                        <p className="text-[9px] font-bold text-slate-500 truncate">{company.contacts[0].phoneNo || company.contacts[0].phone || 'No Phone'}</p>
+                                        <p className="text-[9px] font-bold text-slate-400 truncate">{company.contacts[0].email || 'No Email'}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="bg-slate-50/30 rounded-xl p-3 text-[10px] text-slate-400 font-semibold italic text-center">
+                                    No key contact person registered.
+                                  </div>
+                                )}
+
+                                {/* Footer statistics */}
+                                <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 pt-1 mt-auto">
+                                  <div className="flex items-center gap-3">
+                                    <span className="flex items-center gap-1">
+                                      <MapPin size={12} className="text-slate-400" />
+                                      <strong className="text-slate-700">{company.locations?.length || 0}</strong> Location(s)
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <FileText size={12} className="text-slate-400" />
+                                      <strong className="text-slate-700">{company.attachments?.length || 0}</strong> Attachment(s)
+                                    </span>
+                                  </div>
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                                    company.status === 'Active'
+                                      ? "bg-emerald-100/60 text-emerald-700"
+                                      : "bg-slate-105 text-slate-500"
+                                  )}>
+                                    {company.status}
+                                  </span>
+                                </div>
+                              </Card>
+                            ))}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  ) : companyViewMode === 'contact-list' ? (
+                    /* CONTACT PERSON LIST VIEW */
+                    <div className="space-y-6">
+                      {groupedCompanies.map((group) => {
+                        const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
+                        if (!hasContacts) return null;
 
-              {/* FLOATING INDEX ALPHABET SIDEBAR (Perfect containment) */}
-              <div className="absolute right-0 top-0 bottom-12 w-8 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg flex flex-col items-center justify-between py-4 z-20 select-none">
-                {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
-                  const hasItems = groupedCompanies.some((g) => g.letter === char);
-                  return (
-                    <button
-                      key={char}
-                      disabled={!hasItems}
-                      onClick={() => {
-                        const container = document.getElementById('company-scroll-container');
-                        const target = document.getElementById(`company-group-${char}`);
-                        if (container && target) {
-                          const containerRect = container.getBoundingClientRect();
-                          const targetRect = target.getBoundingClientRect();
-                          const scrollOffset = targetRect.top - containerRect.top + container.scrollTop - 4;
-                          container.scrollTo({ top: scrollOffset, behavior: 'smooth' });
-                        }
-                      }}
-                      className={cn(
-                        "text-[9px] font-black h-4 w-4 rounded-full flex items-center justify-center transition-all",
-                        hasItems
-                          ? "text-[#006699] hover:bg-[#006699]/15 cursor-pointer hover:scale-110 active:scale-90"
-                          : "text-slate-300 cursor-not-allowed opacity-35"
-                      )}
-                    >
-                      {char}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )
-        ) : (
-          /* STANDARD TABULAR SEARCH GRID DISPLAY LIST (for other masters) */
-          (type === 'location' && isLoadingLocations) || (type === 'type' && isLoadingTypes) || (type === 'priority' && isLoadingPriorities) ? (
-            <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl overflow-hidden p-6 space-y-4 animate-pulse flex-1">
-              <div className="h-10 bg-slate-100 rounded-xl w-full" />
-              <div className="h-12 bg-slate-55 rounded-xl w-full" />
-              <div className="h-12 bg-slate-55 rounded-xl w-full" />
-              <div className="h-12 bg-slate-55 rounded-xl w-full" />
-            </div>
-          ) : filteredList.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
-              <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
-                <Icon size={32} />
-              </div>
-              <h3 className="text-sm font-bold text-slate-700">No Records Found</h3>
-              <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No master records match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
-            </div>
-          ) : (
-            <div className="bg-white/80 backdrop-blur-md rounded-[24px] border border-slate-100 shadow-xl shadow-slate-100/30 overflow-hidden flex flex-col flex-1 min-h-0">
-              <div className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin min-h-0">
-                <table className="w-full border-collapse text-left">
-                  <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
-                    <tr className="border-b border-slate-100 bg-slate-50/50">
-                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4">Code</th>
-                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</th>
-                      {type === 'category' && (
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Features</th>
-                      )}
-                      {type === 'priority' && (
-                        <>
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Priority Duration</th>
-                        </>
-                      )}
-                      {type === 'folder' && (
-                        <>
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Parent Folder</th>
-                        </>
-                      )}
-                      {type === 'user-group' && (
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
-                      )}
-                      {type === 'benefit-type' && (
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
-                      )}
-                      {type === 'location' && (
-                        <>
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Incharge</th>
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address</th>
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Region</th>
-                        </>
-                      )}
-                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created By</th>
-                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created Date</th>
-                      <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right pr-4 w-[100px]">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100/60 bg-white">
-                    {paginatedList.map((item: any) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-3.5 py-2 text-[11px] font-black text-slate-700 pl-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-slate-100 text-slate-600 border border-slate-200/50">
-                            {item.code || `SYS-${item.id}`}
-                          </span>
-                        </td>
-                        <td className="px-3.5 py-2 text-[11px] font-bold text-slate-800">
-                          <div className="flex items-center gap-2">
-                            {type === 'category' && item.color && (
-                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                            )}
-                            <span>{item.name}</span>
+                        return (
+                          <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                            <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                              <span>Alphabet {group.letter}</span>
+                              <span className="text-[10px] opacity-70">Contacts</span>
+                            </div>
+
+                            <div className="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-left">
+                                  <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Contact Name</th>
+                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity</th>
+                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Designation</th>
+                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Department</th>
+                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
+                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Email</th>
+                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                      <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Parent Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {group.items.map((company: any) =>
+                                      (company.contacts || []).map((contact: any, cIdx: number) => (
+                                        <tr key={`${company.id}-${cIdx}`} className="hover:bg-slate-50/50 transition-colors">
+                                          <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
+                                            {contact.contactPersonName || contact.contactName || contact.name}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-bold text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                            {company.name}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                            {contact.designation || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+                                            {contact.department || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
+                                            {contact.phoneNo || contact.phone || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-semibold text-slate-550">
+                                            {contact.email || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs">
+                                            <span className={cn(
+                                              "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                                              (contact.status || 'Active') === 'Active'
+                                                ? "bg-emerald-100/60 text-emerald-700"
+                                                : "bg-slate-105 text-slate-500"
+                                            )}>
+                                              {contact.status || 'Active'}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-3 text-xs text-center pr-5">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => handleEditClick(company)}
+                                              className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
+                                            >
+                                              <Edit size={13} />
+                                            </Button>
+                                          </td>
+                                        </tr>
+                                      ))
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
                           </div>
-                        </td>
-                        {type === 'category' && (
-                          <td className="px-3.5 py-2">
-                            <div className="flex flex-wrap gap-1">
-                              {item.isApprovalApplicable && (
-                                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Approval</span>
-                              )}
-                              {item.isInReviewRequired && (
-                                <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Review</span>
-                              )}
-                              {item.isBusinessBenefitApplicable && (
-                                <span className="text-[9px] font-black text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">Benefit</span>
+                        );
+                      })}
+                    </div>
+                  ) : companyViewMode === 'contact-album' ? (
+                    /* CONTACT PERSON ALBUM VIEW */
+                    <div className="space-y-6">
+                      {groupedCompanies.map((group) => {
+                        const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
+                        if (!hasContacts) return null;
+
+                        return (
+                          <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                            <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                              <span>Alphabet {group.letter}</span>
+                              <span className="text-[10px] opacity-70">Contact Cards</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {group.items.map((company: any) =>
+                                (company.contacts || []).map((contact: any, cIdx: number) => {
+                                  const cName = contact.contactPersonName || contact.contactName || contact.name;
+                                  return (
+                                    <Card key={`${company.id}-${cIdx}`} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl p-4 bg-white transition-all flex flex-col gap-3 group">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-sm shadow-md shrink-0 uppercase">
+                                            {cName ? cName.substring(0, 2) : 'CP'}
+                                          </div>
+                                          <div>
+                                            <h4 className="text-xs font-black text-slate-800 leading-tight">{cName}</h4>
+                                            <p className="text-[9px] font-bold text-slate-400 mt-0.5">{contact.designation || 'Representative'} ({contact.department || 'General'})</p>
+                                          </div>
+                                        </div>
+                                        <span className={cn(
+                                          "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shrink-0",
+                                          (contact.status || 'Active') === 'Active'
+                                            ? "bg-emerald-100/60 text-emerald-700"
+                                            : "bg-slate-105 text-slate-500"
+                                        )}>
+                                          {contact.status || 'Active'}
+                                        </span>
+                                      </div>
+
+                                      <div className="border-t border-slate-100 pt-2 text-[10px] font-semibold text-slate-500 space-y-1.5">
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-400">Business Entity:</span>
+                                          <span className="text-[#006699] font-bold hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-400">Phone:</span>
+                                          <span className="text-slate-700 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-400">Email:</span>
+                                          <span className="text-slate-700 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
+                                        </div>
+                                      </div>
+
+                                      <div className="pt-2 mt-auto flex items-center justify-between border-t border-slate-100">
+                                        <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleEditClick(company)}
+                                          className="h-7 rounded-lg text-slate-500 hover:text-[#006699] hover:bg-slate-100 text-[10px] font-bold flex items-center gap-1"
+                                        >
+                                          <Edit size={11} />
+                                          Edit Entity
+                                        </Button>
+                                      </div>
+                                    </Card>
+                                  );
+                                })
                               )}
                             </div>
-                          </td>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* ATTACHMENT-WISE GROUPED VIEW */
+                    <div className="space-y-6">
+                      {groupedCompanies.map((group) => {
+                        const hasAttachments = group.items.some(c => c.attachments && c.attachments.length > 0);
+                        if (!hasAttachments) return null;
+
+                        return (
+                          <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                            <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
+                              <span>Alphabet {group.letter}</span>
+                              <span className="text-[10px] opacity-70">Attachments</span>
+                            </div>
+                            <div className="space-y-4">
+                              {group.items.map((company: any) => {
+                                if (!company.attachments || company.attachments.length === 0) return null;
+                                return (
+                                  <div key={company.id} className="bg-slate-50/50 rounded-[22px] border border-slate-150 p-5">
+                                    <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/60 mb-4">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-lg bg-[#006699]/10 text-[#006699] flex items-center justify-center font-black text-sm uppercase">
+                                          {company.name ? company.name.substring(0, 2) : 'BE'}
+                                        </div>
+                                        <div>
+                                          <h4 className="text-xs font-black text-slate-800">{company.name}</h4>
+                                          <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">{company.code} • {company.type}</p>
+                                        </div>
+                                      </div>
+                                      <span className="text-[10px] text-slate-400 font-extrabold bg-white px-2.5 py-1 rounded-lg border border-slate-100">
+                                        {company.attachments?.length || 0} Document(s)
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                      {company.attachments.map((att: any, idx: number) => {
+                                        const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
+                                        const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
+                                        const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
+
+                                        return (
+                                          <Card key={idx} className="bg-white rounded-xl border border-slate-150 p-4 hover:shadow-md hover:border-[#006699]/30 transition-all flex flex-col justify-between gap-3 relative overflow-hidden group">
+                                            <div className="flex items-start gap-3">
+                                              <div className={cn(
+                                                "p-2.5 rounded-lg shrink-0 flex items-center justify-center",
+                                                isPdf ? "bg-red-50 text-red-500" :
+                                                  isSheet ? "bg-emerald-50 text-emerald-500" :
+                                                    isDoc ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-500"
+                                              )}>
+                                                <FileText size={20} />
+                                              </div>
+                                              <div className="min-w-0">
+                                                <h5 className="text-xs font-black text-slate-705 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono mt-0.5">
+                                                  {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
+                                                </p>
+                                              </div>
+                                            </div>
+
+                                            {/* Visual Preview Badge / Mock Area */}
+                                            <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
+                                              <div className="text-[9px] text-slate-400 font-bold leading-tight">
+                                                {isPdf ? "📄 PDF Document Preview Ready" :
+                                                  isSheet ? "📊 Excel Spreadsheet Data Sheet" :
+                                                    "📝 Text Profile Document Data"}
+                                              </div>
+                                            </div>
+
+                                            {/* Action controls */}
+                                            <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 mt-auto">
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  setPreviewAttachment({
+                                                    fileName: att.fileName || att.name,
+                                                    fileSize: att.fileSize,
+                                                    companyName: company.name,
+                                                    isPdf: !!isPdf,
+                                                    isSheet: !!isSheet
+                                                  });
+                                                }}
+                                                className="h-7 px-2.5 rounded-lg text-[9px] font-black text-[#006699] hover:bg-[#006699]/10 flex items-center justify-center gap-1 shadow-sm border border-[#006699]/10"
+                                              >
+                                                Preview
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
+                                                className="h-7 px-2.5 rounded-lg text-[9px] font-black text-emerald-600 hover:bg-emerald-50 flex items-center justify-center gap-1 border border-emerald-150"
+                                              >
+                                                Download
+                                              </Button>
+                                            </div>
+                                          </Card>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* FLOATING INDEX ALPHABET SIDEBAR (Perfect containment) */}
+                <div className="absolute right-0 top-0 bottom-12 w-8 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg flex flex-col items-center justify-between py-4 z-20 select-none">
+                  {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
+                    const hasItems = groupedCompanies.some((g) => g.letter === char);
+                    return (
+                      <button
+                        key={char}
+                        disabled={!hasItems}
+                        onClick={() => {
+                          const container = document.getElementById('company-scroll-container');
+                          const target = document.getElementById(`company-group-${char}`);
+                          if (container && target) {
+                            const containerRect = container.getBoundingClientRect();
+                            const targetRect = target.getBoundingClientRect();
+                            const scrollOffset = targetRect.top - containerRect.top + container.scrollTop - 4;
+                            container.scrollTo({ top: scrollOffset, behavior: 'smooth' });
+                          }
+                        }}
+                        className={cn(
+                          "text-[9px] font-black h-4 w-4 rounded-full flex items-center justify-center transition-all",
+                          hasItems
+                            ? "text-[#006699] hover:bg-[#006699]/15 cursor-pointer hover:scale-110 active:scale-90"
+                            : "text-slate-300 cursor-not-allowed opacity-35"
+                        )}
+                      >
+                        {char}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )
+          ) : (
+            /* STANDARD TABULAR SEARCH GRID DISPLAY LIST (for other masters) */
+            (type === 'location' && isLoadingLocations) || (type === 'vessel' && isLoadingVessels) || (type === 'port' && isLoadingPorts) || (type === 'business-entity-type' && isLoadingBusinessEntityTypes) || (type === 'type' && isLoadingTypes) || (type === 'priority' && isLoadingPriorities) ? (
+              <div className="bg-white rounded-[24px] border border-slate-100 shadow-xl overflow-hidden p-6 space-y-4 animate-pulse flex-1">
+                <div className="h-10 bg-slate-100 rounded-xl w-full" />
+                <div className="h-12 bg-slate-55 rounded-xl w-full" />
+                <div className="h-12 bg-slate-55 rounded-xl w-full" />
+                <div className="h-12 bg-slate-55 rounded-xl w-full" />
+              </div>
+            ) : filteredList.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm rounded-[24px] border border-slate-100 p-8 text-center animate-fade-in">
+                <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
+                  <Icon size={32} />
+                </div>
+                <h3 className="text-sm font-bold text-slate-700">No Records Found</h3>
+                <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No master records match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
+              </div>
+            ) : (
+              <div className="bg-white/80 backdrop-blur-md rounded-[24px] border border-slate-100 shadow-xl shadow-slate-100/30 overflow-hidden flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin min-h-0">
+                  <table className="w-full border-collapse text-left">
+                    <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
+                      <tr className="border-b border-slate-100 bg-slate-50/50">
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4">Code</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</th>
+                        {type === 'category' && (
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Features</th>
                         )}
                         {type === 'priority' && (
                           <>
-                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
-                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
-                              {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
-                            </td>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Priority Duration</th>
                           </>
                         )}
                         {type === 'folder' && (
                           <>
-                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
-                            <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold">{item.parentFolderNo || 'Root'}</td>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Parent Folder</th>
                           </>
                         )}
                         {type === 'user-group' && (
-                          <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[200px] truncate">
-                            {item.description || <span className="italic text-slate-300 font-medium">No description</span>}
-                          </td>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
                         )}
                         {type === 'benefit-type' && (
-                          <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
-                            {benefitFillValues?.valuationTypes?.find((v: any) => v.valuationTypeNo?.toString() === item.valuationtypeNo?.toString())?.valuationTypeName || item.valuationtypeNo}
-                          </td>
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
+                        )}
+                        {type === 'port' && (
+                          <>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Country</th>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">State</th>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">City</th>
+                          </>
                         )}
                         {type === 'location' && (
                           <>
-                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
-                              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider">
-                                {item.type || 'Office'}
-                              </span>
-                            </td>
-                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.inchargeNo || 'No Lead'}</td>
-                            <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[150px] truncate">
-                              {item.address1} {item.cityNo ? `, ${item.cityNo}` : ''}
-                            </td>
-                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.locationRegion || 'Central'}</td>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Incharge</th>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address</th>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Region</th>
                           </>
                         )}
-                        <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]">
-                          {item.createdBy || 'System'}
-                        </td>
-                        <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-500 whitespace-nowrap">
-                          {item.createdDate ? format(new Date(item.createdDate), 'MMM dd, yyyy') : 'N/A'}
-                        </td>
-                        <td className="px-3.5 py-2 text-right pr-4 w-[100px]">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditClick(item)}
-                              className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-100/60 transition-colors flex items-center justify-center"
-                            >
-                              <Edit size={13} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteClick(item.id)}
-                              className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-650 hover:bg-red-50/50 transition-colors flex items-center justify-center"
-                            >
-                              <Trash2 size={13} />
-                            </Button>
-                          </div>
-                        </td>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created By</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created Date</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right pr-4 w-[100px]">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Control Bar */}
-              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-4 select-none">
-                {/* Left Side: Range Info */}
-                <div className="text-[11px] text-slate-500 font-bold">
-                  Showing <span className="text-slate-800 font-black">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
-                  <span className="text-slate-800 font-black">{endIndex}</span> of{" "}
-                  <span className="text-slate-800 font-black">{totalItems}</span> records
-                </div>
-
-                {/* Center: Items Per Page Selector */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Per Page:</span>
-                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
-                    {[10, 25, 50].map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => {
-                          setItemsPerPage(size);
-                          setCurrentPage(1);
-                        }}
-                        className={cn(
-                          "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
-                          itemsPerPage === size
-                            ? "bg-[#006699] text-white shadow-sm font-black"
-                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                        )}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Right Side: Page Controls */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={safeCurrentPage === 1}
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
-                  >
-                    <ChevronLeft size={14} strokeWidth={2.5} />
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((page) => {
-                        return (
-                          page === 1 ||
-                          page === totalPages ||
-                          Math.abs(page - safeCurrentPage) <= 1
-                        );
-                      })
-                      .map((page, idx, arr) => {
-                        const isPageActive = safeCurrentPage === page;
-                        const hasGap = idx > 0 && page - arr[idx - 1] > 1;
-
-                        return (
-                          <React.Fragment key={page}>
-                            {hasGap && (
-                              <span className="text-[10px] font-bold text-slate-400 px-1 select-none">
-                                ...
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setCurrentPage(page)}
-                              className={cn(
-                                "h-7 w-7 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border shadow-sm",
-                                isPageActive
-                                  ? "bg-[#006699] border-[#006699] text-white font-black shadow-md shadow-[#006699]/10"
-                                  : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:text-slate-900"
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/60 bg-white">
+                      {paginatedList.map((item: any) => (
+                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-3.5 py-2 text-[11px] font-black text-slate-700 pl-4">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-slate-100 text-slate-600 border border-slate-200/50">
+                              {item.code || `SYS-${item.id}`}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-2 text-[11px] font-bold text-slate-800">
+                            <div className="flex items-center gap-2">
+                              {type === 'category' && item.color && (
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                               )}
-                            >
-                              {page}
-                            </button>
-                          </React.Fragment>
-                        );
-                      })}
+                              <span>{item.name}</span>
+                            </div>
+                          </td>
+                          {type === 'category' && (
+                            <td className="px-3.5 py-2">
+                              <div className="flex flex-wrap gap-1">
+                                {item.isApprovalApplicable && (
+                                  <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Approval</span>
+                                )}
+                                {item.isInReviewRequired && (
+                                  <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Review</span>
+                                )}
+                                {item.isBusinessBenefitApplicable && (
+                                  <span className="text-[9px] font-black text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">Benefit</span>
+                                )}
+                              </div>
+                            </td>
+                          )}
+                          {type === 'priority' && (
+                            <>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                                {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
+                              </td>
+                            </>
+                          )}
+                          {type === 'folder' && (
+                            <>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold">{item.parentFolderNo || 'Root'}</td>
+                            </>
+                          )}
+                          {type === 'user-group' && (
+                            <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[200px] truncate">
+                              {item.description || <span className="italic text-slate-300 font-medium">No description</span>}
+                            </td>
+                          )}
+                          {type === 'benefit-type' && (
+                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                              {benefitFillValues?.valuationTypes?.find((v: any) => v.valuationTypeNo?.toString() === item.valuationtypeNo?.toString())?.valuationTypeName || item.valuationtypeNo}
+                            </td>
+                          )}
+                          {type === 'port' && (
+                            <>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                                {item.countryName || <span className="italic text-slate-300 font-medium">Not set</span>}
+                              </td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                                {item.stateName || <span className="italic text-slate-300 font-medium">Not set</span>}
+                              </td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                                {item.cityName || <span className="italic text-slate-300 font-medium">Not set</span>}
+                              </td>
+                            </>
+                          )}
+                          {type === 'location' && (
+                            <>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider">
+                                  {item.type || 'Office'}
+                                </span>
+                              </td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.inchargeNo || 'No Lead'}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[150px] truncate">
+                                {item.address1} {item.cityNo ? `, ${item.cityNo}` : ''}
+                              </td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.locationRegion || 'Central'}</td>
+                            </>
+                          )}
+                          <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]">
+                            {item.createdBy || 'System'}
+                          </td>
+                          <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-500 whitespace-nowrap">
+                            {item.createdDate ? format(new Date(item.createdDate), 'MMM dd, yyyy') : 'N/A'}
+                          </td>
+                          <td className="px-3.5 py-2 text-right pr-4 w-[100px]">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditClick(item)}
+                                className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-100/60 transition-colors flex items-center justify-center"
+                              >
+                                <Edit size={13} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(item.id)}
+                                className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-650 hover:bg-red-50/50 transition-colors flex items-center justify-center"
+                              >
+                                <Trash2 size={13} />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Control Bar */}
+                <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-4 select-none">
+                  {/* Left Side: Range Info */}
+                  <div className="text-[11px] text-slate-500 font-bold">
+                    Showing <span className="text-slate-800 font-black">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
+                    <span className="text-slate-800 font-black">{endIndex}</span> of{" "}
+                    <span className="text-slate-800 font-black">{totalItems}</span> records
                   </div>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={safeCurrentPage === totalPages}
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                    className="h-7 w-7 rounded-lg text-slate-505 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
-                  >
-                    <ChevronRight size={14} strokeWidth={2.5} />
-                  </Button>
+                  {/* Center: Items Per Page Selector */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Per Page:</span>
+                    <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+                      {[10, 25, 50].map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => {
+                            setItemsPerPage(size);
+                            setCurrentPage(1);
+                          }}
+                          className={cn(
+                            "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
+                            itemsPerPage === size
+                              ? "bg-[#006699] text-white shadow-sm font-black"
+                              : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                          )}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right Side: Page Controls */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={safeCurrentPage === 1}
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                    >
+                      <ChevronLeft size={14} strokeWidth={2.5} />
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((page) => {
+                          return (
+                            page === 1 ||
+                            page === totalPages ||
+                            Math.abs(page - safeCurrentPage) <= 1
+                          );
+                        })
+                        .map((page, idx, arr) => {
+                          const isPageActive = safeCurrentPage === page;
+                          const hasGap = idx > 0 && page - arr[idx - 1] > 1;
+
+                          return (
+                            <React.Fragment key={page}>
+                              {hasGap && (
+                                <span className="text-[10px] font-bold text-slate-400 px-1 select-none">
+                                  ...
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setCurrentPage(page)}
+                                className={cn(
+                                  "h-7 w-7 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border shadow-sm",
+                                  isPageActive
+                                    ? "bg-[#006699] border-[#006699] text-white font-black shadow-md shadow-[#006699]/10"
+                                    : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:text-slate-900"
+                                )}
+                              >
+                                {page}
+                              </button>
+                            </React.Fragment>
+                          );
+                        })}
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={safeCurrentPage === totalPages}
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      className="h-7 w-7 rounded-lg text-slate-505 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                    >
+                      <ChevronRight size={14} strokeWidth={2.5} />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        )}
+            )
+          )}
       </div>
 
 

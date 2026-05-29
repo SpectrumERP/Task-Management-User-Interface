@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X } from 'lucide-react';
+import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Layers, Edit2, ExternalLink } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
@@ -23,7 +23,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Combobox } from '@/components/ui/Combobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
+import { format } from 'date-fns';
 import { TaskActivity } from './TaskActivity';
+import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
 
 const formatFileSize = (bytes?: number | null) => {
   if (bytes === undefined || bytes === null || bytes === 0) return '';
@@ -32,6 +34,7 @@ const formatFileSize = (bytes?: number | null) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 import { TaskListView } from './TaskListView';
+import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 import {
   Dialog,
   DialogContent,
@@ -62,6 +65,8 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
   isPrivate: z.boolean().optional().default(false),
   start_date: z.string().optional(),
   end_date: isSubTask ? z.string().min(1, 'Due Date is required for sub-tasks') : z.string().optional(),
+  completionDate: z.string().optional(),
+  completionRemark: z.string().max(500, 'Remark cannot exceed 500 characters').optional(),
   isAllDay: z.boolean().optional().default(false),
   calendarColor: z.string().optional().default(''),
   recurrence: z.object({
@@ -116,6 +121,20 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     id: z.string(),
     description: z.string().min(1, 'Description is required'),
     completed: z.boolean()
+  })).optional().default([]),
+  sub_tasks: z.array(z.object({
+    id: z.string(),
+    title: z.string().min(1, 'Title is required'),
+    description: z.string().optional(),
+    ownerLoginNo: z.string().optional(),
+    endDate: z.string().optional(),
+    completionRemark: z.string().optional(),
+    completionDate: z.string().optional(),
+    operTaskNo: z.number().optional()
+  })).optional().default([]),
+  custom_fields: z.array(z.object({
+    customFieldNo: z.string(),
+    fieldValue: z.string().optional().default('')
   })).optional().default([]),
   executionNotes: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -272,7 +291,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const { addTask, updateTask, fetchFillValues, selectedFolder, tasks } = useTaskStore();
   const [localParentTask, setLocalParentTask] = useState<Task | null>(null);
   const parentTask = parentTaskProp || tasks.find(t => t.taskNo === parentTaskNo) || localParentTask;
-  const subtasks = useMemo(() => {
+  const [localSubtasks, setLocalSubtasks] = useState<any[]>(() => {
     if (initialData?.subTasks && initialData.subTasks.length > 0) {
       return initialData.subTasks.map((st: any) => ({
         taskNo: st.operTaskNo || st.taskNo,
@@ -284,10 +303,62 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         typeName: st.type?.typeName || st.typeName,
         priority: st.priority?.priorityName || st.priority,
         assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
+        ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
+        endDate: st.endDate || st.end_date || '',
+        completionDate: st.completionDate || '',
+        completionRemark: st.completionRemark || ''
       }));
     }
     return tasks.filter(t => t.parent_task_No === initialData?.taskNo);
-  }, [tasks, initialData]);
+  });
+
+  useEffect(() => {
+    if (initialData?.subTasks && initialData.subTasks.length > 0) {
+      setLocalSubtasks(initialData.subTasks.map((st: any) => ({
+        taskNo: st.operTaskNo || st.taskNo,
+        code: st.code,
+        title: st.title,
+        status: st.status?.statusName || st.status || 'Draft',
+        start_date: st.startDate || st.start_date,
+        categoryName: st.category?.categoryName || st.categoryName,
+        typeName: st.type?.typeName || st.typeName,
+        priority: st.priority?.priorityName || st.priority,
+        assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
+        ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
+        endDate: st.endDate || st.end_date || '',
+        completionDate: st.completionDate || '',
+        completionRemark: st.completionRemark || ''
+      })));
+    } else {
+      setLocalSubtasks(tasks.filter(t => t.parent_task_No === initialData?.taskNo));
+    }
+  }, [initialData, tasks]);
+
+  const fetchSubtasksSilent = async () => {
+    if (!initialData?.taskNo) return;
+    try {
+      const response = await apiService.get<{ success: boolean; data: any; message?: string }>(`/api/crm/tasks/load-data/${initialData.taskNo}`);
+      if (response.success && response.data?.subTasks) {
+        setLocalSubtasks(response.data.subTasks.map((st: any) => ({
+          taskNo: st.operTaskNo || st.taskNo,
+          code: st.code,
+          title: st.title,
+          status: st.status?.statusName || st.status || 'Draft',
+          start_date: st.startDate || st.start_date,
+          categoryName: st.category?.categoryName || st.categoryName,
+          typeName: st.type?.typeName || st.typeName,
+          priority: st.priority?.priorityName || st.priority,
+          assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
+          ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
+          endDate: st.endDate || st.end_date || '',
+          completionDate: st.completionDate || '',
+          completionRemark: st.completionRemark || ''
+        })));
+      }
+    } catch (err) {
+      console.error("Failed to silently refresh subtasks", err);
+    }
+  };
 
   const { company: authCompanies, user: authUser } = useAuthStore();
   const [selectedCollabTeam, setSelectedCollabTeam] = useState<string>("");
@@ -316,6 +387,61 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [activeMasterType, setActiveMasterType] = useState<'category' | 'type' | 'priority' | 'folder' | 'location' | null>(null);
+  const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
+
+  const handleMasterCreateSuccess = async (createdId: string, label: string) => {
+    try {
+      const companyNo = authCompanies?.[0]?.companyNo || 2;
+      // 1. Force refresh full fillValues from API
+      const updatedValues = await fetchFillValues(companyNo.toString(), true);
+      if (updatedValues) {
+        setFillValues(updatedValues as TaskFillValues);
+      }
+
+      // 2. Determine target Hook Form field and resolve target ID if not returned directly from API
+      let resolvedId = createdId;
+      if (!resolvedId && activeMasterType) {
+        // Fallback: search updated values list by exact/case-insensitive name match
+        if (activeMasterType === 'category' && updatedValues?.category) {
+          const matched = updatedValues.category.find(c => c.Category.toLowerCase() === label.toLowerCase());
+          if (matched) resolvedId = matched.OperTaskCategoryNo.toString();
+        } else if (activeMasterType === 'type' && updatedValues?.type) {
+          const matched = updatedValues.type.find(t => t["Task Type"].toLowerCase() === label.toLowerCase());
+          if (matched) resolvedId = matched.OperTaskTypeNo.toString();
+        } else if (activeMasterType === 'priority' && updatedValues?.priority) {
+          const matched = updatedValues.priority.find(p => p.Priority.toLowerCase() === label.toLowerCase());
+          if (matched) resolvedId = matched.OperTaskPriorityNo.toString();
+        } else if (activeMasterType === 'folder' && updatedValues?.folder) {
+          const matched = updatedValues.folder.find(f => f["Folder Name"].toLowerCase() === label.toLowerCase());
+          if (matched) resolvedId = matched.TaskFolderNo.toString();
+        } else if (activeMasterType === 'location' && updatedValues?.location) {
+          const matched = updatedValues.location.find(l => l.Location.toLowerCase() === label.toLowerCase());
+          if (matched) resolvedId = matched.OperLocationNo.toString();
+        }
+      }
+
+      // 3. Update controller field value
+      if (resolvedId && activeMasterType) {
+        if (activeMasterType === 'category') {
+          form.setValue('category_No', resolvedId);
+          handleCategoryChange(resolvedId);
+        } else if (activeMasterType === 'type') {
+          form.setValue('type_No', resolvedId);
+        } else if (activeMasterType === 'priority') {
+          form.setValue('priority_No', resolvedId);
+        } else if (activeMasterType === 'folder') {
+          form.setValue('folder_No', resolvedId);
+        } else if (activeMasterType === 'location') {
+          form.setValue('location_No', resolvedId);
+        }
+        toast.success(`${label} created and selected successfully.`);
+      }
+    } catch (error) {
+      console.error("Failed to auto-select newly created master:", error);
+    }
+  };
+
   const dateParam = searchParams.get('date');
 
   const formResolver = useMemo(() => {
@@ -339,6 +465,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       location_No: initialData?.location_No?.toString() || (isSubTask && parentTask ? parentTask.location_No.toString() : ''),
       start_date: initialData?.start_date ? new Date(initialData.start_date).toISOString() : (dateParam ? new Date(dateParam).toISOString() : ''),
       end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : '',
+      completionDate: initialData?.completionDate ? new Date(initialData.completionDate).toISOString() : '',
+      completionRemark: initialData?.completionRemark || '',
       estimated_effort_value: initialData?.estimated_effort_value?.toString() || '',
       estimated_effort_unit: resolveFrequencyValue(initialData?.estimated_effort_unit),
       is_business_benefit_applicable: initialData?.is_business_benefit_applicable || false,
@@ -357,6 +485,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         description: e.description
       })) || [],
       check_list: initialData?.check_list || [],
+      sub_tasks: [],
+      custom_fields: (initialData as any)?.customFields?.map((cf: any) => ({
+        customFieldNo: (cf.customFieldNo ?? '').toString(),
+        fieldValue: cf.fieldValue || ''
+      })) || [],
       executionNotes: initialData?.executionNotes || initialData?.execution_notes || '',
       status: initialData?.status || initialStatus || 'Draft',
       isPrivate: initialData?.isPrivate || false,
@@ -364,9 +497,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       calendarColor: initialData?.calendarColor || '',
       recurrence: initialData?.recurrence || { pattern: 'NONE', until: null },
       attachments: (initialData?.attachments || initialData?.attachments || []).map((a: any) => ({
-        id: a.id || a.docNo || a.operTaskAttachmentDetailNo || 0,
+        id: a.id || a.docNo || a.operTaskAttachmentDetailNo || null,
         name: a.docName || a.name || a.fileName || a.storedFileName || 'attachment',
-        size: a.docSize || a.size || 0,
+        size: a.docSize || a.size || null,
         storedFileName: a.storedFileName || '',
         storedFilePath: a.storedFilePath || '',
         relativePath: a.relativePath || a.storedFilePath || ''
@@ -475,6 +608,143 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const [isBenefitDisabled, setIsBenefitDisabled] = useState(false);
 
+  const { fields: collabFields, append: appendCollab, remove: removeCollab, replace: replaceCollab } = useFieldArray({
+    control: form.control,
+    name: "collaborators"
+  });
+
+  const { fields: informFields, append: appendInform, remove: removeInform, replace: replaceInform } = useFieldArray({
+    control: form.control,
+    name: "informed_to"
+  });
+
+  const { fields: checklistFields, append: appendChecklist, remove: removeChecklist, replace: replaceChecklist } = useFieldArray({
+    control: form.control,
+    name: "check_list"
+  });
+
+  const { fields: subtaskFields, append: appendSubtask, remove: removeSubtask, replace: replaceSubtask } = useFieldArray({
+    control: form.control,
+    name: "sub_tasks"
+  });
+
+  const [savingSubtaskIndex, setSavingSubtaskIndex] = useState<number | null>(null);
+
+  const handleSaveInlineSubtask = async (index: number) => {
+    const st = form.getValues().sub_tasks[index];
+    let hasError = false;
+
+    if (!st.title) {
+      form.setError(`sub_tasks.${index}.title`, { type: 'manual', message: 'Sub-task title is required' });
+      hasError = true;
+    } else {
+      form.clearErrors(`sub_tasks.${index}.title`);
+    }
+
+    if (!st.ownerLoginNo || parseInt(st.ownerLoginNo) <= 0) {
+      form.setError(`sub_tasks.${index}.ownerLoginNo`, { type: 'manual', message: 'Owner is required' });
+      hasError = true;
+    } else {
+      form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
+    }
+
+    if (hasError) return;
+
+    if (!initialData?.taskNo) {
+      // Local Save logic for new tasks
+      const newFakeTaskNo = st.operTaskNo || -Date.now();
+
+      // Find user display name for the read-only view
+      const selectedUser = users.find(u => u.loginNo.toString() === st.ownerLoginNo?.toString());
+      const assignedDisplayName = selectedUser ? selectedUser.displayName : '-';
+
+      const savedTask = {
+        taskNo: newFakeTaskNo,
+        code: '',
+        title: st.title,
+        status: 'Draft',
+        ownerLoginNo: st.ownerLoginNo,
+        assignedDisplayName: assignedDisplayName,
+        endDate: st.endDate || null,
+        completionDate: st.completionDate || null,
+        completionRemark: st.completionRemark || null,
+      };
+
+      setLocalSubtasks(prev => {
+        const existingIndex = prev.findIndex(t => t.taskNo === newFakeTaskNo);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          updated[existingIndex] = savedTask;
+          return updated;
+        }
+        return [...prev, savedTask];
+      });
+
+      removeSubtask(index);
+      return;
+    }
+    try {
+      setSavingSubtaskIndex(index);
+      const payload = {
+        operTaskNo: st.operTaskNo || null,
+        parentTaskNo: initialData.taskNo,
+        title: st.title,
+        ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : 0,
+        endDate: st.endDate || null,
+        completionRemark: st.completionRemark || null,
+        completionDate: st.completionDate || null
+      };
+      const response = await apiService.post<{ success: boolean; data: any; message?: string }>('/api/crm/tasks/subtasks/save', payload);
+
+      if (response.success) {
+        toast.success(response.message || 'Sub-task saved successfully');
+        removeSubtask(index);
+        fetchSubtasksSilent();
+      } else {
+        toast.error(response.message || 'Failed to save sub-task');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred while saving the sub-task');
+    } finally {
+      setSavingSubtaskIndex(null);
+    }
+  };
+
+  const handleInlineEdit = (st: any) => {
+    appendSubtask({
+      id: Date.now().toString(),
+      operTaskNo: st.taskNo,
+      title: st.title || '',
+      description: '',
+      ownerLoginNo: st.ownerLoginNo?.toString() || st.assignedTo?.id?.toString() || st.assignedTo?.loginNo?.toString() || st.owner?.id?.toString() || '',
+      endDate: st.endDate || '',
+      completionDate: st.completionDate || '',
+      completionRemark: st.completionRemark || ''
+    });
+  };
+
+  const [subtaskToDelete, setSubtaskToDelete] = useState<number | null>(null);
+  const [isDeletingSubtask, setIsDeletingSubtask] = useState(false);
+
+  const handleDeleteSubtask = async () => {
+    if (!subtaskToDelete) return;
+    try {
+      setIsDeletingSubtask(true);
+      const response = await apiService.delete<{ success: boolean; message?: string }>(`/api/crm/tasks/delete?operTaskNo=${subtaskToDelete}`, {});
+      if (response.success) {
+        toast.success(response.message || 'Sub-task deleted successfully');
+        setSubtaskToDelete(null);
+        fetchSubtasksSilent();
+      } else {
+        toast.error(response.message || 'Failed to delete sub-task');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred while deleting the sub-task');
+    } finally {
+      setIsDeletingSubtask(false);
+    }
+  };
+
   const handleCategoryChange = async (categoryNo: string) => {
     if (!categoryNo) {
       setIsBenefitDisabled(false);
@@ -487,15 +757,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       try {
         response = await apiService.get<any>(`/api/master/task-categories/load-data/${categoryNo}?companyNo=${compNo}`);
       } catch (e) {
-        try {
-          response = await apiService.get<any>(`/api/crm/tasks/task-category/load-data/${categoryNo}?companyNo=${compNo}`);
-        } catch (e2) {
-          try {
-            response = await apiService.get<any>(`/api/crm/tasks/category-detail/load-data/${categoryNo}?companyNo=${compNo}`);
-          } catch (e3) {
-            response = await apiService.get<any>(`/api/crm/tasks/category/load-data/${categoryNo}?companyNo=${compNo}`);
-          }
-        }
+        console.error(e);
       }
 
       if (response?.success && response?.data) {
@@ -503,7 +765,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
         // 1. If isBusinessBenefitApplicable is true, set the value and disable for user
         if (data.isBusinessBenefitApplicable) {
-          form.setValue('is_business_benefit_applicable', true);
+          form.setValue('is_business_benefit_applicable', true, { shouldDirty: true, shouldValidate: true });
           setIsBenefitDisabled(true);
         } else {
           setIsBenefitDisabled(false);
@@ -516,29 +778,43 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             description: item.checkListDescription || '',
             completed: item.isChecked || false
           }));
-          form.setValue('check_list', mappedCheckList);
+          replaceChecklist(mappedCheckList);
+        } else {
+          replaceChecklist([]);
+        }
+
+        // 3. Set the subtasks data in the subtask templates section (for new tasks)
+        const rawSubTasks = data.subtasks || data.subTasks;
+        if (rawSubTasks && rawSubTasks.length > 0) {
+          const mappedSubTasks = rawSubTasks.map((item: any) => ({
+            id: (item.subtaskId || item.subTaskNo || Date.now() + Math.random()).toString(),
+            title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
+            description: '',
+            ownerLoginNo: '',
+            endDate: '',
+            completionRemark: '',
+            completionDate: ''
+          }));
+          replaceSubtask(mappedSubTasks);
+        } else {
+          replaceSubtask([]);
+        }
+
+        // 4. Set the customFields data in the custom fields section
+        if (data.customFields && data.customFields.length > 0) {
+          const mappedCustomFields = data.customFields.map((cf: any) => ({
+            customFieldNo: (cf.customFieldNo || '').toString(),
+            fieldValue: cf.fieldValue || ''
+          }));
+          form.setValue('custom_fields', mappedCustomFields, { shouldDirty: true, shouldValidate: true });
+        } else {
+          form.setValue('custom_fields', [], { shouldDirty: true, shouldValidate: true });
         }
       }
     } catch (error) {
       console.error('Failed to load category details:', error);
     }
   };
-
-  const { fields: collabFields, append: appendCollab, remove: removeCollab, replace: replaceCollab } = useFieldArray({
-    control: form.control,
-    name: "collaborators"
-  });
-
-  const { fields: informFields, append: appendInform, remove: removeInform, replace: replaceInform } = useFieldArray({
-    control: form.control,
-    name: "informed_to"
-  });
-
-
-  const { fields: checklistFields, append: appendChecklist, remove: removeChecklist } = useFieldArray({
-    control: form.control,
-    name: "check_list"
-  });
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -585,6 +861,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         status: initialData.status,
         start_date: initialData.start_date || '',
         end_date: initialData.end_date || '',
+        completionDate: initialData.completionDate || '',
+        completionRemark: initialData.completionRemark || '',
+        isAllDay: (initialData as any).isAllday || (initialData as any).isAllDay || false,
+        calendarColor: (initialData as any).colorCoding || (initialData as any).calendarColor || '',
         estimated_effort_value: initialData.estimated_effort_value?.toString() || '',
         estimated_effort_unit: resolveFrequencyValue(initialData.estimated_effort_unit),
         is_business_benefit_applicable: initialData.is_business_benefit_applicable || false,
@@ -597,11 +877,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         informed_to: initialData.informed_to?.map(i => ({ userName: i.userName || '', displayName: i.displayName || '', email: i.email || '', loginNo: i.loginNo })) || [],
         actual_efforts: initialData.actual_efforts?.map(e => ({ date: e.date, hours: e.hours.toString(), description: e.description })) || [],
         check_list: initialData.check_list || [],
+        sub_tasks: [],
+        custom_fields: (initialData as any).customFields?.map((cf: any) => ({
+          customFieldNo: (cf.customFieldNo ?? '').toString(),
+          fieldValue: cf.fieldValue || ''
+        })) || [],
         executionNotes: initialData.executionNotes || initialData.execution_notes || '',
         attachments: (initialData.attachments || initialData.attachments || []).map((a: any) => ({
-          id: a.id || a.docNo || a.operTaskAttachmentDetailNo || 0,
+          id: a.id || a.docNo || a.operTaskAttachmentDetailNo || null,
           name: a.docName || a.name || a.fileName || a.storedFileName || 'attachment',
-          size: a.docSize || a.size || 0,
+          size: a.docSize || a.size || null,
           storedFileName: a.storedFileName || '',
           storedFilePath: a.storedFilePath || '',
           relativePath: a.relativePath || a.storedFilePath || ''
@@ -917,7 +1202,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
     // Find status number from fillValues
     const statusObj = fillValues?.status.find(s => s.Status === data.status);
-    const statusNo = statusObj?.StatusNo || 0;
+    const statusNo = statusObj?.StatusNo || null;
 
     // Combine collaborators and informTo into members
     const members = [
@@ -952,6 +1237,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       operTaskLocationNo: parseInt(data.location_No) || null,
       startDate: data.start_date ? new Date(data.start_date).toISOString() : null,
       endDate: data.end_date ? new Date(data.end_date).toISOString() : null,
+      completionDate: data.completionDate ? new Date(data.completionDate).toISOString() : null,
+      completionRemark: data.completionRemark || null,
       estimatedEfforts: parseFloat(data.estimated_effort_value) || null,
       estimatedEffortsFequencyNo: data.estimated_effort_unit ? parseInt(data.estimated_effort_unit) : null,
       isBusinessBenefitApplicable: data.is_business_benefit_applicable,
@@ -971,6 +1258,32 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         sequenceNo: index + 1,
         isChecked: item.completed || false,
         checkedOn: new Date().toISOString()
+      })),
+      subTasks: [
+        ...(!initialData ? localSubtasks.map((st: any) => ({
+          operTaskNo: null,
+          title: st.title || null,
+          description: st.description || null,
+          ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
+          endDate: st.endDate ? new Date(st.endDate).toISOString() : null,
+          completionRemark: st.completionRemark || null,
+          completionDate: st.completionDate ? new Date(st.completionDate).toISOString() : null,
+          statusNo: 1
+        })) : []),
+        ...(data.sub_tasks || []).map((st: any) => ({
+          operTaskNo: st.operTaskNo || null,
+          title: st.title || null,
+          description: st.description || null,
+          ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
+          endDate: st.endDate ? new Date(st.endDate).toISOString() : null,
+          completionRemark: st.completionRemark || null,
+          completionDate: st.completionDate ? new Date(st.completionDate).toISOString() : null,
+          statusNo: 1
+        }))
+      ],
+      customFields: data.custom_fields.map((cf: any) => ({
+        customFieldNo: parseInt(cf.customFieldNo) || null,
+        fieldValue: cf.fieldValue || ''
       })),
       comments: [],
       effortLogs: data.actual_efforts.map((effort: any) => ({
@@ -1271,6 +1584,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       }}
                       placeholder="Select category"
                       className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('category');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Category"
                     />
                   )}
                 />
@@ -1291,6 +1609,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={field.onChange}
                       placeholder="Select type"
                       className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('type');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Type"
                     />
                   )}
                 />
@@ -1311,6 +1634,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       placeholder="Select folder"
                       className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                       isClearable={false}
+                      onAddNew={() => {
+                        setActiveMasterType('folder');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Folder"
                     />
                   )}
                 />
@@ -1331,6 +1659,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={field.onChange}
                       placeholder="Select priority"
                       className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('priority');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Priority"
                     />
                   )}
                 />
@@ -1394,6 +1727,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={field.onChange}
                       placeholder="Select location"
                       className={form.formState.errors.location_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('location');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Location"
                     />
                   )}
                 />
@@ -1616,6 +1954,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           <div className="space-y-4">
             {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+
+              <div className="space-y-1.5 flex flex-col justify-end">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">All-Day Options</Label>
+                <Controller
+                  name="isAllDay"
+                  control={form.control}
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2 bg-slate-50/70 border border-slate-200/80 px-4 rounded-2xl shadow-sm transition-all hover:bg-slate-100/30 h-11">
+                      <Checkbox
+                        id="isAllDay"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
+                      />
+                      <label htmlFor="isAllDay" className="text-xs font-bold text-slate-700 cursor-pointer select-none">All-Day Task</label>
+                    </div>
+                  )}
+                />
+              </div>
               <div className="space-y-1.5" id="form-group-start_date">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Start Date</Label>
                 <Controller
@@ -1652,25 +2009,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   )}
                 />
                 {form.formState.errors.end_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.end_date.message}</p>}
-              </div>
-
-              <div className="space-y-1.5 flex flex-col justify-end">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">All-Day Options</Label>
-                <Controller
-                  name="isAllDay"
-                  control={form.control}
-                  render={({ field }) => (
-                    <div className="flex items-center space-x-2 bg-slate-50/70 border border-slate-200/80 px-4 rounded-2xl shadow-sm transition-all hover:bg-slate-100/30 h-11">
-                      <Checkbox
-                        id="isAllDay"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
-                      />
-                      <label htmlFor="isAllDay" className="text-xs font-bold text-slate-700 cursor-pointer select-none">All-Day Task</label>
-                    </div>
-                  )}
-                />
               </div>
             </div>
 
@@ -1913,43 +2251,452 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </div>
         </FormSection>
 
-        {/* 5. Execution Detail */}
-        <FormSection title="Execution Detail" icon={CheckCircle}>
-          <div className="space-y-6">
-            {/* Sub-Tasks Section */}
-            {!!initialData && (
-              <div className="space-y-3 pb-5 border-b border-slate-100">
-                <div className="flex items-center justify-between">
+        <FormSection title='Sub Tasks' icon={FileText}>
+          {!isSubTask && (!initialData ? (
+            <div className="space-y-3 pb-5 border-b border-slate-100">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex flex-col gap-1 flex-1">
                   <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
                     Sub-Tasks
-                    {subtasks.length > 0 && (
+                    {subtaskFields.length > 0 && (
                       <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                        {subtasks.length}
+                        {subtaskFields.length}
                       </span>
                     )}
                   </h4>
+                </div>
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     type="button"
-                    onClick={() => navigate(`/task/new?parentTaskNo=${initialData.taskNo}`)}
-                    className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700 shrink-0"
+                    disabled={subtaskFields.length > 0}
+                    onClick={() => appendSubtask({ id: Date.now().toString(), title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '' })}
+                    className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700 disabled:opacity-50"
                   >
                     <Plus size={14} className="text-[#006699]" /> Add Sub-Task
                   </Button>
                 </div>
+              </div>
 
-                {subtasks.length > 0 ? (
-                  <div className="bg-slate-50/50 p-2 rounded-[24px] border border-slate-100">
-                    <TaskListView tasks={subtasks as any} />
-                  </div>
-                ) : (
-                  <div className="text-center py-6 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No sub-tasks created yet</span>
+              <div className="space-y-4">
+                {subtaskFields.map((field, index) => (
+                  <motion.div
+                    key={field.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="group relative flex flex-col gap-3 p-4 rounded-xl border bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-[#006699]/30 focus-within:border-[#006699] focus-within:ring-2 focus-within:ring-[#006699]/10 transition-all duration-300"
+                  >
+                    <div className="absolute -top-3 right-2 opacity-0 group-hover:opacity-100 flex items-center gap-2 z-10">
+                      <button
+                        type="button"
+                        onClick={() => removeSubtask(index)}
+                        className="flex items-center gap-1.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all px-2.5 py-1 rounded-md border border-slate-200 shadow-sm hover:shadow-md text-[10px] font-bold"
+                      >
+                        <X size={12} />
+                        Cancel
+                      </button>
+                      {initialData?.taskNo && (
+                        <button
+                          type="button"
+                          onClick={() => handleSaveInlineSubtask(index)}
+                          disabled={savingSubtaskIndex === index}
+                          className="flex items-center gap-1.5 bg-[#006699] text-white hover:bg-[#005580] transition-all px-2.5 py-1 rounded-md shadow-sm hover:shadow-md disabled:opacity-50 text-[10px] font-bold"
+                        >
+                          {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                          Save
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Row 1: Title & Owner */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Sub-Task Title <span className="text-red-500">*</span></Label>
+                        <Input
+                          {...form.register(`sub_tasks.${index}.title`)}
+                          placeholder="Sub Task Title..."
+                          className={cn(
+                            "border-slate-200 shadow-sm p-2.5 h-auto text-sm rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20",
+                            form.formState.errors.sub_tasks?.[index]?.title ? "!border-red-500 text-red-500 placeholder:text-red-300" : ""
+                          )}
+                          maxLength={200}
+                        />
+                        {form.formState.errors.sub_tasks?.[index]?.title && (
+                          <span className="text-[9px] text-red-500 font-bold ml-1">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Owner</Label>
+                        <Controller
+                          name={`sub_tasks.${index}.ownerLoginNo`}
+                          control={form.control}
+                          render={({ field: subField }) => (
+                            <div className="flex flex-col">
+                              <UserCombobox
+                                value={subField.value || ''}
+                                onChange={(user) => {
+                                  const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                  subField.onChange(val);
+                                  form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
+                                }}
+                                placeholder="Search owner..."
+                              />
+                              {form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && (
+                                <span className="text-[9px] text-red-500 font-bold ml-1 mt-1">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
+                              )}
+                            </div>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Row 2: Expected Dates & Remarks */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Due Date</Label>
+                        <Controller
+                          name={`sub_tasks.${index}.endDate`}
+                          control={form.control}
+                          render={({ field: subField }) => (
+                            <DateTimePicker
+                              date={subField.value ? new Date(subField.value) : undefined}
+                              onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                              placeholder="Select due date"
+                              hideTime={true}
+                            />
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Completion Date</Label>
+                        <Controller
+                          name={`sub_tasks.${index}.completionDate`}
+                          control={form.control}
+                          render={({ field: subField }) => (
+                            <DateTimePicker
+                              date={subField.value ? new Date(subField.value) : undefined}
+                              onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                              placeholder="Select expected date"
+                              hideTime={true}
+                            />
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Completion Remark</Label>
+                        <Textarea
+                          {...form.register(`sub_tasks.${index}.completionRemark`)}
+                          placeholder="Completion remark..."
+                          className="border-slate-200 shadow-sm p-2.5 min-h-[36px] h-auto rounded-md text-sm font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20 resize-none"
+                          maxLength={500}
+                        />
+                      </div>
+                    </div>
+
+
+                  </motion.div>
+                ))}
+
+                {subtaskFields.length === 0 && (
+                  <div className="text-center py-12 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+                      <Layers size={24} className="text-slate-300" />
+                    </div>
+                    <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No sub-tasks templates defined</p>
+                    <p className="text-slate-400 text-[10px] mt-1">Select a category to pre-populate or click "Add Sub-Task Template"</p>
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          ) : (
+            <div className="space-y-3 pb-5 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                  Sub-Tasks
+                  {localSubtasks.length > 0 && (
+                    <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                      {localSubtasks.length}
+                    </span>
+                  )}
+                </h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={subtaskFields.length > 0}
+                  onClick={() => appendSubtask({ id: Date.now().toString(), title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '', operTaskNo: 0 })}
+                  className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700 shrink-0 disabled:opacity-50"
+                >
+                  <Plus size={14} className="text-[#006699]" /> Add Sub-Task
+                </Button>
+              </div>
+
+              {localSubtasks.length > 0 || subtaskFields.length > 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Sub-Task Title <span className="text-red-500">*</span></th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Due Date</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Completion Date</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider max-w-[150px]">Completion Remark</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {localSubtasks.map((task: any) => {
+                        const editIndex = subtaskFields.findIndex(sf => sf.operTaskNo === task.taskNo);
+                        if (editIndex !== -1) {
+                          const field = subtaskFields[editIndex];
+                          const index = editIndex;
+                          return (
+                            <tr key={field.id} className="bg-[#f8fbff] hover:bg-[#f0f6fc] transition-colors group">
+                              <td className="px-4 py-3 min-w-[200px] align-top">
+                                <Input
+                                  {...form.register(`sub_tasks.${index}.title`)}
+                                  placeholder="Sub Task Title..."
+                                  className={cn(
+                                    "border-slate-200 shadow-sm h-8 text-xs rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20",
+                                    form.formState.errors.sub_tasks?.[index]?.title ? "!border-red-500 text-red-500 placeholder:text-red-300" : ""
+                                  )}
+                                  maxLength={200}
+                                />
+                                {form.formState.errors.sub_tasks?.[index]?.title && (
+                                  <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 align-top pt-5">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.status || 'Draft'}</span>
+                              </td>
+                              <td className="px-4 py-3 min-w-[200px] align-top">
+                                <Controller
+                                  name={`sub_tasks.${index}.ownerLoginNo`}
+                                  control={form.control}
+                                  render={({ field: subField }) => (
+                                    <div className="flex flex-col">
+                                      <UserCombobox
+                                        value={subField.value || ''}
+                                        onChange={(user) => {
+                                          const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                          subField.onChange(val);
+                                          form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
+                                        }}
+                                        placeholder="Search owner..."
+                                        className={form.formState.errors.sub_tasks?.[index]?.ownerLoginNo ? "!border-red-500 text-red-500" : ""}
+                                      />
+                                      {form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && (
+                                        <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                />
+                              </td>
+                              <td className="px-4 py-3 min-w-[140px] align-top">
+                                <Controller
+                                  name={`sub_tasks.${index}.endDate`}
+                                  control={form.control}
+                                  render={({ field: subField }) => (
+                                    <DateTimePicker
+                                      date={subField.value ? new Date(subField.value) : undefined}
+                                      onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                      placeholder="Select date"
+                                      hideTime={true}
+                                    />
+                                  )}
+                                />
+                              </td>
+                              <td className="px-4 py-3 min-w-[140px] align-top">
+                                <Controller
+                                  name={`sub_tasks.${index}.completionDate`}
+                                  control={form.control}
+                                  render={({ field: subField }) => (
+                                    <DateTimePicker
+                                      date={subField.value ? new Date(subField.value) : undefined}
+                                      onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                      placeholder="Select date"
+                                      hideTime={true}
+                                    />
+                                  )}
+                                />
+                              </td>
+                              <td className="px-4 py-3 min-w-[150px] align-top">
+                                <Textarea
+                                  {...form.register(`sub_tasks.${index}.completionRemark`)}
+                                  placeholder="Remark..."
+                                  className="border-slate-200 shadow-sm min-h-[32px] h-8 py-1.5 px-2 text-xs rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20 resize-none"
+                                  maxLength={500}
+                                />
+                              </td>
+                              <td className="px-4 py-3 text-right align-top pt-4">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-bold border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
+                                    <X size={12} className="mr-1" /> Cancel
+                                  </Button>
+                                  <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-bold bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                                    {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
+                                    Save
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return (
+                          <tr key={task.taskNo} className="bg-white hover:bg-slate-50 transition-colors group">
+                            <td className="px-4 py-3">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.code || `T${task.taskNo}`}</span>
+                                <span className="text-xs font-bold text-slate-800">{task.title}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={cn(
+                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                                task.status === 'Done' || task.status === 'Complete' ? "bg-green-100/80 text-green-800" :
+                                  task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
+                                    task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
+                                      "bg-slate-200/80 text-slate-800"
+                              )}>
+                                {task.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-xs font-semibold text-slate-700">{task.assignedDisplayName || '-'}</span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-xs font-semibold text-slate-700">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-xs font-semibold text-slate-700">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</span>
+                            </td>
+                            <td className="px-4 py-3 max-w-[150px]">
+                              <span className="text-xs font-semibold text-slate-700 truncate block" title={task.completionRemark}>{task.completionRemark || '-'}</span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-slate-300 text-slate-600 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit"><Edit2 size={12} /></Button>
+                                <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-slate-300 text-[#006699]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit"><ExternalLink size={12} /></Button>
+                                <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete"><Trash2 size={12} /></Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* Render newly added subtasks */}
+                      {subtaskFields.map((field, index) => {
+                        if (localSubtasks.some((st: any) => st.taskNo === field.operTaskNo)) return null;
+                        return (
+                          <tr key={field.id} className="bg-[#f8fbff] hover:bg-[#f0f6fc] transition-colors group">
+                            <td className="px-4 py-3 min-w-[200px] align-top">
+                              <Input
+                                {...form.register(`sub_tasks.${index}.title`)}
+                                placeholder="New Sub Task Title..."
+                                className={cn(
+                                  "border-slate-200 shadow-sm h-8 text-xs rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20",
+                                  form.formState.errors.sub_tasks?.[index]?.title ? "!border-red-500 text-red-500 placeholder:text-red-300" : ""
+                                )}
+                                maxLength={200}
+                              />
+                              {form.formState.errors.sub_tasks?.[index]?.title && (
+                                <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 align-top pt-5">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Draft</span>
+                            </td>
+                            <td className="px-4 py-3 min-w-[200px] align-top">
+                              <Controller
+                                name={`sub_tasks.${index}.ownerLoginNo`}
+                                control={form.control}
+                                render={({ field: subField }) => (
+                                  <div className="flex flex-col">
+                                    <UserCombobox
+                                      value={subField.value || ''}
+                                      onChange={(user) => {
+                                        const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                        subField.onChange(val);
+                                        form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
+                                      }}
+                                      placeholder="Search owner..."
+                                    />
+                                    {form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && (
+                                      <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
+                                    )}
+                                  </div>
+                                )}
+                              />
+                            </td>
+                            <td className="px-4 py-3 min-w-[140px] align-top">
+                              <Controller
+                                name={`sub_tasks.${index}.endDate`}
+                                control={form.control}
+                                render={({ field: subField }) => (
+                                  <DateTimePicker
+                                    date={subField.value ? new Date(subField.value) : undefined}
+                                    onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                    placeholder="Select date"
+                                    hideTime={true}
+                                  />
+                                )}
+                              />
+                            </td>
+                            <td className="px-4 py-3 min-w-[140px] align-top">
+                              <Controller
+                                name={`sub_tasks.${index}.completionDate`}
+                                control={form.control}
+                                render={({ field: subField }) => (
+                                  <DateTimePicker
+                                    date={subField.value ? new Date(subField.value) : undefined}
+                                    onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                    placeholder="Select date"
+                                    hideTime={true}
+                                  />
+                                )}
+                              />
+                            </td>
+                            <td className="px-4 py-3 min-w-[150px] align-top">
+                              <Textarea
+                                {...form.register(`sub_tasks.${index}.completionRemark`)}
+                                placeholder="Remark..."
+                                className="border-slate-200 shadow-sm min-h-[32px] h-8 py-1.5 px-2 text-xs rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20 resize-none"
+                                maxLength={500}
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-right align-top pt-4">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-bold border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
+                                  <X size={12} className="mr-1" /> Cancel
+                                </Button>
+                                <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-bold bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                                  {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
+                                  Save
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No sub-tasks available</span>
+                </div>
+              )}              </div>
+          ))}
+        </FormSection>
+
+        {/* 5. Execution Detail */}
+        <FormSection title="Execution Detail" icon={CheckCircle}>
+          <div className="space-y-6">
+            {/* Sub-Tasks Section */}
 
             <div className="flex items-center justify-between px-1">
               <div className="flex flex-col gap-1 flex-1 max-w-md">
@@ -2065,6 +2812,42 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   />
                 )}
               />
+            </div>
+            {/* Row 3: Completion Date, Completion Remark */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
+              <div className="space-y-1.5 md:col-span-1" id="form-group-completionDate">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Completion Date</Label>
+                <Controller
+                  name="completionDate"
+                  control={form.control}
+                  render={({ field }) => (
+                    <DateTimePicker
+                      date={field.value ? new Date(field.value) : undefined}
+                      onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                      placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
+                      hideTime={isAllDay}
+                      className={form.formState.errors.completionDate ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                    />
+                  )}
+                />
+                {form.formState.errors.completionDate && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.completionDate.message}</p>}
+              </div>
+
+              <div className="space-y-1.5 md:col-span-2" id="form-group-completionRemark">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Completion Remark</Label>
+                <Textarea
+                  placeholder="Enter completion remark"
+                  {...form.register('completionRemark')}
+                  maxLength={500}
+                  className={cn(
+                    "min-h-[80px] resize-none rounded-xl text-sm transition-all text-slate-900 font-medium",
+                    form.formState.errors.completionRemark
+                      ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                      : "border-slate-300 focus:border-[#006699] focus:ring-[#006699]/15"
+                  )}
+                />
+                {form.formState.errors.completionRemark && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.completionRemark.message}</p>}
+              </div>
             </div>
           </div>
         </FormSection>
@@ -2237,6 +3020,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </div>
           </FormSection>
         )}
+
+        <FormSection title="Additional Fields" icon={Sparkles}>
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+            <CustomFieldsSection
+              customFields={form.watch('custom_fields') || []}
+              onChange={(fields) => form.setValue('custom_fields', fields, { shouldDirty: true, shouldValidate: true })}
+              companyNo={authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2}
+            />
+          </div>
+        </FormSection>
       </form>
 
       {/* Save/Update Confirmation Dialog */}
@@ -2422,6 +3215,52 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Subtask Deletion Confirmation Dialog */}
+      <Dialog open={!!subtaskToDelete} onOpenChange={(open) => !open && !isDeletingSubtask && setSubtaskToDelete(null)}>
+        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl [&>button]:hidden">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 size={16} className="text-red-600" />
+              </div>
+              Do you want to delete?
+            </DialogTitle>
+            {/* <DialogDescription className="text-sm text-slate-500 mt-2">
+              Are you sure you want to delete this sub-task? This action cannot be undone.
+            </DialogDescription> */}
+          </DialogHeader>
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setSubtaskToDelete(null)}
+              disabled={isDeletingSubtask}
+              className="rounded-xl text-xs font-bold h-9 px-4 text-slate-600 hover:bg-slate-200/50 transition-colors"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDeleteSubtask}
+              disabled={isDeletingSubtask}
+              className="rounded-xl text-xs font-bold h-9 px-5 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 gap-2 transition-all"
+            >
+              {isDeletingSubtask ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <MasterCreateDialog
+        open={isMasterCreateOpen}
+        onOpenChange={setIsMasterCreateOpen}
+        type={activeMasterType}
+        companyNo={authCompanies?.[0]?.companyNo || 2}
+        fillValues={fillValues}
+        onSuccess={handleMasterCreateSuccess}
+      />
     </Card>
   );
 }

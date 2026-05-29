@@ -2,6 +2,7 @@ import {
   LayoutGrid,
   Plus,
   X,
+  Briefcase,
   Layers,
   Sliders,
   AlertCircle,
@@ -9,6 +10,8 @@ import {
   Users,
   Sparkles,
   MapPin,
+  Ship,
+  Anchor,
   Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,6 +30,9 @@ const masterItems = [
   { icon: Users, label: 'User Groups', id: 'master-user-group' },
   { icon: Sparkles, label: 'Benefit Types', id: 'master-benefit-type' },
   { icon: MapPin, label: 'Locations', id: 'master-location' },
+  { icon: Ship, label: 'Vessels', id: 'master-vessel' },
+  { icon: Anchor, label: 'Ports', id: 'master-port' },
+  { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type' },
   { icon: Building2, label: 'Companies', id: 'master-company' }
 ];
 
@@ -48,10 +54,10 @@ export function Sidebar({ activeTab, onTabChange, onCreateTask, onClose }: Sideb
           <img src={LogoImage} alt="SteelMont Logo" className="h-10 w-auto object-contain" />
         </div>
         {onClose && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onClose} 
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
             className="lg:hidden h-8 w-8 rounded-lg hover:bg-slate-200/50 flex items-center justify-center"
           >
             <X size={18} className="text-slate-500" />

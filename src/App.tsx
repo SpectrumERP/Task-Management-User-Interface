@@ -66,7 +66,7 @@ function Dashboard() {
     const initData = async () => {
       // First fetch fill values to ensure default folder is set!
       const fillValues = await fetchFillValues(companyNo.toString());
-      
+
       const activeFolder = useTaskStore.getState().selectedFolder;
       const folderNo = activeFolder?.TaskFolderNo || (fillValues?.folder && fillValues.folder.length > 0
         ? fillValues.folder[0].TaskFolderNo
@@ -313,7 +313,7 @@ function MasterPageRoute() {
   const { form } = useParams<{ form: string }>();
   const navigate = useNavigate();
 
-  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'company'];
+  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'vessel', 'port', 'business-entity-type', 'company'];
   if (!form || !validForms.includes(form)) {
     return <Navigate to="/" replace />;
   }

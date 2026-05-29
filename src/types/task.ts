@@ -61,6 +61,8 @@ export interface Task {
   company?: string;
   start_date?: string;
   end_date?: string;
+  completionDate?: string;
+  completionRemark?: string;
   estimated_effort_value?: number;
   estimated_effort_unit?: string;
   is_business_benefit_applicable: boolean;
@@ -97,4 +99,5 @@ export interface Task {
   collaboratorUserGroupNo?: number;
   infromToUserGroupNo?: number;
   attachments?: DocumentAttachment[];
+  customFields?: { customFieldNo: number | string; fieldValue: string }[];
 }
