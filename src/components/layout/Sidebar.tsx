@@ -35,7 +35,7 @@ const masterItems = [
   { icon: Ship, label: 'Vessels', id: 'master-vessel' },
   { icon: Anchor, label: 'Ports', id: 'master-port' },
   { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type' },
-  { icon: Building2, label: 'Companies', id: 'master-company' }
+  { icon: Building2, label: 'Business Entity', id: 'master-company' }
 ];
 
 const bottomItems: { icon: any; label: string; id: string }[] = [];

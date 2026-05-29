@@ -348,7 +348,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           stateName: stateName,
           cityName: cityName,
           pinCode: pin,
-          locationTypeName: 'Office'
+          locationTypeName: c.locationTypeName || c.locationType?.addressTypeName || ''
         }] : []);
 
         const typeNo = c.CRMBusinessEntityTypeNo ?? c.BusinessEntityTypeNo ?? c.crmBusinessEntityTypeNo ?? c.businessEntityType?.operCRMBusinessEntityTypeNo ?? '';
@@ -978,7 +978,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [editingLocationIndex, setEditingLocationIndex] = useState<number | null>(null);
 
   // Location Modal states
-  const [locType, setLocType] = useState('Office');
+  const [locType, setLocType] = useState('');
   const [locAddress, setLocAddress] = useState('');
   const [locCountry, setLocCountry] = useState('');
   const [locState, setLocState] = useState('');
@@ -1191,7 +1191,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       setCompanyLocations([]);
       setCompanyPorts([]);
       setCompanyAttachments([]);
-      setLocType('Office');
+      setLocType('');
       setLocAddress('');
       setLocCountry('');
       setLocState('');
@@ -1400,47 +1400,16 @@ export function MasterManager({ type }: MasterManagerProps) {
             const body = response.data || response;
             const dl = body.data || body;
             if (dl) {
-              setName(dl.businessEntityName || dl.name || '');
-              setCompanyType(dl.crmBusinessEntityTypeNo?.toString() || dl.businessEntityType?.operCRMBusinessEntityTypeNo?.toString() || dl.companyType || '');
-              setCompanyAddress(dl.address || '');
-              setCompanyVatGst(dl.vatgstNo || dl.vatGst || '');
-              setCreditLimit(dl.creditInsuranceLimit || dl.creditLimit || null);
+              setName(dl.businessEntityName || '');
+              setCompanyType(dl.businessEntityType?.id?.toString() || '');
+              setCompanyVatGst(dl.vatgstNo || '');
+              setCreditLimit(dl.creditInsuranceLimit || null);
               setCompanyStatus(dl.status || 'Active');
-              console.log("Loaded business entity details:", dl);
-              const tzVal = dl.timeZone?.timeZoneNo ?? dl.crmTimeZoneNo ?? dl.CRMTimeZoneNo ?? dl.crmTimeZone?.crmTimeZoneNo ?? dl.crmTimeZone?.CRMTimeZoneNo ?? dl.timeZoneNo ?? dl.TimeZoneNo ?? '';
-              setCompanyTimeZoneNo(tzVal.toString());
-
-              // Dynamic Country, State, City fetching and loading
-              const fetchedCountryName = dl.country || '';
-              const fetchedStateName = dl.state || '';
-              setCompanyCountry(fetchedCountryName);
-              setCompanyState(fetchedStateName);
-              setCompanyCity(dl.city || '');
-              setCompanyPinCode(dl.pinCode || '');
-
-              const activeFillValues = businessEntityFillValues || locationFillValues;
-              const fillCountries = activeFillValues?.data?.countries || activeFillValues?.countries || [];
-
-              if (fetchedCountryName) {
-                const foundCountry = fillCountries.find((c: any) => c.countryName?.toLowerCase() === fetchedCountryName.toLowerCase());
-                if (foundCountry) {
-                  fetchStatesByCountry(foundCountry.countryNo).then((states) => {
-                    setCompanyStatesList(states);
-                    if (fetchedStateName) {
-                      const foundState = states.find((s: any) => s.stateName?.toLowerCase() === fetchedStateName.toLowerCase());
-                      if (foundState) {
-                        fetchCitiesByState(foundState.stateNo).then((cities) => {
-                          setCompanyCitiesList(cities);
-                        });
-                      }
-                    }
-                  });
-                }
-              }
+              setCompanyTimeZoneNo(dl.timeZone?.timeZoneNo?.toString() || '');
 
               // Map locations properly
               const mappedLocations = (dl.locations || []).map((l: any) => ({
-                type: l.locationTypeNo?.toString() || l.locationType?.addressTypeName || 'Office',
+                type: l.locationType?.addressTypeName || '',
                 address: l.address || '',
                 country: l.country?.countryName || '',
                 state: l.state?.stateName || '',
@@ -1468,9 +1437,9 @@ export function MasterManager({ type }: MasterManagerProps) {
 
               // Map ports properly
               const mappedPorts = (dl.ports || []).map((p: any) => ({
-                name: p.port?.portName || p.portName || '',
-                portName: p.port?.portName || p.portName || '',
-                portNo: p.port?.portNo || p.port?.portId || p.portNo || 0
+                name: p.port?.portName || '',
+                portName: p.port?.portName || '',
+                portNo: p.port?.portId || 0
               }));
               setCompanyPorts(mappedPorts);
 
@@ -2284,7 +2253,7 @@ export function MasterManager({ type }: MasterManagerProps) {
     }
 
     // reset location modal
-    setLocType('Office');
+    setLocType('');
     setLocAddress('');
     setLocCountry('');
     setLocState('');
@@ -2296,7 +2265,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   const handleEditLocation = (index: number) => {
     const loc = companyLocations[index];
-    setLocType(loc.type || 'Office');
+    setLocType(loc.type || '');
     setLocAddress(loc.address || '');
     setLocCountry(loc.country || '');
     setLocState(loc.state || '');
@@ -2661,7 +2630,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               onClick={() => {
                 setLocErrors({});
                 setEditingLocationIndex(null);
-                setLocType('Office');
+                setLocType('');
                 setLocAddress('');
                 setLocCountry('');
                 setLocState('');
@@ -3001,17 +2970,9 @@ export function MasterManager({ type }: MasterManagerProps) {
                   className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
                 >
                   <option value="">Select Location Type</option>
-                  {(businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []).length > 0 ? (
-                    (businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []).map((lt: any) => (
-                      <option key={lt.locationTypeNo} value={lt.locationTypeNo.toString()}>{lt.locationTypeName}</option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="Office">Office</option>
-                      <option value="Warehouse">Warehouse</option>
-                      <option value="Factory">Factory</option>
-                    </>
-                  )}
+                  {(businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []).map((lt: any) => (
+                    <option key={lt.locationTypeNo} value={lt.locationTypeNo.toString()}>{lt.locationTypeName}</option>
+                  ))}
                 </select>
               </div>
 
@@ -4607,16 +4568,12 @@ export function MasterManager({ type }: MasterManagerProps) {
                               <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Address</th>
                               <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">VAT/GST No</th>
                               <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Credit Limit</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Contacts</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Locations</th>
-                              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Attachments</th>
                               <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {filteredList.map((company: any) => {
-                              const firstLoc = company.locations && company.locations[0];
-                              const locStr = firstLoc ? `${firstLoc.address || ''}, ${firstLoc.city || ''}, ${firstLoc.state || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') : company.address || 'N/A';
+                              const locStr = [company.address, company.cityName, company.stateName, company.countryName].filter(Boolean).join(', ') || 'N/A';
                               return (
                                 <tr key={company.id} className="hover:bg-slate-50/50 transition-colors">
                                   <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
@@ -4645,15 +4602,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                                   </td>
                                   <td className="px-4 py-3 text-xs font-extrabold text-slate-700">
                                     {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                  </td>
-                                  <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
-                                    {company.contacts?.length || 0}
-                                  </td>
-                                  <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
-                                    {company.locations?.length || 0}
-                                  </td>
-                                  <td className="px-4 py-3 text-xs font-bold text-slate-600 text-center">
-                                    {company.attachments?.length || 0}
                                   </td>
                                   <td className="px-4 py-3 text-xs text-center pr-5">
                                     <div className="flex items-center justify-center gap-1">
@@ -4740,71 +4688,42 @@ export function MasterManager({ type }: MasterManagerProps) {
                                 </div>
 
                                 {/* Middle Address & Finance details */}
-                                <div className="grid grid-cols-2 gap-3 py-1 border-t border-b border-slate-100 text-[11px] font-semibold text-slate-500">
-                                  <div>
+                                <div className="grid grid-cols-2 gap-3 py-2 border-t border-b border-slate-100 text-[11px] font-semibold text-slate-500">
+                                  <div className="col-span-2">
                                     <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Primary Location</span>
-                                    <span className="text-slate-700 font-bold block truncate" title={(() => {
-                                      const firstLoc = company.locations && company.locations[0];
-                                      return firstLoc ? `${firstLoc.address || ''}, ${firstLoc.city || ''}, ${firstLoc.state || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') : company.address || 'N/A';
-                                    })()}>
-                                      {(() => {
-                                        const firstLoc = company.locations && company.locations[0];
-                                        return firstLoc ? `${firstLoc.city || ''}, ${firstLoc.country || ''}`.replace(/^,\s*|,\s*$/g, '') || firstLoc.address : company.city ? `${company.city}, ${company.country || ''}` : company.address || 'N/A';
-                                      })()}
+                                    <span className="text-slate-700 font-bold block whitespace-pre-wrap leading-snug">
+                                      {company.address || 'N/A'}
                                     </span>
                                   </div>
                                   <div>
+                                    <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">City & PIN Code</span>
+                                    <span className="text-slate-700 font-bold block truncate">
+                                      {[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">State & Country</span>
+                                    <span className="text-slate-700 font-bold block truncate">
+                                      {[company.state, company.country].filter(Boolean).join(', ') || 'N/A'}
+                                    </span>
+                                  </div>
+                                  <div className="col-span-2">
                                     <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Credit limit & GST</span>
                                     <span className="text-slate-700 font-bold block truncate">
                                       {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                      {company.vatGst ? ` | ${company.vatGst}` : ''}
+                                      {company.vatGst ? ` | GST: ${company.vatGst}` : ''}
                                     </span>
                                   </div>
                                 </div>
 
-                                {/* Flat Contact Info */}
-                                {company.contacts && company.contacts.length > 0 && (company.contacts[0].contactName || company.contacts[0].name) ? (
-                                  <div className="bg-slate-50/50 rounded-xl p-3 text-[11px]">
-                                    <div className="flex items-center gap-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-wider mb-1.5">
-                                      <User size={10} className="text-[#006699]" />
-                                      <span>Key Contact Representative</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-slate-600 font-medium">
-                                      <div>
-                                        <p className="font-bold text-slate-800 leading-tight truncate">{company.contacts[0].contactPersonName || company.contacts[0].contactName || company.contacts[0].name}</p>
-                                        <p className="text-[9px] text-slate-400 font-bold mt-0.5 leading-none truncate">{company.contacts[0].designation || 'Representative'}</p>
-                                      </div>
-                                      <div className="text-right flex flex-col justify-center min-w-0">
-                                        <p className="text-[9px] font-bold text-slate-500 truncate">{company.contacts[0].phoneNo || company.contacts[0].phone || 'No Phone'}</p>
-                                        <p className="text-[9px] font-bold text-slate-400 truncate">{company.contacts[0].email || 'No Email'}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="bg-slate-50/30 rounded-xl p-3 text-[10px] text-slate-400 font-semibold italic text-center">
-                                    No key contact person registered.
-                                  </div>
-                                )}
-
                                 {/* Footer statistics */}
                                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 pt-1 mt-auto">
-                                  <div className="flex items-center gap-3">
-                                    <span className="flex items-center gap-1">
-                                      <MapPin size={12} className="text-slate-400" />
-                                      <strong className="text-slate-700">{company.locations?.length || 0}</strong> Location(s)
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <FileText size={12} className="text-slate-400" />
-                                      <strong className="text-slate-700">{company.attachments?.length || 0}</strong> Attachment(s)
-                                    </span>
-                                  </div>
-                                  <span className={cn(
-                                    "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
-                                    company.status === 'Active'
-                                      ? "bg-emerald-100/60 text-emerald-700"
-                                      : "bg-slate-105 text-slate-500"
-                                  )}>
-                                    {company.status}
+                                  <span className="flex items-center gap-1">
+                                    <User size={12} className="text-slate-400 shrink-0" />
+                                    Created By: <strong className="text-slate-600 truncate max-w-[120px]">{company.displayName || company.userName || 'System'}</strong>
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 font-semibold">
+                                    {company.createdDate ? new Date(company.createdDate).toLocaleDateString() : ''}
                                   </span>
                                 </div>
                               </Card>
@@ -5251,7 +5170,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                             <>
                               <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
                                 <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider">
-                                  {item.type || 'Office'}
+                                  {item.type || ''}
                                 </span>
                               </td>
                               <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.inchargeNo || 'No Lead'}</td>
