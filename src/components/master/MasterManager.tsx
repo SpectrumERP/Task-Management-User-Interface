@@ -255,7 +255,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           const fName = c.fileName || 'document.pdf';
           const fSize = c.fileSize || 0;
           const fType = c.fileType || '';
-          const previewUrl = c.previewUrl || '';
+          const previewUrl = '';
 
           return {
             id: detailNo.toString(),
