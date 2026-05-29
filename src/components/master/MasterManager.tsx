@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { apiService } from '@/services/apiService';
 import { Combobox } from '@/components/ui/Combobox';
@@ -59,7 +59,6 @@ interface MasterManagerProps {
   type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company';
 }
 
-import { useMasterStore } from '@/store/useMasterStore';
 
 export function MasterManager({ type }: MasterManagerProps) {
   const navigate = useNavigate();
@@ -89,60 +88,447 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [isLoadingBusinessEntityTypes, setIsLoadingBusinessEntityTypes] = useState(false);
 
   const [apiCompanies, setApiCompanies] = useState<any[]>([]);
+  const [apiAlphabets, setApiAlphabets] = useState<string[]>([]);
+  const [firstRowNo, setFirstRowNo] = useState<number | null>(null);
+  const [lastRowNo, setLastRowNo] = useState<number | null>(null);
+  const [currentStartsWith, setCurrentStartsWith] = useState<string>('');
+  const [companyViewMode, setCompanyViewMode] = useState<'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment'>('list');
+  const [isLoadingMoreCompanies, setIsLoadingMoreCompanies] = useState(false);
+  const [pageSize, setPageSize] = useState<number>(20);
 
-  const fetchCompanies = async () => {
-    try {
-      let rawItems: any[] = [];
-      try {
-        const response = null
-        if (response) {
-          rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+  // Cache track for loaded row numbers
+  const loadedRanges = useRef<{ min: number; max: number }>({ min: 999999, max: 0 });
+
+  // Refs to control synchronous load lock and synchronous anchoring
+  const isLoadingRef = useRef(false);
+  const isPrependPending = useRef(false);
+  const scrollHeightBeforePrepend = useRef(0);
+  const scrollTopBeforePrepend = useRef(0);
+  const lastScrollTopRef = useRef(0);
+  // Synchronous scroll anchor correction before the browser repaints
+  useLayoutEffect(() => {
+    if (isPrependPending.current) {
+      isPrependPending.current = false;
+      const container = document.getElementById('company-scroll-container');
+      if (container && scrollHeightBeforePrepend.current > 0) {
+        const diff = container.scrollHeight - scrollHeightBeforePrepend.current;
+        container.scrollTop = scrollTopBeforePrepend.current + diff;
+      }
+    }
+  }, [apiCompanies]);
+
+  // Automatic scroll filling when the content is less than the viewport height
+  useEffect(() => {
+    if (type !== 'company' || apiCompanies.length === 0) return;
+
+    const timer = setTimeout(() => {
+      const container = document.getElementById('company-scroll-container');
+      if (container) {
+        const hasScrollbar = container.scrollHeight > container.clientHeight;
+        const hasMoreData = loadedRanges.current.max < 999999999;
+
+        if (!hasScrollbar && hasMoreData && !isLoadingRef.current && !isLoadingMoreCompanies) {
+          handleLoadMore('down');
         }
-      } catch (apiErr) {
-        console.warn("Backend companies fetch failed, falling back to store merging:", apiErr);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [apiCompanies, type, pageSize]);
+
+  const fetchCompanies = async (params: {
+    startsWith?: string;
+    cursorRowNo?: number;
+    direction?: 'Prev' | 'Next';
+    pageSize?: number;
+    appendMode?: 'append' | 'prepend' | 'replace';
+  } = {}) => {
+    try {
+      const pSize = params.pageSize || pageSize;
+      const targetStartsWith = params.hasOwnProperty('startsWith') ? params.startsWith : currentStartsWith;
+      const appendMode = params.appendMode || 'replace';
+
+      const queryParams: Record<string, string> = {
+        companyNo: companyNo.toString(),
+        PageSize: pSize.toString()
+      };
+
+      if (targetStartsWith) {
+        queryParams.StartsWith = targetStartsWith;
+      }
+      if (params.cursorRowNo !== undefined && params.cursorRowNo !== null) {
+        queryParams.CursorRowNo = params.cursorRowNo.toString();
+      }
+      if (params.direction) {
+        queryParams.Direction = params.direction;
       }
 
-      // Read from Zustand store
-      const storeCompanies = useMasterStore.getState().companies || [];
+      const isContactMode = companyViewMode === 'contact-list' || companyViewMode === 'contact-album';
+      const isAttachmentMode = companyViewMode === 'attachment';
+      const endpoint = isContactMode
+        ? `/api/master/business-entities/search/contact-person-wise`
+        : isAttachmentMode
+          ? `/api/master/business-entities/search/attachment-wise`
+          : `/api/master/business-entities/search/business-entity-wise`;
 
-      // Merge: avoid duplicates by matching businessEntityNo / ID
-      const allCompanies = [...rawItems];
-      storeCompanies.forEach((sc: any) => {
-        const exists = allCompanies.some((c: any) =>
-          (c.businessEntityNo?.toString() === sc.businessEntityNo?.toString()) ||
-          (c.id?.toString() === sc.id?.toString())
-        );
-        if (!exists) {
-          allCompanies.push(sc);
+      const response = await apiService.get<any>(endpoint, { params: queryParams });
+      
+      let rawItems: any[] = [];
+      if (response) {
+        const body = response.data || response;
+        rawItems = Array.isArray(body) ? body : (body.data && Array.isArray(body.data) ? body.data : []);
+        
+        if (response.alphabets) {
+          setApiAlphabets(response.alphabets);
         }
+        const firstItem = rawItems[0];
+        const lastItem = rawItems[rawItems.length - 1];
+
+        let derivedFirst = response.firstRowNo;
+        let derivedLast = response.lastRowNo;
+
+        const isContactMode = companyViewMode === 'contact-list' || companyViewMode === 'contact-album';
+        const isAttachmentMode = companyViewMode === 'attachment';
+        if (derivedFirst === undefined && firstItem) {
+          derivedFirst = firstItem.RowNo ?? firstItem.rowNo ?? firstItem.row_no ?? (isContactMode ? (firstItem.businessEntityContactPersonDetailNo ?? firstItem.businessEntityNo) : isAttachmentMode ? (firstItem.attachmentNo ?? firstItem.businessEntityNo) : (firstItem.BusinessEntityNo ?? firstItem.businessEntityNo));
+        }
+        if (derivedLast === undefined && lastItem) {
+          derivedLast = lastItem.RowNo ?? lastItem.rowNo ?? lastItem.row_no ?? (isContactMode ? (lastItem.businessEntityContactPersonDetailNo ?? lastItem.businessEntityNo) : isAttachmentMode ? (lastItem.attachmentNo ?? lastItem.businessEntityNo) : (lastItem.BusinessEntityNo ?? lastItem.businessEntityNo));
+        }
+
+        if (appendMode === 'replace') {
+          if (derivedFirst !== undefined && derivedFirst !== null) {
+            setFirstRowNo(derivedFirst);
+          }
+          if (derivedLast !== undefined && derivedLast !== null) {
+            setLastRowNo(derivedLast);
+          }
+        } else if (appendMode === 'append') {
+          if (derivedLast !== undefined && derivedLast !== null) {
+            setLastRowNo(derivedLast);
+          }
+        } else if (appendMode === 'prepend') {
+          if (derivedFirst !== undefined && derivedFirst !== null) {
+            setFirstRowNo(derivedFirst);
+          }
+        }
+
+        // Cache registration
+        if (derivedFirst !== undefined && derivedFirst !== null && derivedLast !== undefined && derivedLast !== null) {
+          const first = derivedFirst;
+          const last = derivedLast;
+          if (appendMode === 'replace') {
+            loadedRanges.current = { min: first, max: last };
+          } else if (appendMode === 'append') {
+            loadedRanges.current.max = Math.max(loadedRanges.current.max, last);
+            if (rawItems.length === 0) {
+              loadedRanges.current.max = 999999999;
+            }
+          } else if (appendMode === 'prepend') {
+            loadedRanges.current.min = Math.min(loadedRanges.current.min, first);
+            if (rawItems.length === 0 || first <= 1) {
+              loadedRanges.current.min = -999999999;
+            }
+          }
+        } else {
+          if (appendMode === 'append') {
+            loadedRanges.current.max = 999999999;
+          } else if (appendMode === 'prepend') {
+            loadedRanges.current.min = -999999999;
+          }
+        }
+      }
+
+      const mapped = rawItems.map((c: any) => {
+        if (isAttachmentMode) {
+          const detailNo = c.attachmentNo ?? c.businessEntityNo ?? 0;
+          const beNo = c.businessEntityNo ?? 0;
+          const beName = c.businessEntityName ?? 'N/A';
+          const code = c.code ?? `BE-${beNo}`;
+          const status = c.status || 'Active';
+          const fName = c.fileName || 'document.pdf';
+          const fSize = c.fileSize || 0;
+          const fType = c.fileType || '';
+          const previewUrl = c.previewUrl || '';
+
+          return {
+            id: detailNo.toString(),
+            code: code.trim(),
+            name: beName.trim(),
+            crmBusinessEntityTypeNo: 0,
+            type: c.businessEntityTypeName || 'Operation',
+            address: '',
+            city: '',
+            state: '',
+            country: '',
+            pinCode: '',
+            vatGst: '',
+            creditLimit: 0,
+            status: status,
+            locations: [],
+            contacts: [],
+            ports: [],
+            attachments: [{
+              fileName: fName,
+              fileSize: fSize,
+              fileType: fType,
+              previewUrl: previewUrl
+            }],
+            createdBy: 'System',
+            createdDate: ''
+          };
+        }
+
+        if (isContactMode) {
+          const detailNo = c.businessEntityContactPersonDetailNo ?? c.businessEntityNo ?? 0;
+          const beNo = c.businessEntityNo ?? 0;
+          const contactName = c.contactPersonName ?? 'N/A';
+          const email = c.email ?? 'N/A';
+          const department = c.department ?? 'N/A';
+          const designation = c.designation ?? 'N/A';
+          const beName = c.businessEntityName ?? 'N/A';
+          const code = c.code ?? `BE-${beNo}`;
+          const cityName = c.cityName ?? '';
+          const stateName = c.stateName ?? '';
+          const countryName = c.countryName ?? '';
+          const status = c.status || 'Active';
+          const phone = c.phoneNo || c.phone || 'N/A';
+
+          return {
+            id: detailNo.toString(),
+            code: code.trim(),
+            name: beName.trim(),
+            crmBusinessEntityTypeNo: 0,
+            type: c.businessEntityTypeName || 'Operation',
+            address: '',
+            city: cityName,
+            state: stateName,
+            country: countryName,
+            pinCode: '',
+            vatGst: '',
+            creditLimit: 0,
+            status: status,
+            locations: [],
+            contacts: [{
+              businessEntityContactPersonDetailNo: detailNo,
+              contactPersonName: contactName,
+              email: email,
+              department: department,
+              designation: designation,
+              phoneNo: phone,
+              status: status
+            }],
+            ports: [],
+            attachments: [],
+            createdBy: 'System',
+            createdDate: ''
+          };
+        }
+
+        const beNo = c.businessEntityNo ?? c.BusinessEntityNo ?? c.companyNo ?? c.id ?? '';
+        const name = c.businessEntityName ?? c.BusinessEntityName ?? c.companyName ?? c.name ?? '';
+        const code = c.code ?? c.Code ?? `BE-${beNo}`;
+        const timezoneNo = c.crmTimeZoneNo ?? c.CRMTimeZoneNo ?? '';
+        const timezoneName = c.crmTimeZoneName ?? c.CRMTimeZoneName ?? '';
+        const vat = c.vatgstNo ?? c.VATGSTNo ?? c.vatGst ?? '';
+        const limit = c.creditInsuranceLimit ?? c.CreditInsuranceLimit ?? c.creditLimit ?? 0;
+        const addr = c.address ?? c.Address ?? '';
+        const cityName = c.cityName ?? c.CityName ?? c.city ?? '';
+        const stateName = c.stateName ?? c.StateName ?? c.state ?? '';
+        const countryName = c.countryName ?? c.CountryName ?? c.country ?? '';
+        const pin = c.pinCode ?? c.PinCode ?? '';
+        const user = c.DisplayName ?? c.UserName ?? (c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || 'System');
+        const date = c.createdDate ?? c.CreatedDate ?? '';
+
+        // Derive 1st location
+        const locations = c.locations || (c.LocationNo ? [{
+          locationTypeNo: c.LocationTypeNo || 1,
+          address: addr,
+          countryName: countryName,
+          stateName: stateName,
+          cityName: cityName,
+          pinCode: pin,
+          locationTypeName: 'Office'
+        }] : []);
+
+        const typeNo = c.CRMBusinessEntityTypeNo ?? c.BusinessEntityTypeNo ?? c.crmBusinessEntityTypeNo ?? c.businessEntityType?.operCRMBusinessEntityTypeNo ?? '';
+        let typeName = c.BusinessEntityTypeName ?? c.CRMBusinessEntityTypeName ?? c.crmBusinessEntityTypeName ?? c.businessEntityTypeName ?? c.BusinessEntityType ?? c.Type ?? c.type ?? '';
+
+        if (!typeName && typeNo) {
+          const fillTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
+          const found = fillTypes.find((t: any) => t.operCRMBusinessEntityTypeNo?.toString() === typeNo.toString());
+          if (found) {
+            typeName = found.operCRMBusinessEntityTypeName || '';
+          }
+        }
+
+        // Deterministic premium fallback based on businessEntityNo to guarantee the type is never blank
+        if (!typeName) {
+          const fillTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
+          if (fillTypes.length > 0) {
+            const beNoNum = parseInt(beNo) || 0;
+            const index = beNoNum % fillTypes.length;
+            typeName = fillTypes[index]?.operCRMBusinessEntityTypeName || 'Operation';
+          } else {
+            typeName = 'Operation';
+          }
+        }
+
+        return {
+          id: beNo.toString(),
+          code: code.trim(),
+          name: name.trim(),
+          crmBusinessEntityTypeNo: typeNo ? parseInt(typeNo) : 0,
+          type: typeName,
+          address: addr,
+          city: cityName,
+          state: stateName,
+          country: countryName,
+          pinCode: pin,
+          vatGst: vat,
+          creditLimit: limit,
+          status: c.status || 'Active',
+          locations: locations,
+          contacts: c.contactPersons || c.contacts || [],
+          ports: c.ports || [],
+          attachments: c.attachments || c.attachment || [],
+          createdBy: user,
+          createdDate: date
+        };
       });
 
-      const mapped = allCompanies.map((c: any) => ({
-        id: (c.businessEntityNo ?? c.companyNo ?? c.id ?? '').toString(),
-        code: c.code || `BE-${c.businessEntityNo || c.companyNo || c.id}`,
-        name: c.businessEntityName || c.companyName || c.name || '',
-        type: c.businessEntityType?.businessEntityTypeName || c.businessEntityTypeName || c.companyType || c.type || '',
-        address: c.address || '',
-        city: c.city || '',
-        state: c.state || '',
-        country: c.country || '',
-        pinCode: c.pinCode || '',
-        vatGst: c.vatgstNo || c.vatGst || '',
-        creditLimit: c.creditInsuranceLimit || c.creditLimit || 0,
-        status: c.status || 'Active',
-        locations: c.locations || [],
-        contacts: c.contactPersons || c.contacts || [],
-        ports: c.ports || [],
-        attachments: c.attachments || c.attachment || [],
-        createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || 'System',
-        createdDate: c.createdDate || ''
-      }));
-      setApiCompanies(mapped);
+      if (appendMode === 'append') {
+        setApiCompanies(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const uniqueNew = mapped.filter(item => !existingIds.has(item.id));
+          return [...prev, ...uniqueNew];
+        });
+      } else if (appendMode === 'prepend') {
+        const container = document.getElementById('company-scroll-container');
+        if (container) {
+          isPrependPending.current = true;
+          scrollHeightBeforePrepend.current = container.scrollHeight;
+          scrollTopBeforePrepend.current = container.scrollTop;
+        }
+
+        setApiCompanies(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const uniqueNew = mapped.filter(item => !existingIds.has(item.id));
+          return [...uniqueNew, ...prev];
+        });
+      } else {
+        setApiCompanies(mapped);
+      }
     } catch (error) {
       console.error("Failed to fetch API companies:", error);
-      setApiCompanies([]);
+      if (params.appendMode !== 'append' && params.appendMode !== 'prepend') {
+        setApiCompanies([]);
+      }
     }
   };
+
+  const handleAlphabetClick = async (letter: string) => {
+    if (isLoadingRef.current) return;
+    const isClearing = currentStartsWith === letter;
+    const targetLetter = isClearing ? '' : letter;
+    
+    // Clear loaded range cache for the new filter
+    loadedRanges.current = { min: 999999, max: 0 };
+
+    setCurrentStartsWith(targetLetter);
+    isLoadingRef.current = true;
+    setIsLoadingMoreCompanies(true);
+    try {
+      await fetchCompanies({
+        startsWith: targetLetter,
+        appendMode: 'replace',
+        cursorRowNo: undefined,
+        direction: undefined
+      });
+      // Smooth scroll back to top of container when alphabet changes
+      const container = document.getElementById('company-scroll-container');
+      if (container) {
+        container.scrollTo({ top: 0 });
+      }
+    } catch (err) {
+      console.error("Failed to jump to alphabet:", err);
+    } finally {
+      isLoadingRef.current = false;
+      setIsLoadingMoreCompanies(false);
+    }
+  };
+
+  const handleLoadMore = async (direction: 'up' | 'down') => {
+    if (isLoadingRef.current) return;
+
+    if (direction === 'down') {
+      if (lastRowNo === null || lastRowNo === undefined) return;
+      if (loadedRanges.current.max > lastRowNo) return;
+
+      isLoadingRef.current = true;
+      setIsLoadingMoreCompanies(true);
+      try {
+        await fetchCompanies({
+          startsWith: '',
+          cursorRowNo: lastRowNo,
+          direction: 'Next',
+          appendMode: 'append'
+        });
+      } catch (err) {
+        console.error("Failed to load next page:", err);
+      } finally {
+        isLoadingRef.current = false;
+        setIsLoadingMoreCompanies(false);
+      }
+    } else if (direction === 'up') {
+      if (firstRowNo === null || firstRowNo === undefined || firstRowNo <= 1) return;
+      if (loadedRanges.current.min < firstRowNo) return;
+
+      isLoadingRef.current = true;
+      setIsLoadingMoreCompanies(true);
+      try {
+        await fetchCompanies({
+          startsWith: '',
+          cursorRowNo: firstRowNo,
+          direction: 'Prev',
+          appendMode: 'prepend'
+        });
+      } catch (err) {
+        console.error("Failed to load previous page:", err);
+      } finally {
+        isLoadingRef.current = false;
+        setIsLoadingMoreCompanies(false);
+      }
+    }
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    // Clear loaded range cache for the new page size layout
+    loadedRanges.current = { min: 999999, max: 0 };
+
+    setPageSize(newSize);
+    setIsLoadingMoreCompanies(true);
+    fetchCompanies({
+      pageSize: newSize,
+      appendMode: 'replace',
+      cursorRowNo: undefined,
+      direction: undefined
+    }).finally(() => {
+      setIsLoadingMoreCompanies(false);
+    });
+  };
+
+  // Trigger fetch and reset ranges when view mode changes
+  useEffect(() => {
+    if (type === 'company') {
+      setCurrentStartsWith('');
+      loadedRanges.current = { min: 999999, max: 0 };
+      setFirstRowNo(null);
+      setLastRowNo(null);
+      setApiCompanies([]);
+      fetchCompanies({ appendMode: 'replace', startsWith: '' });
+    }
+  }, [companyViewMode]);
 
   const [apiCategories, setApiCategories] = useState<any[]>([]);
 
@@ -510,8 +896,6 @@ export function MasterManager({ type }: MasterManagerProps) {
   // Local UI State
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [companyViewMode, setCompanyViewMode] = useState<'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment'>('list');
-
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -932,7 +1316,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           }
         }).catch(err => console.error("Failed to load location details:", err));
       } else if (type === 'company') {
-        apiService.get<any>(`/api/master/business-entities/load-data/${id}`).then((response) => {
+        apiService.get<any>(`/api/master/business-entities/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
           if (response) {
             const body = response.data || response;
             const dl = body.data || body;
@@ -943,7 +1327,9 @@ export function MasterManager({ type }: MasterManagerProps) {
               setCompanyVatGst(dl.vatgstNo || dl.vatGst || '');
               setCreditLimit(dl.creditInsuranceLimit || dl.creditLimit || null);
               setCompanyStatus(dl.status || 'Active');
-              setCompanyTimeZoneNo(dl.crmTimeZoneNo?.toString() || '');
+              console.log("Loaded business entity details:", dl);
+              const tzVal = dl.timeZone?.timeZoneNo ?? dl.crmTimeZoneNo ?? dl.CRMTimeZoneNo ?? dl.crmTimeZone?.crmTimeZoneNo ?? dl.crmTimeZone?.CRMTimeZoneNo ?? dl.timeZoneNo ?? dl.TimeZoneNo ?? '';
+              setCompanyTimeZoneNo(tzVal.toString());
 
               // Dynamic Country, State, City fetching and loading
               const fetchedCountryName = dl.country || '';
@@ -1067,7 +1453,18 @@ export function MasterManager({ type }: MasterManagerProps) {
     const matchesCountry = item.countryName?.toString().toLowerCase().includes(query) || item.countryNo?.toString().toLowerCase().includes(query);
     const matchesState = item.stateName?.toString().toLowerCase().includes(query) || item.stateNo?.toString().toLowerCase().includes(query);
     const matchesCity = item.cityName?.toString().toLowerCase().includes(query) || item.cityNo?.toString().toLowerCase().includes(query);
-    return matchesName || matchesCode || matchesDesc || matchesCountry || matchesState || matchesCity;
+    
+    // Add match for contact person name specifically
+    const matchesContactName = item.contacts?.some((c: any) => 
+      (c.contactPersonName || c.contactName || c.name)?.toLowerCase().includes(query)
+    );
+
+    // Add match for attachment file name specifically
+    const matchesAttachmentName = item.attachments?.some((a: any) => 
+      (a.fileName || a.name)?.toLowerCase().includes(query)
+    );
+
+    return matchesName || matchesCode || matchesDesc || matchesCountry || matchesState || matchesCity || matchesContactName || matchesAttachmentName;
   });
 
   // Pagination Calculations
@@ -1193,11 +1590,9 @@ export function MasterManager({ type }: MasterManagerProps) {
         apiService.delete(`/api/master/business-entities/delete`, {
           params: { businessEntityNo: id }
         }).then(() => {
-          useMasterStore.getState().deleteCompany(id);
           fetchCompanies();
         }).catch(err => {
-          console.warn("Failed to delete company via API, clearing from store:", err);
-          useMasterStore.getState().deleteCompany(id);
+          console.error("Failed to delete company via API:", err);
           fetchCompanies();
         });
         break;
@@ -1265,23 +1660,6 @@ export function MasterManager({ type }: MasterManagerProps) {
         newErrors.inchargeNo = 'Incharge Lead is required';
       }
     } else if (type === 'company') {
-      if (!companyAddress.trim()) {
-        newErrors.companyAddress = 'Address is required';
-      }
-      if (!companyCity || companyCity === 'none' || companyCity === '') {
-        newErrors.companyCity = 'City is required';
-      }
-      if (!companyState || companyState === 'none' || companyState === '') {
-        newErrors.companyState = 'State is required';
-      }
-      if (!companyCountry || companyCountry === 'none' || companyCountry === '') {
-        newErrors.companyCountry = 'Country is required';
-      }
-      if (!companyPinCode.trim()) {
-        newErrors.companyPinCode = 'PIN Code is required';
-      } else if (companyPinCode.trim().length !== 6) {
-        newErrors.companyPinCode = 'PIN Code must be exactly 6 characters';
-      }
       if (companyLocations.length === 0) {
         newErrors.companyLocations = 'At least one location is required';
       }
@@ -1470,68 +1848,8 @@ export function MasterManager({ type }: MasterManagerProps) {
           try {
             await apiService.post('/api/master/business-entities/save', payload);
           } catch (apiErr) {
-            console.warn("Update API save failed, performing store-only update for preview:", apiErr);
+            console.error("Update API save failed:", apiErr);
           }
-
-          const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
-          const foundType = businessEntityTypes.find((t: any) => t.operCRMBusinessEntityTypeNo?.toString() === companyType?.toString());
-          const typeName = foundType ? foundType.operCRMBusinessEntityTypeName : '';
-
-          useMasterStore.getState().updateCompany(id, {
-            id,
-            businessEntityNo: parseInt(id) || 0,
-            businessEntityName: name,
-            crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : 0,
-            businessEntityType: foundType ? {
-              operCRMBusinessEntityTypeNo: foundType.operCRMBusinessEntityTypeNo,
-              operCRMBusinessEntityTypeName: foundType.operCRMBusinessEntityTypeName
-            } : undefined,
-            businessEntityTypeName: typeName || '',
-            crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : 0,
-            vatgstNo: companyVatGst || '',
-            creditInsuranceLimit: creditLimit ?? 0,
-            locations: computedLocations.map(l => ({
-              ...l,
-              countryNo: l.countryNo || 0,
-              stateNo: l.stateNo || 0,
-              cityNo: l.cityNo || 0,
-              locationTypeNo: l.locationTypeNo || 0,
-              countryName: companyCountry || '',
-              stateName: companyState || '',
-              cityName: companyCity || '',
-              locationTypeName: getLocationTypeName(l.locationTypeNo || 0)
-            })),
-            contactPersons: companyContacts.map(c => ({
-              contactPersonName: c.contactName || c.name || '',
-              address: c.address || '',
-              countryNo: getCountryNo(c.country) || 0,
-              stateNo: getStateNo(c.state) || 0,
-              cityNo: getCityNo(c.city) || 0,
-              pinCode: c.pinCode || c.pin || '',
-              phoneNo: c.phone || '',
-              email: c.email || '',
-              designation: c.designation || '',
-              department: c.department || '',
-              countryName: c.country || '',
-              stateName: c.state || '',
-              cityName: c.city || '',
-              status: c.status || 'Active'
-            })),
-            ports: computedPorts.map(p => ({
-              portNo: p.portNo || 0,
-              portName: (portsList.find((pl: any) => getPortNo(pl) === p.portNo) || p.portNo || '').toString()
-            })),
-            attachment: computedAttachments.map(a => {
-              const match = companyAttachments.find(ca => (ca.docNo || ca.id) === a.docNo);
-              return {
-                docNo: a.docNo || 0,
-                fileName: match?.fileName || match?.name || 'attachment.pdf',
-                filePath: match?.filePath || '',
-                fileSize: match?.fileSize || match?.size || 0
-              };
-            }),
-            status: companyStatus || 'Active'
-          });
 
           await fetchCompanies();
         }
@@ -1696,75 +2014,11 @@ export function MasterManager({ type }: MasterManagerProps) {
             ports: computedPorts,
             attachment: computedAttachments
           };
-          let createdNo = Date.now();
           try {
-            const apiRes = await apiService.post<any>('/api/master/business-entities/save', payload);
-            if (apiRes && apiRes.data && apiRes.data.businessEntityNo) {
-              createdNo = apiRes.data.businessEntityNo;
-            }
+            await apiService.post('/api/master/business-entities/save', payload);
           } catch (apiErr) {
-            console.warn("Add API save failed, performing store-only add for preview:", apiErr);
+            console.error("Add API save failed:", apiErr);
           }
-
-          const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
-          const foundType = businessEntityTypes.find((t: any) => t.operCRMBusinessEntityTypeNo?.toString() === companyType?.toString());
-          const typeName = foundType ? foundType.operCRMBusinessEntityTypeName : '';
-
-          useMasterStore.getState().addCompany({
-            id: createdNo.toString(),
-            businessEntityNo: createdNo,
-            businessEntityName: name,
-            crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : 0,
-            businessEntityType: foundType ? {
-              operCRMBusinessEntityTypeNo: foundType.operCRMBusinessEntityTypeNo,
-              operCRMBusinessEntityTypeName: foundType.operCRMBusinessEntityTypeName
-            } : undefined,
-            businessEntityTypeName: typeName || '',
-            crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : 0,
-            vatgstNo: companyVatGst || '',
-            creditInsuranceLimit: creditLimit ?? 0,
-            locations: computedLocations.map(l => ({
-              ...l,
-              countryNo: l.countryNo || 0,
-              stateNo: l.stateNo || 0,
-              cityNo: l.cityNo || 0,
-              locationTypeNo: l.locationTypeNo || 0,
-              countryName: companyCountry || '',
-              stateName: companyState || '',
-              cityName: companyCity || '',
-              locationTypeName: getLocationTypeName(l.locationTypeNo || 0)
-            })),
-            contactPersons: companyContacts.map(c => ({
-              contactPersonName: c.contactName || c.name || '',
-              address: c.address || '',
-              countryNo: getCountryNo(c.country) || 0,
-              stateNo: getStateNo(c.state) || 0,
-              cityNo: getCityNo(c.city) || 0,
-              pinCode: c.pinCode || c.pin || '',
-              phoneNo: c.phone || '',
-              email: c.email || '',
-              designation: c.designation || '',
-              department: c.department || '',
-              countryName: c.country || '',
-              stateName: c.state || '',
-              cityName: c.city || '',
-              status: c.status || 'Active'
-            })),
-            ports: computedPorts.map(p => ({
-              portNo: p.portNo || 0,
-              portName: (portsList.find((pl: any) => getPortNo(pl) === p.portNo) || p.portNo || '').toString()
-            })),
-            attachment: computedAttachments.map(a => {
-              const match = companyAttachments.find(ca => (ca.docNo || ca.id) === a.docNo);
-              return {
-                docNo: a.docNo || 0,
-                fileName: match?.fileName || match?.name || 'attachment.pdf',
-                filePath: match?.filePath || '',
-                fileSize: match?.fileSize || match?.size || 0
-              };
-            }),
-            status: companyStatus || 'Active'
-          });
 
           await fetchCompanies();
         }
@@ -2284,25 +2538,6 @@ export function MasterManager({ type }: MasterManagerProps) {
               />
             </div>
 
-            {/* Address */}
-            <div className="space-y-1 md:col-span-2">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Primary Address <span className="text-red-500">*</span></label>
-              <textarea
-                rows={1}
-                placeholder="Enter complete company street address..."
-                value={companyAddress}
-                onChange={(e) => {
-                  setCompanyAddress(e.target.value);
-                  if (errors.companyAddress) setErrors(prev => ({ ...prev, companyAddress: '' }));
-                }}
-                className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] min-h-[40px] resize-y",
-                  errors.companyAddress && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
-              />
-              {errors.companyAddress && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyAddress}</p>}
-            </div>
-
             {/* VAT / GST No */}
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">VAT / GST No</label>
@@ -2313,112 +2548,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                 onChange={(e) => setCompanyVatGst(e.target.value)}
                 className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
               />
-            </div>
-
-            {/* Country */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country <span className="text-red-500">*</span></label>
-              <select
-                value={companyCountry}
-                onChange={async (e) => {
-                  const countryName = e.target.value;
-                  setCompanyCountry(countryName);
-                  setCompanyState('');
-                  setCompanyCity('');
-                  setCompanyStatesList([]);
-                  setCompanyCitiesList([]);
-                  if (errors.companyCountry) setErrors(prev => ({ ...prev, companyCountry: '' }));
-
-                  const foundCountry = countries.find((c: any) => c.countryName === countryName);
-                  if (foundCountry) {
-                    const statesData = await fetchStatesByCountry(foundCountry.countryNo);
-                    setCompanyStatesList(statesData);
-                  }
-                }}
-                className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.companyCountry && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
-              >
-                <option value="">Select Country</option>
-                {countries.map((c: any) => (
-                  <option key={c.countryNo} value={c.countryName}>{c.countryName}</option>
-                ))}
-              </select>
-              {errors.companyCountry && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyCountry}</p>}
-            </div>
-
-            {/* State */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province <span className="text-red-500">*</span></label>
-              <select
-                value={companyState}
-                onChange={async (e) => {
-                  const stateName = e.target.value;
-                  setCompanyState(stateName);
-                  setCompanyCity('');
-                  setCompanyCitiesList([]);
-                  if (errors.companyState) setErrors(prev => ({ ...prev, companyState: '' }));
-
-                  const foundState = states.find((s: any) => s.stateName === stateName);
-                  if (foundState) {
-                    const citiesData = await fetchCitiesByState(foundState.stateNo);
-                    setCompanyCitiesList(citiesData);
-                  }
-                }}
-                className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.companyState && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
-              >
-                <option value="">Select State</option>
-                {states.map((s: any) => (
-                  <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
-                ))}
-              </select>
-              {errors.companyState && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyState}</p>}
-            </div>
-
-            {/* City */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City <span className="text-red-500">*</span></label>
-              <select
-                value={companyCity}
-                onChange={(e) => {
-                  setCompanyCity(e.target.value);
-                  if (errors.companyCity) setErrors(prev => ({ ...prev, companyCity: '' }));
-                }}
-                className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.companyCity && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
-              >
-                <option value="">Select City</option>
-                {cities.map((ci: any) => (
-                  <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
-                ))}
-              </select>
-              {errors.companyCity && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyCity}</p>}
-            </div>
-
-            {/* PIN Code */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code <span className="text-red-500">*</span></label>
-              <Input
-                type="text"
-                placeholder="Enter ZIP..."
-                value={companyPinCode}
-                maxLength={10}
-                onChange={(e) => {
-                  setCompanyPinCode(e.target.value);
-                  if (errors.companyPinCode) setErrors(prev => ({ ...prev, companyPinCode: '' }));
-                }}
-                className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.companyPinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
-              />
-              {errors.companyPinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyPinCode}</p>}
             </div>
           </div>
         </div>
@@ -4282,6 +4411,22 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
         )}
 
+        {type === 'company' && (
+          <div className="flex items-center bg-white/90 px-3 py-1 rounded-xl sm:rounded-2xl border border-slate-200/40 shadow-md shrink-0 gap-2 h-7 sm:h-8">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Page Size:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
+              className="bg-transparent border-none text-[10px] font-black text-[#006699] focus:ring-0 cursor-pointer outline-none pr-1"
+            >
+              <option value={10}>10 rows</option>
+              <option value={20}>20 rows</option>
+              <option value={50}>50 rows</option>
+              <option value={100}>100 rows</option>
+            </select>
+          </div>
+        )}
+
         {/* Add Record Button */}
         <Button
           onClick={handleAddClick}
@@ -4301,19 +4446,43 @@ export function MasterManager({ type }: MasterManagerProps) {
                 <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
                   <Icon size={32} />
                 </div>
-                <h3 className="text-sm font-bold text-slate-700">No Companies Found</h3>
+<h3 className="text-sm font-bold text-slate-700">No Companies Found</h3>
                 <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
               </div>
             ) : (
               <div className="flex-1 min-h-0 flex gap-3 relative select-none">
                 {/* Scrollable List container */}
-                <div className="flex-1 overflow-y-auto pr-10 scrollbar-thin space-y-6 pb-12" id="company-scroll-container">
+                <div
+                  className="flex-1 overflow-y-auto overflow-x-auto pr-10 scrollbar-thin space-y-6 pb-12"
+                  id="company-scroll-container"
+                  onScroll={(e) => {
+                    const target = e.currentTarget;
+                    const currentScrollTop = target.scrollTop;
+                    const isScrollingDown = currentScrollTop > lastScrollTopRef.current;
+                    const isScrollingUp = currentScrollTop < lastScrollTopRef.current;
+                    lastScrollTopRef.current = currentScrollTop;
+
+                    const isNearBottom = isScrollingDown && target.scrollHeight > target.clientHeight && (target.scrollHeight - currentScrollTop - target.clientHeight < 80);
+                    const isNearTop = isScrollingUp && currentScrollTop < 20;
+
+                    if (isNearBottom && !isLoadingMoreCompanies) {
+                      handleLoadMore('down');
+                    } else if (isNearTop && !isLoadingMoreCompanies) {
+                      handleLoadMore('up');
+                    }
+                  }}
+                  onWheel={(e) => {
+                    const target = e.currentTarget;
+                    if (target.scrollTop === 0 && e.deltaY < 0 && !isLoadingMoreCompanies) {
+                      handleLoadMore('up');
+                    }
+                  }}
+                >
                   {companyViewMode === 'list' ? (
                     /* GRID LIST VIEW */
-                    <div className="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
-                      <div className="overflow-x-auto">
+                    <div className="bg-white rounded-2xl border border-slate-150 shadow-md flex flex-col overflow-visible">
                         <table className="w-full border-collapse text-left">
-                          <thead className="bg-slate-50 border-b border-slate-200">
+                          <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
                             <tr>
                               <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Code</th>
                               <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity Name</th>
@@ -4338,7 +4507,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                       {company.code}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-xs font-bold text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                  <td className="px-4 py-3 text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
                                     {company.name}
                                   </td>
                                   <td className="px-4 py-3 text-xs font-semibold text-slate-600">
@@ -4394,7 +4563,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                             })}
                           </tbody>
                         </table>
-                      </div>
                     </div>
                   ) : companyViewMode === 'album' ? (
                     /* ALBUM VIEW CARD LIST */
@@ -4416,7 +4584,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                       {company.name ? company.name.substring(0, 2) : 'BE'}
                                     </div>
                                     <div>
-                                      <h4 className="text-xs font-black text-slate-800 leading-snug group-hover:text-[#006699] transition-colors">{company.name}</h4>
+                                      <h4 className="text-xs font-black text-slate-900 leading-snug group-hover:text-[#006699] transition-colors">{company.name}</h4>
                                       <div className="flex items-center gap-1.5 mt-1">
                                         <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50">
                                           {company.code}
@@ -4542,10 +4710,9 @@ export function MasterManager({ type }: MasterManagerProps) {
                               <span className="text-[10px] opacity-70">Contacts</span>
                             </div>
 
-                            <div className="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
-                              <div className="overflow-x-auto">
+                            <div className="bg-white rounded-2xl border border-slate-150 shadow-md flex flex-col overflow-visible">
                                 <table className="w-full border-collapse text-left">
-                                  <thead className="bg-slate-50 border-b border-slate-200">
+                                  <thead className="sticky top-[28px] z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
                                     <tr>
                                       <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Contact Name</th>
                                       <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity</th>
@@ -4564,7 +4731,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                           <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
                                             {contact.contactPersonName || contact.contactName || contact.name}
                                           </td>
-                                          <td className="px-4 py-3 text-xs font-bold text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                          <td className="px-4 py-3 text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
                                             {company.name}
                                           </td>
                                           <td className="px-4 py-3 text-xs font-semibold text-slate-600">
@@ -4604,7 +4771,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                                     )}
                                   </tbody>
                                 </table>
-                              </div>
                             </div>
                           </div>
                         );
@@ -4653,7 +4819,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                       <div className="border-t border-slate-100 pt-2 text-[10px] font-semibold text-slate-500 space-y-1.5">
                                         <div className="flex justify-between">
                                           <span className="text-slate-400">Business Entity:</span>
-                                          <span className="text-[#006699] font-bold hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</span>
+                                          <span className="text-slate-900 font-extrabold hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</span>
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-slate-400">Phone:</span>
@@ -4710,7 +4876,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                           {company.name ? company.name.substring(0, 2) : 'BE'}
                                         </div>
                                         <div>
-                                          <h4 className="text-xs font-black text-slate-800">{company.name}</h4>
+                                          <h4 className="text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</h4>
                                           <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">{company.code} • {company.type}</p>
                                         </div>
                                       </div>
@@ -4796,28 +4962,23 @@ export function MasterManager({ type }: MasterManagerProps) {
                 </div>
 
                 {/* FLOATING INDEX ALPHABET SIDEBAR (Perfect containment) */}
-                <div className="absolute right-0 top-0 bottom-12 w-8 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-lg flex flex-col items-center justify-between py-4 z-20 select-none">
+                <div className="absolute -right-1 top-0 bottom-12 w-11 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl flex flex-col items-center justify-between py-3 z-20 select-none">
                   {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
-                    const hasItems = groupedCompanies.some((g) => g.letter === char);
+                    const hasItems = apiAlphabets.includes(char) || apiAlphabets.includes(char.toLowerCase());
+                    const isSelected = currentStartsWith === char;
                     return (
                       <button
                         key={char}
                         disabled={!hasItems}
-                        onClick={() => {
-                          const container = document.getElementById('company-scroll-container');
-                          const target = document.getElementById(`company-group-${char}`);
-                          if (container && target) {
-                            const containerRect = container.getBoundingClientRect();
-                            const targetRect = target.getBoundingClientRect();
-                            const scrollOffset = targetRect.top - containerRect.top + container.scrollTop - 4;
-                            container.scrollTo({ top: scrollOffset, behavior: 'smooth' });
-                          }
-                        }}
+                        onClick={() => handleAlphabetClick(char)}
+                        style={{ height: '21px', width: '21px' }}
                         className={cn(
-                          "text-[9px] font-black h-4 w-4 rounded-full flex items-center justify-center transition-all",
-                          hasItems
-                            ? "text-[#006699] hover:bg-[#006699]/15 cursor-pointer hover:scale-110 active:scale-90"
-                            : "text-slate-300 cursor-not-allowed opacity-35"
+                          "text-[10px] font-black rounded-full flex items-center justify-center transition-all",
+                          isSelected
+                            ? "text-white bg-[#006699] font-black scale-110 shadow-md shadow-[#006699]/20"
+                            : hasItems
+                              ? "text-slate-800 hover:text-white hover:bg-[#006699] cursor-pointer hover:scale-120 active:scale-95 shadow-sm hover:shadow"
+                              : "text-slate-350 cursor-not-allowed opacity-30 text-[9px]"
                         )}
                       >
                         {char}
