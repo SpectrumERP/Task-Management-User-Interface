@@ -23,6 +23,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Combobox } from '@/components/ui/Combobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { format } from 'date-fns';
 import { TaskActivity } from './TaskActivity';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
@@ -130,7 +131,8 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     endDate: z.string().optional(),
     completionRemark: z.string().optional(),
     completionDate: z.string().optional(),
-    operTaskNo: z.number().optional()
+    operTaskNo: z.number().optional(),
+    assignedDisplayName: z.string().optional()
   })).optional().default([]),
   custom_fields: z.array(z.object({
     customFieldNo: z.string(),
@@ -309,7 +311,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         completionRemark: st.completionRemark || ''
       }));
     }
-    return tasks.filter(t => t.parent_task_No === initialData?.taskNo);
+    return initialData?.taskNo ? tasks.filter(t => t.parent_task_No === initialData.taskNo) : [];
   });
 
   useEffect(() => {
@@ -330,7 +332,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         completionRemark: st.completionRemark || ''
       })));
     } else {
-      setLocalSubtasks(tasks.filter(t => t.parent_task_No === initialData?.taskNo));
+      setLocalSubtasks(initialData?.taskNo ? tasks.filter(t => t.parent_task_No === initialData.taskNo) : []);
     }
   }, [initialData, tasks]);
 
@@ -631,7 +633,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const [savingSubtaskIndex, setSavingSubtaskIndex] = useState<number | null>(null);
 
   const handleSaveInlineSubtask = async (index: number) => {
-    const st = form.getValues().sub_tasks[index];
+    const st = form.getValues().sub_tasks?.[index];
+    if (!st) return;
     let hasError = false;
 
     if (!st.title) {
@@ -655,8 +658,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       const newFakeTaskNo = st.operTaskNo || -Date.now();
 
       // Find user display name for the read-only view
-      const selectedUser = users.find(u => u.loginNo.toString() === st.ownerLoginNo?.toString());
-      const assignedDisplayName = selectedUser ? selectedUser.displayName : '-';
+      const assignedDisplayName = st.assignedDisplayName || '-';
 
       const savedTask = {
         taskNo: newFakeTaskNo,
@@ -728,6 +730,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const handleDeleteSubtask = async () => {
     if (!subtaskToDelete) return;
+
+    // For locally created subtasks (negative taskNo), just remove from local state
+    if (subtaskToDelete < 0) {
+      setLocalSubtasks(prev => prev.filter(t => t.taskNo !== subtaskToDelete));
+      toast.success('sub-task removed successfully');
+      setSubtaskToDelete(null);
+      return;
+    }
+
     try {
       setIsDeletingSubtask(true);
       const response = await apiService.delete<{ success: boolean; message?: string }>(`/api/crm/tasks/delete?operTaskNo=${subtaskToDelete}`, {});
@@ -801,9 +812,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         }
 
         // 4. Set the customFields data in the custom fields section
-        if (data.customFields && data.customFields.length > 0) {
+        if (data.customFields && Array.isArray(data.customFields) && data.customFields.length > 0) {
           const mappedCustomFields = data.customFields.map((cf: any) => ({
-            customFieldNo: (cf.customFieldNo || '').toString(),
+            customFieldNo: (cf.customFieldNo ?? '').toString(),
             fieldValue: cf.fieldValue || ''
           }));
           form.setValue('custom_fields', mappedCustomFields, { shouldDirty: true, shouldValidate: true });
@@ -1003,7 +1014,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       setUploadingFiles(prev =>
         prev.map(f => f.tempId === tempId ? { ...f, status: 'uploading' } : f)
       );
-      const dbEntry = await attachmentService.createEntry(file.name, companyNo);
+      const dbEntry = await attachmentService.createEntry(file.name, companyNo, 1547);  // 1547: Task form no (replace with dynamic formNo)
 
       // 2. Upload file payload
       setUploadingFiles(prev =>
@@ -1786,14 +1797,30 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Collaborators</h4>
                       <div className="flex items-center gap-2">
                         <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
-                        <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
-                          <SelectTrigger className="rounded-lg h-6 border-slate-300 text-[9px] w-24 bg-slate-50 shadow-none px-2"><SelectValue placeholder="Quick Add" /></SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                            {fillValues?.userGroup.map(group => (
-                              <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="relative flex items-center">
+                          <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
+                            <SelectTrigger className={cn("rounded-lg h-6 border-slate-300 text-[9px] w-[140px] bg-slate-50 shadow-none px-2", selectedCollabTeam && "[&>span]:pr-5")}>
+                              <SelectValue placeholder="Quick Add" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {fillValues?.userGroup.map(group => (
+                                <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {selectedCollabTeam && (
+                            <div
+                              className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 cursor-pointer z-10"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedCollabTeam('');
+                              }}
+                            >
+                              <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <Button type="button" onClick={() => appendCollab({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
@@ -1869,14 +1896,30 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Inform To</h4>
                       <div className="flex items-center gap-2">
                         <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
-                        <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
-                          <SelectTrigger className="rounded-lg h-6 border-slate-300 text-[9px] w-24 bg-slate-50 shadow-none px-2"><SelectValue placeholder="Quick Add" /></SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                            {fillValues?.userGroup.map(group => (
-                              <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="relative flex items-center">
+                          <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
+                            <SelectTrigger className={cn("rounded-lg h-6 border-slate-300 text-[9px] w-[140px] bg-slate-50 shadow-none px-2", selectedCollabTeam && "[&>span]:pr-5")}>
+                              <SelectValue placeholder="Quick Add" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {fillValues?.userGroup.map(group => (
+                                <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {selectedInformTeam && (
+                            <div
+                              className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 cursor-pointer z-10"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedInformTeam('');
+                              }}
+                            >
+                              <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <Button type="button" onClick={() => appendInform({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
@@ -2251,166 +2294,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </div>
         </FormSection>
 
-        <FormSection title='Sub Tasks' icon={FileText}>
-          {!isSubTask && (!initialData ? (
-            <div className="space-y-3 pb-5 border-b border-slate-100">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex flex-col gap-1 flex-1">
-                  <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-                    Sub-Tasks
-                    {subtaskFields.length > 0 && (
-                      <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                        {subtaskFields.length}
-                      </span>
-                    )}
-                  </h4>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    disabled={subtaskFields.length > 0}
-                    onClick={() => appendSubtask({ id: Date.now().toString(), title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '' })}
-                    className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700 disabled:opacity-50"
-                  >
-                    <Plus size={14} className="text-[#006699]" /> Add Sub-Task
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {subtaskFields.map((field, index) => (
-                  <motion.div
-                    key={field.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="group relative flex flex-col gap-3 p-4 rounded-xl border bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-[#006699]/30 focus-within:border-[#006699] focus-within:ring-2 focus-within:ring-[#006699]/10 transition-all duration-300"
-                  >
-                    <div className="absolute -top-3 right-2 opacity-0 group-hover:opacity-100 flex items-center gap-2 z-10">
-                      <button
-                        type="button"
-                        onClick={() => removeSubtask(index)}
-                        className="flex items-center gap-1.5 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all px-2.5 py-1 rounded-md border border-slate-200 shadow-sm hover:shadow-md text-[10px] font-bold"
-                      >
-                        <X size={12} />
-                        Cancel
-                      </button>
-                      {initialData?.taskNo && (
-                        <button
-                          type="button"
-                          onClick={() => handleSaveInlineSubtask(index)}
-                          disabled={savingSubtaskIndex === index}
-                          className="flex items-center gap-1.5 bg-[#006699] text-white hover:bg-[#005580] transition-all px-2.5 py-1 rounded-md shadow-sm hover:shadow-md disabled:opacity-50 text-[10px] font-bold"
-                        >
-                          {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                          Save
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Row 1: Title & Owner */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Sub-Task Title <span className="text-red-500">*</span></Label>
-                        <Input
-                          {...form.register(`sub_tasks.${index}.title`)}
-                          placeholder="Sub Task Title..."
-                          className={cn(
-                            "border-slate-200 shadow-sm p-2.5 h-auto text-sm rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20",
-                            form.formState.errors.sub_tasks?.[index]?.title ? "!border-red-500 text-red-500 placeholder:text-red-300" : ""
-                          )}
-                          maxLength={200}
-                        />
-                        {form.formState.errors.sub_tasks?.[index]?.title && (
-                          <span className="text-[9px] text-red-500 font-bold ml-1">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
-                        )}
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Owner</Label>
-                        <Controller
-                          name={`sub_tasks.${index}.ownerLoginNo`}
-                          control={form.control}
-                          render={({ field: subField }) => (
-                            <div className="flex flex-col">
-                              <UserCombobox
-                                value={subField.value || ''}
-                                onChange={(user) => {
-                                  const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
-                                  subField.onChange(val);
-                                  form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
-                                }}
-                                placeholder="Search owner..."
-                              />
-                              {form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && (
-                                <span className="text-[9px] text-red-500 font-bold ml-1 mt-1">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
-                              )}
-                            </div>
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Row 2: Expected Dates & Remarks */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Due Date</Label>
-                        <Controller
-                          name={`sub_tasks.${index}.endDate`}
-                          control={form.control}
-                          render={({ field: subField }) => (
-                            <DateTimePicker
-                              date={subField.value ? new Date(subField.value) : undefined}
-                              onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                              placeholder="Select due date"
-                              hideTime={true}
-                            />
-                          )}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Completion Date</Label>
-                        <Controller
-                          name={`sub_tasks.${index}.completionDate`}
-                          control={form.control}
-                          render={({ field: subField }) => (
-                            <DateTimePicker
-                              date={subField.value ? new Date(subField.value) : undefined}
-                              onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                              placeholder="Select expected date"
-                              hideTime={true}
-                            />
-                          )}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Completion Remark</Label>
-                        <Textarea
-                          {...form.register(`sub_tasks.${index}.completionRemark`)}
-                          placeholder="Completion remark..."
-                          className="border-slate-200 shadow-sm p-2.5 min-h-[36px] h-auto rounded-md text-sm font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20 resize-none"
-                          maxLength={500}
-                        />
-                      </div>
-                    </div>
-
-
-                  </motion.div>
-                ))}
-
-                {subtaskFields.length === 0 && (
-                  <div className="text-center py-12 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
-                      <Layers size={24} className="text-slate-300" />
-                    </div>
-                    <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No sub-tasks templates defined</p>
-                    <p className="text-slate-400 text-[10px] mt-1">Select a category to pre-populate or click "Add Sub-Task Template"</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
+        {!isSubTask && (
+          <FormSection title='Sub Tasks' icon={FileText}>
             <div className="space-y-3 pb-5 border-b border-slate-100">
               <div className="flex items-center justify-between">
                 <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
@@ -2460,8 +2345,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   {...form.register(`sub_tasks.${index}.title`)}
                                   placeholder="Sub Task Title..."
                                   className={cn(
-                                    "border-slate-200 shadow-sm h-8 text-xs rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20",
-                                    form.formState.errors.sub_tasks?.[index]?.title ? "!border-red-500 text-red-500 placeholder:text-red-300" : ""
+                                    "border-slate-200 shadow-sm h-9 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",
+
                                   )}
                                   maxLength={200}
                                 />
@@ -2469,8 +2354,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 align-top pt-5">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.status || 'Draft'}</span>
+                              <td className="px-4 py-3 align-top">
+                                <div className="h-9 flex items-center">
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.status || 'Draft'}</span>
+                                </div>
                               </td>
                               <td className="px-4 py-3 min-w-[200px] align-top">
                                 <Controller
@@ -2483,10 +2370,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                         onChange={(user) => {
                                           const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
                                           subField.onChange(val);
+                                          form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
                                           form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
                                         }}
                                         placeholder="Search owner..."
-                                        className={form.formState.errors.sub_tasks?.[index]?.ownerLoginNo ? "!border-red-500 text-red-500" : ""}
+                                        error={!!form.formState.errors.sub_tasks?.[index]?.ownerLoginNo}
                                       />
                                       {form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && (
                                         <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
@@ -2527,12 +2415,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 <Textarea
                                   {...form.register(`sub_tasks.${index}.completionRemark`)}
                                   placeholder="Remark..."
-                                  className="border-slate-200 shadow-sm min-h-[32px] h-8 py-1.5 px-2 text-xs rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20 resize-none"
+                                  className="border-slate-200 shadow-sm min-h-[60px] h-auto py-2 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20"
                                   maxLength={500}
                                 />
                               </td>
-                              <td className="px-4 py-3 text-right align-top pt-4">
-                                <div className="flex items-center justify-end gap-1.5">
+                              <td className="px-4 py-3 text-right align-top">
+                                <div className="h-9 flex items-center justify-end gap-1.5">
                                   <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-bold border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
                                     <X size={12} className="mr-1" /> Cancel
                                   </Button>
@@ -2550,7 +2438,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <tr key={task.taskNo} className="bg-white hover:bg-slate-50 transition-colors group">
                             <td className="px-4 py-3">
                               <div className="flex flex-col gap-0.5">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.code || `T${task.taskNo}`}</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.code || (task.taskNo > 0 ? `T-${task.taskNo}` : 'Auto-generate')}</span>
                                 <span className="text-xs font-bold text-slate-800">{task.title}</span>
                               </div>
                             </td>
@@ -2566,7 +2454,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               </span>
                             </td>
                             <td className="px-4 py-3">
-                              <span className="text-xs font-semibold text-slate-700">{task.assignedDisplayName || '-'}</span>
+                              <div className="flex items-center gap-2">
+                                {task.assignedDisplayName && task.assignedDisplayName !== '-' && (
+                                  <UserAvatar loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined} displayName={task.assignedDisplayName} size="sm" />
+                                )}
+                                <span className="text-xs font-semibold text-slate-700">{task.assignedDisplayName || '-'}</span>
+                              </div>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-xs font-semibold text-slate-700">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</span>
@@ -2580,7 +2473,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-slate-300 text-slate-600 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit"><Edit2 size={12} /></Button>
-                                <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-slate-300 text-[#006699]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit"><ExternalLink size={12} /></Button>
+                                {task.taskNo > 0 && (
+                                  <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-slate-300 text-[#006699]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit"><ExternalLink size={12} /></Button>
+                                )}
                                 <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete"><Trash2 size={12} /></Button>
                               </div>
                             </td>
@@ -2598,7 +2493,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 {...form.register(`sub_tasks.${index}.title`)}
                                 placeholder="New Sub Task Title..."
                                 className={cn(
-                                  "border-slate-200 shadow-sm h-8 text-xs rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20",
+                                  "border-slate-200 shadow-sm h-9 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",
                                   form.formState.errors.sub_tasks?.[index]?.title ? "!border-red-500 text-red-500 placeholder:text-red-300" : ""
                                 )}
                                 maxLength={200}
@@ -2607,8 +2502,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 align-top pt-5">
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Draft</span>
+                            <td className="px-4 py-3 align-top">
+                              <div className="h-9 flex items-center">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Draft</span>
+                              </div>
                             </td>
                             <td className="px-4 py-3 min-w-[200px] align-top">
                               <Controller
@@ -2621,6 +2518,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                       onChange={(user) => {
                                         const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
                                         subField.onChange(val);
+                                        form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
                                         form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
                                       }}
                                       placeholder="Search owner..."
@@ -2664,12 +2562,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <Textarea
                                 {...form.register(`sub_tasks.${index}.completionRemark`)}
                                 placeholder="Remark..."
-                                className="border-slate-200 shadow-sm min-h-[32px] h-8 py-1.5 px-2 text-xs rounded-md font-bold text-slate-800 transition-all duration-300 focus-visible:ring-[#006699]/20 resize-none"
+                                className="border-slate-200 shadow-sm min-h-[60px] h-auto py-2 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20"
                                 maxLength={500}
                               />
                             </td>
-                            <td className="px-4 py-3 text-right align-top pt-4">
-                              <div className="flex items-center justify-end gap-1.5">
+                            <td className="px-4 py-3 text-right align-top">
+                              <div className="h-9 flex items-center justify-end gap-1.5">
                                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-bold border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
                                   <X size={12} className="mr-1" /> Cancel
                                 </Button>
@@ -2689,9 +2587,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <div className="text-center py-6 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No sub-tasks available</span>
                 </div>
-              )}              </div>
-          ))}
-        </FormSection>
+              )}
+            </div>
+          </FormSection>
+        )}
 
         {/* 5. Execution Detail */}
         <FormSection title="Execution Detail" icon={CheckCircle}>
@@ -3024,9 +2923,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         <FormSection title="Additional Fields" icon={Sparkles}>
           <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
             <CustomFieldsSection
-              customFields={form.watch('custom_fields') || []}
-              onChange={(fields) => form.setValue('custom_fields', fields, { shouldDirty: true, shouldValidate: true })}
+              customFields={(form.watch('custom_fields') as any) || []}
+              onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
               companyNo={authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2}
+              hideAddButton={true}
             />
           </div>
         </FormSection>
