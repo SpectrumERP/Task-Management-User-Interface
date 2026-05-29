@@ -25,6 +25,7 @@ import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { MasterManager } from '@/components/master/MasterManager';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { Toaster } from 'sonner';
+import { DealManager } from '@/components/sales/deals/DealManager';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('tasks');
@@ -121,8 +122,13 @@ function Dashboard() {
     if (id.startsWith('master-')) {
       const type = id.replace('master-', '');
       navigate(`/master/${type}`);
+    } else if (id === 'sales-deals') {
+      navigate('/sales/deals');
     } else {
       setActiveTab(id);
+      if (id === 'tasks') {
+        navigate('/');
+      }
     }
   };
 
@@ -327,12 +333,35 @@ function MasterPageRoute() {
         if (id.startsWith('master-')) {
           const type = id.replace('master-', '');
           navigate(`/master/${type}`);
+        } else if (id === 'sales-deals') {
+          navigate('/sales/deals');
         } else {
           navigate('/');
         }
       }}
     >
       <MasterManager type={form as any} />
+    </MainLayout>
+  );
+}
+
+function SalesDealsRoute() {
+  const navigate = useNavigate();
+
+  return (
+    <MainLayout
+      activeTab="sales-deals"
+      onTabChange={(id) => {
+        if (id.startsWith('master-')) {
+          navigate(`/master/${id.replace('master-', '')}`);
+        } else if (id === 'tasks') {
+          navigate('/');
+        } else if (id === 'sales-deals') {
+          navigate('/sales/deals');
+        }
+      }}
+    >
+      <DealManager />
     </MainLayout>
   );
 }
@@ -378,6 +407,38 @@ function App() {
             element={
               <PrivateRoute>
                 <MasterPageRoute />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/sales/deals"
+            element={
+              <PrivateRoute>
+                <SalesDealsRoute />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/sales/deals/new"
+            element={
+              <PrivateRoute>
+                <SalesDealsRoute />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/sales/deals/edit/:id"
+            element={
+              <PrivateRoute>
+                <SalesDealsRoute />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/sales/deals/:id"
+            element={
+              <PrivateRoute>
+                <SalesDealsRoute />
               </PrivateRoute>
             }
           />

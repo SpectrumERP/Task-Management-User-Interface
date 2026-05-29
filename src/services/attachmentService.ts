@@ -21,11 +21,12 @@ export const attachmentService = {
    * 1. POST /api/document-attachments
    * Creates an entry in the database for the given file before uploading.
    */
-  async createEntry(fileName: string, companyNo: number): Promise<DocumentAttachment> {
+  async createEntry(fileName: string, companyNo: number, formNo: number): Promise<DocumentAttachment> {
     const payload = [
       {
         fileName,
-        companyNo
+        companyNo,
+        formNo
       }
     ];
 
