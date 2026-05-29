@@ -1492,11 +1492,11 @@ export function MasterManager({ type }: MasterManagerProps) {
         newErrors.sequence = 'Sequence order must be 0 or greater';
       }
     } else if (type === 'user-group') {
-      if (selectedUsers.length > 0) {
-        const hasEmpty = selectedUsers.some(u => !u.userName);
-        if (hasEmpty) {
-          newErrors.selectedUsers = 'All group members must have a valid username';
-        }
+      if (!description.trim()) {
+        newErrors.description = 'User Group Description is required';
+      }
+      if (selectedUsers.length === 0 || selectedUsers.some(u => !u.userName)) {
+        newErrors.selectedUsers = 'Atleast one user required.';
       }
     } else if (type === 'port') {
       if (!portAlias || portAlias === '') {
@@ -2219,7 +2219,11 @@ export function MasterManager({ type }: MasterManagerProps) {
   };
   const updateGridUser = (index: number, user: any) => {
     const next = [...selectedUsers];
-    next[index] = { ...next[index], loginNo: user.loginNo, userName: user.loginId, displayName: user.printingName, email: user.email };
+    if (!user || user.loginNo === "" || user.loginNo === 0) {
+      next[index] = { ...next[index], loginNo: 0, userName: '', displayName: '', email: '' };
+    } else {
+      next[index] = { ...next[index], loginNo: user.loginNo, userName: user.loginId || '', displayName: user.printingName || '', email: user.email || '' };
+    }
     setSelectedUsers(next);
   };
 
@@ -2455,7 +2459,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       const activeCompanyNo = parseInt(companyNo) || 1;
       let newAttachment: any = null;
       try {
-        const entry = await attachmentService.createEntry(file.name, activeCompanyNo);
+        const entry = await attachmentService.createEntry(file.name, activeCompanyNo, 1550); // 1550: Business Entity form no (replace with dynamic formNo)
         if (entry && entry.id) {
           await attachmentService.uploadFile(entry.id, file);
           const isVerified = await attachmentService.checkStatus(entry.id);
@@ -4162,21 +4166,24 @@ export function MasterManager({ type }: MasterManagerProps) {
                 placeholder="E.g., Core team that reviews task approvals..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                className={cn(
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.description && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
               />
+              {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
             </div>
 
             <div className="space-y-3" id="form-group-members">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
                   <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Group Members</h4>
-                  {errors.selectedUsers && <p className="text-[10px] text-red-500 font-semibold">{errors.selectedUsers}</p>}
                 </div>
                 <Button type="button" onClick={addGridUser} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
                   <UserPlus size={12} /> Add
                 </Button>
               </div>
-              <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all">
+              <div className={cn("bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all", errors.selectedUsers && "border-red-500 ring-2 ring-red-500/10")}>
                 <table className="w-full text-left text-[11px] border-collapse">
                   <thead className="bg-slate-100/80 border-b border-slate-200">
                     <tr>
@@ -4219,6 +4226,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                   </tbody>
                 </table>
               </div>
+              {errors.selectedUsers && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.selectedUsers}</p>}
             </div>
           </div>
         )}

@@ -26,6 +26,7 @@ interface UserComboboxProps {
   disabled?: boolean
   initialLabel?: string
   isClearable?: boolean
+  error?: boolean
 }
 
 export function UserCombobox({
@@ -36,6 +37,7 @@ export function UserCombobox({
   disabled = false,
   initialLabel,
   isClearable = true,
+  error = false,
 }: UserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -172,10 +174,11 @@ export function UserCombobox({
             !className?.includes("text-") && "text-[11px] font-bold text-slate-900",
             !className?.includes("rounded-") && "rounded-xl",
             !className?.includes("h-") && "h-9",
-            className
+            className,
+            error && "!border-red-500 text-red-500"
           )}
         >
-          <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium")}>{selectedLabel || placeholder}</span>
+          <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium", error && "text-red-500")}>{selectedLabel || placeholder}</span>
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
             {value && !disabled && isClearable && (
               <span

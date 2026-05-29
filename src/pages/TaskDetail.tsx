@@ -51,9 +51,18 @@ export default function TaskDetail() {
   const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
   const [notFoundMessage, setNotFoundMessage] = useState("Task not found.");
 
-  // Get status from query params if new task
   const queryParams = new URLSearchParams(location.search);
   const initialStatus = queryParams.get('status') as TaskStatus | undefined;
+
+  const handleGoBack = () => {
+    if (task?.parent_task_No) {
+      navigate(`/task/${task.parent_task_No}`);
+    } else if (queryParams.get('parentTaskNo')) {
+      navigate(`/task/${queryParams.get('parentTaskNo')}`);
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleDelete = async () => {
     if (!task?.taskNo) return;
@@ -66,7 +75,7 @@ export default function TaskDetail() {
       );
       if (response.success) {
         setIsDeleteDialogOpen(false);
-        navigate('/');
+        handleGoBack();
       } else {
         alert(response.message || "Failed to delete task. Please try again.");
       }
@@ -144,6 +153,7 @@ export default function TaskDetail() {
           category_No: d.category?.operTaskCategoryNo || null,
           type_No: d.type?.operTaskTypeNo || null,
           project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || null,
+          parent_task_No: d.parentTask?.operTaskNo || d.parentTaskNo || null,
           tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
           originator_user_No: d.originator?.id || 1,
           owner_user_No: d.owner?.id || null,
@@ -231,7 +241,7 @@ export default function TaskDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate('/')}
+                onClick={handleGoBack}
                 className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md transition-all"
               >
                 <ChevronLeft size={20} className="text-[#006699]" />
@@ -251,7 +261,7 @@ export default function TaskDetail() {
               <Button
                 variant="ghost"
                 type="button"
-                onClick={() => navigate('/')}
+                onClick={handleGoBack}
                 disabled={isSaving}
                 className="rounded-xl h-9 px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
               >
@@ -317,7 +327,7 @@ export default function TaskDetail() {
                   initialData={isEdit ? task : undefined}
                   parentTask={!isEdit ? task : undefined}
                   initialStatus={initialStatus}
-                  onComplete={() => navigate('/')}
+                  onComplete={handleGoBack}
                   onSaveStateChange={setIsSaving}
                   onRefreshData={fetchTaskDetails}
                 />
@@ -386,7 +396,7 @@ export default function TaskDetail() {
               type="button"
               onClick={() => {
                 setIsNotFoundDialogOpen(false);
-                navigate('/');
+                handleGoBack();
               }}
               className="w-full rounded-xl bg-[#006699] hover:bg-[#005580] font-bold text-white shadow-lg shadow-[#006699]/20 text-xs h-9 transition-all"
             >

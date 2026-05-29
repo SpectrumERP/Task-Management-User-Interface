@@ -88,7 +88,7 @@ export interface Task {
     pattern: 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
     until?: string;
   };
-  
+
   // UI helper fields
   status: TaskStatus;
   priority: Priority;

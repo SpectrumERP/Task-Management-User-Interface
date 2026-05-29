@@ -206,13 +206,15 @@ interface CustomFieldsSectionProps {
   onChange: (fields: Array<{ customFieldNo: string; fieldValue: string }>) => void;
   categoryFillValues?: any;
   companyNo?: number;
+  hideAddButton?: boolean;
 }
 
 export function CustomFieldsSection({
   customFields,
   onChange,
   categoryFillValues: categoryFillValuesProp,
-  companyNo = 2
+  companyNo = 2,
+  hideAddButton = false
 }: CustomFieldsSectionProps) {
   const [internalFillValues, setInternalFillValues] = useState<any>(null);
 
@@ -383,16 +385,18 @@ export function CustomFieldsSection({
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1"> </label>
-        <Button
-          type="button"
-          onClick={addField}
-          variant="ghost"
-          size="sm"
-          className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1"
-        >
-          <Plus size={12} className="text-[#006699]" /> Add Additional Field
-        </Button>
+        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1"> Addition Fields </label>
+        {!hideAddButton && (
+          <Button
+            type="button"
+            onClick={addField}
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1"
+          >
+            <Plus size={12} className="text-[#006699]" /> Add Additional Field
+          </Button>
+        )}
       </div>
 
       {customFields.length > 0 ? (

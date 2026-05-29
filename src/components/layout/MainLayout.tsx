@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
-import { useNavigate } from 'react-router-dom';
+
 import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
@@ -11,13 +11,8 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children, activeTab = 'board', onTabChange }: MainLayoutProps) {
-  const navigate = useNavigate();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-
-  const handleCreateTask = () => {
-    navigate('/task/new');
-    setIsMobileSidebarOpen(false);
-  };
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
 
   const handleTabChange = (id: string) => {
     if (onTabChange) {
@@ -54,18 +49,18 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
           <Sidebar
             activeTab={activeTab}
             onTabChange={handleTabChange}
-            onCreateTask={handleCreateTask}
             onClose={() => setIsMobileSidebarOpen(false)}
           />
         </div>
       </div>
 
       {/* Desktop Static Sidebar */}
-      <div className="hidden lg:flex h-full">
+      <div className={cn("hidden lg:flex h-full transition-all duration-300", isDesktopSidebarCollapsed ? "w-[80px]" : "w-64")}>
         <Sidebar
           activeTab={activeTab}
           onTabChange={handleTabChange}
-          onCreateTask={handleCreateTask}
+          isCollapsed={isDesktopSidebarCollapsed}
+          onToggleCollapse={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
         />
       </div>
 
