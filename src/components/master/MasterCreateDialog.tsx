@@ -137,7 +137,7 @@ export function MasterCreateDialog({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) {
-      newErrors.name = 'Name / Label is required';
+      newErrors.name = `${type} Name is required`;
     }
 
     if (type === 'priority') {
@@ -330,7 +330,7 @@ export function MasterCreateDialog({
         <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin">
           {/* Name / Label */}
           <div className="space-y-1">
-            <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Name / Label</Label>
+            <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">{`${type || ''} Name`}</Label>
             <Input
               placeholder={`Enter new ${type || ''} name...`}
               value={name}

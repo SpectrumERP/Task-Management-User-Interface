@@ -1855,7 +1855,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) {
-      newErrors.name = type === 'company' ? 'Business Entity name is required' : 'Name / Label is required';
+      newErrors.name = type === 'company' ? 'Business Entity name is required' : `${type.replace(/-/g, ' ')} Name is required`;
     }
 
     if (type === 'priority') {
@@ -3634,7 +3634,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* Standard Name Input */}
         <div className="space-y-1">
-          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Name / Label</label>
+          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">{type.replace(/-/g, ' ')} Name</label>
           <Input
             placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
             value={name}
@@ -5436,7 +5436,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
                       <tr className="border-b border-slate-100 bg-slate-50/50">
                         <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4">Code</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</th>
+                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">{type.replace(/-/g, ' ')} Name</th>
                         {type === 'category' && (
                           <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Features</th>
                         )}
