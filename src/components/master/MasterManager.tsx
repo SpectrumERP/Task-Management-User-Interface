@@ -56,7 +56,7 @@ import {
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 
 interface MasterManagerProps {
-  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company';
+  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company' | 'country' | 'state' | 'city';
 }
 
 import { useMasterStore } from '@/store/useMasterStore';
@@ -90,6 +90,12 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [isLoadingBusinessEntityTypes, setIsLoadingBusinessEntityTypes] = useState(false);
 
   const [apiCompanies, setApiCompanies] = useState<any[]>([]);
+  const [apiCountries, setApiCountries] = useState<any[]>([]);
+  const [isLoadingCountries, setIsLoadingCountries] = useState(false);
+  const [apiStates, setApiStates] = useState<any[]>([]);
+  const [isLoadingStates, setIsLoadingStates] = useState(false);
+  const [apiCities, setApiCities] = useState<any[]>([]);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
 
   const fetchCompanies = async () => {
     try {
@@ -477,6 +483,77 @@ export function MasterManager({ type }: MasterManagerProps) {
     }
   };
 
+  const fetchCountries = async () => {
+    setIsLoadingCountries(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/countries/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((c: any) => ({
+          id: (c.countryNo ?? c.id ?? '').toString(),
+          code: c.code || c.countryCode || '',
+          name: c.countryName || c.name || '',
+          createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || (typeof c.createdBy === 'string' || typeof c.createdBy === 'number' ? c.createdBy : '') || 'System',
+          createdDate: c.createdDate || c.createdDateTime || c.createdOn || ''
+        }));
+        setApiCountries(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API countries:", error);
+    } finally {
+      setIsLoadingCountries(false);
+    }
+  };
+
+  const fetchStates = async () => {
+    setIsLoadingStates(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/states/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((s: any) => ({
+          id: (s.stateNo ?? s.id ?? '').toString(),
+          code: s.code || s.stateCode || '',
+          name: s.stateName || s.name || '',
+          countryNo: (s.countryNo ?? s.CountryNo ?? '').toString(),
+          gstStateCode: s.gstStateCode || s.gstCode || '',
+          isUnionTerritory: s.isUnionTerritory || false,
+          createdBy: s.createdBy?.printingName || s.createdBy?.displayName || s.createdBy?.loginId || s.createdByName || (typeof s.createdBy === 'string' || typeof s.createdBy === 'number' ? s.createdBy : '') || 'System',
+          createdDate: s.createdDate || s.createdDateTime || s.createdOn || ''
+        }));
+        setApiStates(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API states:", error);
+    } finally {
+      setIsLoadingStates(false);
+    }
+  };
+
+  const fetchCities = async () => {
+    setIsLoadingCities(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/cities/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((ct: any) => ({
+          id: (ct.cityNo ?? ct.id ?? '').toString(),
+          code: ct.code || ct.cityCode || '',
+          name: ct.cityName || ct.name || '',
+          countryNo: (ct.countryNo ?? ct.CountryNo ?? '').toString(),
+          stateNo: (ct.stateNo ?? ct.StateNo ?? '').toString(),
+          createdBy: ct.createdBy?.printingName || ct.createdBy?.displayName || ct.createdBy?.loginId || ct.createdByName || (typeof ct.createdBy === 'string' || typeof ct.createdBy === 'number' ? ct.createdBy : '') || 'System',
+          createdDate: ct.createdDate || ct.createdDateTime || ct.createdOn || ''
+        }));
+        setApiCities(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API cities:", error);
+    } finally {
+      setIsLoadingCities(false);
+    }
+  };
+
   useEffect(() => {
     if (type === 'location') {
       fetchLocations();
@@ -507,6 +584,15 @@ export function MasterManager({ type }: MasterManagerProps) {
     } else if (type === 'company') {
       fetchCompanies();
       fetchBusinessEntityFillValues();
+    } else if (type === 'country') {
+      fetchCountries();
+      fetchLocationFillValues();
+    } else if (type === 'state') {
+      fetchStates();
+      fetchLocationFillValues();
+    } else if (type === 'city') {
+      fetchCities();
+      fetchLocationFillValues();
     }
   }, [type]);
 
@@ -561,6 +647,26 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   // Business Benefit Type extra fields
   const [valuationtypeNo, setValuationtypeNo] = useState('');
+
+  // Country Master extra fields
+  const [countryCode, setCountryCode] = useState('');
+  const [countryName, setCountryName] = useState('');
+
+  // State Master extra fields
+  const [stateCode, setStateCode] = useState('');
+  const [stateName, setStateName] = useState('');
+  const [gstStateCode, setGstStateCode] = useState('');
+  const [isUnionTerritory, setIsUnionTerritory] = useState(false);
+  const [stateCountryNo, setStateCountryNo] = useState('');
+  const [availableCountries, setAvailableCountries] = useState<any[]>([]);
+
+  // City Master extra fields
+  const [cityCode, setCityCode] = useState('');
+  const [cityName, setCityName] = useState('');
+  const [cityCityCountryNo, setCityCityCountryNo] = useState('');
+  const [cityCityStateNo, setCityCityStateNo] = useState('');
+  const [availableCityCountries, setAvailableCityCountries] = useState<any[]>([]);
+  const [availableCityStates, setAvailableCityStates] = useState<any[]>([]);
 
   // Location extra fields
   const [parentLocationNo, setParentLocationNo] = useState('');
@@ -839,6 +945,22 @@ export function MasterManager({ type }: MasterManagerProps) {
       setLocCitiesList([]);
       setContactStatesList([]);
       setContactCitiesList([]);
+
+      // Country, State, City Master resets
+      setCountryCode('');
+      setCountryName('');
+      setStateCode('');
+      setStateName('');
+      setGstStateCode('');
+      setIsUnionTerritory(false);
+      setStateCountryNo('');
+      setAvailableCountries([]);
+      setCityCode('');
+      setCityName('');
+      setCityCityCountryNo('');
+      setCityCityStateNo('');
+      setAvailableCityCountries([]);
+      setAvailableCityStates([]);
     } else if (isEdit && id) {
       setErrors({});
       setEditingId(id);
@@ -1095,6 +1217,48 @@ export function MasterManager({ type }: MasterManagerProps) {
         }).catch(err => {
           console.error("Failed to load company details via API:", err);
         });
+      } else if (type === 'country') {
+        apiService.get<any>(`/api/master/countries/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.countryName || dl.name || '');
+            }
+          }
+        }).catch(err => console.error("Failed to load country details:", err));
+      } else if (type === 'state') {
+        apiService.get<any>(`/api/master/states/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.stateName || dl.name || '');
+              setGstStateCode(dl.gstStateCode || dl.gstCode || '');
+              setIsUnionTerritory(dl.isUnionTerritory || false);
+              setStateCountryNo((dl.countryNo || dl.CountryNo || '').toString());
+            }
+          }
+        }).catch(err => console.error("Failed to load state details:", err));
+      } else if (type === 'city') {
+        apiService.get<any>(`/api/master/cities/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const body = response.data || response;
+            const dl = body.data || body;
+            if (dl) {
+              setName(dl.cityName || dl.name || '');
+              setCityCityCountryNo((dl.countryNo || dl.CountryNo || '').toString());
+              setCityCityStateNo((dl.stateNo || dl.StateNo || '').toString());
+
+              // Load states for the selected country
+              if (dl.countryNo || dl.CountryNo) {
+                fetchStatesByCountry(dl.countryNo || dl.CountryNo).then((states) => {
+                  setAvailableCityStates(states);
+                });
+              }
+            }
+          }
+        }).catch(err => console.error("Failed to load city details:", err));
       }
     }
   }, [isNew, isEdit, id, type, companyNo]);
@@ -1132,11 +1296,17 @@ export function MasterManager({ type }: MasterManagerProps) {
         return { title: 'Port Master', desc: 'Manage port names with optional country, state, and city references', icon: Anchor, list: apiPorts };
       case 'business-entity-type':
         return { title: 'Business Entity Type Master', desc: 'Manage business entity type names and generated codes', icon: Building2, list: apiBusinessEntityTypes };
+      case 'country':
+        return { title: 'Country Master', desc: 'Manage countries with codes and names', icon: Globe, list: apiCountries };
+      case 'state':
+        return { title: 'State Master', desc: 'Manage states with country references, GST codes, and union territory status', icon: MapPin, list: apiStates };
+      case 'city':
+        return { title: 'City Master', desc: 'Manage cities with country and state references', icon: Building, list: apiCities };
     }
   };
 
   const { title, icon: Icon, list: rawList } = getMasterInfo();
-  const list = type === 'location' ? apiLocations : type === 'vessel' ? apiVessels : type === 'port' ? apiPorts : type === 'business-entity-type' ? apiBusinessEntityTypes : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : rawList;
+  const list = type === 'location' ? apiLocations : type === 'vessel' ? apiVessels : type === 'port' ? apiPorts : type === 'business-entity-type' ? apiBusinessEntityTypes : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : type === 'country' ? apiCountries : type === 'state' ? apiStates : type === 'city' ? apiCities : rawList;
 
   // Filtered List
   const filteredList = list.filter((item: any) => {
@@ -1281,6 +1451,21 @@ export function MasterManager({ type }: MasterManagerProps) {
           fetchCompanies();
         });
         break;
+      case 'country':
+        apiService.delete(`/api/master/countries/delete`, {
+          params: { countryNo: id }
+        }).then(() => fetchCountries()).catch(err => console.error("Failed to delete country:", err));
+        break;
+      case 'state':
+        apiService.delete(`/api/master/states/delete`, {
+          params: { stateNo: id }
+        }).then(() => fetchStates()).catch(err => console.error("Failed to delete state:", err));
+        break;
+      case 'city':
+        apiService.delete(`/api/master/cities/delete`, {
+          params: { cityNo: id }
+        }).then(() => fetchCities()).catch(err => console.error("Failed to delete city:", err));
+        break;
     }
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
@@ -1370,6 +1555,17 @@ export function MasterManager({ type }: MasterManagerProps) {
       }
       if (companyAttachments.length === 0) {
         newErrors.attachments = 'At least one attachment is mandatory';
+      }
+    } else if (type === 'state') {
+      if (!stateCountryNo || stateCountryNo === 'none' || stateCountryNo === '') {
+        newErrors.stateCountryNo = 'Country is required';
+      }
+    } else if (type === 'city') {
+      if (!cityCityCountryNo || cityCityCountryNo === 'none' || cityCityCountryNo === '') {
+        newErrors.cityCityCountryNo = 'Country is required';
+      }
+      if (!cityCityStateNo || cityCityStateNo === 'none' || cityCityStateNo === '') {
+        newErrors.cityCityStateNo = 'State is required';
       }
     }
 
@@ -1854,6 +2050,46 @@ export function MasterManager({ type }: MasterManagerProps) {
           });
 
           await fetchCompanies();
+        } else if (type === 'country') {
+          const payload = {
+            countryNo: editingId ? parseInt(editingId) : null,
+            countryName: name,
+            companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
+          };
+          if (editingId) {
+            await apiService.post('/api/master/countries/save', payload);
+          } else {
+            await apiService.post('/api/master/countries/save', { ...payload, countryNo: null });
+          }
+          await fetchCountries();
+        } else if (type === 'state') {
+          const payload = {
+            stateNo: editingId ? parseInt(editingId) : null,
+            stateName: name,
+            gstStateCode: gstStateCode,
+            isUnionTerritory: isUnionTerritory,
+            countryNo: parseInt(stateCountryNo) || null,
+            companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
+          };
+          if (editingId) {
+            await apiService.post('/api/master/states/save', payload);
+          } else {
+            await apiService.post('/api/master/states/save', { ...payload, stateNo: null });
+          }
+          await fetchStates();
+        } else if (type === 'city') {
+          const payload = {
+            cityNo: editingId ? parseInt(editingId) : null,
+            cityName: name,
+            stateNo: parseInt(cityCityStateNo) || null,
+            companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
+          };
+          if (editingId) {
+            await apiService.post('/api/master/cities/save', payload);
+          } else {
+            await apiService.post('/api/master/cities/save', { ...payload, cityNo: null });
+          }
+          await fetchCities();
         }
       }
       setShowSuccessAlert(true);
@@ -4173,6 +4409,118 @@ export function MasterManager({ type }: MasterManagerProps) {
                 />
                 {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
               </div>
+            </div>
+          </div>
+        )}
+
+        
+
+        {/* STATE MASTER FIELDS */}
+        {type === 'state' && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
+              <Combobox
+                options={availableCountries.map((c: any) => ({
+                  label: c.name || '',
+                  value: (c.id || '').toString()
+                }))}
+                value={stateCountryNo}
+                onChange={(val) => {
+                  setStateCountryNo(val);
+                  if (errors.stateCountryNo) setErrors(prev => ({ ...prev, stateCountryNo: '' }));
+                }}
+                placeholder="Select Country..."
+                searchPlaceholder="Search country..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.stateCountryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.stateCountryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateCountryNo}</p>}
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">GST State Code</label>
+              <Input
+                placeholder="e.g., 06 (for Maharashtra)"
+                value={gstStateCode}
+                maxLength={2}
+                onChange={(e) => {
+                  setGstStateCode(e.target.value);
+                  if (errors.gstStateCode) setErrors(prev => ({ ...prev, gstStateCode: '' }));
+                }}
+                className={cn(
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  errors.gstStateCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.gstStateCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.gstStateCode}</p>}
+            </div>
+            <div className="space-y-2 flex items-center gap-3">
+              <Checkbox
+                checked={isUnionTerritory}
+                onCheckedChange={(checked) => setIsUnionTerritory(checked as boolean)}
+                className="rounded-md border-slate-300"
+              />
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer">
+                Is Union Territory
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* CITY MASTER FIELDS */}
+        {type === 'city' && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
+              <Combobox
+                options={availableCityCountries.map((c: any) => ({
+                  label: c.name || '',
+                  value: (c.id || '').toString()
+                }))}
+                value={cityCityCountryNo}
+                onChange={(val) => {
+                  setCityCityCountryNo(val);
+                  setCityCityStateNo('');
+                  setAvailableCityStates([]);
+                  if (errors.cityCityCountryNo) setErrors(prev => ({ ...prev, cityCityCountryNo: '' }));
+                  if (val) {
+                    fetchStatesByCountry(val).then((states) => {
+                      setAvailableCityStates(states);
+                    });
+                  }
+                }}
+                placeholder="Select Country..."
+                searchPlaceholder="Search country..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.cityCityCountryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.cityCityCountryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityCityCountryNo}</p>}
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State</label>
+              <Combobox
+                options={availableCityStates.map((s: any) => ({
+                  label: s.name || '',
+                  value: (s.id || '').toString()
+                }))}
+                value={cityCityStateNo}
+                onChange={(val) => {
+                  setCityCityStateNo(val);
+                  if (errors.cityCityStateNo) setErrors(prev => ({ ...prev, cityCityStateNo: '' }));
+                }}
+                disabled={!cityCityCountryNo}
+                placeholder={cityCityCountryNo ? "Select State..." : "Select country first"}
+                searchPlaceholder="Search state..."
+                className={cn(
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.cityCityStateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+              {errors.cityCityStateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityCityStateNo}</p>}
             </div>
           </div>
         )}

@@ -12,7 +12,9 @@ import {
   Ship,
   Anchor,
   Building2,
-  Handshake
+  Handshake,
+  Globe,
+  Building
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -34,7 +36,10 @@ const masterItems = [
   { icon: Ship, label: 'Vessels', id: 'master-vessel' },
   { icon: Anchor, label: 'Ports', id: 'master-port' },
   { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type' },
-  { icon: Building2, label: 'Companies', id: 'master-company' }
+  { icon: Building2, label: 'Companies', id: 'master-company' },
+  { icon: Globe, label: 'Countries', id: 'master-country' },
+  { icon: MapPin, label: 'States', id: 'master-state' },
+  { icon: Building, label: 'Cities', id: 'master-city' }
 ];
 
 const bottomItems: { icon: any; label: string; id: string }[] = [];

@@ -319,7 +319,7 @@ function MasterPageRoute() {
   const { form } = useParams<{ form: string }>();
   const navigate = useNavigate();
 
-  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'vessel', 'port', 'business-entity-type', 'company'];
+  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'vessel', 'port', 'business-entity-type', 'company', "country", "state", "city"];
   if (!form || !validForms.includes(form)) {
     return <Navigate to="/" replace />;
   }
