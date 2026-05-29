@@ -226,6 +226,8 @@ export default function TaskDetail() {
         if (tabId.startsWith('master-')) {
           const type = tabId.replace('master-', '');
           navigate(`/master/${type}`);
+        } else if (tabId === 'sales-deals') {
+          navigate('/sales/deals');
         } else {
           navigate(`/?tab=${tabId}`);
         }

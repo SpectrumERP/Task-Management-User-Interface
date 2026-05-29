@@ -12,7 +12,8 @@ import {
   Anchor,
   Building2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Handshake
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ import LogoImage from '@/assets/SteelMountLogo01.png';
 
 const navItems = [
   { icon: LayoutGrid, label: 'Tasks Dashboard', id: 'tasks' },
+  { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
 ];
 
 const masterItems = [

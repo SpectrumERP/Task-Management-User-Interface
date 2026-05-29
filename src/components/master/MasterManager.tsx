@@ -60,6 +60,7 @@ interface MasterManagerProps {
 }
 
 import { useMasterStore } from '@/store/useMasterStore';
+import { Textarea } from '../ui/textarea';
 
 export function MasterManager({ type }: MasterManagerProps) {
   const navigate = useNavigate();
@@ -434,6 +435,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           id: (p.portNo ?? p.PortNo ?? p.id ?? '').toString(),
           code: p.code || p.Code || '',
           name: p.portName || p.PortName || p.name || '',
+          portAlias: p.portAlias || p.alias || '',
           countryNo: (p.countryNo ?? p.CountryNo ?? '').toString(),
           countryName: p.countryName || p.CountryName || '',
           stateNo: (p.stateNo ?? p.StateNo ?? '').toString(),
@@ -462,6 +464,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           id: (b.operCRMBusinessEntityTypeNo ?? b.OperCRMBusinessEntityTypeNo ?? b.id ?? '').toString(),
           code: b.code || b.Code || '',
           name: b.operCRMBusinessEntityTypeName || b.OperCRMBusinessEntityTypeName || b.name || '',
+          description: b.description || b.Description || '',
           createdBy: b.createdBy?.printingName || b.createdBy?.displayName || b.createdBy?.loginId || b.createdByName || (typeof b.createdBy === 'string' || typeof b.createdBy === 'number' ? b.createdBy : '') || 'System',
           createdDate: b.createdDate || b.createdDateTime || b.createdOn || ''
         }));
@@ -630,6 +633,10 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [locStatesList, setLocStatesList] = useState<any[]>([]);
   const [locCitiesList, setLocCitiesList] = useState<any[]>([]);
 
+  const [portStatesList, setPortStatesList] = useState<any[]>([]);
+  const [portCitiesList, setPortCitiesList] = useState<any[]>([]);
+  const [portAlias, setPortAlias] = useState('');
+
   const [contactStatesList, setContactStatesList] = useState<any[]>([]);
   const [contactCitiesList, setContactCitiesList] = useState<any[]>([]);
 
@@ -692,6 +699,62 @@ export function MasterManager({ type }: MasterManagerProps) {
     return found ? found.locationTypeNo : null;
   };
 
+  const handlePortCountryChange = async (val: string) => {
+    setCountryNo(val);
+    setStateNo('');
+    setCityNo('');
+    setPortStatesList([]);
+    setPortCitiesList([]);
+    if (errors.countryNo || errors.stateNo || errors.cityNo) {
+      setErrors(prev => ({ ...prev, countryNo: '', stateNo: '', cityNo: '' }));
+    }
+    if (val) {
+      const states = await fetchStatesByCountry(val);
+      setPortStatesList(states);
+    }
+  };
+
+  const handlePortStateChange = async (val: string) => {
+    setStateNo(val);
+    setCityNo('');
+    setPortCitiesList([]);
+    if (errors.stateNo || errors.cityNo) {
+      setErrors(prev => ({ ...prev, stateNo: '', cityNo: '' }));
+    }
+    if (val) {
+      const cities = await fetchCitiesByState(val);
+      setPortCitiesList(cities);
+    }
+  };
+
+  const handleLocationCountryChange = async (val: string) => {
+    setCountryNo(val);
+    setStateNo('');
+    setCityNo('');
+    setLocStatesList([]);
+    setLocCitiesList([]);
+    if (errors.countryNo || errors.stateNo || errors.cityNo) {
+      setErrors(prev => ({ ...prev, countryNo: '', stateNo: '', cityNo: '' }));
+    }
+    if (val) {
+      const states = await fetchStatesByCountry(val);
+      setLocStatesList(states);
+    }
+  };
+
+  const handleLocationStateChange = async (val: string) => {
+    setStateNo(val);
+    setCityNo('');
+    setLocCitiesList([]);
+    if (errors.stateNo || errors.cityNo) {
+      setErrors(prev => ({ ...prev, stateNo: '', cityNo: '' }));
+    }
+    if (val) {
+      const cities = await fetchCitiesByState(val);
+      setLocCitiesList(cities);
+    }
+  };
+
   useEffect(() => {
     if (isNew) {
       setErrors({});
@@ -727,6 +790,9 @@ export function MasterManager({ type }: MasterManagerProps) {
       setCityNo('');
       setPinCode('');
       setLocationRegion('');
+      setPortStatesList([]);
+      setPortCitiesList([]);
+      setPortAlias('');
       setServerError(null);
 
       // Company Master resets
@@ -880,6 +946,13 @@ export function MasterManager({ type }: MasterManagerProps) {
               setCountryNo(loadedCountry?.toString?.() ?? '');
               setStateNo(loadedState?.toString?.() ?? '');
               setCityNo(loadedCity?.toString?.() ?? '');
+              setPortAlias(dl.portAlias || dl.alias || dl.portAliasName || '');
+              if (loadedCountry) {
+                fetchStatesByCountry(loadedCountry).then((states) => setPortStatesList(states));
+              }
+              if (loadedState) {
+                fetchCitiesByState(loadedState).then((cities) => setPortCitiesList(cities));
+              }
             }
           }
         }).catch(err => console.error("Failed to load port details:", err));
@@ -890,6 +963,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             const dl = body.data || body;
             if (dl) {
               setName(dl.operCRMBusinessEntityTypeName || dl.OperCRMBusinessEntityTypeName || dl.name || '');
+              setDescription(dl.description || dl.Description || '');
             }
           }
         }).catch(err => console.error("Failed to load business entity type details:", err));
@@ -925,6 +999,12 @@ export function MasterManager({ type }: MasterManagerProps) {
               setStateNo(stateVal.toString());
               const cityVal = addr.city?.cityNo || addr.cityNo || '';
               setCityNo(cityVal.toString());
+              if (countryVal) {
+                fetchStatesByCountry(countryVal).then((states) => setLocStatesList(states));
+              }
+              if (stateVal) {
+                fetchCitiesByState(stateVal).then((cities) => setLocCitiesList(cities));
+              }
               setPinCode(addr.pinCode || addr.pincode || '');
               const regionVal = addr.region?.regionNo || addr.regionNo || '';
               setLocationRegion(regionVal.toString());
@@ -1234,6 +1314,9 @@ export function MasterManager({ type }: MasterManagerProps) {
         newErrors.selectedUsers = 'Atleast one user required.';
       }
     } else if (type === 'port') {
+      if (!portAlias || portAlias === '') {
+        newErrors.portAlias = 'Port Alias is required';
+      }
       if (!countryNo || countryNo === 'none' || countryNo === '') {
         newErrors.countryNo = 'Country is required';
       }
@@ -1386,6 +1469,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           const payload = {
             portNo: parseInt(id) || null,
             portName: name,
+            portAlias: portAlias || null,
             countryNo: parseInt(countryNo) || null,
             stateNo: parseInt(stateNo) || null,
             cityNo: parseInt(cityNo) || null
@@ -1395,7 +1479,8 @@ export function MasterManager({ type }: MasterManagerProps) {
         } else if (type === 'business-entity-type') {
           const payload = {
             operCRMBusinessEntityTypeNo: parseInt(id) || null,
-            operCRMBusinessEntityTypeName: name
+            operCRMBusinessEntityTypeName: name,
+            description: description || null
           };
           await apiService.post('/api/master/business-entity-types/save', payload);
           await fetchBusinessEntityTypes();
@@ -1615,6 +1700,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           const payload = {
             portNo: null,
             portName: name,
+            portAlias: portAlias || null,
             countryNo: parseInt(countryNo) || null,
             stateNo: parseInt(stateNo) || null,
             cityNo: parseInt(cityNo) || null
@@ -1624,7 +1710,8 @@ export function MasterManager({ type }: MasterManagerProps) {
         } else if (type === 'business-entity-type') {
           const payload = {
             operCRMBusinessEntityTypeNo: null,
-            operCRMBusinessEntityTypeName: name
+            operCRMBusinessEntityTypeName: name,
+            description: description || null
           };
           await apiService.post('/api/master/business-entity-types/save', payload);
           await fetchBusinessEntityTypes();
@@ -3223,7 +3310,22 @@ export function MasterManager({ type }: MasterManagerProps) {
         </div>
 
         {/* ----------------- PORT EXTRA FIELDS ----------------- */}
-        {type === 'port' && (
+        {type === 'port' && (<>
+        <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Port Alias</label>
+              <Input
+                placeholder="Enter Port Alias"
+                value={portAlias}
+                maxLength={10}
+                onChange={(e) => {
+                  setPortAlias(e.target.value);
+                  if (errors.portAlias) setErrors(prev => ({ ...prev, portAlias: '' }));
+                }}
+                className={cn("bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  errors.portAlias && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500")}
+              />
+              {errors.portAlias && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.portAlias}</p>}
+            </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
@@ -3233,15 +3335,12 @@ export function MasterManager({ type }: MasterManagerProps) {
                   value: (c.countryNo || '').toString()
                 }))}
                 value={countryNo}
-                onChange={(val) => {
-                  setCountryNo(val);
-                  if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
-                }}
+                onChange={handlePortCountryChange}
                 placeholder="Select Country"
                 searchPlaceholder="Search country..."
                 className={cn(
                   "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                  errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500"
                 )}
               />
               {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
@@ -3250,20 +3349,18 @@ export function MasterManager({ type }: MasterManagerProps) {
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
               <Combobox
-                options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                options={portStatesList.map((s: any) => ({
                   label: s.stateName || '',
                   value: (s.stateNo || '').toString()
                 }))}
                 value={stateNo}
-                onChange={(val) => {
-                  setStateNo(val);
-                  if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
-                }}
-                placeholder="Select State"
+                onChange={handlePortStateChange}
+                disabled={!countryNo}
+                placeholder={countryNo ? "Select State" : "Select country first"}
                 searchPlaceholder="Search state..."
                 className={cn(
                   "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                  errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500"
                 )}
               />
               {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
@@ -3272,7 +3369,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
               <Combobox
-                options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+                options={portCitiesList.map((c: any) => ({
                   label: c.cityName || '',
                   value: (c.cityNo || '').toString()
                 }))}
@@ -3281,16 +3378,19 @@ export function MasterManager({ type }: MasterManagerProps) {
                   setCityNo(val);
                   if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
                 }}
-                placeholder="Select City"
+                disabled={!stateNo}
+                placeholder={stateNo ? "Select City" : "Select state first"}
                 searchPlaceholder="Search city..."
                 className={cn(
                   "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                  errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500"
                 )}
               />
               {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
             </div>
+            
           </div>
+          </>
         )}
 
         {/* Color Coding Option (Category only) */}
@@ -3742,6 +3842,20 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
         )}
 
+        {/* ----------------- BUSINESS ENTITY TYPE EXTRA FIELDS ----------------- */}
+        {type === 'business-entity-type' && (
+          <div className="space-y-1">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Description</label>
+            <Textarea
+              placeholder="Enter business entity type description..."
+              value={description}
+              maxLength={500}
+              onChange={(e) => setDescription(e.target.value)}
+              className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+            />
+          </div>
+        )}
+
         {/* ----------------- FOLDER EXTRA FIELDS ----------------- */}
         {type === 'folder' && (
           <div className="space-y-3">
@@ -3996,10 +4110,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                     value: (c.countryNo || '').toString()
                   }))}
                   value={countryNo}
-                  onChange={(val) => {
-                    setCountryNo(val);
-                    if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
-                  }}
+                  onChange={handleLocationCountryChange}
                   placeholder="Select Country"
                   searchPlaceholder="Search country..."
                   className={cn(
@@ -4012,16 +4123,14 @@ export function MasterManager({ type }: MasterManagerProps) {
               <div className="space-y-1">
                 <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
                 <Combobox
-                  options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                  options={locStatesList.map((s: any) => ({
                     label: s.stateName || '',
                     value: (s.stateNo || '').toString()
                   }))}
                   value={stateNo}
-                  onChange={(val) => {
-                    setStateNo(val);
-                    if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
-                  }}
-                  placeholder="Select State"
+                  onChange={handleLocationStateChange}
+                  disabled={!countryNo}
+                  placeholder={countryNo ? "Select State" : "Select country first"}
                   searchPlaceholder="Search state..."
                   className={cn(
                     "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
@@ -4036,7 +4145,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               <div className="space-y-1 col-span-2">
                 <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
                 <Combobox
-                  options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+                  options={locCitiesList.map((c: any) => ({
                     label: c.cityName || '',
                     value: (c.cityNo || '').toString()
                   }))}
@@ -4045,7 +4154,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                     setCityNo(val);
                     if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
                   }}
-                  placeholder="Select City"
+                  disabled={!stateNo}
+                  placeholder={stateNo ? "Select City" : "Select state first"}
                   searchPlaceholder="Search city..."
                   className={cn(
                     "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
@@ -4878,6 +4988,9 @@ export function MasterManager({ type }: MasterManagerProps) {
                         {type === 'user-group' && (
                           <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
                         )}
+                        {type === 'business-entity-type' && (
+                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+                        )}
                         {type === 'benefit-type' && (
                           <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
                         )}
@@ -4948,6 +5061,11 @@ export function MasterManager({ type }: MasterManagerProps) {
                           )}
                           {type === 'user-group' && (
                             <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[200px] truncate">
+                              {item.description || <span className="italic text-slate-300 font-medium">No description</span>}
+                            </td>
+                          )}
+                          {type === 'business-entity-type' && (
+                            <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[240px] truncate">
                               {item.description || <span className="italic text-slate-300 font-medium">No description</span>}
                             </td>
                           )}
