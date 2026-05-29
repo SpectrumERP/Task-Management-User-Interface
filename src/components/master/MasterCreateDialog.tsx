@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { apiService } from '@/services/apiService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,10 +11,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { X, Plus, Loader2, Save, Sparkles, AlertCircle, Layers, Sliders, Folder, MapPin, Check } from 'lucide-react';
+import { X, Loader2, Save, Sparkles, AlertCircle, Layers, Sliders, Folder, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@radix-ui/react-label';
 
@@ -118,7 +117,7 @@ export function MasterCreateDialog({
     setLocationRegion('');
 
     // Asynchronously fetch fill values needed specifically for master sub-forms
-    const activeCompanyNo = companyNo || 2;
+    const activeCompanyNo = companyNo || 1;
     if (type === 'category') {
       apiService.get<any>(`/api/master/task-categories/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setCategoryFillValues(response.data || response);
@@ -181,7 +180,7 @@ export function MasterCreateDialog({
     setIsSaving(true);
     setServerError(null);
 
-    const activeCompanyNo = companyNo || 2;
+
     try {
       let response: any = null;
 

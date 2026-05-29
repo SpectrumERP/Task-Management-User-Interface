@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { apiService } from '@/services/apiService';
 import { Combobox } from '@/components/ui/Combobox';
 import { Input } from '@/components/ui/input';
@@ -213,7 +213,7 @@ export function CustomFieldsSection({
   customFields,
   onChange,
   categoryFillValues: categoryFillValuesProp,
-  companyNo = 2,
+  companyNo = 1,
   hideAddButton = false
 }: CustomFieldsSectionProps) {
   const [internalFillValues, setInternalFillValues] = useState<any>(null);

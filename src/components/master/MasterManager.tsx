@@ -70,7 +70,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   const { fillValues } = useTaskStore();
   const { company: authCompanies } = useAuthStore();
-  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2;
+  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
@@ -96,11 +96,11 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [isLoadingMoreCompanies, setIsLoadingMoreCompanies] = useState(false);
   const [pageSize, setPageSize] = useState<number>(20);
   const [apiCountries, setApiCountries] = useState<any[]>([]);
-  const [isLoadingCountries, setIsLoadingCountries] = useState(false);
+  const [_isLoadingCountries, setIsLoadingCountries] = useState(false);
   const [apiStates, setApiStates] = useState<any[]>([]);
-  const [isLoadingStates, setIsLoadingStates] = useState(false);
+  const [_isLoadingStates, setIsLoadingStates] = useState(false);
   const [apiCities, setApiCities] = useState<any[]>([]);
-  const [isLoadingCities, setIsLoadingCities] = useState(false);
+  const [_isLoadingCities, setIsLoadingCities] = useState(false);
 
   // Cache track for loaded row numbers
   const loadedRanges = useRef<{ min: number; max: number }>({ min: 999999, max: 0 });
@@ -335,8 +335,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         const beNo = c.businessEntityNo ?? c.BusinessEntityNo ?? c.companyNo ?? c.id ?? '';
         const name = c.businessEntityName ?? c.BusinessEntityName ?? c.companyName ?? c.name ?? '';
         const code = c.code ?? c.Code ?? `BE-${beNo}`;
-        const timezoneNo = c.crmTimeZoneNo ?? c.CRMTimeZoneNo ?? '';
-        const timezoneName = c.crmTimeZoneName ?? c.CRMTimeZoneName ?? '';
+
         const vat = c.vatgstNo ?? c.VATGSTNo ?? c.vatGst ?? '';
         const limit = c.creditInsuranceLimit ?? c.CreditInsuranceLimit ?? c.creditLimit ?? 0;
         const addr = c.address ?? c.Address ?? '';
@@ -1033,23 +1032,23 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [valuationtypeNo, setValuationtypeNo] = useState('');
 
   // Country Master extra fields
-  const [countryCode, setCountryCode] = useState('');
-  const [countryName, setCountryName] = useState('');
+  const [_countryCode, setCountryCode] = useState('');
+  const [_countryName, setCountryName] = useState('');
 
   // State Master extra fields
-  const [stateCode, setStateCode] = useState('');
-  const [stateName, setStateName] = useState('');
+  const [_stateCode, setStateCode] = useState('');
+  const [_stateName, setStateName] = useState('');
   const [gstStateCode, setGstStateCode] = useState('');
   const [isUnionTerritory, setIsUnionTerritory] = useState(false);
   const [stateCountryNo, setStateCountryNo] = useState('');
-  const [availableCountries, setAvailableCountries] = useState<any[]>([]);
+  const [_availableCountries, setAvailableCountries] = useState<any[]>([]);
 
   // City Master extra fields
-  const [cityCode, setCityCode] = useState('');
-  const [cityName, setCityName] = useState('');
+  const [_cityCode, setCityCode] = useState('');
+  const [_cityName, setCityName] = useState('');
   const [cityCityCountryNo, setCityCityCountryNo] = useState('');
   const [cityCityStateNo, setCityCityStateNo] = useState('');
-  const [availableCityCountries, setAvailableCityCountries] = useState<any[]>([]);
+  const [_availableCityCountries, setAvailableCityCountries] = useState<any[]>([]);
   const [availableCityStates, setAvailableCityStates] = useState<any[]>([]);
 
   // Location extra fields
@@ -1074,7 +1073,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [companyPinCode, setCompanyPinCode] = useState('');
   const [companyVatGst, setCompanyVatGst] = useState('');
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
-  const [companyStatus, setCompanyStatus] = useState('Active');
+  const [_companyStatus, setCompanyStatus] = useState('Active');
 
   const [companyLocations, setCompanyLocations] = useState<any[]>([]);
   const [companyPorts, setCompanyPorts] = useState<any[]>([]);
@@ -2064,7 +2063,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
         } else if (type === 'company') {
-          const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
+          // portsList derived from companyPorts state directly
           const computedContacts = companyContacts.map(c => ({
             contactPersonName: c.contactName || c.name || '',
             address: c.address || '',
@@ -2235,7 +2234,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           await apiService.post('/api/master/task-locations/save', payload);
           await fetchLocations();
         } else if (type === 'company') {
-          const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
+          // portsList derived from companyPorts state directly
           const computedContacts = companyContacts.map(c => ({
             contactPersonName: c.contactName || c.name || '',
             address: c.address || '',
@@ -2747,8 +2746,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const renderCompanyForm = () => {
     // Fill Values exclusively from API
     const countries = businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries || [];
-    const states = companyStatesList;
-    const cities = companyCitiesList;
+
 
     const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
     const timeZones = businessEntityFillValues?.data?.timeZones || businessEntityFillValues?.timeZones || [];
@@ -3095,7 +3093,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
               >
                 <option value="">-- Choose Port to Assign --</option>
-                {portsList.map((p, idx) => (
+                {portsList.map((p: string, idx: number) => (
                   <option key={idx} value={p}>{p}</option>
                 ))}
               </select>
