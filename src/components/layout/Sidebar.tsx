@@ -12,6 +12,8 @@ import {
   Ship,
   Anchor,
   Building2,
+  Globe,
+  Building,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -37,7 +39,10 @@ const masterItems = [
   { icon: Ship, label: 'Vessels', id: 'master-vessel' },
   { icon: Anchor, label: 'Ports', id: 'master-port' },
   { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type' },
-  { icon: Building2, label: 'Companies', id: 'master-company' }
+  { icon: Building2, label: 'Companies', id: 'master-company' },
+  { icon: Globe, label: 'Countries', id: 'master-country' },
+  { icon: MapPin, label: 'States', id: 'master-state' },
+  { icon: Building, label: 'Cities', id: 'master-city' }
 ];
 
 const bottomItems: { icon: any; label: string; id: string }[] = [];
@@ -98,7 +103,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         {/* Master Data Section */}
         <div className="space-y-2">
           {!isCollapsed && (
-            <button 
+            <button
               onClick={() => setIsMasterExpanded(!isMasterExpanded)}
               className="w-full flex items-center justify-between px-4 mb-2 group cursor-pointer hover:bg-slate-200/50 py-1.5 rounded-lg transition-colors"
             >
@@ -106,12 +111,12 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
                 <span className="h-1.5 w-1.5 rounded-full bg-[#00b4d8]" />
                 Master Data
               </h3>
-              <ChevronDown 
-                size={14} 
+              <ChevronDown
+                size={14}
                 className={cn(
                   "text-slate-400 transition-transform duration-300",
                   !isMasterExpanded && "-rotate-90"
-                )} 
+                )}
               />
             </button>
           )}

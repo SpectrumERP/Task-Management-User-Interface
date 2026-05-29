@@ -51,6 +51,7 @@ export default function TaskDetail() {
   const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
   const [notFoundMessage, setNotFoundMessage] = useState("Task not found.");
 
+  // Get status from query params if new task
   const queryParams = new URLSearchParams(location.search);
   const initialStatus = queryParams.get('status') as TaskStatus | undefined;
 
@@ -195,7 +196,7 @@ export default function TaskDetail() {
 
         // Call attachments list API after successful task load-data
         try {
-          const attachmentList = await attachmentService.getAttachments(mappedTask.taskNo);
+          const attachmentList = await attachmentService.getAttachments(mappedTask.taskNo, 1547); // Note: 1547 task form number hardcoded, need to update with dynamic value
           mappedTask.attachments = attachmentList;
         } catch (attError) {
           console.error('Failed to load attachments during task load-data:', attError);
