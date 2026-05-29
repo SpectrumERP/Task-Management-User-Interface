@@ -497,9 +497,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       calendarColor: initialData?.calendarColor || '',
       recurrence: initialData?.recurrence || { pattern: 'NONE', until: null },
       attachments: (initialData?.attachments || initialData?.attachments || []).map((a: any) => ({
-        id: a.id || a.docNo || a.operTaskAttachmentDetailNo || 0,
+        id: a.id || a.docNo || a.operTaskAttachmentDetailNo || null,
         name: a.docName || a.name || a.fileName || a.storedFileName || 'attachment',
-        size: a.docSize || a.size || 0,
+        size: a.docSize || a.size || null,
         storedFileName: a.storedFileName || '',
         storedFilePath: a.storedFilePath || '',
         relativePath: a.relativePath || a.storedFilePath || ''
@@ -884,9 +884,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         })) || [],
         executionNotes: initialData.executionNotes || initialData.execution_notes || '',
         attachments: (initialData.attachments || initialData.attachments || []).map((a: any) => ({
-          id: a.id || a.docNo || a.operTaskAttachmentDetailNo || 0,
+          id: a.id || a.docNo || a.operTaskAttachmentDetailNo || null,
           name: a.docName || a.name || a.fileName || a.storedFileName || 'attachment',
-          size: a.docSize || a.size || 0,
+          size: a.docSize || a.size || null,
           storedFileName: a.storedFileName || '',
           storedFilePath: a.storedFilePath || '',
           relativePath: a.relativePath || a.storedFilePath || ''
@@ -1202,7 +1202,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
     // Find status number from fillValues
     const statusObj = fillValues?.status.find(s => s.Status === data.status);
-    const statusNo = statusObj?.StatusNo || 0;
+    const statusNo = statusObj?.StatusNo || null;
 
     // Combine collaborators and informTo into members
     const members = [
@@ -1264,7 +1264,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           operTaskNo: null,
           title: st.title || null,
           description: st.description || null,
-          ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : 0,
+          ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
           endDate: st.endDate ? new Date(st.endDate).toISOString() : null,
           completionRemark: st.completionRemark || null,
           completionDate: st.completionDate ? new Date(st.completionDate).toISOString() : null,
@@ -1274,7 +1274,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           operTaskNo: st.operTaskNo || null,
           title: st.title || null,
           description: st.description || null,
-          ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : 0,
+          ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
           endDate: st.endDate ? new Date(st.endDate).toISOString() : null,
           completionRemark: st.completionRemark || null,
           completionDate: st.completionDate ? new Date(st.completionDate).toISOString() : null,
@@ -2337,7 +2337,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <UserCombobox
                                 value={subField.value || ''}
                                 onChange={(user) => {
-                                  subField.onChange(user.loginNo.toString());
+                                  const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                  subField.onChange(val);
                                   form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
                                 }}
                                 placeholder="Search owner..."
@@ -2480,10 +2481,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                       <UserCombobox
                                         value={subField.value || ''}
                                         onChange={(user) => {
-                                          subField.onChange(user.loginNo.toString());
+                                          const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                          subField.onChange(val);
                                           form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
                                         }}
                                         placeholder="Search owner..."
+                                        className={form.formState.errors.sub_tasks?.[index]?.ownerLoginNo ? "!border-red-500 text-red-500" : ""}
                                       />
                                       {form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && (
                                         <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
@@ -2616,7 +2619,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     <UserCombobox
                                       value={subField.value || ''}
                                       onChange={(user) => {
-                                        subField.onChange(user.loginNo.toString());
+                                        const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                        subField.onChange(val);
                                         form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
                                       }}
                                       placeholder="Search owner..."

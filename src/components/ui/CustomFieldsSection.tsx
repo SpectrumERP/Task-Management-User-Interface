@@ -383,7 +383,16 @@ export function CustomFieldsSection({
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Additional Fields Section</label>
+        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1"> </label>
+        <Button
+          type="button"
+          onClick={addField}
+          variant="ghost"
+          size="sm"
+          className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1"
+        >
+          <Plus size={12} className="text-[#006699]" /> Add Additional Field
+        </Button>
       </div>
 
       {customFields.length > 0 ? (
