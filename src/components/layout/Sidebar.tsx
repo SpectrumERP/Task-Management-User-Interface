@@ -2,13 +2,17 @@ import {
   LayoutGrid,
   Plus,
   X,
+  Briefcase,
   Layers,
   Sliders,
   AlertCircle,
   Folder,
   Users,
   Sparkles,
-  MapPin
+  MapPin,
+  Ship,
+  Anchor,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -25,7 +29,10 @@ const masterItems = [
   { icon: Folder, label: 'Folders', id: 'master-folder' },
   { icon: Users, label: 'User Groups', id: 'master-user-group' },
   { icon: Sparkles, label: 'Benefit Types', id: 'master-benefit-type' },
-  { icon: MapPin, label: 'Locations', id: 'master-location' }
+  { icon: MapPin, label: 'Locations', id: 'master-location' },
+  { icon: Ship, label: 'Vessels', id: 'master-vessel' },
+  { icon: Anchor, label: 'Ports', id: 'master-port' },
+  { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type' },
 ];
 
 const bottomItems: { icon: any; label: string; id: string }[] = [];
