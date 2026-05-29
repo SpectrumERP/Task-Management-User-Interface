@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   LayoutGrid,
   X,
@@ -13,6 +14,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Handshake
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,7 +22,7 @@ import { cn } from '@/lib/utils';
 import LogoImage from '@/assets/SteelMountLogo01.png';
 
 const navItems = [
-  { icon: LayoutGrid, label: 'Tasks Dashboard', id: 'tasks' },
+  { icon: LayoutGrid, label: 'Tasks List', id: 'tasks' },
   { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
 ];
 
@@ -50,6 +52,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, onToggleCollapse, className }: SidebarProps) {
+  const [isMasterExpanded, setIsMasterExpanded] = useState(true);
+
   return (
     <aside className={cn("h-full bg-[#f4f7fa] border-r flex flex-col p-4 shrink-0 transition-all duration-300", isCollapsed ? "w-[80px] items-center px-2" : "w-64", className)}>
       {/* Brand */}
@@ -94,12 +98,27 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         {/* Master Data Section */}
         <div className="space-y-2">
           {!isCollapsed && (
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 mb-2 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#00b4d8]" />
-              Master Data
-            </h3>
+            <button 
+              onClick={() => setIsMasterExpanded(!isMasterExpanded)}
+              className="w-full flex items-center justify-between px-4 mb-2 group cursor-pointer hover:bg-slate-200/50 py-1.5 rounded-lg transition-colors"
+            >
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#00b4d8]" />
+                Master Data
+              </h3>
+              <ChevronDown 
+                size={14} 
+                className={cn(
+                  "text-slate-400 transition-transform duration-300",
+                  !isMasterExpanded && "-rotate-90"
+                )} 
+              />
+            </button>
           )}
-          <div className="space-y-1">
+          <div className={cn(
+            "space-y-1 overflow-hidden transition-all duration-300",
+            (isMasterExpanded || isCollapsed) ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+          )}>
             {masterItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
