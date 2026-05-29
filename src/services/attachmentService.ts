@@ -213,13 +213,14 @@ export const attachmentService = {
    * 5. GET /api/document-attachments
    * Gets the list of attachments for a given transactionId (taskNo).
    */
-  async getAttachments(transactionId: number): Promise<DocumentAttachment[]> {
+  async getAttachments(transactionId: number, formNo: number): Promise<DocumentAttachment[]> {
     try {
       const response = await apiService.get<AttachmentResponse<any[]>>(
         '/api/document-attachments',
         {
           params: {
-            'transactionId': transactionId.toString()
+            'transactionId': transactionId.toString(),
+            'formNo': formNo.toString()
           }
         }
       );

@@ -2050,47 +2050,49 @@ export function MasterManager({ type }: MasterManagerProps) {
           });
 
           await fetchCompanies();
-        } else if (type === 'country') {
-          const payload = {
-            countryNo: editingId ? parseInt(editingId) : null,
-            countryName: name,
-            companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
-          };
-          if (editingId) {
-            await apiService.post('/api/master/countries/save', payload);
-          } else {
-            await apiService.post('/api/master/countries/save', { ...payload, countryNo: null });
-          }
-          await fetchCountries();
-        } else if (type === 'state') {
-          const payload = {
-            stateNo: editingId ? parseInt(editingId) : null,
-            stateName: name,
-            gstStateCode: gstStateCode,
-            isUnionTerritory: isUnionTerritory,
-            countryNo: parseInt(stateCountryNo) || null,
-            companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
-          };
-          if (editingId) {
-            await apiService.post('/api/master/states/save', payload);
-          } else {
-            await apiService.post('/api/master/states/save', { ...payload, stateNo: null });
-          }
-          await fetchStates();
-        } else if (type === 'city') {
-          const payload = {
-            cityNo: editingId ? parseInt(editingId) : null,
-            cityName: name,
-            stateNo: parseInt(cityCityStateNo) || null,
-            companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
-          };
-          if (editingId) {
-            await apiService.post('/api/master/cities/save', payload);
-          } else {
-            await apiService.post('/api/master/cities/save', { ...payload, cityNo: null });
-          }
-          await fetchCities();
         }
+      }
+
+      if (type === 'country') {
+        const payload = {
+          countryNo: editingId ? parseInt(editingId) : null,
+          countryName: name,
+          companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
+        };
+        if (editingId) {
+          await apiService.post('/api/master/countries/save', payload);
+        } else {
+          await apiService.post('/api/master/countries/save', { ...payload, countryNo: null });
+        }
+        await fetchCountries();
+      } else if (type === 'state') {
+        const payload = {
+          stateNo: editingId ? parseInt(editingId) : null,
+          stateName: name,
+          gstStateCode: gstStateCode,
+          isUnionTerritory: isUnionTerritory,
+          countryNo: parseInt(stateCountryNo) || null,
+          companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
+        };
+        if (editingId) {
+          await apiService.post('/api/master/states/save', payload);
+        } else {
+          await apiService.post('/api/master/states/save', { ...payload, stateNo: null });
+        }
+        await fetchStates();
+      } else if (type === 'city') {
+        const payload = {
+          cityNo: editingId ? parseInt(editingId) : null,
+          cityName: name,
+          stateNo: parseInt(cityCityStateNo) || null,
+          companyNo: authCompanies?.find(itm => itm.HeadOfficeNo == itm.CompanyNo)?.CompanyNo
+        };
+        if (editingId) {
+          await apiService.post('/api/master/cities/save', payload);
+        } else {
+          await apiService.post('/api/master/cities/save', { ...payload, cityNo: null });
+        }
+        await fetchCities();
       }
       setShowSuccessAlert(true);
     } catch (err: any) {
@@ -3543,21 +3545,21 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* ----------------- PORT EXTRA FIELDS ----------------- */}
         {type === 'port' && (<>
-        <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Port Alias</label>
-              <Input
-                placeholder="Enter Port Alias"
-                value={portAlias}
-                maxLength={10}
-                onChange={(e) => {
-                  setPortAlias(e.target.value);
-                  if (errors.portAlias) setErrors(prev => ({ ...prev, portAlias: '' }));
-                }}
-                className={cn("bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                  errors.portAlias && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500")}
-              />
-              {errors.portAlias && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.portAlias}</p>}
-            </div>
+          <div className="space-y-1">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Port Alias</label>
+            <Input
+              placeholder="Enter Port Alias"
+              value={portAlias}
+              maxLength={10}
+              onChange={(e) => {
+                setPortAlias(e.target.value);
+                if (errors.portAlias) setErrors(prev => ({ ...prev, portAlias: '' }));
+              }}
+              className={cn("bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                errors.portAlias && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500")}
+            />
+            {errors.portAlias && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.portAlias}</p>}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
@@ -3620,9 +3622,9 @@ export function MasterManager({ type }: MasterManagerProps) {
               />
               {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
             </div>
-            
+
           </div>
-          </>
+        </>
         )}
 
         {/* Color Coding Option (Category only) */}
@@ -4413,7 +4415,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
         )}
 
-        
+
 
         {/* STATE MASTER FIELDS */}
         {type === 'state' && (
@@ -4421,9 +4423,9 @@ export function MasterManager({ type }: MasterManagerProps) {
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
               <Combobox
-                options={availableCountries.map((c: any) => ({
-                  label: c.name || '',
-                  value: (c.id || '').toString()
+                options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                  label: c.countryName || '',
+                  value: (c.countryNo || '').toString()
                 }))}
                 value={stateCountryNo}
                 onChange={(val) => {
@@ -4456,7 +4458,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               />
               {errors.gstStateCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.gstStateCode}</p>}
             </div>
-            <div className="space-y-2 flex items-center gap-3">
+            {/* <div className="space-y-2 flex items-center gap-3">
               <Checkbox
                 checked={isUnionTerritory}
                 onCheckedChange={(checked) => setIsUnionTerritory(checked as boolean)}
@@ -4465,7 +4467,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer">
                 Is Union Territory
               </label>
-            </div>
+            </div> */}
           </div>
         )}
 
@@ -4475,9 +4477,9 @@ export function MasterManager({ type }: MasterManagerProps) {
             <div className="space-y-1">
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
               <Combobox
-                options={availableCityCountries.map((c: any) => ({
-                  label: c.name || '',
-                  value: (c.id || '').toString()
+                options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                  label: c.countryName || '',
+                  value: (c.countryNo || '').toString()
                 }))}
                 value={cityCityCountryNo}
                 onChange={(val) => {
@@ -4504,8 +4506,8 @@ export function MasterManager({ type }: MasterManagerProps) {
               <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State</label>
               <Combobox
                 options={availableCityStates.map((s: any) => ({
-                  label: s.name || '',
-                  value: (s.id || '').toString()
+                  label: s.stateName || s.name || '',
+                  value: (s.stateNo || s.id || '').toString()
                 }))}
                 value={cityCityStateNo}
                 onChange={(val) => {
