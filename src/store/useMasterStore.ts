@@ -67,6 +67,69 @@ export interface LocationMaster {
   locationRegion: string;
 }
 
+export interface CompanyLocation {
+  locationTypeNo: number;
+  address: string;
+  countryNo: number;
+  stateNo: number;
+  cityNo: number;
+  pinCode: string;
+  countryName?: string;
+  stateName?: string;
+  cityName?: string;
+  locationTypeName?: string;
+}
+
+export interface CompanyContact {
+  contactPersonName: string;
+  address: string;
+  countryNo: number;
+  stateNo: number;
+  cityNo: number;
+  pinCode: string;
+  phoneNo: string;
+  email: string;
+  designation: string;
+  department: string;
+  countryName?: string;
+  stateName?: string;
+  cityName?: string;
+  status?: string;
+}
+
+export interface CompanyPort {
+  portNo: number;
+  portName?: string;
+}
+
+export interface CompanyAttachment {
+  docNo: number;
+  fileName?: string;
+  filePath?: string;
+  fileSize?: number;
+}
+
+export interface CompanyMaster {
+  id: string;
+  businessEntityNo: number;
+  businessEntityName: string;
+  crmBusinessEntityTypeNo: number;
+  crmTimeZoneNo: number;
+  vatgstNo: string;
+  creditInsuranceLimit: number;
+  contactPersons: CompanyContact[];
+  locations: CompanyLocation[];
+  ports: CompanyPort[];
+  attachment: CompanyAttachment[];
+  code?: string;
+  status?: string;
+  businessEntityType?: {
+    operCRMBusinessEntityTypeNo: number;
+    operCRMBusinessEntityTypeName: string;
+  };
+  businessEntityTypeName?: string;
+}
+
 interface MasterState {
   categories: CategoryMaster[];
   types: TypeMaster[];
@@ -75,6 +138,7 @@ interface MasterState {
   userGroups: UserGroupMaster[];
   businessBenefitTypes: BusinessBenefitTypeMaster[];
   locations: LocationMaster[];
+  companies: CompanyMaster[];
 
   // CRUD for Categories
   addCategory: (item: Omit<CategoryMaster, 'id' | 'code'>) => void;
@@ -110,6 +174,11 @@ interface MasterState {
   addLocation: (item: Omit<LocationMaster, 'id' | 'code'>) => void;
   updateLocation: (id: string, item: Partial<LocationMaster>) => void;
   deleteLocation: (id: string) => void;
+
+  // CRUD for Companies
+  addCompany: (item: CompanyMaster) => void;
+  updateCompany: (id: string, item: Partial<CompanyMaster>) => void;
+  deleteCompany: (id: string) => void;
 }
 
 const generateCode = (prefix: string, listLength: number) => {
@@ -211,6 +280,138 @@ export const useMasterStore = create<MasterState>()(
           locationRegion: 'EMEA'
         }
       ],
+      companies: [
+        {
+          id: 'be-1',
+          businessEntityNo: 1,
+          businessEntityName: 'Acme Logistics Corporation',
+          crmBusinessEntityTypeNo: 1,
+          businessEntityType: {
+            operCRMBusinessEntityTypeNo: 1,
+            operCRMBusinessEntityTypeName: 'Operation'
+          },
+          businessEntityTypeName: 'Operation',
+          crmTimeZoneNo: 1,
+          vatgstNo: 'GSTIN987654321A',
+          creditInsuranceLimit: 500000,
+          status: 'Active',
+          contactPersons: [
+            {
+              contactPersonName: 'Sarah Jenkins',
+              address: '742 Evergreen Terrace',
+              countryNo: 2,
+              stateNo: 4,
+              cityNo: 4,
+              pinCode: '400001',
+              phoneNo: '+91 98765 43210',
+              email: 'sarah.jenkins@acmelogistics.com',
+              designation: 'VP of Procurement',
+              department: 'Logistics',
+              status: 'Active'
+            },
+            {
+              contactPersonName: 'John Doe',
+              address: '100 Baker Street',
+              countryNo: 2,
+              stateNo: 4,
+              cityNo: 4,
+              pinCode: '400002',
+              phoneNo: '+91 99999 88888',
+              email: 'john.doe@acmelogistics.com',
+              designation: 'Supply Chain Coordinator',
+              department: 'Operations',
+              status: 'Active'
+            }
+          ],
+          locations: [
+            {
+              locationTypeNo: 1,
+              address: 'Acme Tower, BKC Phase 1',
+              countryNo: 2,
+              stateNo: 4,
+              cityNo: 4,
+              pinCode: '400051',
+              countryName: 'India',
+              stateName: 'Maharashtra',
+              cityName: 'Mumbai',
+              locationTypeName: 'Office'
+            },
+            {
+              locationTypeNo: 2,
+              address: 'Plot 42, Nhava Sheva SEZ',
+              countryNo: 2,
+              stateNo: 4,
+              cityNo: 4,
+              pinCode: '400707',
+              countryName: 'India',
+              stateName: 'Maharashtra',
+              cityName: 'Mumbai',
+              locationTypeName: 'Warehouse'
+            }
+          ],
+          ports: [
+            { portNo: 11, portName: 'Nhava Sheva (India)' },
+            { portNo: 12, portName: 'Mundra (India)' }
+          ],
+          attachment: [
+            { docNo: 101, fileName: 'business_license.pdf', filePath: '/attachments/business_license.pdf', fileSize: 102456 }
+          ],
+          code: 'BE-0001'
+        },
+        {
+          id: 'be-2',
+          businessEntityNo: 2,
+          businessEntityName: 'Global Shipping Solutions Ltd',
+          crmBusinessEntityTypeNo: 3,
+          businessEntityType: {
+            operCRMBusinessEntityTypeNo: 3,
+            operCRMBusinessEntityTypeName: 'Buy'
+          },
+          businessEntityTypeName: 'Buy',
+          crmTimeZoneNo: 2,
+          vatgstNo: 'VAT987612345',
+          creditInsuranceLimit: 1200000,
+          status: 'Active',
+          contactPersons: [
+            {
+              contactPersonName: 'Marcus Aurelius',
+              address: 'Via dei Fori Imperiali',
+              countryNo: 1,
+              stateNo: 1,
+              cityNo: 1,
+              pinCode: '900011',
+              phoneNo: '+1 234 567 8900',
+              email: 'marcus@globalshipping.io',
+              designation: 'Operations Director',
+              department: 'Logistics Management',
+              status: 'Active'
+            }
+          ],
+          locations: [
+            {
+              locationTypeNo: 1,
+              address: '500 Silicon Valley Blvd',
+              countryNo: 1,
+              stateNo: 1,
+              cityNo: 1,
+              pinCode: '94025',
+              countryName: 'United States',
+              stateName: 'California',
+              cityName: 'Los Angeles',
+              locationTypeName: 'Office'
+            }
+          ],
+          ports: [
+            { portNo: 1, portName: 'Shanghai (China)' },
+            { portNo: 2, portName: 'Singapore (Singapore)' }
+          ],
+          attachment: [
+            { docNo: 102, fileName: 'insurance_policy.pdf', filePath: '/attachments/insurance_policy.pdf', fileSize: 2048560 },
+            { docNo: 103, fileName: 'credit_report.pdf', filePath: '/attachments/credit_report.pdf', fileSize: 512000 }
+          ],
+          code: 'BE-0002'
+        }
+      ],
 
       // Categories actions
       addCategory: (item) => set((state) => {
@@ -301,6 +502,18 @@ export const useMasterStore = create<MasterState>()(
       })),
       deleteLocation: (id) => set((state) => ({
         locations: state.locations.filter((l) => l.id !== id),
+      })),
+
+      // Companies actions
+      addCompany: (item) => set((state) => {
+        const code = item.code || generateCode('BE', state.companies.length);
+        return { companies: [...state.companies, { ...item, code }] };
+      }),
+      updateCompany: (id, item) => set((state) => ({
+        companies: state.companies.map((c) => (c.id === id ? { ...c, ...item } : c)),
+      })),
+      deleteCompany: (id) => set((state) => ({
+        companies: state.companies.filter((c) => c.id !== id),
       })),
     }),
     {
