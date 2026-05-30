@@ -1913,6 +1913,9 @@ export function MasterManager({ type }: MasterManagerProps) {
         newErrors.inchargeNo = 'Incharge Lead is required';
       }
     } else if (type === 'company') {
+      if (!companyType || companyType === '' || companyType === 'none') {
+        newErrors.companyType = 'Business Entity Type is required';
+      }
       if (companyLocations.length === 0) {
         newErrors.companyLocations = 'At least one location is required';
       }
