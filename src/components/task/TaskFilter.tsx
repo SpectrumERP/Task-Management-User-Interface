@@ -59,7 +59,7 @@ export function TaskFilter({
   onToggleFilters
 }: TaskFilterProps) {
   const authCompanies = useAuthStore((state) => state.company);
-  const companyNo = (authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2).toString();
+  const companyNo = (authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1).toString();
 
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const { fetchFillValues } = useTaskStore();

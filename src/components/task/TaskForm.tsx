@@ -394,7 +394,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const handleMasterCreateSuccess = async (createdId: string, label: string) => {
     try {
-      const companyNo = authCompanies?.[0]?.companyNo || 2;
+      const currentCompany = form.getValues('company');
+      const companyNo = currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
       // 1. Force refresh full fillValues from API
       const updatedValues = await fetchFillValues(companyNo.toString(), true);
       if (updatedValues) {
@@ -763,7 +764,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
 
     try {
-      const compNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2;
+      const currentCompany = form.getValues('company');
+      const compNo = currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
       let response: any = null;
       try {
         response = await apiService.get<any>(`/api/master/task-categories/load-data/${categoryNo}?companyNo=${compNo}`);
@@ -827,10 +829,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
   };
 
+  const currentCompany = form.watch('company');
+
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const companyNo = authCompanies?.[0]?.companyNo || 2;
+        const companyNo = currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
         const response = await fetchFillValues(companyNo.toString(), true);
         if (response) {
           setFillValues(response as TaskFillValues);
@@ -851,7 +855,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     };
 
     fetchOptions();
-  }, [authCompanies, authUser, initialData, form, fetchFillValues]);
+  }, [authCompanies, authUser, initialData, form, fetchFillValues, currentCompany]);
 
   useEffect(() => {
     if (initialData) {
@@ -1007,7 +1011,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const startUpload = async (tempId: string, file: File) => {
     const selectedCompany = form.watch('company');
-    const companyNo = parseInt(selectedCompany) || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2;
+    const companyNo = parseInt(selectedCompany) || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
 
     try {
       // 1. Create entry in DB
@@ -1229,7 +1233,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
     const payload = {
       operTaskNo: initialData ? initialData.taskNo : null,
-      companyNo: parseInt(data.company) || authCompanies?.[0]?.companyNo || 2,
+      companyNo: parseInt(data.company) || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1,
       title: data.title || null,
       code: data.code || null,
       description: data.description || null,
@@ -2925,7 +2929,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <CustomFieldsSection
               customFields={(form.watch('custom_fields') as any) || []}
               onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
-              companyNo={authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 2}
+              companyNo={currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1}
               hideAddButton={true}
             />
           </div>
@@ -3157,7 +3161,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         open={isMasterCreateOpen}
         onOpenChange={setIsMasterCreateOpen}
         type={activeMasterType}
-        companyNo={authCompanies?.[0]?.companyNo || 2}
+        companyNo={currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1}
         fillValues={fillValues}
         onSuccess={handleMasterCreateSuccess}
       />
