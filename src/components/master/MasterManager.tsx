@@ -877,9 +877,8 @@ export function MasterManager({ type }: MasterManagerProps) {
   // Sub-task list helpers
   const addSubtaskItem = () => {
     if (newSubtaskItem.trim()) {
-      setSubtasks([...subtasks, { description: newSubtaskItem.trim(), isChecked: false, taskTypeNo: newSubtaskTaskTypeNo }]);
+      setSubtasks([...subtasks, { description: newSubtaskItem.trim(), isChecked: false }]);
       setNewSubtaskItem('');
-      setNewSubtaskTaskTypeNo('');
     }
   };
 
@@ -1106,15 +1105,13 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [checklist, setChecklist] = useState<{ description: string; isChecked: boolean }[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [color, setColor] = useState('');
-  const [subtasks, setSubtasks] = useState<{ description: string; isChecked: boolean; taskTypeNo?: string }[]>([]);
+  const [subtasks, setSubtasks] = useState<{ description: string; isChecked: boolean }[]>([]);
   const [newSubtaskItem, setNewSubtaskItem] = useState('');
-  const [newSubtaskTaskTypeNo, setNewSubtaskTaskTypeNo] = useState('');
   const [categoryFillValues, setCategoryFillValues] = useState<any>(null);
   const [categoryCustomFields, setCategoryCustomFields] = useState<{ customFieldNo: string; fieldValue: string }[]>([]);
   const [editingChecklistIdx, setEditingChecklistIdx] = useState<number | null>(null);
   const [editingSubtaskIdx, setEditingSubtaskIdx] = useState<number | null>(null);
   const [tempEditText, setTempEditText] = useState('');
-  const [tempEditSubtaskTaskTypeNo, setTempEditSubtaskTaskTypeNo] = useState('');
 
   // Priority extra fields
   const [priorityDuration, setPriorityDuration] = useState<number | null>(null);
@@ -1356,12 +1353,10 @@ export function MasterManager({ type }: MasterManagerProps) {
       setNewChecklistItem('');
       setSubtasks([]);
       setNewSubtaskItem('');
-      setNewSubtaskTaskTypeNo('');
       setCategoryCustomFields([]);
       setEditingChecklistIdx(null);
       setEditingSubtaskIdx(null);
       setTempEditText('');
-      setTempEditSubtaskTaskTypeNo('');
       setColor('');
       setPriorityDuration(null);
       setPriorityFrequencyNo('');
@@ -1476,11 +1471,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               setIsBusinessBenefitApplicable(dl.isBusinessBenefitApplicable || false);
               setChecklist(Array.isArray(dl.checkLists) ? dl.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : []);
               const rawSubtasks = dl.subtasks || dl.subTasks;
-              setSubtasks(Array.isArray(rawSubtasks) ? rawSubtasks.map((st: any) => ({
-                description: st.title || st.subtaskTitle || st.description || st.taskName || st.subTaskName || (typeof st === 'string' ? st : ''),
-                isChecked: !!st.isChecked,
-                taskTypeNo: (st.taskTypeNo ?? st.operTaskTypeNo ?? st.taskType?.operTaskTypeNo ?? '').toString()
-              })) : []);
+              setSubtasks(Array.isArray(rawSubtasks) ? rawSubtasks.map((st: any) => ({ description: st.title || st.subtaskTitle || st.description || st.taskName || st.subTaskName || (typeof st === 'string' ? st : ''), isChecked: !!st.isChecked })) : []);
               setCategoryCustomFields(Array.isArray(dl.customFields) ? dl.customFields.map((cf: any) => ({
                 customFieldNo: (cf.customFieldNo ?? cf.customFieldNo ?? '').toString(),
                 fieldValue: cf.fieldValue || cf.value || ''
@@ -1488,7 +1479,6 @@ export function MasterManager({ type }: MasterManagerProps) {
               setColor(dl.colorCoding || '');
               setNewChecklistItem('');
               setNewSubtaskItem('');
-              setNewSubtaskTaskTypeNo('');
             }
           }
         }).catch(err => console.error("Failed to load category details:", err));
@@ -2124,8 +2114,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               isChecked: typeof c === 'string' ? false : c.isChecked
             })),
             subtasks: subtasks.map(s => ({
-              subtaskTitle: typeof s === 'string' ? s : s.description,
-              operTaskTypeNo: typeof s === 'string' ? null : (parseInt(s.taskTypeNo || '') || null)
+              subtaskTitle: typeof s === 'string' ? s : s.description
             })),
             customFields: categoryCustomFields.map(cf => ({
               customFieldNo: parseInt(cf.customFieldNo) || null,
@@ -2312,8 +2301,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               isChecked: typeof c === 'string' ? false : c.isChecked
             })),
             subtasks: subtasks.map(s => ({
-              subtaskTitle: typeof s === 'string' ? s : s.description,
-              operTaskTypeNo: typeof s === 'string' ? null : (parseInt(s.taskTypeNo || '') || null)
+              subtaskTitle: typeof s === 'string' ? s : s.description
             })),
             customFields: categoryCustomFields.map(cf => ({
               customFieldNo: parseInt(cf.customFieldNo) || null,
@@ -4166,16 +4154,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                 </span>
               </label>
               <div className="flex gap-2">
-                <Combobox
-                  options={((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]).map((t: any) => ({
-                    label: t.operTaskTypeName || t.taskTypeName || t.TaskTypeName || t.name || '',
-                    value: (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString()
-                  }))}
-                  value={newSubtaskTaskTypeNo}
-                  onChange={(val) => setNewSubtaskTaskTypeNo(val)}
-                  placeholder="Select task type..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-[220px] min-w-[220px] transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-                />
                 <Input
                   placeholder="Add sub-task description..."
                   value={newSubtaskItem}
@@ -4202,17 +4180,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <div className="max-h-[250px] overflow-y-auto divide-y divide-slate-100 scrollbar-thin">
                     {subtasks.map((item, index) => {
                       const desc = typeof item === 'string' ? item : item.description;
-                      const taskTypeNo = typeof item === 'string' ? '' : (item.taskTypeNo || '');
-                      const taskTypeSource = ((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]);
-                      const taskTypeLabel = taskTypeSource.find((t: any) =>
-                        (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString() === taskTypeNo
-                      )?.operTaskTypeName || taskTypeSource.find((t: any) =>
-                        (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString() === taskTypeNo
-                      )?.taskTypeName || taskTypeSource.find((t: any) =>
-                        (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString() === taskTypeNo
-                      )?.TaskTypeName || taskTypeSource.find((t: any) =>
-                        (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString() === taskTypeNo
-                      )?.name || '';
                       const isEditing = editingSubtaskIdx === index;
 
                       return (
@@ -4225,59 +4192,38 @@ export function MasterManager({ type }: MasterManagerProps) {
                         >
                           <div className="flex items-center gap-3 min-w-0 flex-1 pl-1">
                             {isEditing ? (
-                              <div className="flex items-center gap-2 w-full">
-                                <Combobox
-                                  options={((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]).map((t: any) => ({
-                                    label: t.operTaskTypeName || t.taskTypeName || t.TaskTypeName || t.name || '',
-                                    value: (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString()
-                                  }))}
-                                  value={tempEditSubtaskTaskTypeNo}
-                                  onChange={(val) => setTempEditSubtaskTaskTypeNo(val)}
-                                  placeholder="Select task type..."
-                                  className="h-8 rounded-lg border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-[220px] min-w-[220px] transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-                                />
-                                <Input
-                                  value={tempEditText}
-                                  onChange={(e) => setTempEditText(e.target.value)}
-                                  placeholder="Edit sub-task description..."
-                                  className={cn(
-                                    "h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
-                                    !tempEditText.trim() && "border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400"
-                                  )}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      if (!tempEditText.trim()) return;
-                                      const next = [...subtasks];
-                                      if (typeof next[index] === 'string') {
-                                        next[index] = { description: tempEditText.trim(), isChecked: false, taskTypeNo: tempEditSubtaskTaskTypeNo };
-                                      } else {
-                                        next[index] = { ...next[index], description: tempEditText.trim(), taskTypeNo: tempEditSubtaskTaskTypeNo };
-                                      }
-                                      setSubtasks(next);
-                                      setEditingSubtaskIdx(null);
-                                      setTempEditText('');
-                                      setTempEditSubtaskTaskTypeNo('');
-                                    } else if (e.key === 'Escape') {
-                                      setEditingSubtaskIdx(null);
-                                      setTempEditText('');
-                                      setTempEditSubtaskTaskTypeNo('');
-                                    }
-                                  }}
-                                  autoFocus
-                                />
-                              </div>
-                            ) : (
-                              <div className="min-w-0 flex items-center gap-2">
-                                {taskTypeLabel && (
-                                  <span className="inline-flex items-center rounded-full bg-[#e1ecf7] px-2 py-0.5 text-[10px] font-extrabold text-[#006699] shrink-0">
-                                    {taskTypeLabel}
-                                  </span>
+                              <Input
+                                value={tempEditText}
+                                onChange={(e) => setTempEditText(e.target.value)}
+                                placeholder="Edit sub-task description..."
+                                className={cn(
+                                  "h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
+                                  !tempEditText.trim() && "border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400"
                                 )}
-                                <span className="text-xs font-bold text-slate-750 truncate">
-                                  {desc}
-                                </span>
-                              </div>
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (!tempEditText.trim()) return;
+                                    const next = [...subtasks];
+                                    if (typeof next[index] === 'string') {
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
+                                    } else {
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
+                                    }
+                                    setSubtasks(next);
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  } else if (e.key === 'Escape') {
+                                    setEditingSubtaskIdx(null);
+                                    setTempEditText('');
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-slate-750 truncate">
+                                {desc}
+                              </span>
                             )}
                           </div>
 
@@ -4292,14 +4238,13 @@ export function MasterManager({ type }: MasterManagerProps) {
                                     if (!tempEditText.trim()) return;
                                     const next = [...subtasks];
                                     if (typeof next[index] === 'string') {
-                                      next[index] = { description: tempEditText.trim(), isChecked: false, taskTypeNo: tempEditSubtaskTaskTypeNo };
+                                      next[index] = { description: tempEditText.trim(), isChecked: false };
                                     } else {
-                                      next[index] = { ...next[index], description: tempEditText.trim(), taskTypeNo: tempEditSubtaskTaskTypeNo };
+                                      next[index] = { ...next[index], description: tempEditText.trim() };
                                     }
                                     setSubtasks(next);
                                     setEditingSubtaskIdx(null);
                                     setTempEditText('');
-                                    setTempEditSubtaskTaskTypeNo('');
                                   }}
                                   className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed p-1.5 rounded-lg transition-all"
                                   title="Save"
@@ -4311,7 +4256,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                                   onClick={() => {
                                     setEditingSubtaskIdx(null);
                                     setTempEditText('');
-                                    setTempEditSubtaskTaskTypeNo('');
                                   }}
                                   className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-all"
                                   title="Cancel"
@@ -4326,7 +4270,6 @@ export function MasterManager({ type }: MasterManagerProps) {
                                   onClick={() => {
                                     setEditingSubtaskIdx(index);
                                     setTempEditText(desc);
-                                    setTempEditSubtaskTaskTypeNo(taskTypeNo);
                                   }}
                                   className="text-slate-400 hover:text-[#006699] hover:bg-[#e1ecf7]/50 p-1.5 rounded-lg transition-all"
                                   title="Edit"
