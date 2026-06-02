@@ -57,7 +57,7 @@ import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
 
 interface MasterManagerProps {
-  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company' | 'country' | 'state' | 'city';
+  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company' | 'task-company' | 'country' | 'state' | 'city';
 }
 import { Textarea } from '../ui/textarea';
 
@@ -79,7 +79,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   // Master Create Dialog State
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
-  const [activeMasterType, setActiveMasterType] = useState<'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'benefit-type' | 'country' | 'state' | 'city' | null>(null);
+  const [activeMasterType, setActiveMasterType] = useState<'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'task-company' | 'benefit-type' | 'country' | 'state' | 'city' | null>(null);
 
   // Real API State
   const [apiLocations, setApiLocations] = useState<LocationMaster[]>([]);
@@ -106,6 +106,24 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [_isLoadingStates, setIsLoadingStates] = useState(false);
   const [apiCities, setApiCities] = useState<any[]>([]);
   const [_isLoadingCities, setIsLoadingCities] = useState(false);
+  const [apiTaskCompanies, setApiTaskCompanies] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Task Company specific states
+  const [tcCompanyName, setTcCompanyName] = useState('');
+  const [tcAliasName, setTcAliasName] = useState('');
+  const [tcLocationName, setTcLocationName] = useState('');
+  const [tcAddress1, setTcAddress1] = useState('');
+  const [tcAddress2, setTcAddress2] = useState('');
+  const [tcAddress3, setTcAddress3] = useState('');
+  const [tcPinCode, setTcPinCode] = useState('');
+  const [tcCountryNo, setTcCountryNo] = useState('');
+  const [tcStateNo, setTcStateNo] = useState('');
+  const [tcCityNo, setTcCityNo] = useState('');
+
+  const [taskCompanyCountries, setTaskCompanyCountries] = useState<any[]>([]);
+  const [taskCompanyStates, setTaskCompanyStates] = useState<any[]>([]);
+  const [taskCompanyCities, setTaskCompanyCities] = useState<any[]>([]);
 
   // Cache track for loaded row numbers
   const loadedRanges = useRef<{ min: number; max: number }>({ min: 999999, max: 0 });
@@ -785,6 +803,77 @@ export function MasterManager({ type }: MasterManagerProps) {
     }
   };
 
+  const fetchTaskCompanyCountries = async () => {
+    try {
+      const response = await apiService.get<any>(`/api/crm/task-companies/fill-values`);
+      if (response && response.data && response.data.countries) {
+        setTaskCompanyCountries(response.data.countries);
+      } else if (response && response.countries) {
+        setTaskCompanyCountries(response.countries);
+      }
+    } catch (err) {
+      console.error("Failed to fetch task company countries:", err);
+    }
+  };
+
+  const fetchTaskCompanyStates = async (countryNo: string) => {
+    if (!countryNo) {
+      setTaskCompanyStates([]);
+      return;
+    }
+    try {
+      const response = await apiService.get<any>(`/api/master/states/by-country/${countryNo}`);
+      setTaskCompanyStates(Array.isArray(response) ? response : (response.data || []));
+    } catch (err) {
+      console.error("Failed to fetch task company states:", err);
+      setTaskCompanyStates([]);
+    }
+  };
+
+  const fetchTaskCompanyCities = async (stateNo: string) => {
+    if (!stateNo) {
+      setTaskCompanyCities([]);
+      return;
+    }
+    try {
+      const response = await apiService.get<any>(`/api/master/cities/by-state/${stateNo}`);
+      setTaskCompanyCities(Array.isArray(response) ? response : (response.data || []));
+    } catch (err) {
+      console.error("Failed to fetch task company cities:", err);
+      setTaskCompanyCities([]);
+    }
+  };
+
+  const fetchTaskCompanies = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiService.get<any>(`/api/crm/task-companies/search-data`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((tc: any) => ({
+          id: (tc.operTaskCompanyNo ?? tc.taskCompanyNo ?? '').toString(),
+          code: tc.code,
+          name: tc.companyName || '',
+          aliasName: tc.aliasName || '',
+          address1: tc.address1 || '',
+          address2: tc.address2 || '',
+          address3: tc.address3 || '',
+          countryNo: tc.countryNo || '',
+          stateNo: tc.stateNo || '',
+          cityNo: tc.cityNo || '',
+          pinCode: tc.pinCode || '',
+          createdBy: tc.createdBy?.printingName || tc.createdBy?.displayName || tc.createdBy?.loginId || tc.createdByName || 'System',
+          createdDate: tc.createdDate || ''
+        }));
+        setApiTaskCompanies(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch task companies:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Sub-task list helpers
   const addSubtaskItem = () => {
     if (newSubtaskItem.trim()) {
@@ -983,6 +1072,9 @@ export function MasterManager({ type }: MasterManagerProps) {
     } else if (type === 'city') {
       fetchCities();
       fetchLocationFillValues();
+    } else if (type === 'task-company') {
+      fetchTaskCompanies();
+      fetchTaskCompanyCountries();
     }
   }, [type]);
 
@@ -1349,6 +1441,18 @@ export function MasterManager({ type }: MasterManagerProps) {
       setCityCityStateNo('');
       setAvailableCityCountries([]);
       setAvailableCityStates([]);
+
+      // Task Company resets
+      setTcCompanyName('');
+      setTcAliasName('');
+      setTcLocationName('');
+      setTcAddress1('');
+      setTcAddress2('');
+      setTcAddress3('');
+      setTcPinCode('');
+      setTcCountryNo('');
+      setTcStateNo('');
+      setTcCityNo('');
     } else if (isEdit && id) {
       setErrors({});
       setEditingId(id);
@@ -1635,6 +1739,35 @@ export function MasterManager({ type }: MasterManagerProps) {
             }
           }
         }).catch(err => console.error("Failed to load city details:", err));
+      } else if (type === 'task-company') {
+        apiService.get<any>(`/api/crm/task-companies/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const dl = response.data || response;
+            if (dl) {
+              setTcCompanyName(dl.companyName || '');
+              setTcAliasName(dl.aliasName || '');
+              setTcLocationName(dl.locationName || '');
+              setTcAddress1(dl.address1 || '');
+              setTcAddress2(dl.address2 || '');
+              setTcAddress3(dl.address3 || '');
+              setTcPinCode(dl.pinCode || '');
+              const countryVal = dl.country?.id ?? dl.countryNo ?? '';
+              const stateVal = dl.state?.id ?? dl.stateNo ?? '';
+              const cityVal = dl.city?.id ?? dl.cityNo ?? '';
+
+              setTcCountryNo(countryVal.toString());
+              setTcStateNo(stateVal.toString());
+              setTcCityNo(cityVal.toString());
+
+              if (countryVal) {
+                fetchTaskCompanyStates(countryVal.toString());
+              }
+              if (stateVal) {
+                fetchTaskCompanyCities(stateVal.toString());
+              }
+            }
+          }
+        }).catch(err => console.error("Failed to load task company details:", err));
       }
     }
   }, [isNew, isEdit, id, type, companyNo]);
@@ -1678,11 +1811,13 @@ export function MasterManager({ type }: MasterManagerProps) {
         return { title: 'State Master', desc: 'Manage states with country references, GST codes, and union territory status', icon: MapPin, list: apiStates };
       case 'city':
         return { title: 'City Master', desc: 'Manage cities with country and state references', icon: Building, list: apiCities };
+      case 'task-company':
+        return { title: 'Task Company Master', desc: 'Manage Task Companies and their locations', icon: Building2, list: apiTaskCompanies };
     }
   };
 
   const { title, icon: Icon, list: rawList } = getMasterInfo();
-  const list = type === 'location' ? apiLocations : type === 'vessel' ? apiVessels : type === 'port' ? apiPorts : type === 'business-entity-type' ? apiBusinessEntityTypes : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : type === 'country' ? apiCountries : type === 'state' ? apiStates : type === 'city' ? apiCities : rawList;
+  const list = type === 'location' ? apiLocations : type === 'vessel' ? apiVessels : type === 'port' ? apiPorts : type === 'business-entity-type' ? apiBusinessEntityTypes : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : type === 'task-company' ? apiTaskCompanies : type === 'country' ? apiCountries : type === 'state' ? apiStates : type === 'city' ? apiCities : rawList;
 
   // Filtered List
   const filteredList = list.filter((item: any) => {
@@ -1847,9 +1982,14 @@ export function MasterManager({ type }: MasterManagerProps) {
         }).then(() => fetchStates()).catch(err => console.error("Failed to delete state:", err));
         break;
       case 'city':
-        apiService.delete(`/api/master/cities/delete`, {
-          params: { cityNo: id }
+        apiService.delete(`/api/master/cities/${id}`, {
+          params: { companyNo }
         }).then(() => fetchCities()).catch(err => console.error("Failed to delete city:", err));
+        break;
+      case 'task-company':
+        apiService.delete(`/api/crm/task-companies/delete`, {
+          params: { operTaskCompanyNo: id }
+        }).then(() => fetchTaskCompanies()).catch(err => console.error("Failed to delete task company:", err));
         break;
     }
     setDeleteConfirmOpen(false);
@@ -1858,7 +1998,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!name.trim()) {
+    if (type !== 'task-company' && !name.trim()) {
       newErrors.name = type === 'company' ? 'Business Entity name is required' : `${type.replace(/-/g, ' ')} Name is required`;
     }
 
@@ -1937,6 +2077,10 @@ export function MasterManager({ type }: MasterManagerProps) {
       }
       if (!cityCityStateNo || cityCityStateNo === 'none' || cityCityStateNo === '') {
         newErrors.cityCityStateNo = 'State is required';
+      }
+    } else if (type === 'task-company') {
+      if (!tcCompanyName.trim()) {
+        newErrors.tcCompanyName = 'Company Name is required';
       }
     }
 
@@ -2126,6 +2270,22 @@ export function MasterManager({ type }: MasterManagerProps) {
           }
 
           await fetchCompanies();
+        } else if (type === 'task-company') {
+          const payload = {
+            operTaskCompanyNo: parseInt(id) || null,
+            companyName: tcCompanyName,
+            aliasName: tcAliasName,
+            locationName: tcLocationName,
+            address1: tcAddress1,
+            address2: tcAddress2,
+            address3: tcAddress3,
+            cityNo: parseInt(tcCityNo) || null,
+            stateNo: parseInt(tcStateNo) || null,
+            countryNo: parseInt(tcCountryNo) || null,
+            pinCode: tcPinCode
+          };
+          await apiService.post('/api/crm/task-companies/save', payload);
+          await fetchTaskCompanies();
         }
       } else {
         // Add
@@ -2297,6 +2457,22 @@ export function MasterManager({ type }: MasterManagerProps) {
           }
 
           await fetchCompanies();
+        } else if (type === 'task-company') {
+          const payload = {
+            operTaskCompanyNo: parseInt(id) || null,
+            companyName: tcCompanyName,
+            aliasName: tcAliasName,
+            locationName: tcLocationName,
+            address1: tcAddress1,
+            address2: tcAddress2,
+            address3: tcAddress3,
+            cityNo: parseInt(tcCityNo) || null,
+            stateNo: parseInt(tcStateNo) || null,
+            countryNo: parseInt(tcCountryNo) || null,
+            pinCode: tcPinCode
+          };
+          await apiService.post('/api/crm/task-companies/save', payload);
+          await fetchTaskCompanies();
         }
       }
 
@@ -3629,33 +3805,33 @@ export function MasterManager({ type }: MasterManagerProps) {
     return (
       <>
         {/* Disabled System Code */}
-        <div className="space-y-1">
-          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Code</label>
-          <Input
-            disabled
-            value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
-            className="bg-slate-100/80 border-slate-200/50 h-10 text-xs font-bold text-slate-500 rounded-xl cursor-not-allowed select-none"
-          />
+        <div className="flex items-center gap-2 px-1 mb-4">
+          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Code:</label>
+          <div className="text-xs font-bold text-slate-500 select-none">
+            {editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
+          </div>
         </div>
 
         {/* Standard Name Input */}
-        <div className="space-y-1">
-          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">{type.replace(/-/g, ' ')} Name</label>
-          <Input
-            placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
-            value={name}
-            maxLength={50}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-            }}
-            className={cn(
-              "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-              errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-            )}
-          />
-          {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
-        </div>
+        {type !== 'task-company' && (
+          <div className="space-y-1">
+            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">{type.replace(/-/g, ' ')} Name</label>
+            <Input
+              placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
+              value={name}
+              maxLength={50}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+              }}
+              className={cn(
+                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+              )}
+            />
+            {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
+          </div>
+        )}
 
         {/* ----------------- PORT EXTRA FIELDS ----------------- */}
         {type === 'port' && (<>
@@ -4668,6 +4844,175 @@ export function MasterManager({ type }: MasterManagerProps) {
             </div>
           </div>
         )}
+
+        {/* TASK COMPANY MASTER FIELDS */}
+        {type === 'task-company' && (
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <div className="space-y-1 w-3/4">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Company Name <span className="text-red-500">*</span></label>
+                <Input
+                  value={tcCompanyName}
+                  onChange={(e) => {
+                    setTcCompanyName(e.target.value);
+                    if (errors.tcCompanyName) setErrors(prev => ({ ...prev, tcCompanyName: '' }));
+                  }}
+                  maxLength={100}
+                  placeholder="Enter company name"
+                  className={cn(
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full",
+                    errors.tcCompanyName && "border-red-500 focus:ring-red-500/10"
+                  )}
+                />
+                {errors.tcCompanyName && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.tcCompanyName}</p>}
+              </div>
+
+              <div className="space-y-1 w-1/4">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Alias</label>
+                <Input
+                  value={tcAliasName}
+                  onChange={(e) => setTcAliasName(e.target.value)}
+                  maxLength={15}
+                  placeholder="Enter alias"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Location Name</label>
+              <Input
+                value={tcLocationName}
+                onChange={(e) => setTcLocationName(e.target.value)}
+                maxLength={50}
+                placeholder="Enter location name"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address 1</label>
+              <Input
+                value={tcAddress1}
+                onChange={(e) => setTcAddress1(e.target.value)}
+                maxLength={50}
+                placeholder="Enter address line 1"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address 2</label>
+              <Input
+                value={tcAddress2}
+                onChange={(e) => setTcAddress2(e.target.value)}
+                maxLength={50}
+                placeholder="Enter address line 2"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address 3</label>
+              <Input
+                value={tcAddress3}
+                onChange={(e) => setTcAddress3(e.target.value)}
+                maxLength={50}
+                placeholder="Enter address line 3"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
+                <Combobox
+                  options={taskCompanyCountries.map((c: any) => ({
+                    label: c.countryName || '',
+                    value: (c.countryNo || '').toString()
+                  }))}
+                  value={tcCountryNo}
+                  onChange={(val) => {
+                    setTcCountryNo(val);
+                    setTcStateNo('');
+                    setTcCityNo('');
+                    if (val) {
+                      fetchTaskCompanyStates(val);
+                    } else {
+                      setTaskCompanyStates([]);
+                    }
+                  }}
+                  placeholder="Select Country..."
+                  searchPlaceholder="Search country..."
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  onAddNew={() => {
+                    setActiveMasterType('country');
+                    setIsMasterCreateOpen(true);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State</label>
+                <Combobox
+                  options={taskCompanyStates.map((s: any) => ({
+                    label: s.stateName || s.name || '',
+                    value: (s.stateNo || s.id || '').toString()
+                  }))}
+                  value={tcStateNo}
+                  onChange={(val) => {
+                    setTcStateNo(val);
+                    setTcCityNo('');
+                    if (val) {
+                      fetchTaskCompanyCities(val);
+                    } else {
+                      setTaskCompanyCities([]);
+                    }
+                  }}
+                  disabled={!tcCountryNo}
+                  placeholder={tcCountryNo ? "Select State..." : "Select country first"}
+                  searchPlaceholder="Search state..."
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  onAddNew={() => {
+                    setActiveMasterType('state');
+                    setIsMasterCreateOpen(true);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
+                <Combobox
+                  options={taskCompanyCities.map((c: any) => ({
+                    label: c.cityName || c.name || '',
+                    value: (c.cityNo || c.id || '').toString()
+                  }))}
+                  value={tcCityNo}
+                  onChange={(val) => setTcCityNo(val)}
+                  disabled={!tcStateNo}
+                  placeholder={tcStateNo ? "Select City..." : "Select state first"}
+                  searchPlaceholder="Search city..."
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  onAddNew={() => {
+                    setActiveMasterType('city');
+                    setIsMasterCreateOpen(true);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Pin Code</label>
+                <Input
+                  value={tcPinCode}
+                  onChange={(e) => setTcPinCode(e.target.value)}
+                  placeholder="Enter pin code"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+                  maxLength={6}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   };
@@ -5506,6 +5851,12 @@ export function MasterManager({ type }: MasterManagerProps) {
                             <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Region</th>
                           </>
                         )}
+                        {type === 'task-company' && (
+                          <>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Alias</th>
+                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address 1</th>
+                          </>
+                        )}
                         <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created By</th>
                         <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created Date</th>
                         <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right pr-4 w-[100px]">Actions</th>
@@ -5596,6 +5947,14 @@ export function MasterManager({ type }: MasterManagerProps) {
                                 {item.address1} {item.cityNo ? `, ${item.cityNo}` : ''}
                               </td>
                               <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.locationRegion || 'Central'}</td>
+                            </>
+                          )}
+                          {type === 'task-company' && (
+                            <>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold max-w-[150px] truncate">{item.aliasName || '-'}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[200px] truncate" title={[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ')}>
+                                {[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ') || '-'}
+                              </td>
                             </>
                           )}
                           <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]">
@@ -5932,7 +6291,7 @@ export function MasterManager({ type }: MasterManagerProps) {
           type={activeMasterType}
           companyNo={companyNo}
           fillValues={fillValues}
-          onSuccess={() => {}}
+          onSuccess={() => { }}
         />
       )}
     </div>

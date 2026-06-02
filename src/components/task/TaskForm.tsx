@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink } from 'lucide-react';
+import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
@@ -27,6 +27,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { format } from 'date-fns';
 import { TaskActivity } from './TaskActivity';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 const formatFileSize = (bytes?: number | null) => {
   if (bytes === undefined || bytes === null || bytes === 0) return '';
@@ -47,7 +48,7 @@ import {
 
 
 
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useBlocker } from 'react-router-dom';
 
 const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) => z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title cannot exceed 200 characters'),
@@ -230,7 +231,7 @@ const statusTransitions: Record<string, string[]> = {
 
 function FormSection({ title, icon: Icon, children, headerAction }: { title: string, icon: any, children: React.ReactNode, headerAction?: React.ReactNode }) {
   return (
-    <div className="space-y-4 pt-6 first:pt-0">
+    <div className="space-y-1 pt-2 first:pt-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 border-l-4 border-[#006699] -ml-4 sm:-ml-8 pl-3 sm:pl-7">
         <div className="flex items-center gap-2">
           <Icon size={16} className="text-[#006699]" />
@@ -447,6 +448,40 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const dateParam = searchParams.get('date');
 
+  // Parse sections to hide
+  const hideSectionsParam = searchParams.get('hideSections') || '';
+  const hiddenSections = hideSectionsParam.split(',').map(s => s.trim().toLowerCase());
+
+  const { hasDraft, hasExistingDraft, saveDraft, clearDraft, getDraft, isRestoringRef } = useFormDraft(initialData?.taskNo || null);
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+
+  useEffect(() => {
+    if (hasExistingDraft && !initialData?.taskNo) {
+      setShowDraftRestore(true);
+    }
+  }, [hasExistingDraft, initialData]);
+
+  const handleRestoreDraft = () => {
+    const draftData = getDraft();
+    if (draftData) {
+      isRestoringRef.current = true;
+      const { _localSubtasks, ...formData } = draftData;
+
+      if (_localSubtasks) {
+        setLocalSubtasks(_localSubtasks);
+      }
+
+      form.reset(formData);
+      setTimeout(() => {
+        // Trigger a change to ensure form is dirty after restore so the blocker works
+        form.setValue('title', formData.title, { shouldDirty: true });
+        isRestoringRef.current = false;
+      }, 500);
+      toast.success('Draft restored successfully.');
+    }
+    setShowDraftRestore(false);
+  };
+
   const formResolver = useMemo(() => {
     return zodResolver(getTaskSchema(isSubTask, fillValues));
   }, [isSubTask, fillValues]);
@@ -458,20 +493,20 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     defaultValues: {
       title: initialData?.title || '',
       code: initialData?.code || '',
-      description: initialData?.description || '',
-      priority_No: initialData?.priority_No?.toString() || (isSubTask && parentTask ? parentTask.priority_No.toString() : ''),
-      type_No: initialData?.type_No?.toString() || (isSubTask && parentTask ? parentTask.type_No.toString() : ''),
-      folder_No: (initialData as any)?.folder_No?.toString() || (initialData as any)?.folderNo?.toString() || (isSubTask && parentTask ? (parentTask.project_No || (parentTask as any).folder_No || (parentTask as any).folderNo)?.toString() : '') || selectedFolder?.TaskFolderNo?.toString() || '',
-      category_No: initialData?.category_No?.toString() || (isSubTask && parentTask ? parentTask.category_No.toString() : ''),
       tags: initialData?.tags || [],
       company: resolveCompanyValue(initialData?.company, authCompanies) || (isSubTask && parentTask ? resolveCompanyValue(parentTask.company, authCompanies) : ''),
-      location_No: initialData?.location_No?.toString() || (isSubTask && parentTask ? parentTask.location_No.toString() : ''),
-      start_date: initialData?.start_date ? new Date(initialData.start_date).toISOString() : (dateParam ? new Date(dateParam).toISOString() : ''),
-      end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : '',
+      description: initialData?.description || searchParams.get('description') || '',
+      priority_No: initialData?.priority_No?.toString() || (isSubTask && parentTask ? parentTask.priority_No.toString() : '') || searchParams.get('priority_No') || '1',
+      type_No: initialData?.type_No?.toString() || (isSubTask && parentTask ? parentTask.type_No.toString() : '') || searchParams.get('type_No') || '',
+      folder_No: (initialData as any)?.folder_No?.toString() || (initialData as any)?.folderNo?.toString() || (isSubTask && parentTask ? (parentTask.project_No || (parentTask as any).folder_No || (parentTask as any).folderNo)?.toString() : '') || selectedFolder?.TaskFolderNo?.toString() || searchParams.get('folder_No') || '1',
+      category_No: initialData?.category_No?.toString() || (isSubTask && parentTask ? parentTask.category_No.toString() : '') || searchParams.get('category_No') || '',
+      location_No: initialData?.location_No?.toString() || (isSubTask && parentTask ? parentTask.location_No.toString() : '') || searchParams.get('location_No') || '1',
+      start_date: initialData?.start_date ? new Date(initialData.start_date).toISOString() : (dateParam ? new Date(dateParam).toISOString() : (searchParams.get('start_date') ? new Date(searchParams.get('start_date') as string).toISOString() : '')),
+      end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : (searchParams.get('end_date') ? new Date(searchParams.get('end_date') as string).toISOString() : ''),
       completionDate: initialData?.completionDate ? new Date(initialData.completionDate).toISOString() : '',
       completionRemark: initialData?.completionRemark || '',
-      estimated_effort_value: initialData?.estimated_effort_value?.toString() || '',
-      estimated_effort_unit: resolveFrequencyValue(initialData?.estimated_effort_unit),
+      estimated_effort_value: initialData?.estimated_effort_value?.toString() || searchParams.get('estimated_effort_value') || '',
+      estimated_effort_unit: resolveFrequencyValue(initialData?.estimated_effort_unit || searchParams.get('estimated_effort_unit') || 'hours'),
       is_business_benefit_applicable: initialData?.is_business_benefit_applicable || false,
       business_benefit_type_No: initialData?.business_benefit_type_No?.toString() || '',
       business_benefit_description: initialData?.business_benefit_description || '',
@@ -479,7 +514,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       actual_benefit_amount: initialData?.actual_benefit_amount?.toString() || '',
       benefit_period: initialData?.benefit_period || 'Monthly',
       originator_user_No: initialData?.originator_user_No?.toString() || '101',
-      owner_user_No: initialData?.owner_user_No?.toString() || '',
+      owner_user_No: initialData?.owner_user_No?.toString() || searchParams.get('owner_user_No') || '',
       collaborators: initialData?.collaborators || [],
       informed_to: initialData?.informed_to || [],
       actual_efforts: initialData?.actual_efforts?.map(e => ({
@@ -495,7 +530,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       })) || [],
       executionNotes: initialData?.executionNotes || initialData?.execution_notes || '',
       status: initialData?.status || initialStatus || 'Draft',
-      isPrivate: initialData?.isPrivate || false,
+      isPrivate: initialData?.isPrivate || searchParams.get('isPrivate') === 'true' || false,
       isAllDay: initialData?.isAllDay ?? false,
       calendarColor: initialData?.calendarColor || '',
       recurrence: initialData?.recurrence || { pattern: 'NONE', until: null },
@@ -584,6 +619,56 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       fetchParent();
     }
   }, [isSubTask, parentTaskNo, parentTaskProp, tasks, authCompanies, selectedFolder, form]);
+
+  const localSubtasksRef = useRef(localSubtasks);
+  useEffect(() => {
+    localSubtasksRef.current = localSubtasks;
+  }, [localSubtasks]);
+
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (!form.formState.isDirty || isRestoringRef.current) return;
+      const timer = setTimeout(() => {
+        saveDraft({
+          ...form.getValues(),
+          _localSubtasks: localSubtasksRef.current
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch, form.formState.isDirty, saveDraft]);
+
+  // Also auto-save when localSubtasks change manually (e.g., delete subtask)
+  useEffect(() => {
+    if (!form.formState.isDirty || isRestoringRef.current) return;
+    const timer = setTimeout(() => {
+      saveDraft({
+        ...form.getValues(),
+        _localSubtasks: localSubtasks
+      });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [localSubtasks, form.formState.isDirty, saveDraft]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (form.formState.isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [form.formState.isDirty]);
+
+  // Block in-app navigation if the form is dirty
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      form.formState.isDirty &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
 
   const currentStatus = form.watch('status');
   const isBenefitApplicable = form.watch('is_business_benefit_applicable');
@@ -799,17 +884,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         // 3. Set the subtasks data in the subtask templates section (for new tasks)
         const rawSubTasks = data.subtasks || data.subTasks;
         if (rawSubTasks && rawSubTasks.length > 0) {
-          const mappedSubTasks = rawSubTasks.map((item: any) => ({
-            id: (item.subtaskId || item.subTaskNo || Date.now() + Math.random()).toString(),
+          const mappedSubTasks = rawSubTasks.map((item: any, index: number) => ({
+            taskNo: -(Date.now() + index), // Use negative ID for local unsaved templates
+            code: '',
             title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
-            description: '',
+            status: 'Draft',
             ownerLoginNo: '',
+            assignedDisplayName: '-',
             endDate: '',
-            completionRemark: '',
-            completionDate: ''
+            completionDate: '',
+            completionRemark: ''
           }));
-          replaceSubtask(mappedSubTasks);
+          setLocalSubtasks(prev => {
+            // Keep existing saved subtasks, replace templated ones
+            const savedTasks = prev.filter(t => t.taskNo > 0);
+            return [...savedTasks, ...mappedSubTasks];
+          });
+          replaceSubtask([]);
         } else {
+          setLocalSubtasks(prev => prev.filter(t => t.taskNo > 0));
           replaceSubtask([]);
         }
 
@@ -1330,6 +1423,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           taskNo: response?.data?.operTaskNo || Math.floor(Math.random() * 1000) + 100
         });
       }
+      clearDraft();
       setShowSuccessAlert(true);
     } catch (error: any) {
       console.error('Failed to save task:', error);
@@ -1479,7 +1573,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       <form
         id="task-form"
         onSubmit={form.handleSubmit(onSubmit, onValidationError)}
-        className="space-y-8 divide-y divide-slate-400"
+        className="space-y-4 divide-y divide-slate-400"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -1488,7 +1582,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
         {/* 1. Basic Information */}
         <FormSection
-          title="Basic Information"
+          title="Task Detail"
           icon={Info}
           headerAction={
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
@@ -1527,10 +1621,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </div>
           }
         >
-          <div className="space-y-5">
+          <div className="space-y-1">
             {/* Row 1: Task ID & Task Title */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-x-8 gap-y-4">
-              <div className="space-y-1.5" id="form-group-code">
+              <div className="space-y-1" id="form-group-code">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Code</Label>
                 <Input
                   placeholder="Auto Generate"
@@ -1543,7 +1637,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 />
                 {form.formState.errors.code && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.code.message}</p>}
               </div>
-              <div className="space-y-1.5 lg:col-span-3" id="form-group-title">
+              <div className="space-y-1 lg:col-span-3" id="form-group-title">
                 <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
                   Task Title {isSubTask && <span className="text-red-500 font-black">*</span>}
                 </Label>
@@ -1563,12 +1657,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </div>
 
             {/* Row 2: Task Description */}
-            <div className="space-y-1.5" id="form-group-description">
+            <div className="space-y-1" id="form-group-description">
               <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Description</Label>
               <Textarea
                 placeholder="Describe the task in detail..."
                 className={cn(
-                  "min-h-[100px] rounded-xl p-3 leading-relaxed text-slate-900 font-medium text-sm shadow-sm transition-all",
+                  "min-h-[60px] rounded-xl p-3 leading-relaxed text-slate-900 font-medium text-sm shadow-sm transition-all",
                   form.formState.errors.description
                     ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
                     : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
@@ -1579,115 +1673,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               {form.formState.errors.description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.description.message}</p>}
             </div>
 
-            {/* Row 3: Category, Type, Priority */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-4">
-              <div className="space-y-1.5" id="form-group-category_No">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Category</Label>
-                <Controller
-                  name="category_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox
-                      disabled={isSubTask}
-                      options={fillValues?.category
-                        .filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
-                        .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
-                      value={field.value}
-                      onChange={(val) => {
-                        field.onChange(val);
-                        handleCategoryChange(val);
-                      }}
-                      placeholder="Select category"
-                      className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={() => {
-                        setActiveMasterType('category');
-                        setIsMasterCreateOpen(true);
-                      }}
-                      addNewLabel="Add New Category"
-                    />
-                  )}
-                />
-                {form.formState.errors.category_No && <p className="text-[10px] text-red-500 font-bold ml-1">Category is required</p>}
-              </div>
-              <div className="space-y-1.5" id="form-group-type_No">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Type</Label>
-                <Controller
-                  name="type_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox
-                      disabled={isSubTask}
-                      options={fillValues?.type
-                        .filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
-                        .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select type"
-                      className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={() => {
-                        setActiveMasterType('type');
-                        setIsMasterCreateOpen(true);
-                      }}
-                      addNewLabel="Add New Type"
-                    />
-                  )}
-                />
-                {form.formState.errors.type_No && <p className="text-[10px] text-red-500 font-bold ml-1">Type is required</p>}
-              </div>
-              <div className="space-y-1.5" id="form-group-folder_No">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Folder</Label>
-                <Controller
-                  name="folder_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox
-                      disabled={isSubTask}
-                      options={fillValues?.folder
-                        .map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select folder"
-                      className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      isClearable={false}
-                      onAddNew={() => {
-                        setActiveMasterType('folder');
-                        setIsMasterCreateOpen(true);
-                      }}
-                      addNewLabel="Add New Folder"
-                    />
-                  )}
-                />
-                {form.formState.errors.folder_No && <p className="text-[10px] text-red-500 font-bold ml-1">Folder is required</p>}
-              </div>
-              <div className="space-y-1.5" id="form-group-priority_No">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Priority</Label>
-                <Controller
-                  name="priority_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox
-                      disabled={isSubTask}
-                      options={fillValues?.priority
-                        .filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
-                        .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select priority"
-                      className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={() => {
-                        setActiveMasterType('priority');
-                        setIsMasterCreateOpen(true);
-                      }}
-                      addNewLabel="Add New Priority"
-                    />
-                  )}
-                />
-                {form.formState.errors.priority_No && <p className="text-[10px] text-red-500 font-bold ml-1">Priority is required</p>}
-              </div>
-            </div>
-
             {/* Row 4: Tags */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Tags</Label>
               <Controller
                 name="tags"
@@ -1705,605 +1692,724 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </div>
         </FormSection>
 
-        {/* 2. Ownership & Responsibility */}
-        <FormSection title="Ownership & Responsibility" icon={Users}>
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-1.5" id="form-group-company">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Company</Label>
-                <Controller
-                  name="company"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox
-                      disabled={isSubTask}
-                      options={companyOptions}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Search company..."
-                      className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={() => {
-                        setActiveMasterType('company' as any);
-                        setIsMasterCreateOpen(true);
-                      }}
-                    />
-                  )}
-                />
-                {form.formState.errors.company && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.company.message}</p>}
-              </div>
-              <div className="space-y-1.5" id="form-group-location_No">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Location</Label>
-                <Controller
-                  name="location_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox
-                      disabled={isSubTask}
-                      options={fillValues?.location
-                        .filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]')
-                        .map(l => ({ label: l.Location, value: l.OperLocationNo.toString() })) || []}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select location"
-                      className={form.formState.errors.location_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={() => {
-                        setActiveMasterType('location');
-                        setIsMasterCreateOpen(true);
-                      }}
-                      addNewLabel="Add New Location"
-                    />
-                  )}
-                />
-                {form.formState.errors.location_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.location_No.message}</p>}
-              </div>
-              <div className="space-y-1.5" id="form-group-owner_user_No">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
-                  Task Owner {isSubTask && <span className="text-red-500 font-black">*</span>}
-                </Label>
-                <Controller
-                  name="owner_user_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <UserCombobox
-                      value={field.value}
-                      onChange={(user) => field.onChange(user.loginNo.toString())}
-                      placeholder="Search member..."
-                      initialLabel={initialData?.assignedDisplayName || undefined}
-                      className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      disabled={isPrivateTask}
-                    />
-                  )}
-                />
-                {form.formState.errors.owner_user_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.owner_user_No.message}</p>}
-              </div>
-              <div className="space-y-1.5" id="form-group-originator_user_No">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Originator</Label>
-                <Controller
-                  name="originator_user_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <UserCombobox
-                      value={field.value}
-                      onChange={(user) => field.onChange(user.loginNo.toString())}
-                      placeholder="Search member..."
-                      initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
-                      className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      isClearable={false}
-                    />
-                  )}
-                />
-                {form.formState.errors.originator_user_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.originator_user_No.message}</p>}
-              </div>
-            </div>
-
-            {!isPrivateTask && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Collaborators Grid */}
-                <div className="space-y-3" id="form-group-collaborators">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Collaborators</h4>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
-                        <div className="relative flex items-center">
-                          <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
-                            <SelectTrigger className={cn("rounded-lg h-6 border-slate-300 text-[9px] w-[140px] bg-slate-50 shadow-none px-2", selectedCollabTeam && "[&>span]:pr-5")}>
-                              <SelectValue placeholder="Quick Add" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {fillValues?.userGroup.map(group => (
-                                <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {selectedCollabTeam && (
-                            <div
-                              className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 cursor-pointer z-10"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setSelectedCollabTeam('');
-                                const current = form.getValues('collaborators') || [];
-                                replaceCollab(current.filter(c => !c.isFromTeam));
-                              }}
-                            >
-                              <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <Button type="button" onClick={() => appendCollab({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
-                      <UserPlus size={12} /> Add
-                    </Button>
-                  </div>
-                  <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasCollabError && "border-red-500 ring-2 ring-red-500/10")}>
-                    <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
-                      <table className="w-full text-left text-[11px] border-collapse">
-                        <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
-                          <tr>
-                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
-                            <th className="px-2 py-1.5 w-8"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {collabFields.map((field, index) => (
-                            <tr key={field.id} className="group hover:bg-white transition-colors">
-                              <td className="px-2 py-1">
-                                <Controller
-                                  name={`collaborators.${index}.userName`}
-                                  control={form.control}
-                                  render={({ field: nameField }) => (
-                                    <UserCombobox
-                                      value={nameField.value}
-                                      onChange={(user) => {
-                                        nameField.onChange(user.loginId);
-                                        form.setValue(`collaborators.${index}.displayName`, user.printingName);
-                                        form.setValue(`collaborators.${index}.email`, user.email || '');
-                                        form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
-                                      }}
-                                      placeholder="User Name"
-                                      className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
-                                      initialLabel={nameField.value}
-                                      disabled={field.isFromTeam}
-                                    />
-                                  )}
-                                />
-                              </td>
-                              <td className="px-2 py-1">
-                                <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                              </td>
-                              <td className="px-2 py-1">
-                                <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                              </td>
-                              <td className="px-1 py-1 text-center">
-                                {!field.isFromTeam && (
-                                  <button type="button" onClick={() => removeCollab(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                    <Trash2 size={12} />
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                          {collabFields.length === 0 && (
-                            <tr>
-                              <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators.</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  {hasCollabError && <p className="text-[10px] text-red-500 font-bold ml-1">{collabError.message}</p>}
-                </div>
-
-                {/* Inform To Grid */}
-                <div className="space-y-3" id="form-group-informed_to">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Inform To</h4>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
-                        <div className="relative flex items-center">
-                          <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
-                            <SelectTrigger className={cn("rounded-lg h-6 border-slate-300 text-[9px] w-[140px] bg-slate-50 shadow-none px-2", selectedCollabTeam && "[&>span]:pr-5")}>
-                              <SelectValue placeholder="Quick Add" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {fillValues?.userGroup.map(group => (
-                                <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {selectedInformTeam && (
-                            <div
-                              className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 cursor-pointer z-10"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setSelectedInformTeam('');
-                                const current = form.getValues('informed_to') || [];
-                                replaceInform(current.filter(i => !i.isFromTeam));
-                              }}
-                            >
-                              <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <Button type="button" onClick={() => appendInform({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
-                      <UserPlus size={12} /> Add
-                    </Button>
-                  </div>
-                  <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasInformError && "border-red-500 ring-2 ring-red-500/10")}>
-                    <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
-                      <table className="w-full text-left text-[11px] border-collapse">
-                        <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
-                          <tr>
-                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                            <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
-                            <th className="px-2 py-1.5 w-8"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {informFields.map((field, index) => (
-                            <tr key={field.id} className="group hover:bg-white transition-colors">
-                              <td className="px-2 py-1">
-                                <Controller
-                                  name={`informed_to.${index}.userName`}
-                                  control={form.control}
-                                  render={({ field: nameField }) => (
-                                    <UserCombobox
-                                      value={nameField.value}
-                                      onChange={(user) => {
-                                        nameField.onChange(user.loginId);
-                                        form.setValue(`informed_to.${index}.displayName`, user.printingName);
-                                        form.setValue(`informed_to.${index}.email`, user.email || '');
-                                        form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
-                                      }}
-                                      placeholder="User Name"
-                                      className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
-                                      initialLabel={nameField.value}
-                                      disabled={field.isFromTeam}
-                                    />
-                                  )}
-                                />
-                              </td>
-                              <td className="px-2 py-1">
-                                <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                              </td>
-                              <td className="px-2 py-1">
-                                <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
-                              </td>
-                              <td className="px-1 py-1 text-center">
-                                {!field.isFromTeam && (
-                                  <button type="button" onClick={() => removeInform(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                    <Trash2 size={12} />
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                          {informFields.length === 0 && (
-                            <tr>
-                              <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No informed users.</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  {hasInformError && <p className="text-[10px] text-red-500 font-bold ml-1">{informError.message}</p>}
-                </div>
-              </div>
-            )}
-          </div>
-        </FormSection>
-
-        {/* 3. Timeline */}
-        <FormSection title="Timeline & Effort" icon={Clock}>
-          <div className="space-y-4">
-            {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-
-              <div className="space-y-1.5 flex flex-col justify-end">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">All-Day Options</Label>
-                <Controller
-                  name="isAllDay"
-                  control={form.control}
-                  render={({ field }) => (
-                    <div className="flex items-center space-x-2 bg-slate-50/70 border border-slate-200/80 px-4 rounded-2xl shadow-sm transition-all hover:bg-slate-100/30 h-11">
-                      <Checkbox
-                        id="isAllDay"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
-                      />
-                      <label htmlFor="isAllDay" className="text-xs font-bold text-slate-700 cursor-pointer select-none">All-Day Task</label>
-                    </div>
-                  )}
-                />
-              </div>
-              <div className="space-y-1.5" id="form-group-start_date">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Start Date</Label>
-                <Controller
-                  name="start_date"
-                  control={form.control}
-                  render={({ field }) => (
-                    <DateTimePicker
-                      date={field.value ? new Date(field.value) : undefined}
-                      onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                      placeholder={isAllDay ? "Select start date" : "Select start date & time"}
-                      hideTime={isAllDay}
-                      className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    />
-                  )}
-                />
-                {form.formState.errors.start_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.start_date.message}</p>}
-              </div>
-
-              <div className="space-y-1.5" id="form-group-end_date">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
-                  Due Date {isSubTask && <span className="text-red-500 font-black">*</span>}
-                </Label>
-                <Controller
-                  name="end_date"
-                  control={form.control}
-                  render={({ field }) => (
-                    <DateTimePicker
-                      date={field.value ? new Date(field.value) : undefined}
-                      onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                      placeholder={isAllDay ? "Select due date" : "Select due date & time"}
-                      hideTime={isAllDay}
-                      className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    />
-                  )}
-                />
-                {form.formState.errors.end_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.end_date.message}</p>}
-              </div>
-            </div>
-
-            {/* Row 2: Estimated Effort, Calendar Color */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
-              <div className="space-y-1.5 md:col-span-1" id="form-group-estimated_effort_value">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Effort</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1 space-y-1">
-                    <Input
-                      type="number"
-                      step="0"
-                      placeholder=""
-                      {...form.register('estimated_effort_value')}
-                      isDecimal={false}
-                      className={cn(
-                        "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right w-full transition-all",
-                        form.formState.errors.estimated_effort_value
-                          ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                          : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                      )}
-                      maxLength={8}
-                    />
-                  </div>
-                  <Controller
-                    name="estimated_effort_unit"
-                    control={form.control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className={cn(
-                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm w-32 transition-all",
-                          form.formState.errors.estimated_effort_unit
-                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                        )}>
-                          <SelectValue placeholder="Unit" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl bg-white border border-slate-200">
-                          {fillValues?.frequency?.map(f => (
-                            <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
-                              {f.FrequencyName || f.Frequency}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-                {form.formState.errors.estimated_effort_value && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_value.message}</p>}
-                {!form.formState.errors.estimated_effort_value && form.formState.errors.estimated_effort_unit && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_unit.message}</p>}
-              </div>
-
-              <div className="space-y-1.5 md:col-span-1" id="form-group-calendarColor">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Calendar Color</Label>
-                <Controller
-                  name="calendarColor"
-                  control={form.control}
-                  render={({ field }) => (
-                    <div className="relative flex items-center bg-white border border-slate-350 rounded-xl h-9 px-3.5 shadow-sm hover:bg-slate-50 transition-all cursor-pointer select-none">
-                      <div
-                        className="w-4 h-4 rounded-full border border-slate-200 shadow-sm shrink-0 mr-3"
-                        style={{ backgroundColor: field.value && field.value !== 'none' ? field.value : "#cbd5e1" }}
-                      />
-                      <span className="text-slate-900 font-bold text-sm flex-1">
-                        {field.value && field.value !== 'none' ? field.value : "None"}
-                      </span>
-
-                      <input
-                        type="color"
-                        value={field.value && field.value !== 'none' ? field.value : "#006699"}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
-                      />
-
-                      {field.value && field.value !== 'none' && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            field.onChange("");
-                          }}
-                          className="relative z-10 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors ml-2"
-                        >
-                          <X size={12} strokeWidth={2.5} />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                />
-              </div>
-            </div>
-          </div>
-        </FormSection>
-
-        {/* 4. Business Impact */}
-        <FormSection title="Business Benefit Section" icon={TrendingUp}>
-          <div className="space-y-4">
-            <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-300 flex items-center gap-3 shadow-sm transition-all hover:bg-slate-100/50">
+        <FormSection
+          title="Category Detail"
+          icon={Info}
+        >
+          {/* Row 3: Category, Type, Priority */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-4">
+            <div className="space-y-1" id="form-group-category_No">
+              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Category</Label>
               <Controller
-                name="is_business_benefit_applicable"
+                name="category_No"
                 control={form.control}
                 render={({ field }) => (
-                  <Checkbox
-                    id="benefit-section"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={isBenefitDisabled}
-                    className="h-5 w-5 rounded-md border-slate-400"
+                  <Combobox
+                    disabled={isSubTask}
+                    options={fillValues?.category
+                      .filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
+                      .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
+                    value={field.value}
+                    onChange={(val) => {
+                      field.onChange(val);
+                      handleCategoryChange(val);
+                    }}
+                    placeholder="Select category"
+                    className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                    onAddNew={() => {
+                      setActiveMasterType('category');
+                      setIsMasterCreateOpen(true);
+                    }}
+                    addNewLabel="Add New Category"
                   />
                 )}
               />
-              <div className="space-y-0.5">
-                <Label htmlFor="benefit-section" className="text-sm font-bold text-slate-800 cursor-pointer">Business Benefit Applicable</Label>
-              </div>
+              {form.formState.errors.category_No && <p className="text-[10px] text-red-500 font-bold ml-1">Category is required</p>}
             </div>
+            <div className="space-y-1" id="form-group-type_No">
+              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Type</Label>
+              <Controller
+                name="type_No"
+                control={form.control}
+                render={({ field }) => (
+                  <Combobox
+                    disabled={isSubTask}
+                    options={fillValues?.type
+                      .filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
+                      .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select type"
+                    className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                    onAddNew={() => {
+                      setActiveMasterType('type');
+                      setIsMasterCreateOpen(true);
+                    }}
+                    addNewLabel="Add New Type"
+                  />
+                )}
+              />
+              {form.formState.errors.type_No && <p className="text-[10px] text-red-500 font-bold ml-1">Type is required</p>}
+            </div>
+            <div className="space-y-1" id="form-group-folder_No">
+              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Folder</Label>
+              <Controller
+                name="folder_No"
+                control={form.control}
+                render={({ field }) => (
+                  <Combobox
+                    disabled={isSubTask}
+                    options={fillValues?.folder
+                      .map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select folder"
+                    className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                    isClearable={false}
+                    onAddNew={() => {
+                      setActiveMasterType('folder');
+                      setIsMasterCreateOpen(true);
+                    }}
+                    addNewLabel="Add New Folder"
+                  />
+                )}
+              />
+              {form.formState.errors.folder_No && <p className="text-[10px] text-red-500 font-bold ml-1">Folder is required</p>}
+            </div>
+            <div className="space-y-1" id="form-group-priority_No">
+              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Priority</Label>
+              <Controller
+                name="priority_No"
+                control={form.control}
+                render={({ field }) => (
+                  <Combobox
+                    disabled={isSubTask}
+                    options={fillValues?.priority
+                      .filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
+                      .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select priority"
+                    className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                    onAddNew={() => {
+                      setActiveMasterType('priority');
+                      setIsMasterCreateOpen(true);
+                    }}
+                    addNewLabel="Add New Priority"
+                  />
+                )}
+              />
+              {form.formState.errors.priority_No && <p className="text-[10px] text-red-500 font-bold ml-1">Priority is required</p>}
+            </div>
+          </div>
 
-            {isBenefitApplicable && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="space-y-1.5" id="form-group-business_benefit_type_No">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Type</Label>
+        </FormSection>
+
+        {/* 2. Ownership & Responsibility */}
+        {!hiddenSections.includes('ownership') && (
+          <FormSection title="Ownership & Responsibility" icon={Users}>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-1" id="form-group-company">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Company</Label>
                   <Controller
-                    name="business_benefit_type_No"
+                    name="company"
                     control={form.control}
                     render={({ field }) => (
                       <Combobox
-                        options={(fillValues?.benefitType || [])
-                          .filter((b: any) => {
-                            const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
-                            const lower = label.toLowerCase();
-                            return lower !== 'all' && lower !== '[all]';
-                          })
-                          .map((b: any) => {
-                            const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
-                            const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
-                            return { label, value: val };
-                          })
-                        }
+                        disabled={isSubTask}
+                        options={companyOptions}
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Select benefit type..."
-                        className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        placeholder="Search company..."
+                        className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                         onAddNew={() => {
-                          setActiveMasterType('benefit-type' as any);
+                          setActiveMasterType('company' as any);
                           setIsMasterCreateOpen(true);
                         }}
                       />
                     )}
                   />
-                  {form.formState.errors.business_benefit_type_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_type_No.message}</p>}
+                  {form.formState.errors.company && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.company.message}</p>}
                 </div>
-                <div className="space-y-1.5" id="form-group-benefit_period">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Period</Label>
+                <div className="space-y-1" id="form-group-location_No">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Location</Label>
                   <Controller
-                    name="benefit_period"
+                    name="location_No"
                     control={form.control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className={cn(
-                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm transition-all",
-                          form.formState.errors.benefit_period
-                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                        )}>
-                          <SelectValue placeholder="Select period" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          <SelectItem value="One Time">One Time</SelectItem>
-                          <SelectItem value="Monthly">Monthly</SelectItem>
-                          <SelectItem value="Annually">Annually</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Combobox
+                        disabled={isSubTask}
+                        options={fillValues?.location
+                          .filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]')
+                          .map(l => ({ label: l.Location, value: l.OperLocationNo.toString() })) || []}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select location"
+                        className={form.formState.errors.location_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        onAddNew={() => {
+                          setActiveMasterType('location');
+                          setIsMasterCreateOpen(true);
+                        }}
+                        addNewLabel="Add New Location"
+                      />
                     )}
                   />
-                  {form.formState.errors.benefit_period && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.benefit_period.message}</p>}
+                  {form.formState.errors.location_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.location_No.message}</p>}
                 </div>
-                {!shouldHideBenefitAmount && (
-                  <>
-                    <div className="space-y-1.5" id="form-group-estimated_benefit_amount">
-                      <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Benefit Amount</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder=""
-                        {...form.register('estimated_benefit_amount')}
-                        isDecimal={true}
-                        decimalPlaces={2}
-                        className={cn(
-                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
-                          form.formState.errors.estimated_benefit_amount
-                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                        )}
-                        maxLength={8}
+                <div className="space-y-1" id="form-group-owner_user_No">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
+                    Task Owner {isSubTask && <span className="text-red-500 font-black">*</span>}
+                  </Label>
+                  <Controller
+                    name="owner_user_No"
+                    control={form.control}
+                    render={({ field }) => (
+                      <UserCombobox
+                        value={field.value}
+                        onChange={(user) => field.onChange(user.loginNo.toString())}
+                        placeholder="Search member..."
+                        initialLabel={initialData?.assignedDisplayName || undefined}
+                        className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        disabled={isPrivateTask}
                       />
-                      {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
-                    </div>
-                    <div className="space-y-1.5" id="form-group-actual_benefit_amount">
-                      <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Actual Benefit Amount</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder=""
-                        {...form.register('actual_benefit_amount')}
-                        isDecimal={true}
-                        decimalPlaces={2}
-                        className={cn(
-                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
-                          form.formState.errors.actual_benefit_amount
-                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                        )}
-                        maxLength={8}
-                      />
-                      {form.formState.errors.actual_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.actual_benefit_amount.message}</p>}
-                    </div>
-                  </>
-                )}
-                <div className="space-y-1.5 md:col-span-2" id="form-group-business_benefit_description">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Description</Label>
-                  <Textarea
-                    placeholder="Describe the business benefit in detail..."
-                    {...form.register('business_benefit_description')}
-                    className={cn(
-                      "min-h-[80px] rounded-xl input-section text-slate-900 font-medium text-sm shadow-sm transition-all",
-                      form.formState.errors.business_benefit_description
-                        ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                        : "focus:ring-[#006699]/15 focus:border-[#006699]"
                     )}
                   />
-                  {form.formState.errors.business_benefit_description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_description.message}</p>}
+                  {form.formState.errors.owner_user_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.owner_user_No.message}</p>}
+                </div>
+                <div className="space-y-1" id="form-group-originator_user_No">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Originator</Label>
+                  <Controller
+                    name="originator_user_No"
+                    control={form.control}
+                    render={({ field }) => (
+                      <UserCombobox
+                        value={field.value}
+                        onChange={(user) => field.onChange(user.loginNo.toString())}
+                        placeholder="Search member..."
+                        initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
+                        className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        isClearable={false}
+                      />
+                    )}
+                  />
+                  {form.formState.errors.originator_user_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.originator_user_No.message}</p>}
                 </div>
               </div>
-            )}
-          </div>
-        </FormSection>
 
-        {!isSubTask && (
+              {!isPrivateTask && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Collaborators Grid */}
+                  <div className="space-y-1" id="form-group-collaborators">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-1">
+                        <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Collaborators</h4>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
+                          <div className="relative flex items-center">
+                            <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
+                              <SelectTrigger className={cn("rounded-lg h-6 border-slate-300 text-[9px] w-[140px] bg-slate-50 shadow-none px-2", selectedCollabTeam && "[&>span]:pr-5")}>
+                                <SelectValue placeholder="Quick Add" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                {fillValues?.userGroup.map(group => (
+                                  <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {selectedCollabTeam && (
+                              <div
+                                className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 cursor-pointer z-10"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setSelectedCollabTeam('');
+                                  const current = form.getValues('collaborators') || [];
+                                  replaceCollab(current.filter(c => !c.isFromTeam));
+                                }}
+                              >
+                                <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <Button type="button" onClick={() => appendCollab({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
+                        <UserPlus size={12} /> Add
+                      </Button>
+                    </div>
+                    <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasCollabError && "border-red-500 ring-2 ring-red-500/10")}>
+                      <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
+                        <table className="w-full text-left text-[11px] border-collapse">
+                          <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
+                            <tr>
+                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
+                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
+                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                              <th className="px-2 py-1.5 w-8"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {collabFields.map((field, index) => (
+                              <tr key={field.id} className="group hover:bg-white transition-colors">
+                                <td className="px-2 py-1">
+                                  <Controller
+                                    name={`collaborators.${index}.userName`}
+                                    control={form.control}
+                                    render={({ field: nameField }) => (
+                                      <UserCombobox
+                                        value={nameField.value}
+                                        onChange={(user) => {
+                                          nameField.onChange(user.loginId);
+                                          form.setValue(`collaborators.${index}.displayName`, user.printingName);
+                                          form.setValue(`collaborators.${index}.email`, user.email || '');
+                                          form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
+                                        }}
+                                        placeholder="User Name"
+                                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                                        initialLabel={nameField.value}
+                                        disabled={field.isFromTeam}
+                                      />
+                                    )}
+                                  />
+                                </td>
+                                <td className="px-2 py-1">
+                                  <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                                </td>
+                                <td className="px-2 py-1">
+                                  <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                                </td>
+                                <td className="px-1 py-1 text-center">
+                                  {!field.isFromTeam && (
+                                    <button type="button" onClick={() => removeCollab(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                      <Trash2 size={12} />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                            {collabFields.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    {hasCollabError && <p className="text-[10px] text-red-500 font-bold ml-1">{collabError.message}</p>}
+                  </div>
+
+                  {/* Inform To Grid */}
+                  <div className="space-y-1" id="form-group-informed_to">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-1">
+                        <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Inform To</h4>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
+                          <div className="relative flex items-center">
+                            <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
+                              <SelectTrigger className={cn("rounded-lg h-6 border-slate-300 text-[9px] w-[140px] bg-slate-50 shadow-none px-2", selectedCollabTeam && "[&>span]:pr-5")}>
+                                <SelectValue placeholder="Quick Add" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                {fillValues?.userGroup.map(group => (
+                                  <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-[10px]">{group.UserGroupName}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {selectedInformTeam && (
+                              <div
+                                className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 cursor-pointer z-10"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setSelectedInformTeam('');
+                                  const current = form.getValues('informed_to') || [];
+                                  replaceInform(current.filter(i => !i.isFromTeam));
+                                }}
+                              >
+                                <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <Button type="button" onClick={() => appendInform({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
+                        <UserPlus size={12} /> Add
+                      </Button>
+                    </div>
+                    <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasInformError && "border-red-500 ring-2 ring-red-500/10")}>
+                      <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
+                        <table className="w-full text-left text-[11px] border-collapse">
+                          <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
+                            <tr>
+                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
+                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
+                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                              <th className="px-2 py-1.5 w-8"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {informFields.map((field, index) => (
+                              <tr key={field.id} className="group hover:bg-white transition-colors">
+                                <td className="px-2 py-1">
+                                  <Controller
+                                    name={`informed_to.${index}.userName`}
+                                    control={form.control}
+                                    render={({ field: nameField }) => (
+                                      <UserCombobox
+                                        value={nameField.value}
+                                        onChange={(user) => {
+                                          nameField.onChange(user.loginId);
+                                          form.setValue(`informed_to.${index}.displayName`, user.printingName);
+                                          form.setValue(`informed_to.${index}.email`, user.email || '');
+                                          form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
+                                        }}
+                                        placeholder="User Name"
+                                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                                        initialLabel={nameField.value}
+                                        disabled={field.isFromTeam}
+                                      />
+                                    )}
+                                  />
+                                </td>
+                                <td className="px-2 py-1">
+                                  <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                                </td>
+                                <td className="px-2 py-1">
+                                  <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                                </td>
+                                <td className="px-1 py-1 text-center">
+                                  {!field.isFromTeam && (
+                                    <button type="button" onClick={() => removeInform(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                      <Trash2 size={12} />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                            {informFields.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No informed users.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    {hasInformError && <p className="text-[10px] text-red-500 font-bold ml-1">{informError.message}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </FormSection>
+        )}
+
+        {/* 3. Timeline */}
+        {!hiddenSections.includes('timeline') && (
+          <FormSection title="Timeline & Effort" icon={Clock}>
+            <div className="space-y-3">
+              {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+
+                <div className="space-y-1 flex flex-col justify-end">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">All-Day Options</Label>
+                  <Controller
+                    name="isAllDay"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2 bg-slate-50/70 border border-slate-200/80 px-4 rounded-2xl shadow-sm transition-all hover:bg-slate-100/30 h-11">
+                        <Checkbox
+                          id="isAllDay"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
+                        />
+                        <label htmlFor="isAllDay" className="text-xs font-bold text-slate-700 cursor-pointer select-none">All-Day Task</label>
+                      </div>
+                    )}
+                  />
+                </div>
+                <div className="space-y-1" id="form-group-start_date">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Start Date</Label>
+                  <Controller
+                    name="start_date"
+                    control={form.control}
+                    render={({ field }) => (
+                      <DateTimePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                        placeholder={isAllDay ? "Select start date" : "Select start date & time"}
+                        hideTime={isAllDay}
+                        className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      />
+                    )}
+                  />
+                  {form.formState.errors.start_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.start_date.message}</p>}
+                </div>
+
+                <div className="space-y-1" id="form-group-end_date">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
+                    Due Date {isSubTask && <span className="text-red-500 font-black">*</span>}
+                  </Label>
+                  <Controller
+                    name="end_date"
+                    control={form.control}
+                    render={({ field }) => (
+                      <DateTimePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                        placeholder={isAllDay ? "Select due date" : "Select due date & time"}
+                        hideTime={isAllDay}
+                        className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      />
+                    )}
+                  />
+                  {form.formState.errors.end_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.end_date.message}</p>}
+                </div>
+              </div>
+
+              {/* Row 2: Estimated Effort, Calendar Color */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
+                <div className="space-y-1 md:col-span-1" id="form-group-estimated_effort_value">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Effort</Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Input
+                        type="number"
+                        step="0"
+                        placeholder=""
+                        {...form.register('estimated_effort_value')}
+                        isDecimal={false}
+                        className={cn(
+                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right w-full transition-all",
+                          form.formState.errors.estimated_effort_value
+                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                        )}
+                        maxLength={8}
+                      />
+                    </div>
+                    <Controller
+                      name="estimated_effort_unit"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className={cn(
+                            "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm w-32 transition-all",
+                            form.formState.errors.estimated_effort_unit
+                              ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                              : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                          )}>
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl bg-white border border-slate-200">
+                            {fillValues?.frequency?.map(f => (
+                              <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
+                                {f.FrequencyName || f.Frequency}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                  {form.formState.errors.estimated_effort_value && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_value.message}</p>}
+                  {!form.formState.errors.estimated_effort_value && form.formState.errors.estimated_effort_unit && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_unit.message}</p>}
+                </div>
+
+                <div className="space-y-1 md:col-span-1" id="form-group-calendarColor">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Calendar Color</Label>
+                  <Controller
+                    name="calendarColor"
+                    control={form.control}
+                    render={({ field }) => (
+                      <div className="relative flex items-center bg-white border border-slate-350 rounded-xl h-9 px-3.5 shadow-sm hover:bg-slate-50 transition-all cursor-pointer select-none">
+                        <div
+                          className="w-4 h-4 rounded-full border border-slate-200 shadow-sm shrink-0 mr-3"
+                          style={{ backgroundColor: field.value && field.value !== 'none' ? field.value : "#cbd5e1" }}
+                        />
+                        <span className="text-slate-900 font-bold text-sm flex-1">
+                          {field.value && field.value !== 'none' ? field.value : "None"}
+                        </span>
+
+                        <input
+                          type="color"
+                          value={field.value && field.value !== 'none' ? field.value : "#006699"}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
+                        />
+
+                        {field.value && field.value !== 'none' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              field.onChange("");
+                            }}
+                            className="relative z-10 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors ml-2"
+                          >
+                            <X size={12} strokeWidth={2.5} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+          </FormSection>
+        )}
+
+        {/* 4. Business Impact */}
+        {!hiddenSections.includes('business_benefit') && (
+          <FormSection title="Business Benefit Section" icon={TrendingUp}>
+            <div className="space-y-3">
+              <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-300 flex items-center gap-3 shadow-sm transition-all hover:bg-slate-100/50">
+                <Controller
+                  name="is_business_benefit_applicable"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id="benefit-section"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isBenefitDisabled}
+                      className="h-5 w-5 rounded-md border-slate-400"
+                    />
+                  )}
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="benefit-section" className="text-sm font-bold text-slate-800 cursor-pointer">Business Benefit Applicable</Label>
+                </div>
+              </div>
+
+              {isBenefitApplicable && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1" id="form-group-business_benefit_type_No">
+                    <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Type</Label>
+                    <Controller
+                      name="business_benefit_type_No"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Combobox
+                          options={(fillValues?.benefitType || [])
+                            .filter((b: any) => {
+                              const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
+                              const lower = label.toLowerCase();
+                              return lower !== 'all' && lower !== '[all]';
+                            })
+                            .map((b: any) => {
+                              const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
+                              const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
+                              return { label, value: val };
+                            })
+                          }
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select benefit type..."
+                          className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                          onAddNew={() => {
+                            setActiveMasterType('benefit-type' as any);
+                            setIsMasterCreateOpen(true);
+                          }}
+                        />
+                      )}
+                    />
+                    {form.formState.errors.business_benefit_type_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_type_No.message}</p>}
+                  </div>
+                  <div className="space-y-1" id="form-group-benefit_period">
+                    <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Period</Label>
+                    <Controller
+                      name="benefit_period"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className={cn(
+                            "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm transition-all",
+                            form.formState.errors.benefit_period
+                              ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                              : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                          )}>
+                            <SelectValue placeholder="Select period" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="One Time">One Time</SelectItem>
+                            <SelectItem value="Monthly">Monthly</SelectItem>
+                            <SelectItem value="Annually">Annually</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {form.formState.errors.benefit_period && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.benefit_period.message}</p>}
+                  </div>
+                  {!shouldHideBenefitAmount && (
+                    <>
+                      <div className="space-y-1" id="form-group-estimated_benefit_amount">
+                        <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Benefit Amount</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder=""
+                          {...form.register('estimated_benefit_amount')}
+                          isDecimal={true}
+                          decimalPlaces={2}
+                          className={cn(
+                            "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
+                            form.formState.errors.estimated_benefit_amount
+                              ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                              : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                          )}
+                          maxLength={8}
+                        />
+                        {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
+                      </div>
+                      <div className="space-y-1" id="form-group-actual_benefit_amount">
+                        <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Actual Benefit Amount</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder=""
+                          {...form.register('actual_benefit_amount')}
+                          isDecimal={true}
+                          decimalPlaces={2}
+                          className={cn(
+                            "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
+                            form.formState.errors.actual_benefit_amount
+                              ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                              : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
+                          )}
+                          maxLength={8}
+                        />
+                        {form.formState.errors.actual_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.actual_benefit_amount.message}</p>}
+                      </div>
+                    </>
+                  )}
+                  <div className="space-y-1 md:col-span-2" id="form-group-business_benefit_description">
+                    <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Description</Label>
+                    <Textarea
+                      placeholder="Describe the business benefit in detail..."
+                      {...form.register('business_benefit_description')}
+                      className={cn(
+                        "min-h-[80px] rounded-xl input-section text-slate-900 font-medium text-sm shadow-sm transition-all",
+                        form.formState.errors.business_benefit_description
+                          ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                          : "focus:ring-[#006699]/15 focus:border-[#006699]"
+                      )}
+                    />
+                    {form.formState.errors.business_benefit_description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_description.message}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </FormSection>
+        )}
+
+        {!isSubTask && !hiddenSections.includes('subtasks') && (
           <FormSection title='Sub Tasks' icon={FileText}>
-            <div className="space-y-3 pb-5 border-b border-slate-100">
+            <div className="space-y-2 pb-5 border-b border-slate-100">
               <div className="flex items-center justify-between">
                 <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
                   Sub-Tasks
@@ -2330,43 +2436,37 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <table className="w-full text-left border-collapse text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Sub-Task Title <span className="text-red-500">*</span></th>
-                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Due Date</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Completion Date</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider max-w-[150px]">Completion Remark</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                        <th className="pl-4 pr-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Sub-Task Title <span className="text-red-500">*</span></th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Due Date</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Completion Date</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider max-w-[150px]">Completion Remark</th>
+                        <th className="pl-0.5 pr-2 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {localSubtasks.map((task: any) => {
+                      {localSubtasks.map((task: any, idx: number) => {
                         const editIndex = subtaskFields.findIndex(sf => sf.operTaskNo === task.taskNo);
                         if (editIndex !== -1) {
                           const field = subtaskFields[editIndex];
                           const index = editIndex;
                           return (
                             <tr key={field.id} className="bg-[#f8fbff] hover:bg-[#f0f6fc] transition-colors group">
-                              <td className="px-4 py-3 min-w-[200px] align-top">
-                                <Input
-                                  {...form.register(`sub_tasks.${index}.title`)}
-                                  placeholder="Sub Task Title..."
-                                  className={cn(
-                                    "border-slate-200 shadow-sm h-9 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",
-
-                                  )}
-                                  maxLength={200}
-                                />
-                                {form.formState.errors.sub_tasks?.[index]?.title && (
-                                  <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
-                                )}
+                              <td className="px-0.5 py-0 align-top">
+                                <div className="flex flex-grow items-start gap-2 py-1.5">
+                                  <span className="text-xs font-bold text-slate-500 mt-2">{idx + 1}.</span>
+                                  <div className="flex-1">
+                                    <span className="text-xs font-bold text-slate-800 break-words pt-0.5">{task.title}</span>
+                                  </div>
+                                </div>
                               </td>
-                              <td className="px-4 py-3 align-top">
-                                <div className="h-9 flex items-center">
+                              <td className="px-0.5 py-0 align-top">
+                                <div className=" flex items-center">
                                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.status || 'Draft'}</span>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 min-w-[200px] align-top">
+                              <td className="px-0.5 py-0 align-top">
                                 <Controller
                                   name={`sub_tasks.${index}.ownerLoginNo`}
                                   control={form.control}
@@ -2390,7 +2490,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   )}
                                 />
                               </td>
-                              <td className="px-4 py-3 min-w-[140px] align-top">
+                              <td className="px-0.5 py-0 align-top">
                                 <Controller
                                   name={`sub_tasks.${index}.endDate`}
                                   control={form.control}
@@ -2404,7 +2504,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   )}
                                 />
                               </td>
-                              <td className="px-4 py-3 min-w-[140px] align-top">
+                              <td className="px-0.5 py-0 align-top">
                                 <Controller
                                   name={`sub_tasks.${index}.completionDate`}
                                   control={form.control}
@@ -2418,22 +2518,22 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   )}
                                 />
                               </td>
-                              <td className="px-4 py-3 min-w-[150px] align-top">
+                              <td className="px-0.5 py-0 align-top">
                                 <Textarea
                                   {...form.register(`sub_tasks.${index}.completionRemark`)}
                                   placeholder="Remark..."
-                                  className="border-slate-200 shadow-sm min-h-[60px] h-auto py-2 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20"
+                                  rows={1}
+                                  className="border-slate-200 shadow-sm min-h-[20px] h-auto py-1.5 px-2 text-xs rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20"
                                   maxLength={500}
                                 />
                               </td>
-                              <td className="px-4 py-3 text-right align-top">
-                                <div className="h-9 flex items-center justify-end gap-1.5">
+                              <td className="px-0.5 py-0 text-right align-top">
+                                <div className="h-8 flex items-center justify-end gap-1.5">
                                   <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-bold border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
-                                    <X size={12} className="mr-1" /> Cancel
+                                    <X size={12} className="mr-1" />
                                   </Button>
                                   <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-bold bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
                                     {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
-                                    Save
                                   </Button>
                                 </div>
                               </td>
@@ -2443,13 +2543,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
                         return (
                           <tr key={task.taskNo} className="bg-white hover:bg-slate-50 transition-colors group">
-                            <td className="px-4 py-3">
-                              <div className="flex flex-col gap-0.5">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.code || (task.taskNo > 0 ? `T-${task.taskNo}` : 'Auto-generate')}</span>
-                                <span className="text-xs font-bold text-slate-800">{task.title}</span>
+                            <td className="px-0.5 py-0 min-w-[300px]">
+                              <div className="flex flex-col gap-0.5 whitespace-normal py-1.5">
+                                <div className="flex gap-1.5 items-start">
+                                  <span className="text-xs font-bold text-slate-500 pt-0.5">{idx + 1}.</span>
+                                  <span className="text-xs font-bold text-slate-800 break-words pt-0.5">{task.title}</span>
+                                </div>
+                                {task.code || task.taskNo > 0 ? (
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">{task.code || `${task.taskNo}`}</span>
+                                ) : null}
                               </div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-0.5 py-0">
                               <span className={cn(
                                 "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
                                 task.status === 'Done' || task.status === 'Complete' ? "bg-green-100/80 text-green-800" :
@@ -2460,7 +2565,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 {task.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-0.5 py-0">
                               <div className="flex items-center gap-2">
                                 {task.assignedDisplayName && task.assignedDisplayName !== '-' && (
                                   <UserAvatar loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined} displayName={task.assignedDisplayName} size="sm" />
@@ -2468,16 +2573,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 <span className="text-xs font-semibold text-slate-700">{task.assignedDisplayName || '-'}</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-0.5 py-0 whitespace-nowrap">
                               <span className="text-xs font-semibold text-slate-700">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</span>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-0.5 py-0 whitespace-nowrap">
                               <span className="text-xs font-semibold text-slate-700">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</span>
                             </td>
-                            <td className="px-4 py-3 max-w-[150px]">
+                            <td className="px-0.5 py-0 ">
                               <span className="text-xs font-semibold text-slate-700 truncate block" title={task.completionRemark}>{task.completionRemark || '-'}</span>
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-0.5 py-0 text-right">
                               <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-slate-300 text-slate-600 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit"><Edit2 size={12} /></Button>
                                 {task.taskNo > 0 && (
@@ -2495,26 +2600,30 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         if (localSubtasks.some((st: any) => st.taskNo === field.operTaskNo)) return null;
                         return (
                           <tr key={field.id} className="bg-[#f8fbff] hover:bg-[#f0f6fc] transition-colors group">
-                            <td className="px-4 py-3 min-w-[200px] align-top">
-                              <Input
-                                {...form.register(`sub_tasks.${index}.title`)}
-                                placeholder="New Sub Task Title..."
-                                className={cn(
-                                  "border-slate-200 shadow-sm h-9 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",
-                                  form.formState.errors.sub_tasks?.[index]?.title ? "!border-red-500 text-red-500 placeholder:text-red-300" : ""
-                                )}
-                                maxLength={200}
-                              />
-                              {form.formState.errors.sub_tasks?.[index]?.title && (
-                                <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
-                              )}
+                            <td className="px-0.5 py-0 min-w-[400px] align-top">
+                              <div className="flex items-start gap-2 py-1.5 pl-2.5">
+                                <span className="text-xs font-bold text-slate-500 mt-2">{localSubtasks.length + index + 1}.</span>
+                                <div className="flex-1">
+                                  <Input
+                                    {...form.register(`sub_tasks.${index}.title`)}
+                                    placeholder="New Sub Task Title..."
+                                    className={cn(
+                                      "border-slate-200 shadow-sm h-8 px-2 text-xs rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",
+                                    )}
+                                    maxLength={200}
+                                  />
+                                  {form.formState.errors.sub_tasks?.[index]?.title && (
+                                    <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
+                                  )}
+                                </div>
+                              </div>
                             </td>
-                            <td className="px-4 py-3 align-top">
+                            <td className="px-0.5 py-0 align-top">
                               <div className="h-9 flex items-center">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Draft</span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 min-w-[200px] align-top">
+                            <td className="px-0.5 py-0 align-top">
                               <Controller
                                 name={`sub_tasks.${index}.ownerLoginNo`}
                                 control={form.control}
@@ -2537,7 +2646,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 )}
                               />
                             </td>
-                            <td className="px-4 py-3 min-w-[140px] align-top">
+                            <td className="px-0.5 py-0 align-top">
                               <Controller
                                 name={`sub_tasks.${index}.endDate`}
                                 control={form.control}
@@ -2551,7 +2660,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 )}
                               />
                             </td>
-                            <td className="px-4 py-3 min-w-[140px] align-top">
+                            <td className="px-0.5 py-0 align-top">
                               <Controller
                                 name={`sub_tasks.${index}.completionDate`}
                                 control={form.control}
@@ -2565,22 +2674,22 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 )}
                               />
                             </td>
-                            <td className="px-4 py-3 min-w-[150px] align-top">
+                            <td className="px-0.5 py-0 align-top">
                               <Textarea
                                 {...form.register(`sub_tasks.${index}.completionRemark`)}
                                 placeholder="Remark..."
-                                className="border-slate-200 shadow-sm min-h-[60px] h-auto py-2 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20"
+                                rows={1}
+                                className="border-slate-200 shadow-sm min-h-[20px] h-auto py-2 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20"
                                 maxLength={500}
                               />
                             </td>
-                            <td className="px-4 py-3 text-right align-top">
+                            <td className="px-0.5 py-0 text-right align-top">
                               <div className="h-9 flex items-center justify-end gap-1.5">
                                 <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-bold border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
-                                  <X size={12} className="mr-1" /> Cancel
+                                  <X size={12} />
                                 </Button>
                                 <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-bold bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
-                                  {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
-                                  Save
+                                  {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                                 </Button>
                               </div>
                             </td>
@@ -2600,316 +2709,325 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         )}
 
         {/* 5. Execution Detail */}
-        <FormSection title="Execution Detail" icon={CheckCircle}>
-          <div className="space-y-6">
-            {/* Sub-Tasks Section */}
-
-            <div className="flex items-center justify-between px-1">
-              <div className="flex flex-col gap-1 flex-1 max-w-md">
-                <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Checklist</h4>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10px] font-black text-slate-700 uppercase tracking-wider">
-                    <span>Task Completion</span>
-                    <span className="text-[#006699]">{progressPercent}%</span>
+        {!hiddenSections.includes('checklist') && (
+          <FormSection title="Execution Detail" icon={CheckCircle}>
+            <div className="space-y-3">
+              {/* Checklist Section */}
+              <div className="mb-6 space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex flex-col gap-1 flex-1 max-w-md">
+                    <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Checklist</h4>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px] font-black text-slate-700 uppercase tracking-wider">
+                        <span>Task Completion</span>
+                        <span className="text-[#006699]">{progressPercent}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progressPercent}%` }}
+                          className="h-full bg-[#006699] rounded-full shadow-[0_0_8px_rgba(0,102,153,0.3)]"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progressPercent}%` }}
-                      className="h-full bg-[#006699] rounded-full shadow-[0_0_8px_rgba(0,102,153,0.3)]"
-                    />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
+                      className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700"
+                    >
+                      <Plus size={14} className="text-[#006699]" /> Add Checklist Item
+                    </Button>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
-                  className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700"
-                >
-                  <Plus size={14} className="text-[#006699]" /> Add Checklist Item
-                </Button>
-              </div>
-            </div>
 
-            <div className="space-y-2.5">
-              {checklistFields.map((field, index) => (
-                <motion.div
-                  key={field.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={cn(
-                    "group flex items-center gap-4 p-4 rounded-xl border transition-all duration-300",
-                    form.watch(`check_list.${index}.completed`)
-                      ? "bg-slate-50/80 border-slate-200 opacity-70"
-                      : "bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-[#006699]/30 focus-within:border-[#006699] focus-within:ring-2 focus-within:ring-[#006699]/10"
-                  )}
-                >
-                  <Controller
-                    name={`check_list.${index}.completed`}
-                    control={form.control}
-                    render={({ field: checkField }) => (
-                      <button
-                        type="button"
-                        onClick={() => checkField.onChange(!checkField.value)}
-                        className={cn(
-                          "h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300",
-                          checkField.value
-                            ? "bg-[#006699] border-[#006699] text-white rotate-0 scale-100"
-                            : "border-slate-300 text-transparent hover:border-[#006699] rotate-45 scale-90"
-                        )}
-                      >
-                        <Check size={14} strokeWidth={4} />
-                      </button>
-                    )}
-                  />
-                  <div className="flex-1">
-                    <Input
-                      {...form.register(`check_list.${index}.description`)}
-                      placeholder="Specify checklist requirement..."
+                <div className="space-y-1.5">
+                  {checklistFields.map((field, index) => (
+                    <motion.div
+                      key={field.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
                       className={cn(
-                        "border-none bg-transparent shadow-none p-0 h-auto text-sm font-medium transition-all duration-300 focus-visible:ring-0",
+                        "group flex items-center gap-2 px-1 rounded-xl border transition-all duration-300",
                         form.watch(`check_list.${index}.completed`)
-                          ? "text-slate-400 line-through decoration-2"
-                          : "text-slate-800"
-                      )}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeChecklist(index)}
-                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-1.5 rounded-lg hover:bg-red-50"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </motion.div>
-              ))}
-
-              {checklistFields.length === 0 && (
-                <div className="text-center py-12 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-                  <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
-                    <CheckCircle size={24} className="text-slate-300" />
-                  </div>
-                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No checklist items defined</p>
-                  <p className="text-slate-400 text-[10px] mt-1">Click "Add Checklist Item" to start tracking milestones</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </FormSection>
-
-        <FormSection title="Task Execution Note" icon={FileText}>
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
-                Execution Notes
-              </label>
-              <Controller
-                name="executionNotes"
-                control={form.control}
-                render={({ field }) => (
-                  <Textarea
-                    {...field}
-                    placeholder="Enter detailed execution notes, outcomes, or observations here..."
-                    className="min-h-[100px] text-xs font-semibold input-section bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0 text-slate-800"
-                  />
-                )}
-              />
-            </div>
-            {/* Row 3: Completion Date, Completion Remark */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
-              <div className="space-y-1.5 md:col-span-1" id="form-group-completionDate">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Completion Date</Label>
-                <Controller
-                  name="completionDate"
-                  control={form.control}
-                  render={({ field }) => (
-                    <DateTimePicker
-                      date={field.value ? new Date(field.value) : undefined}
-                      onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                      placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
-                      hideTime={isAllDay}
-                      className={form.formState.errors.completionDate ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    />
-                  )}
-                />
-                {form.formState.errors.completionDate && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.completionDate.message}</p>}
-              </div>
-
-              <div className="space-y-1.5 md:col-span-2" id="form-group-completionRemark">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Completion Remark</Label>
-                <Textarea
-                  placeholder="Enter completion remark"
-                  {...form.register('completionRemark')}
-                  maxLength={500}
-                  className={cn(
-                    "min-h-[80px] resize-none rounded-xl text-sm transition-all text-slate-900 font-medium",
-                    form.formState.errors.completionRemark
-                      ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                      : "border-slate-300 focus:border-[#006699] focus:ring-[#006699]/15"
-                  )}
-                />
-                {form.formState.errors.completionRemark && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.completionRemark.message}</p>}
-              </div>
-            </div>
-          </div>
-        </FormSection>
-
-        <FormSection title="Attachments" icon={Paperclip}>
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#006699] rounded-2xl p-8 bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer group"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="application/pdf,image/*"
-                onChange={handleFileSelection}
-                className="hidden"
-              />
-              <div className="h-12 w-12 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#006699] group-hover:scale-110 transition-all">
-                <UploadCloud size={22} />
-              </div>
-              <p className="mt-3 text-xs font-black text-slate-700 uppercase tracking-wider">Drag & drop files or click to upload</p>
-              <p className="mt-1 text-[10px] font-bold text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
-            </div>
-
-            {/* Active Uploading Files Queue */}
-            {uploadingFiles.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Uploading Queue</h4>
-                <div className="space-y-2">
-                  {uploadingFiles.map(file => (
-                    <motion.div
-                      key={file.tempId}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className={cn(
-                        "flex items-center justify-between p-3.5 rounded-xl border transition-all shadow-sm",
-                        file.status === 'failed' ? "bg-red-50/50 border-red-200" : "bg-slate-50/50 border-slate-200"
+                          ? "bg-slate-50/80 border-slate-200 opacity-70"
+                          : "bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-[#006699]/30 focus-within:border-[#006699] focus-within:ring-2 focus-within:ring-[#006699]/10"
                       )}
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className={cn(
-                          "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border shadow-sm",
-                          file.status === 'failed' ? "bg-red-100 border-red-200 text-red-600" : "bg-white border-slate-200 text-[#006699]"
-                        )}>
-                          {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{file.name}</p>
-                          <span className="text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                            {file.status === 'pending' && <span className="text-slate-500">Pending upload...</span>}
-                            {file.status === 'uploading' && (
-                              <span className="text-[#006699] flex items-center gap-1">
-                                <Loader2 size={10} className="animate-spin" /> Registering entry...
-                              </span>
+                      <Controller
+                        name={`check_list.${index}.completed`}
+                        control={form.control}
+                        render={({ field: checkField }) => (
+                          <button
+                            type="button"
+                            onClick={() => checkField.onChange(!checkField.value)}
+                            className={cn(
+                              "h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300",
+                              checkField.value
+                                ? "bg-[#006699] border-[#006699] text-white rotate-0 scale-100"
+                                : "border-slate-300 text-transparent hover:border-[#006699] rotate-45 scale-90"
                             )}
-                            {file.status === 'verifying' && (
-                              <span className="text-blue-600 flex items-center gap-1">
-                                <Loader2 size={10} className="animate-spin" /> Uploading file payload...
-                              </span>
-                            )}
-                            {file.status === 'failed' && (
-                              <span className="text-red-600 font-extrabold flex items-center gap-1">
-                                Failed: {file.errorMessage || "Network error"}
-                              </span>
-                            )}
-                          </span>
-                        </div>
+                          >
+                            <Check size={14} strokeWidth={4} />
+                          </button>
+                        )}
+                      />
+                      <div className="flex-1">
+                        <Input
+                          {...form.register(`check_list.${index}.description`)}
+                          placeholder="Specify checklist requirement..."
+                          className={cn(
+                            "border-none bg-transparent shadow-none p-0 h-auto text-sm font-medium transition-all duration-300 focus-visible:ring-0",
+                            form.watch(`check_list.${index}.completed`)
+                              ? "text-slate-400 line-through decoration-2"
+                              : "text-slate-800"
+                          )}
+                        />
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => removeChecklist(index)}
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-1.5 rounded-lg hover:bg-red-50"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </motion.div>
+                  ))}
 
-                      <div className="flex items-center gap-2">
-                        {file.status === 'failed' && (
+                  {checklistFields.length === 0 && (
+                    <div className="text-center py-12 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+                      <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+                        <CheckCircle size={24} className="text-slate-300" />
+                      </div>
+                      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No checklist items defined</p>
+                      <p className="text-slate-400 text-[10px] mt-1">Click "Add Checklist Item" to start tracking milestones</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </FormSection>
+        )}
+
+        {/* 6. Execution Notes */}
+        {!hiddenSections.includes('execution_note') && (
+          <FormSection title="Task Execution Note" icon={FileText}>
+            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  Execution Notes
+                </label>
+                <Controller
+                  name="executionNotes"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Textarea
+                      {...field}
+                      placeholder="Enter detailed execution notes, outcomes, or observations here..."
+                      className="min-h-[100px] text-xs font-semibold input-section bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0 text-slate-800"
+                    />
+                  )}
+                />
+              </div>
+              {/* Row 3: Completion Date, Completion Remark */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
+                <div className="space-y-1.5 md:col-span-1" id="form-group-completionDate">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Completion Date</Label>
+                  <Controller
+                    name="completionDate"
+                    control={form.control}
+                    render={({ field }) => (
+                      <DateTimePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                        placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
+                        hideTime={isAllDay}
+                        className={form.formState.errors.completionDate ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      />
+                    )}
+                  />
+                  {form.formState.errors.completionDate && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.completionDate.message}</p>}
+                </div>
+
+                <div className="space-y-1.5 md:col-span-2" id="form-group-completionRemark">
+                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Completion Remark</Label>
+                  <Textarea
+                    placeholder="Enter completion remark"
+                    {...form.register('completionRemark')}
+                    maxLength={500}
+                    className={cn(
+                      "min-h-[80px] resize-none rounded-xl text-sm transition-all text-slate-900 font-medium",
+                      form.formState.errors.completionRemark
+                        ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
+                        : "border-slate-300 focus:border-[#006699] focus:ring-[#006699]/15"
+                    )}
+                  />
+                  {form.formState.errors.completionRemark && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.completionRemark.message}</p>}
+                </div>
+              </div>
+            </div>
+          </FormSection>
+        )}
+
+        {!hiddenSections.includes('attachments') && (
+          <FormSection title="Attachments" icon={Paperclip}>
+            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#006699] rounded-2xl p-8 bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer group"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="application/pdf,image/*"
+                  onChange={handleFileSelection}
+                  className="hidden"
+                />
+                <div className="h-12 w-12 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#006699] group-hover:scale-110 transition-all">
+                  <UploadCloud size={22} />
+                </div>
+                <p className="mt-3 text-xs font-black text-slate-700 uppercase tracking-wider">Drag & drop files or click to upload</p>
+                <p className="mt-1 text-[10px] font-bold text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
+              </div>
+
+              {/* Active Uploading Files Queue */}
+              {uploadingFiles.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Uploading Queue</h4>
+                  <div className="space-y-2">
+                    {uploadingFiles.map(file => (
+                      <motion.div
+                        key={file.tempId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className={cn(
+                          "flex items-center justify-between p-3.5 rounded-xl border transition-all shadow-sm",
+                          file.status === 'failed' ? "bg-red-50/50 border-red-200" : "bg-slate-50/50 border-slate-200"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className={cn(
+                            "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border shadow-sm",
+                            file.status === 'failed' ? "bg-red-100 border-red-200 text-red-600" : "bg-white border-slate-200 text-[#006699]"
+                          )}>
+                            {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{file.name}</p>
+                            <span className="text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                              {file.status === 'pending' && <span className="text-slate-500">Pending upload...</span>}
+                              {file.status === 'uploading' && (
+                                <span className="text-[#006699] flex items-center gap-1">
+                                  <Loader2 size={10} className="animate-spin" /> Registering entry...
+                                </span>
+                              )}
+                              {file.status === 'verifying' && (
+                                <span className="text-blue-600 flex items-center gap-1">
+                                  <Loader2 size={10} className="animate-spin" /> Uploading file payload...
+                                </span>
+                              )}
+                              {file.status === 'failed' && (
+                                <span className="text-red-600 font-extrabold flex items-center gap-1">
+                                  Failed: {file.errorMessage || "Network error"}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {file.status === 'failed' && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRetryUpload(file.tempId)}
+                              className="h-8 w-8 rounded-lg border border-red-200/50 bg-white text-red-600 hover:bg-red-100/50 flex items-center justify-center transition-all shadow-sm"
+                            >
+                              <RefreshCw size={13} />
+                            </Button>
+                          )}
                           <Button
                             type="button"
                             size="icon"
                             variant="ghost"
-                            onClick={() => handleRetryUpload(file.tempId)}
-                            className="h-8 w-8 rounded-lg border border-red-200/50 bg-white text-red-600 hover:bg-red-100/50 flex items-center justify-center transition-all shadow-sm"
+                            onClick={() => handleRemoveUploading(file.tempId)}
+                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 flex items-center justify-center transition-all shadow-sm"
                           >
-                            <RefreshCw size={13} />
+                            <X size={13} />
                           </Button>
-                        )}
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleRemoveUploading(file.tempId)}
-                          className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 flex items-center justify-center transition-all shadow-sm"
-                        >
-                          <X size={13} />
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Successfully Uploaded Attachments List */}
-            {(() => {
-              const attachments = form.watch('attachments') || [];
-              if (attachments.length === 0) return null;
-
-              return (
-                <div className="space-y-3 pt-2">
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Attached Documents ({attachments.length})</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {attachments.map((file: any) => (
-                      <motion.div
-                        key={file.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="flex items-center justify-between p-3 bg-slate-50/30 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
-                            {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-baseline gap-2 mb-0.5">
-                              <p className="text-xs font-bold text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
-                              {file.size ? (
-                                <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
-                              ) : null}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
-                              className="text-[9px] font-black text-[#006699] uppercase tracking-wider hover:underline block text-left"
-                            >
-                              View document
-                            </button>
-                          </div>
                         </div>
-
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleRemoveAttachment(file.id, file.name)}
-                          className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all shadow-sm"
-                        >
-                          <Trash size={13} />
-                        </Button>
                       </motion.div>
                     ))}
                   </div>
                 </div>
-              );
-            })()}
-          </div>
-        </FormSection>
+              )}
 
-        {initialData && (
-          <FormSection title="Activity & Effort Logs" icon={History}>
+              {/* Successfully Uploaded Attachments List */}
+              {(() => {
+                const attachments = form.watch('attachments') || [];
+                if (attachments.length === 0) return null;
+
+                return (
+                  <div className="space-y-3 pt-2">
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Attached Documents ({attachments.length})</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {attachments.map((file: any) => (
+                        <motion.div
+                          key={file.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="flex items-center justify-between p-3 bg-slate-50/30 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+                              {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-baseline gap-2 mb-0.5">
+                                <p className="text-xs font-bold text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
+                                {file.size ? (
+                                  <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
+                                ) : null}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
+                                className="text-[9px] font-black text-[#006699] uppercase tracking-wider hover:underline block text-left"
+                              >
+                                View document
+                              </button>
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleRemoveAttachment(file.id, file.name)}
+                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all shadow-sm"
+                          >
+                            <Trash size={13} />
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </FormSection>
+        )}
+
+        {/* 8. Time Logs */}
+        {initialData?.taskNo && !hiddenSections.includes('actual_efforts') && (
+          <FormSection title="Time Logs" icon={History}>
             <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
               <TaskActivity
                 taskNo={initialData.taskNo}
@@ -2934,6 +3052,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
               companyNo={currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1}
               hideAddButton={true}
+              viewMode="grid"
             />
           </div>
         </FormSection>
@@ -3168,6 +3287,51 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         fillValues={fillValues}
         onSuccess={handleMasterCreateSuccess}
       />
+
+      <Dialog open={showDraftRestore} onOpenChange={setShowDraftRestore}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Unsaved Draft Found</DialogTitle>
+            <DialogDescription>
+              We found an unsaved draft for this task. Would you like to restore it and continue working?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setShowDraftRestore(false); clearDraft(); }}>
+              Discard
+            </Button>
+            <Button onClick={handleRestoreDraft} className="bg-[#006699] hover:bg-[#005580]">
+              Restore Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Navigation Blocker Dialog */}
+      <Dialog open={blocker.state === 'blocked'} onOpenChange={(open) => !open && blocker.state === 'blocked' ? blocker.reset?.() : null}>
+        <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-3xl border-slate-200">
+          <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500" />
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
+              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+                <AlertCircle size={18} strokeWidth={3} />
+              </div>
+              Unsaved Changes
+            </DialogTitle>
+            <DialogDescription className="text-slate-600 pt-2 font-medium">
+              You have unsaved changes in this task. Are you sure you want to leave this page? Your unsaved changes might be lost (though a draft is usually saved).
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex gap-3">
+            <Button type="button" variant="outline" className="flex-1 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50" onClick={() => blocker.reset?.()}>
+              Stay on Page
+            </Button>
+            <Button type="button" variant="default" className="flex-1 rounded-xl font-bold bg-yellow-500 hover:bg-yellow-600 text-white shadow-md hover:shadow-lg" onClick={() => blocker.proceed?.()}>
+              Leave Page
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

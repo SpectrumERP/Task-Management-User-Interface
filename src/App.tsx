@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { MasterManager } from '@/components/master/MasterManager';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { Toaster } from 'sonner';
 import { DealManager } from '@/components/sales/deals/DealManager';
+import { cleanupExpiredDrafts } from '@/utils/draftCleanup';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('tasks');
@@ -319,7 +320,7 @@ function MasterPageRoute() {
   const { form } = useParams<{ form: string }>();
   const navigate = useNavigate();
 
-  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'vessel', 'port', 'business-entity-type', 'company', "country", "state", "city"];
+  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'vessel', 'port', 'business-entity-type', 'company', "country", "state", "city", "task-company"];
   if (!form || !validForms.includes(form)) {
     return <Navigate to="/" replace />;
   }
@@ -366,15 +367,106 @@ function SalesDealsRoute() {
   );
 }
 
+const router = createBrowserRouter([
+  {
+    element: (
+      <SessionTimeoutGuard>
+        <Outlet />
+      </SessionTimeoutGuard>
+    ),
+    children: [
+      { path: "/login", element: <Login /> },
+      {
+        path: "/",
+        element: (
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/master/:form",
+        element: (
+          <PrivateRoute>
+            <MasterPageRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/master/:form/new",
+        element: (
+          <PrivateRoute>
+            <MasterPageRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/master/:form/edit/:id",
+        element: (
+          <PrivateRoute>
+            <MasterPageRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/sales/deals",
+        element: (
+          <PrivateRoute>
+            <SalesDealsRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/sales/deals/new",
+        element: (
+          <PrivateRoute>
+            <SalesDealsRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/sales/deals/edit/:id",
+        element: (
+          <PrivateRoute>
+            <SalesDealsRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/sales/deals/:id",
+        element: (
+          <PrivateRoute>
+            <SalesDealsRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/task/:id",
+        element: (
+          <PrivateRoute>
+            <TaskDetail />
+          </PrivateRoute>
+        ),
+      },
+      { path: "*", element: <Navigate to="/" replace /> },
+    ],
+  },
+]);
+
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
   useEffect(() => {
     checkAuth();
+    cleanupExpiredDrafts(); // Clean up old drafts on startup
   }, [checkAuth]);
 
   // Version Cache Busting Check
   useEffect(() => {
+    // Initial cleanup
+    cleanupExpiredDrafts();
+
+    // Check app version periodically
     const checkVersion = async () => {
       try {
         const response = await fetch('/version.json?t=' + new Date().getTime());
@@ -401,88 +493,11 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <SessionTimeoutGuard>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/master/:form"
-            element={
-              <PrivateRoute>
-                <MasterPageRoute />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/master/:form/new"
-            element={
-              <PrivateRoute>
-                <MasterPageRoute />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/master/:form/edit/:id"
-            element={
-              <PrivateRoute>
-                <MasterPageRoute />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/sales/deals"
-            element={
-              <PrivateRoute>
-                <SalesDealsRoute />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/sales/deals/new"
-            element={
-              <PrivateRoute>
-                <SalesDealsRoute />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/sales/deals/edit/:id"
-            element={
-              <PrivateRoute>
-                <SalesDealsRoute />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/sales/deals/:id"
-            element={
-              <PrivateRoute>
-                <SalesDealsRoute />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/task/:id"
-            element={
-              <PrivateRoute>
-                <TaskDetail />
-              </PrivateRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <PWAInstallBanner />
-        <Toaster position="top-right" richColors closeButton />
-      </SessionTimeoutGuard>
-    </BrowserRouter>
+    <>
+      <RouterProvider router={router} />
+      <PWAInstallBanner />
+      <Toaster position="top-right" richColors closeButton />
+    </>
   );
 }
 

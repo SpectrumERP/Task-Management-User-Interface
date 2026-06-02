@@ -1,7 +1,5 @@
 const CACHE_NAME = 'taskflow-cache-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
   '/favicon.svg',
   '/apple-touch-icon.png',
   '/pwa-192x192.png',
@@ -58,8 +56,8 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
           }
-        }).catch(() => {/* Ignore background network failures */});
-        
+        }).catch(() => {/* Ignore background network failures */ });
+
         return cachedResponse;
       }
 

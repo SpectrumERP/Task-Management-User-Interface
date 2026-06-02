@@ -207,6 +207,7 @@ interface CustomFieldsSectionProps {
   categoryFillValues?: any;
   companyNo?: number;
   hideAddButton?: boolean;
+  viewMode?: 'table' | 'grid';
 }
 
 export function CustomFieldsSection({
@@ -214,7 +215,8 @@ export function CustomFieldsSection({
   onChange,
   categoryFillValues: categoryFillValuesProp,
   companyNo = 1,
-  hideAddButton = false
+  hideAddButton = false,
+  viewMode = 'table'
 }: CustomFieldsSectionProps) {
   const [internalFillValues, setInternalFillValues] = useState<any>(null);
 
@@ -262,12 +264,16 @@ export function CustomFieldsSection({
   };
 
   const renderValueField = (cf: any, index: number) => {
+    const baseClasses = viewMode === 'grid'
+      ? "h-9 rounded-xl border border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699] text-sm bg-white shadow-sm px-3 w-full transition-all text-slate-900 font-medium"
+      : "h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors";
+
     if (!cf.customFieldNo) {
       return (
         <Input
           disabled
           placeholder="Select custom field..."
-          className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 w-full cursor-not-allowed text-slate-400 font-medium"
+          className={cn(baseClasses, "cursor-not-allowed text-slate-400")}
         />
       );
     }
@@ -286,7 +292,7 @@ export function CustomFieldsSection({
             placeholder="Enter numeric..."
             value={cf.fieldValue}
             onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
-            className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+            className={baseClasses}
           />
         );
       case 2: // Float
@@ -297,7 +303,7 @@ export function CustomFieldsSection({
             placeholder="Enter decimal..."
             value={cf.fieldValue}
             onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
-            className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+            className={baseClasses}
           />
         );
       case 3: // Alpha Numeric
@@ -307,7 +313,7 @@ export function CustomFieldsSection({
             placeholder="Enter text..."
             value={cf.fieldValue}
             onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
-            className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+            className={baseClasses}
           />
         );
       case 4: // Yes/No dropdown
@@ -320,12 +326,12 @@ export function CustomFieldsSection({
             value={cf.fieldValue}
             onChange={(val) => updateField(index, 'fieldValue', val)}
             placeholder="Select..."
-            className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+            className={baseClasses}
           />
         );
       case 5: // Boolean Checkbox
         return (
-          <div className="flex items-center h-7 pl-2">
+          <div className={cn("flex items-center", viewMode === 'grid' ? "h-9 pl-1" : "h-7 pl-2")}>
             <Checkbox
               id={`reusable-cf-bool-${index}`}
               checked={cf.fieldValue === 'true' || cf.fieldValue === true}
@@ -340,7 +346,7 @@ export function CustomFieldsSection({
             type="date"
             value={cf.fieldValue || ''}
             onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
-            className="h-7 rounded-lg border border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent outline-none shadow-none px-2 w-full transition-colors text-slate-700 font-bold"
+            className={cn(baseClasses, "outline-none text-slate-700")}
           />
         );
       case 7: { // Local Dropdown choices
@@ -356,7 +362,7 @@ export function CustomFieldsSection({
             value={cf.fieldValue}
             onChange={(val) => updateField(index, 'fieldValue', val)}
             placeholder="Select..."
-            className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+            className={baseClasses}
           />
         );
       }
@@ -367,7 +373,7 @@ export function CustomFieldsSection({
             value={cf.fieldValue}
             onChange={(val) => updateField(index, 'fieldValue', val)}
             placeholder="Search..."
-            className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+            className={baseClasses}
           />
         );
       default:
@@ -376,7 +382,7 @@ export function CustomFieldsSection({
             placeholder="Enter value..."
             value={cf.fieldValue}
             onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
-            className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+            className={baseClasses}
           />
         );
     }
@@ -400,49 +406,90 @@ export function CustomFieldsSection({
       </div>
 
       {customFields.length > 0 ? (
-        <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all w-full">
-          <div className="max-h-[250px] overflow-y-auto scrollbar-thin">
-            <table className="w-full text-left text-[11px] border-collapse">
-              <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
-                <tr>
-                  <th className="px-3 py-2 font-black text-slate-700 uppercase tracking-wider w-1/2">Field Name</th>
-                  <th className="px-3 py-2 font-black text-slate-700 uppercase tracking-wider w-1/2">Value</th>
-                  <th className="px-2 py-2 w-10 text-center"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {customFields.map((cf, index) => (
-                  <tr key={index} className="group hover:bg-white transition-colors">
-                    <td className="px-2 py-1">
-                      <Combobox
-                        options={(fillValues?.customFields || []).map((field: any) => ({
-                          label: field.customFieldName || '',
-                          value: (field.customFieldNo || '').toString()
-                        }))}
-                        value={cf.customFieldNo}
-                        onChange={(val) => updateField(index, 'customFieldNo', val)}
-                        placeholder="Select custom field..."
-                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      {renderValueField(cf, index)}
-                    </td>
-                    <td className="px-1 py-1 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeField(index)}
-                        className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-2">
+            {customFields.map((cf, index) => {
+              const selectedField = (fillValues?.customFields || []).find(
+                (field: any) => (field.customFieldNo || '').toString() === cf.customFieldNo
+              );
+
+              return (
+                <div key={index} className="space-y-1.5 relative group">
+                  {!hideAddButton && (
+                    <button
+                      type="button"
+                      onClick={() => removeField(index)}
+                      className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md z-10"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                  {hideAddButton || cf.customFieldNo ? (
+                    <label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1 block truncate">
+                      {selectedField ? selectedField.customFieldName : 'Unknown Field'}
+                    </label>
+                  ) : (
+                    <Combobox
+                      options={(fillValues?.customFields || []).map((field: any) => ({
+                        label: field.customFieldName || '',
+                        value: (field.customFieldNo || '').toString()
+                      }))}
+                      value={cf.customFieldNo}
+                      onChange={(val) => updateField(index, 'customFieldNo', val)}
+                      placeholder="Select custom field..."
+                      className="h-7 mb-1.5 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+                    />
+                  )}
+                  {renderValueField(cf, index)}
+                </div>
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <div className="bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all w-full">
+            <div className="max-h-[250px] overflow-y-auto scrollbar-thin">
+              <table className="w-full text-left text-[11px] border-collapse">
+                <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
+                  <tr>
+                    <th className="px-3 py-2 font-black text-slate-700 uppercase tracking-wider w-1/2">Field Name</th>
+                    <th className="px-3 py-2 font-black text-slate-700 uppercase tracking-wider w-1/2">Value</th>
+                    <th className="px-2 py-2 w-10 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {customFields.map((cf, index) => (
+                    <tr key={index} className="group hover:bg-white transition-colors">
+                      <td className="px-2 py-1">
+                        <Combobox
+                          options={(fillValues?.customFields || []).map((field: any) => ({
+                            label: field.customFieldName || '',
+                            value: (field.customFieldNo || '').toString()
+                          }))}
+                          value={cf.customFieldNo}
+                          onChange={(val) => updateField(index, 'customFieldNo', val)}
+                          placeholder="Select custom field..."
+                          className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2 w-full transition-colors"
+                        />
+                      </td>
+                      <td className="px-2 py-1">
+                        {renderValueField(cf, index)}
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeField(index)}
+                          className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       ) : (
         <div className="text-center py-6 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No additional fields added yet</span>

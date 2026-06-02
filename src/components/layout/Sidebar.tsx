@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutGrid,
   X,
@@ -40,6 +40,7 @@ const masterItems = [
   { icon: Anchor, label: 'Ports', id: 'master-port' },
   { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type' },
   { icon: Building2, label: 'Business Entity', id: 'master-company' },
+  { icon: Building2, label: 'Task Company', id: 'master-task-company' },
   { icon: Globe, label: 'Countries', id: 'master-country' },
   { icon: MapPin, label: 'States', id: 'master-state' },
   { icon: Building, label: 'Cities', id: 'master-city' }
@@ -57,7 +58,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, onToggleCollapse, className }: SidebarProps) {
-  const [isMasterExpanded, setIsMasterExpanded] = useState(true);
+  const isMasterActive = masterItems.some(item => item.id === activeTab);
+  const [isMasterExpanded, setIsMasterExpanded] = useState(isMasterActive);
+
+  useEffect(() => {
+    setIsMasterExpanded(masterItems.some(item => item.id === activeTab));
+  }, [activeTab]);
 
   return (
     <aside className={cn("h-full bg-[#f4f7fa] border-r flex flex-col p-4 shrink-0 transition-all duration-300", isCollapsed ? "w-[80px] items-center px-2" : "w-64", className)}>
