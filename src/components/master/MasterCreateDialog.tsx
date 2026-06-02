@@ -20,7 +20,7 @@ import { Label } from '@radix-ui/react-label';
 interface MasterCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  type: 'category' | 'type' | 'priority' | 'folder' | 'location' | null;
+  type: 'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'benefit-type' | 'country' | 'state' | 'city' | null;
   companyNo: string | number;
   fillValues: any; // TaskFillValues from parent
   onSuccess: (id: string, label: string) => void;
@@ -38,6 +38,10 @@ export function MasterCreateDialog({
   const [name, setName] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
+
+  // Nested Master Creation State
+  const [isNestedMasterOpen, setIsNestedMasterOpen] = useState(false);
+  const [nestedMasterType, setNestedMasterType] = useState<'country' | 'state' | 'city' | null>(null);
 
   // Category State
   const [isApprovalApplicable, setIsApprovalApplicable] = useState(false);
@@ -696,6 +700,10 @@ export function MasterCreateDialog({
                     }}
                     placeholder="Select Country"
                     className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    onAddNew={() => {
+                      setNestedMasterType('country');
+                      setIsNestedMasterOpen(true);
+                    }}
                   />
                   {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
                 </div>
@@ -713,6 +721,10 @@ export function MasterCreateDialog({
                     }}
                     placeholder="Select State"
                     className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    onAddNew={() => {
+                      setNestedMasterType('state');
+                      setIsNestedMasterOpen(true);
+                    }}
                   />
                   {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
                 </div>
@@ -733,6 +745,10 @@ export function MasterCreateDialog({
                     }}
                     placeholder="Select City"
                     className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    onAddNew={() => {
+                      setNestedMasterType('city');
+                      setIsNestedMasterOpen(true);
+                    }}
                   />
                   {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
                 </div>
@@ -788,6 +804,17 @@ export function MasterCreateDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {isNestedMasterOpen && (
+        <MasterCreateDialog
+          open={isNestedMasterOpen}
+          onOpenChange={setIsNestedMasterOpen}
+          type={nestedMasterType}
+          companyNo={companyNo}
+          fillValues={fillValues}
+          onSuccess={() => {}}
+        />
+      )}
     </Dialog>
   );
 }

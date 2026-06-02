@@ -1722,6 +1722,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={field.onChange}
                       placeholder="Search company..."
                       className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('company' as any);
+                        setIsMasterCreateOpen(true);
+                      }}
                     />
                   )}
                 />
@@ -1819,6 +1823,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setSelectedCollabTeam('');
+                                const current = form.getValues('collaborators') || [];
+                                replaceCollab(current.filter(c => !c.isFromTeam));
                               }}
                             >
                               <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
@@ -1918,6 +1924,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setSelectedInformTeam('');
+                                const current = form.getValues('informed_to') || [];
+                                replaceInform(current.filter(i => !i.isFromTeam));
                               }}
                             >
                               <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
@@ -2181,33 +2189,28 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     name="business_benefit_type_No"
                     control={form.control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className={cn(
-                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm transition-all",
-                          form.formState.errors.business_benefit_type_No
-                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                        )}>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          {fillValues?.benefitType
-                            .filter(b => {
-                              const item = b as any;
-                              const label = item["Business Benefit"] || item.BusinessBenefitTypeName || item.businessBenefitTypeName || item.BenefitTypeName || item.benefitTypeName || item.typeName || item.Name || item.name || item.Code || item.code || '';
-                              const lower = label.toLowerCase();
-                              return lower !== 'all' && lower !== '[all]';
-                            })
-                            .map(b => {
-                              const item = b as any;
-                              const val = (item.BusinessBenefitTypeNo ?? item.businessBenefitTypeNo ?? '').toString();
-                              const label = item["Business Benefit"] || item.BusinessBenefitTypeName || item.businessBenefitTypeName || item.BenefitTypeName || item.benefitTypeName || item.typeName || item.Name || item.name || item.Code || item.code || `Benefit Type #${val}`;
-                              return (
-                                <SelectItem key={val} value={val}>{label}</SelectItem>
-                              );
-                            })}
-                        </SelectContent>
-                      </Select>
+                      <Combobox
+                        options={(fillValues?.benefitType || [])
+                          .filter((b: any) => {
+                            const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
+                            const lower = label.toLowerCase();
+                            return lower !== 'all' && lower !== '[all]';
+                          })
+                          .map((b: any) => {
+                            const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
+                            const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
+                            return { label, value: val };
+                          })
+                        }
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select benefit type..."
+                        className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        onAddNew={() => {
+                          setActiveMasterType('benefit-type' as any);
+                          setIsMasterCreateOpen(true);
+                        }}
+                      />
                     )}
                   />
                   {form.formState.errors.business_benefit_type_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_type_No.message}</p>}

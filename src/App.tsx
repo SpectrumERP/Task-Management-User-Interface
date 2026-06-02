@@ -373,6 +373,33 @@ function App() {
     checkAuth();
   }, [checkAuth]);
 
+  // Version Cache Busting Check
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const response = await fetch('/version.json?t=' + new Date().getTime());
+        if (response.ok) {
+          const data = await response.json();
+          const currentVersion = localStorage.getItem('app_version');
+          
+          if (!currentVersion) {
+            localStorage.setItem('app_version', data.version.toString());
+          } else if (currentVersion !== data.version.toString()) {
+            localStorage.setItem('app_version', data.version.toString());
+            window.location.reload();
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check app version:', err);
+      }
+    };
+    
+    checkVersion();
+    // Optional: check version every 30 minutes if user leaves app open
+    const interval = setInterval(checkVersion, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <BrowserRouter>
       <SessionTimeoutGuard>

@@ -54,6 +54,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
+import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
 
 interface MasterManagerProps {
   type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company' | 'country' | 'state' | 'city';
@@ -75,6 +76,10 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  // Master Create Dialog State
+  const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
+  const [activeMasterType, setActiveMasterType] = useState<'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'benefit-type' | 'country' | 'state' | 'city' | null>(null);
 
   // Real API State
   const [apiLocations, setApiLocations] = useState<LocationMaster[]>([]);
@@ -4460,6 +4465,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                     "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                     errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
+                  onAddNew={() => {
+                    setActiveMasterType('country');
+                    setIsMasterCreateOpen(true);
+                  }}
                 />
                 {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
               </div>
@@ -4479,6 +4488,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                     "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                     errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
+                  onAddNew={() => {
+                    setActiveMasterType('state');
+                    setIsMasterCreateOpen(true);
+                  }}
                 />
                 {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
               </div>
@@ -4504,6 +4517,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                     "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                     errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
+                  onAddNew={() => {
+                    setActiveMasterType('city');
+                    setIsMasterCreateOpen(true);
+                  }}
                 />
                 {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
               </div>
@@ -4551,6 +4568,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                   "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.stateCountryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
+                onAddNew={() => {
+                  setActiveMasterType('country');
+                  setIsMasterCreateOpen(true);
+                }}
               />
               {errors.stateCountryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateCountryNo}</p>}
             </div>
@@ -4612,6 +4633,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                   "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.cityCityCountryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
+                onAddNew={() => {
+                  setActiveMasterType('country');
+                  setIsMasterCreateOpen(true);
+                }}
               />
               {errors.cityCityCountryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityCityCountryNo}</p>}
             </div>
@@ -4634,6 +4659,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                   "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.cityCityStateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
+                onAddNew={() => {
+                  setActiveMasterType('state');
+                  setIsMasterCreateOpen(true);
+                }}
               />
               {errors.cityCityStateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityCityStateNo}</p>}
             </div>
@@ -5895,6 +5924,17 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {isMasterCreateOpen && (
+        <MasterCreateDialog
+          open={isMasterCreateOpen}
+          onOpenChange={setIsMasterCreateOpen}
+          type={activeMasterType}
+          companyNo={companyNo}
+          fillValues={fillValues}
+          onSuccess={() => {}}
+        />
+      )}
     </div>
   );
 }
