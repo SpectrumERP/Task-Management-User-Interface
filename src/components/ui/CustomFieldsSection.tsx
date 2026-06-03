@@ -208,6 +208,7 @@ interface CustomFieldsSectionProps {
   companyNo?: number;
   hideAddButton?: boolean;
   viewMode?: 'table' | 'grid';
+  hideLabel?: boolean;
 }
 
 export function CustomFieldsSection({
@@ -216,7 +217,8 @@ export function CustomFieldsSection({
   categoryFillValues: categoryFillValuesProp,
   companyNo = 1,
   hideAddButton = false,
-  viewMode = 'table'
+  viewMode = 'table',
+  hideLabel = false
 }: CustomFieldsSectionProps) {
   const [internalFillValues, setInternalFillValues] = useState<any>(null);
 
@@ -391,7 +393,10 @@ export function CustomFieldsSection({
   return (
     <div className="space-y-3 pt-2">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1"> Addition Fields </label>
+        {
+          !hideLabel &&
+          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1"> Addition Fields </label>
+        }
         {!hideAddButton && (
           <Button
             type="button"

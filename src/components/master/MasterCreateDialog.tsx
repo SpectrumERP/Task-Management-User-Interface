@@ -20,7 +20,7 @@ import { Label } from '@radix-ui/react-label';
 interface MasterCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  type: 'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'benefit-type' | 'country' | 'state' | 'city' | null;
+  type: 'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'benefit-type' | 'country' | 'state' | 'city' | 'task-company' | null;
   companyNo: string | number;
   fillValues: any; // TaskFillValues from parent
   onSuccess: (id: string, label: string) => void;
@@ -79,6 +79,10 @@ export function MasterCreateDialog({
   const [locationRegion, setLocationRegion] = useState('');
   const [locationFillValues, setLocationFillValues] = useState<any>(null);
 
+  // Task Company State
+  const [aliasName, setAliasName] = useState('');
+  const [locationName, setLocationName] = useState('');
+
   // Reset state when opening/changing type
   useEffect(() => {
     if (!open || !type) return;
@@ -119,6 +123,10 @@ export function MasterCreateDialog({
     setCityNo('');
     setPinCode('');
     setLocationRegion('');
+    
+    // Reset Task Company
+    setAliasName('');
+    setLocationName('');
 
     // Asynchronously fetch fill values needed specifically for master sub-forms
     const activeCompanyNo = companyNo || 1;
@@ -130,7 +138,7 @@ export function MasterCreateDialog({
       apiService.get<any>(`/api/master/task-folders/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setFolderFillValues(response.data || response);
       }).catch(err => console.error("Failed to load folder fill values:", err));
-    } else if (type === 'location') {
+    } else if (type === 'location' || type === 'task-company') {
       apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setLocationFillValues(response);
       }).catch(err => console.error("Failed to load location fill values:", err));
@@ -251,6 +259,21 @@ export function MasterCreateDialog({
           regionNo: parseInt(locationRegion) || null
         };
         response = await apiService.post('/api/master/task-locations/save', payload);
+      } else if (type === 'task-company') {
+        const payload = {
+          operTaskCompanyNo: null,
+          companyName: name,
+          aliasName: aliasName || null,
+          locationName: locationName || null,
+          address1: address1 || null,
+          address2: address2 || null,
+          address3: address3 || null,
+          cityNo: parseInt(cityNo) || null,
+          pinCode: pinCode || null,
+          stateNo: parseInt(stateNo) || null,
+          countryNo: parseInt(countryNo) || null
+        };
+        response = await apiService.post('/api/crm/task-companies/save', payload);
       }
 
       // Resolve the saved record's ID
@@ -262,6 +285,7 @@ export function MasterCreateDialog({
         else if (type === 'priority') createdId = (data.operTaskPriorityNo || data.id || '').toString();
         else if (type === 'folder') createdId = (data.taskFolderNo || data.id || '').toString();
         else if (type === 'location') createdId = (data.operLocationNo || data.id || '').toString();
+        else if (type === 'task-company') createdId = (data.operTaskCompanyNo || data.id || '').toString();
       }
 
       // Success Callback!
@@ -296,6 +320,7 @@ export function MasterCreateDialog({
       case 'priority': return 'Priority Master';
       case 'folder': return 'Folder Master';
       case 'location': return 'Location Master';
+      case 'task-company': return 'Task Company Master';
       default: return 'Master Form';
     }
   };
@@ -764,6 +789,121 @@ export function MasterCreateDialog({
                     className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
                   />
                   {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {type === 'task-company' && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Alias Name</Label>
+                <Input
+                  placeholder="Enter alias"
+                  value={aliasName}
+                  onChange={(e) => setAliasName(e.target.value)}
+                  maxLength={15}
+                  className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Location Name</Label>
+                <Input
+                  placeholder="Enter location name"
+                  value={locationName}
+                  onChange={(e) => setLocationName(e.target.value)}
+                  maxLength={50}
+                  className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1 block">Address</Label>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Address Line 1"
+                    value={address1}
+                    onChange={(e) => setAddress1(e.target.value)}
+                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  />
+                  <Input
+                    placeholder="Address Line 2 (Optional)"
+                    value={address2}
+                    onChange={(e) => setAddress2(e.target.value)}
+                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  />
+                  <Input
+                    placeholder="Address Line 3 (Optional)"
+                    value={address3}
+                    onChange={(e) => setAddress3(e.target.value)}
+                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Country</Label>
+                  <Combobox
+                    options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                      label: c.countryName || '',
+                      value: (c.countryNo || '').toString()
+                    }))}
+                    value={countryNo}
+                    onChange={setCountryNo}
+                    placeholder="Select Country"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    onAddNew={() => {
+                      setNestedMasterType('country');
+                      setIsNestedMasterOpen(true);
+                    }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">State / Province</Label>
+                  <Combobox
+                    options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                      label: s.stateName || '',
+                      value: (s.stateNo || '').toString()
+                    }))}
+                    value={stateNo}
+                    onChange={setStateNo}
+                    placeholder="Select State"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    onAddNew={() => {
+                      setNestedMasterType('state');
+                      setIsNestedMasterOpen(true);
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">City</Label>
+                  <Combobox
+                    options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+                      label: c.cityName || '',
+                      value: (c.cityNo || '').toString()
+                    }))}
+                    value={cityNo}
+                    onChange={setCityNo}
+                    placeholder="Select City"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    onAddNew={() => {
+                      setNestedMasterType('city');
+                      setIsNestedMasterOpen(true);
+                    }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</Label>
+                  <Input
+                    placeholder="ZIP"
+                    value={pinCode}
+                    onChange={(e) => setPinCode(e.target.value)}
+                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  />
                 </div>
               </div>
             </div>

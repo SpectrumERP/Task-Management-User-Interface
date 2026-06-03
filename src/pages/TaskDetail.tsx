@@ -159,7 +159,7 @@ export default function TaskDetail() {
           originator_user_No: d.originator?.id || 1,
           owner_user_No: d.owner?.id || null,
           location_No: d.location?.operTaskLocationNo || null,
-          company: d.company || 'Glacier',
+          company: d?.taskCompany?.taskCompanyAlias || '',
           start_date: d.startDate,
           end_date: d.endDate,
           completionDate: d.completionDate,

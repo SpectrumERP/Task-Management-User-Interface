@@ -452,6 +452,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const hideSectionsParam = searchParams.get('hideSections') || '';
   const hiddenSections = hideSectionsParam.split(',').map(s => s.trim().toLowerCase());
 
+  const isShowTopAdditionalFields = searchParams.get('isShowTopAdditionalFields') === 'true';
+
   const { hasDraft, hasExistingDraft, saveDraft, clearDraft, getDraft, isRestoringRef } = useFormDraft(initialData?.taskNo || null);
   const [showDraftRestore, setShowDraftRestore] = useState(false);
 
@@ -573,7 +575,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               originator_user_No: d.originator?.id || 1,
               owner_user_No: d.owner?.id || null,
               location_No: d.location?.operTaskLocationNo || null,
-              company: d.company || 'Glacier',
+              company: d?.taskCompany?.taskCompanyNo || '',
               start_date: d.startDate,
               end_date: d.endDate,
               estimated_effort_value: d.estimatedEfforts?.hours || '',
@@ -776,6 +778,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       const payload = {
         operTaskNo: st.operTaskNo || null,
         parentTaskNo: initialData.taskNo,
+        operTaskTypeNo: st.type_No ? parseInt(st.type_No) : null,
         title: st.title,
         ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : 0,
         endDate: st.endDate || null,
@@ -802,6 +805,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     appendSubtask({
       id: Date.now().toString(),
       operTaskNo: st.taskNo,
+      type_No: st.type_No?.toString() || st.operTaskTypeNo?.toString() || '',
       title: st.title || '',
       description: '',
       ownerLoginNo: st.ownerLoginNo?.toString() || st.assignedTo?.id?.toString() || st.assignedTo?.loginNo?.toString() || st.owner?.id?.toString() || '',
@@ -884,26 +888,43 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         // 3. Set the subtasks data in the subtask templates section (for new tasks)
         const rawSubTasks = data.subtasks || data.subTasks;
         if (rawSubTasks && rawSubTasks.length > 0) {
-          const mappedSubTasks = rawSubTasks.map((item: any, index: number) => ({
-            taskNo: -(Date.now() + index), // Use negative ID for local unsaved templates
-            code: '',
-            title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
-            status: 'Draft',
-            ownerLoginNo: '',
-            assignedDisplayName: '-',
-            endDate: '',
-            completionDate: '',
-            completionRemark: ''
-          }));
-          setLocalSubtasks(prev => {
-            // Keep existing saved subtasks, replace templated ones
-            const savedTasks = prev.filter(t => t.taskNo > 0);
-            return [...savedTasks, ...mappedSubTasks];
-          });
-          replaceSubtask([]);
+          if (!initialData) {
+            // New task: load templates into editable mode
+            const editableSubtasks = rawSubTasks.map((item: any, index: number) => ({
+              id: Date.now().toString() + index,
+              operTaskNo: null,
+              title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
+              description: '',
+              ownerLoginNo: '',
+              endDate: '',
+              completionDate: '',
+              completionRemark: ''
+            }));
+            replaceSubtask(editableSubtasks);
+            setLocalSubtasks(prev => prev.filter(t => t.taskNo > 0));
+          } else {
+            // Existing task: load templates into read-only view
+            const mappedSubTasks = rawSubTasks.map((item: any, index: number) => ({
+              taskNo: -(Date.now() + index),
+              code: '',
+              title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
+              status: 'Draft',
+              ownerLoginNo: '',
+              assignedDisplayName: '-',
+              endDate: '',
+              completionDate: '',
+              completionRemark: ''
+            }));
+            setLocalSubtasks(prev => {
+              const savedTasks = prev.filter(t => t.taskNo > 0);
+              return [...savedTasks, ...mappedSubTasks];
+            });
+          }
         } else {
           setLocalSubtasks(prev => prev.filter(t => t.taskNo > 0));
-          replaceSubtask([]);
+          if (!initialData) {
+            replaceSubtask([]);
+          }
         }
 
         // 4. Set the customFields data in the custom fields section
@@ -927,8 +948,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const companyNo = currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
-        const response = await fetchFillValues(companyNo.toString(), true);
+        const initialCompany = form.getValues('company') || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
+        const response = await fetchFillValues(initialCompany.toString(), true);
         if (response) {
           setFillValues(response as TaskFillValues);
         }
@@ -939,6 +960,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           if (authUser) {
             form.setValue('originator_user_No', authUser.LoginNo?.toString() || authUser.loginNo?.toString() || '101');
           }
+
+          if (response) {
+            const categoryParam = searchParams.get('category');
+            if (categoryParam && (response as any).category) {
+              const matchedCategory = (response as any).category.find((c: any) => c.Category?.toLowerCase() === categoryParam.toLowerCase());
+              if (matchedCategory) {
+                form.setValue('category_No', matchedCategory.OperTaskCategoryNo.toString());
+                handleCategoryChange(matchedCategory.OperTaskCategoryNo.toString());
+              }
+            }
+
+            const typeParam = searchParams.get('type');
+            if (typeParam && (response as any).type) {
+              const matchedType = (response as any).type.find((t: any) => t['Task Type']?.toLowerCase() === typeParam.toLowerCase());
+              if (matchedType) {
+                form.setValue('type_No', matchedType.OperTaskTypeNo.toString());
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to fetch task options:', error);
@@ -948,7 +988,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     };
 
     fetchOptions();
-  }, [authCompanies, authUser, initialData, form, fetchFillValues, currentCompany]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authCompanies, authUser, initialData, form, fetchFillValues, searchParams]);
 
   useEffect(() => {
     if (initialData) {
@@ -1327,6 +1368,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     const payload = {
       operTaskNo: initialData ? initialData.taskNo : null,
       companyNo: parseInt(data.company) || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1,
+      OperTaskCompanyNo: parseInt(data.company) || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1,
       title: data.title || null,
       code: data.code || null,
       description: data.description || null,
@@ -1370,6 +1412,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       subTasks: [
         ...(!initialData ? localSubtasks.map((st: any) => ({
           operTaskNo: null,
+          operTaskTypeNo: st.type_No ? parseInt(st.type_No) : (st.operTaskTypeNo ? parseInt(st.operTaskTypeNo) : null),
           title: st.title || null,
           description: st.description || null,
           ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
@@ -1380,6 +1423,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         })) : []),
         ...(data.sub_tasks || []).map((st: any) => ({
           operTaskNo: st.operTaskNo || null,
+          operTaskTypeNo: st.type_No ? parseInt(st.type_No) : null,
           title: st.title || null,
           description: st.description || null,
           ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
@@ -1424,6 +1468,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         });
       }
       clearDraft();
+      form.reset(data); // Reset form state to clear isDirty flag
       setShowSuccessAlert(true);
     } catch (error: any) {
       console.error('Failed to save task:', error);
@@ -1540,11 +1585,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     return s.Status === currentStatus || allowedNextStatuses.includes(s.Status);
   }) || [];
 
-  // Company options from auth data
-  const companyOptions = authCompanies?.map(c => ({
-    label: c.CompanyName || c.companyName || c.name || 'Unknown Company',
-    value: (c.companyNo || c.CompanyNo || '').toString()
-  })) || [];
+  // Company options from fillValues taskCompany, fallback to auth data
+  const companyOptions = (fillValues?.taskCompany && fillValues.taskCompany.length > 0)
+    ? fillValues.taskCompany.map(c => ({
+      label: c.AliasName || c.CompanyName || c.Code || 'Unknown Company',
+      value: (c.OperTaskCompanyNo || '').toString()
+    }))
+    : authCompanies?.map(c => ({
+      label: c.CompanyName || c.companyName || c.name || 'Unknown Company',
+      value: (c.companyNo || c.CompanyNo || '').toString()
+    })) || [];
 
   const collabError = form.formState.errors.collaborators;
   const hasCollabError = collabError && !Array.isArray(collabError) && (collabError as any).message;
@@ -1692,122 +1742,124 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </div>
         </FormSection>
 
-        <FormSection
-          title="Category Detail"
-          icon={Info}
-        >
-          {/* Row 3: Category, Type, Priority */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-4">
-            <div className="space-y-1" id="form-group-category_No">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Category</Label>
-              <Controller
-                name="category_No"
-                control={form.control}
-                render={({ field }) => (
-                  <Combobox
-                    disabled={isSubTask}
-                    options={fillValues?.category
-                      .filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
-                      .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
-                    value={field.value}
-                    onChange={(val) => {
-                      field.onChange(val);
-                      handleCategoryChange(val);
-                    }}
-                    placeholder="Select category"
-                    className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    onAddNew={() => {
-                      setActiveMasterType('category');
-                      setIsMasterCreateOpen(true);
-                    }}
-                    addNewLabel="Add New Category"
-                  />
-                )}
-              />
-              {form.formState.errors.category_No && <p className="text-[10px] text-red-500 font-bold ml-1">Category is required</p>}
+        {!hiddenSections.includes('categories') && (
+          <FormSection
+            title="Category Detail"
+            icon={Info}
+          >
+            {/* Row 3: Category, Type, Priority */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-4">
+              <div className="space-y-1" id="form-group-category_No">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Category</Label>
+                <Controller
+                  name="category_No"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Combobox
+                      disabled={isSubTask}
+                      options={fillValues?.category
+                        .filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
+                        .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val);
+                        handleCategoryChange(val);
+                      }}
+                      placeholder="Select category"
+                      className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('category');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Category"
+                    />
+                  )}
+                />
+                {form.formState.errors.category_No && <p className="text-[10px] text-red-500 font-bold ml-1">Category is required</p>}
+              </div>
+              <div className="space-y-1" id="form-group-type_No">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Type</Label>
+                <Controller
+                  name="type_No"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Combobox
+                      disabled={isSubTask}
+                      options={fillValues?.type
+                        .filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
+                        .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select type"
+                      className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('type');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Type"
+                    />
+                  )}
+                />
+                {form.formState.errors.type_No && <p className="text-[10px] text-red-500 font-bold ml-1">Type is required</p>}
+              </div>
+              <div className="space-y-1" id="form-group-folder_No">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Folder</Label>
+                <Controller
+                  name="folder_No"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Combobox
+                      disabled={isSubTask}
+                      options={fillValues?.folder
+                        .map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select folder"
+                      className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      isClearable={false}
+                      onAddNew={() => {
+                        setActiveMasterType('folder');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Folder"
+                    />
+                  )}
+                />
+                {form.formState.errors.folder_No && <p className="text-[10px] text-red-500 font-bold ml-1">Folder is required</p>}
+              </div>
+              <div className="space-y-1" id="form-group-priority_No">
+                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Priority</Label>
+                <Controller
+                  name="priority_No"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Combobox
+                      disabled={isSubTask}
+                      options={fillValues?.priority
+                        .filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
+                        .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select priority"
+                      className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('priority');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Priority"
+                    />
+                  )}
+                />
+                {form.formState.errors.priority_No && <p className="text-[10px] text-red-500 font-bold ml-1">Priority is required</p>}
+              </div>
             </div>
-            <div className="space-y-1" id="form-group-type_No">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Type</Label>
-              <Controller
-                name="type_No"
-                control={form.control}
-                render={({ field }) => (
-                  <Combobox
-                    disabled={isSubTask}
-                    options={fillValues?.type
-                      .filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
-                      .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select type"
-                    className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    onAddNew={() => {
-                      setActiveMasterType('type');
-                      setIsMasterCreateOpen(true);
-                    }}
-                    addNewLabel="Add New Type"
-                  />
-                )}
-              />
-              {form.formState.errors.type_No && <p className="text-[10px] text-red-500 font-bold ml-1">Type is required</p>}
-            </div>
-            <div className="space-y-1" id="form-group-folder_No">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Folder</Label>
-              <Controller
-                name="folder_No"
-                control={form.control}
-                render={({ field }) => (
-                  <Combobox
-                    disabled={isSubTask}
-                    options={fillValues?.folder
-                      .map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select folder"
-                    className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    isClearable={false}
-                    onAddNew={() => {
-                      setActiveMasterType('folder');
-                      setIsMasterCreateOpen(true);
-                    }}
-                    addNewLabel="Add New Folder"
-                  />
-                )}
-              />
-              {form.formState.errors.folder_No && <p className="text-[10px] text-red-500 font-bold ml-1">Folder is required</p>}
-            </div>
-            <div className="space-y-1" id="form-group-priority_No">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Priority</Label>
-              <Controller
-                name="priority_No"
-                control={form.control}
-                render={({ field }) => (
-                  <Combobox
-                    disabled={isSubTask}
-                    options={fillValues?.priority
-                      .filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
-                      .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select priority"
-                    className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    onAddNew={() => {
-                      setActiveMasterType('priority');
-                      setIsMasterCreateOpen(true);
-                    }}
-                    addNewLabel="Add New Priority"
-                  />
-                )}
-              />
-              {form.formState.errors.priority_No && <p className="text-[10px] text-red-500 font-bold ml-1">Priority is required</p>}
-            </div>
-          </div>
 
-        </FormSection>
+          </FormSection>
+        )}
 
         {/* 2. Ownership & Responsibility */}
         {!hiddenSections.includes('ownership') && (
-          <FormSection title="Ownership & Responsibility" icon={Users}>
+          <FormSection title="Ownership" icon={Users}>
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-1" id="form-group-company">
@@ -1824,7 +1876,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         placeholder="Search company..."
                         className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                         onAddNew={() => {
-                          setActiveMasterType('company' as any);
+                          setActiveMasterType('task-company' as any);
                           setIsMasterCreateOpen(true);
                         }}
                       />
@@ -1896,7 +1948,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   {form.formState.errors.originator_user_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.originator_user_No.message}</p>}
                 </div>
               </div>
+            </div>
+          </FormSection>
+        )}
 
+        {/* 2. Inform To */}
+        {!hiddenSections.includes('informto') && (
+          <FormSection title="Inform To" icon={Users}>
+            <div className="space-y-3">
               {!isPrivateTask && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Collaborators Grid */}
@@ -2103,6 +2162,19 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 </div>
               )}
             </div>
+          </FormSection>
+        )}
+
+        {isShowTopAdditionalFields && (
+          <FormSection title="Additional Fields" icon={Sparkles}>
+            <CustomFieldsSection
+              customFields={(form.watch('custom_fields') as any) || []}
+              onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
+              companyNo={currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1}
+              hideAddButton={true}
+              viewMode="grid"
+              hideLabel={true}
+            />
           </FormSection>
         )}
 
@@ -2424,7 +2496,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   size="sm"
                   type="button"
                   disabled={subtaskFields.length > 0}
-                  onClick={() => appendSubtask({ id: Date.now().toString(), title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '', operTaskNo: 0 })}
+                  onClick={() => appendSubtask({ id: Date.now().toString(), type_No: '', title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '', operTaskNo: 0 })}
                   className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700 shrink-0 disabled:opacity-50"
                 >
                   <Plus size={14} className="text-[#006699]" /> Add Sub-Task
@@ -2436,6 +2508,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <table className="w-full text-left border-collapse text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
+                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider w-[180px]">Type</th>
                         <th className="pl-4 pr-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Sub-Task Title <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</th>
@@ -2453,6 +2526,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           const index = editIndex;
                           return (
                             <tr key={field.id} className="bg-[#f8fbff] hover:bg-[#f0f6fc] transition-colors group">
+                              <td className="px-0.5 py-0 align-top w-[180px]">
+                                <Controller
+                                  name={`sub_tasks.${index}.type_No`}
+                                  control={form.control}
+                                  render={({ field: subField }) => (
+                                    <div className="flex flex-col mt-1.5">
+                                      <Combobox
+                                        options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                        value={subField.value || ''}
+                                        onChange={(val) => {
+                                          subField.onChange(val);
+                                        }}
+                                        placeholder="Select type"
+                                        error={!!form.formState.errors.sub_tasks?.[index]?.type_No}
+                                      />
+                                    </div>
+                                  )}
+                                />
+                              </td>
                               <td className="px-0.5 py-0 align-top">
                                 <div className="flex flex-grow items-start gap-2 py-1.5">
                                   <span className="text-xs font-bold text-slate-500 mt-2">{idx + 1}.</span>
@@ -2543,6 +2635,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
                         return (
                           <tr key={task.taskNo} className="bg-white hover:bg-slate-50 transition-colors group">
+                            <td className="px-0.5 py-0 align-top w-[180px]">
+                              <span className="text-xs font-semibold text-slate-700 block mt-2">
+                                {fillValues?.type?.find(t => t.OperTaskTypeNo.toString() === task.type_No?.toString() || t.OperTaskTypeNo.toString() === task.operTaskTypeNo?.toString())?.["Task Type"] || '-'}
+                              </span>
+                            </td>
                             <td className="px-0.5 py-0 min-w-[300px]">
                               <div className="flex flex-col gap-0.5 whitespace-normal py-1.5">
                                 <div className="flex gap-1.5 items-start">
@@ -2600,6 +2697,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         if (localSubtasks.some((st: any) => st.taskNo === field.operTaskNo)) return null;
                         return (
                           <tr key={field.id} className="bg-[#f8fbff] hover:bg-[#f0f6fc] transition-colors group">
+                            <td className="px-0.5 py-0 align-top w-[180px]">
+                              <Controller
+                                name={`sub_tasks.${index}.type_No`}
+                                control={form.control}
+                                render={({ field: subField }) => (
+                                  <div className="flex flex-col mt-1.5">
+                                    <Combobox
+                                      options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                      value={subField.value || ''}
+                                      onChange={(val) => {
+                                        subField.onChange(val);
+                                      }}
+                                      placeholder="Select type"
+                                      error={!!form.formState.errors.sub_tasks?.[index]?.type_No}
+                                    />
+                                  </div>
+                                )}
+                              />
+                            </td>
                             <td className="px-0.5 py-0 min-w-[400px] align-top">
                               <div className="flex items-start gap-2 py-1.5 pl-2.5">
                                 <span className="text-xs font-bold text-slate-500 mt-2">{localSubtasks.length + index + 1}.</span>
@@ -3045,17 +3161,19 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </FormSection>
         )}
 
-        <FormSection title="Additional Fields" icon={Sparkles}>
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            <CustomFieldsSection
-              customFields={(form.watch('custom_fields') as any) || []}
-              onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
-              companyNo={currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1}
-              hideAddButton={true}
-              viewMode="grid"
-            />
-          </div>
-        </FormSection>
+        {!isShowTopAdditionalFields && (
+          <FormSection title="Additional Fields" icon={Sparkles}>
+            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+              <CustomFieldsSection
+                customFields={(form.watch('custom_fields') as any) || []}
+                onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
+                companyNo={currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1}
+                hideAddButton={true}
+                viewMode="grid"
+              />
+            </div>
+          </FormSection>
+        )}
       </form>
 
       {/* Save/Update Confirmation Dialog */}

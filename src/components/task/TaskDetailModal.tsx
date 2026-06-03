@@ -144,7 +144,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           originator_user_No: d.originator?.id || null,
           owner_user_No: d.owner?.id || null,
           location_No: d.location?.operTaskLocationNo || null,
-          company: d.company || 'Glacier',
+          company: d.taskCompany?.taskCompanyNo || '',
           start_date: d.startDate,
           end_date: d.endDate,
           isAllDay: d.isAllday ?? d.isAllDay ?? false,
@@ -480,8 +480,8 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <span className="font-bold text-slate-600 flex items-center gap-1.5"><Building2 size={13} className="text-slate-500" /> Company</span>
                         <span className="font-black text-slate-900">
                           {typeof task.company === 'object' && task.company
-                            ? ((task.company as any).companyName || (task.company as any).CompanyName || (task.company as any).name || 'Glacier')
-                            : (task.company || 'Glacier')}
+                            ? ((task.company as any).companyName || (task.company as any).CompanyName || (task.company as any).name || '')
+                            : (task.company || '')}
                         </span>
                       </div>
 
