@@ -38,6 +38,7 @@ import {
   Globe,
   Building,
   UploadCloud,
+  Camera as CameraIcon,
   FileText,
   Paperclip,
   User,
@@ -45,6 +46,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { attachmentService } from '@/services/attachmentService';
+import CameraComp from '@/components/ui/CameraComp';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +85,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
   // Master Create Dialog State
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
@@ -1282,6 +1285,12 @@ export function MasterManager({ type }: MasterManagerProps) {
     return found ? found.locationTypeNo : null;
   };
 
+  const parseOptionalCoordinate = (value: any) => {
+    if (value === undefined || value === null || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   const handlePortCountryChange = async (val: string) => {
     setCountryNo(val);
     setStateNo('');
@@ -1653,9 +1662,9 @@ export function MasterManager({ type }: MasterManagerProps) {
                 state: l.state?.stateName || '',
                 city: l.city?.cityName || '',
                 pinCode: l.pinCode || '',
-                mapUrl: l.mapUrl || '',
-                latitude: l.latitude || 0,
-                longitude: l.longitude || 0
+                mapUrl: l.mapUrl || l.MapUrl || '',
+                latitude: l.latitude ?? l.Latitude ?? '',
+                longitude: l.longitude ?? l.Longitude ?? ''
               }));
               setCompanyLocations(mappedLocations);
 
@@ -2248,9 +2257,9 @@ export function MasterManager({ type }: MasterManagerProps) {
             stateNo: getStateNo(l.state) || null,
             cityNo: getCityNo(l.city) || null,
             pinCode: l.pinCode || l.pin || '',
-            mapUrl: l.mapUrl || null,
-            latitude: l.latitude || 0,
-            longitude: l.longitude || 0
+            mapUrl: l.mapUrl || '',
+            latitude: l.latitude !== undefined && l.latitude !== null && l.latitude !== '' ? Number(l.latitude) : null,
+            longitude: l.longitude !== undefined && l.longitude !== null && l.longitude !== '' ? Number(l.longitude) : null
           }));
 
           const computedPorts = companyPorts.map(p => ({
@@ -2435,9 +2444,9 @@ export function MasterManager({ type }: MasterManagerProps) {
             stateNo: getStateNo(l.state) || null,
             cityNo: getCityNo(l.city) || null,
             pinCode: l.pinCode || l.pin || '',
-            mapUrl: l.mapUrl || null,
-            latitude: l.latitude || 0,
-            longitude: l.longitude || 0
+            mapUrl: l.mapUrl || '',
+            latitude: l.latitude !== undefined && l.latitude !== null && l.latitude !== '' ? Number(l.latitude) : null,
+            longitude: l.longitude !== undefined && l.longitude !== null && l.longitude !== '' ? Number(l.longitude) : null
           }));
 
           const computedPorts = companyPorts.map(p => ({
@@ -2691,8 +2700,8 @@ export function MasterManager({ type }: MasterManagerProps) {
       city: locCity,
       pinCode: locPin,
       mapUrl: locMapUrl,
-      latitude: locLatitude ? parseFloat(locLatitude) || 0 : 0,
-      longitude: locLongitude ? parseFloat(locLongitude) || 0 : 0
+      latitude: locLatitude,
+      longitude: locLongitude
     };
 
     if (editingLocationIndex !== null) {
@@ -2729,8 +2738,8 @@ export function MasterManager({ type }: MasterManagerProps) {
     setLocCity(loc.city || '');
     setLocPin(loc.pinCode || loc.pin || '');
     setLocMapUrl(loc.mapUrl || '');
-    setLocLatitude(loc.latitude ? loc.latitude.toString() : '');
-    setLocLongitude(loc.longitude ? loc.longitude.toString() : '');
+    setLocLatitude(loc.latitude !== undefined && loc.latitude !== null ? loc.latitude.toString() : '');
+    setLocLongitude(loc.longitude !== undefined && loc.longitude !== null ? loc.longitude.toString() : '');
     setLocErrors({});
     setEditingLocationIndex(index);
     setLocationModalOpen(true);
@@ -2927,6 +2936,18 @@ export function MasterManager({ type }: MasterManagerProps) {
     } catch (err) {
       console.error("File upload failed:", err);
     }
+  };
+
+  const handleCameraAttachmentUploaded = (attachment: any) => {
+    setCompanyAttachments(prev => [...prev, {
+      id: attachment.id,
+      docNo: attachment.id,
+      fileName: attachment.name || attachment.fileName || 'camera-capture.jpg',
+      filePath: attachment.storedFilePath || attachment.relativePath || '',
+      fileSize: attachment.size || attachment.fileSize || 0
+    }]);
+    if (errors.attachments) setErrors(prev => ({ ...prev, attachments: '' }));
+    setIsCameraModalOpen(false);
   };
 
   const removeCompanyAttachment = async (index: number) => {
@@ -3306,20 +3327,35 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            {/* Drag and Drop box */}
-            <div className={cn(
-              "md:col-span-1 border-2 border-dashed border-slate-200 bg-slate-50/30 hover:bg-slate-50/75 rounded-2xl p-6 text-center cursor-pointer transition-colors relative flex flex-col items-center justify-center min-h-[140px]",
-              errors.attachments && "border-red-400 bg-red-50/10 hover:bg-red-50/20"
-            )}>
-              <input
-                type="file"
-                onChange={handleFileUpload}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                title="Choose file to attach"
-              />
-              <UploadCloud size={28} className={cn("text-slate-400 mb-1.5", errors.attachments && "text-red-400")} />
-              <p className="text-xs font-medium text-slate-700">Upload Attachment</p>
-              <p className="text-[9px] text-slate-400 font-semibold mt-0.5">PDF, DOCX or XLSX up to 10MB</p>
+            {/* Attachment actions */}
+            <div className="flex flex-col gap-1">
+              <div className={cn(
+                "border-2 border-dashed border-slate-200 bg-slate-50/30 hover:bg-slate-50/75 rounded-2xl p-6 text-center cursor-pointer transition-colors relative flex flex-col items-center justify-center min-h-[100px]",
+                errors.attachments && "border-red-400 bg-red-50/10 hover:bg-red-50/20"
+              )}>
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  title="Choose file to attach"
+                />
+                <UploadCloud size={28} className={cn("text-slate-400 mb-1.5", errors.attachments && "text-red-400")} />
+                <p className="text-xs font-black text-slate-700">Upload Attachment</p>
+                <p className="text-[9px] text-slate-400 font-semibold mt-0.5">PDF, DOCX or XLSX up to 10MB</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setIsCameraModalOpen(true)}
+                className={cn(
+                  "h-fit py-4 w-full rounded-2xl border-slate-200 bg-white text-[#006699] hover:bg-[#006699]/5 hover:text-[#005580]",
+                  errors.attachments && "border-red-300 text-red-500 hover:bg-red-50"
+                )}
+                title="Capture attachment with camera"
+              >
+                <CameraIcon size={20} />
+              </Button>
             </div>
 
             {/* List of Attachments */}
@@ -3370,6 +3406,30 @@ export function MasterManager({ type }: MasterManagerProps) {
             </div>
           </div>
         </div>
+
+        <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
+          <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-white overflow-hidden">
+            <DialogHeader className="p-5 pb-3 border-b border-slate-100">
+              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <CameraIcon size={18} className="text-[#006699]" />
+                Capture Attachment
+              </DialogTitle>
+              <DialogDescription className="text-xs font-semibold text-slate-500">
+                Take a photo and upload it as a Business Entity attachment.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-5">
+              <CameraComp
+                companyNo={parseInt(companyNo as any) || 1}
+                formNo={1550}
+                fileNamePrefix="business-entity-capture"
+                className="border-slate-100 shadow-none"
+                onUploaded={handleCameraAttachmentUploaded}
+                onCancel={() => setIsCameraModalOpen(false)}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* =========================================================================
             SUB-ENTITY DIALOG MODALS (Locations & Contact Persons)
@@ -3526,6 +3586,64 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <Input placeholder="Enter Longitude" value={locLongitude} maxLength={15} onChange={(e) => setLocLongitude(e.target.value)}
                     className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Map URL</label>
+                  <Input
+                    placeholder="Enter map URL..."
+                    value={locMapUrl}
+                    maxLength={2000}
+                    onChange={(e) => {
+                      setLocMapUrl(e.target.value);
+                      if (locErrors.mapUrl) setLocErrors(prev => ({ ...prev, mapUrl: '' }));
+                    }}
+                    className={cn(
+                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      locErrors.mapUrl && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                    )}
+                  />
+                  {locErrors.mapUrl && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.mapUrl}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Latitude</label>
+                    <Input
+                      type="text"
+                      placeholder="Latitude"
+                      value={locLatitude}
+                      onChange={(e) => {
+                        setLocLatitude(e.target.value);
+                        if (locErrors.latitude) setLocErrors(prev => ({ ...prev, latitude: '' }));
+                      }}
+                      className={cn(
+                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                        locErrors.latitude && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
+                    />
+                    {locErrors.latitude && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.latitude}</p>}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Longitude</label>
+                    <Input
+                      type="text"
+                      placeholder="Longitude"
+                      value={locLongitude}
+                      onChange={(e) => {
+                        setLocLongitude(e.target.value);
+                        if (locErrors.longitude) setLocErrors(prev => ({ ...prev, longitude: '' }));
+                      }}
+                      className={cn(
+                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                        locErrors.longitude && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                      )}
+                    />
+                    {locErrors.longitude && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.longitude}</p>}
+                  </div>
                 </div>
               </div>
             </div>
