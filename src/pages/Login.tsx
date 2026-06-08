@@ -110,7 +110,7 @@ export default function Login() {
             <div className="flex justify-center mb-2 py-2">
               <img src={LogoImage} alt="SteelMont Logo" className="h-12 w-auto object-contain" />
             </div>
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-0">
               <CardTitle className="text-3xl font-extrabold tracking-tight text-slate-900">Welcome Back</CardTitle>
               <CardDescription className="text-slate-500 font-medium">
                 Enter your credentials
@@ -119,7 +119,7 @@ export default function Login() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              <div className="space-y-2">
+              <div className="space-y-0">
                 <Label htmlFor="loginId" className="text-slate-700 font-bold">Username</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
@@ -134,7 +134,7 @@ export default function Login() {
                   <p className="text-[10px] text-red-500 font-bold ml-1">{errors.loginId.message}</p>
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-0">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-slate-700 font-bold">Password</Label>
                 </div>

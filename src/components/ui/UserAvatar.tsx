@@ -114,10 +114,10 @@ export function UserAvatar({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-6 gap-2">
             <Loader2 className="h-6 w-6 text-[#006699] animate-spin" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Loading Profile...</span>
+            <span className="text-[10px] font-black text-slate-400   animate-pulse">Loading Profile...</span>
           </div>
         ) : error ? (
-          <div className="text-center py-4 space-y-1">
+          <div className="text-center py-4 space-y-0">
             <p className="text-xs font-black text-red-500 uppercase tracking-wide">Error</p>
             <p className="text-[10px] font-semibold text-slate-500">{error}</p>
           </div>
@@ -134,14 +134,14 @@ export function UserAvatar({
                 <h4 className="text-xs font-black text-slate-900 tracking-tight leading-none mb-1.5">
                   {userDetails.displayName}
                 </h4>
-                <span className="text-[9px] font-extrabold text-[#006699] bg-[#e1ecf7] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[9px] font-extrabold text-[#006699] bg-[#e1ecf7] px-2 py-0.5 rounded-full  ">
                   {userDetails.userName}
                 </span>
               </div>
             </div>
 
             {/* Content list */}
-            <div className="space-y-2.5 text-[11px] font-bold text-slate-600">
+            <div className="space-y-0.5 text-[11px] font-bold text-slate-600">
               {/* Email */}
               <div className="flex items-center gap-2">
                 <Mail size={13} className="text-slate-400 shrink-0" />
@@ -158,7 +158,7 @@ export function UserAvatar({
               {userDetails.userTypeName && (
                 <div className="flex items-center gap-2 pt-1 border-t border-slate-100/50">
                   <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
-                  <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{userDetails.userTypeName}</span>
+                  <span className="text-[9px] font-black text-emerald-600  ">{userDetails.userTypeName}</span>
                 </div>
               )}
             </div>

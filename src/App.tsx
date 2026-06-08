@@ -41,7 +41,7 @@ function Dashboard() {
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
 
   const authCompanies = useAuthStore((state) => state.company);
-  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
+  const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -109,6 +109,32 @@ function Dashboard() {
     navigate('/task/new');
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl + N or Cmd + N
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        // Don't trigger if user is typing in an input, textarea, or contenteditable
+        const activeElement = document.activeElement as HTMLElement | null;
+        if (
+          activeElement &&
+          (activeElement.tagName === 'INPUT' ||
+           activeElement.tagName === 'TEXTAREA' ||
+           activeElement.tagName === 'SELECT' ||
+           activeElement.isContentEditable)
+        ) {
+          return;
+        }
+
+        // Prevent browser from opening a new window
+        e.preventDefault();
+        handleCreateTask();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
+
   const handleFilter = (filters: any) => {
     setPageNo(1); // Reset page number on filter change
     setCurrentFilters(filters);
@@ -135,9 +161,9 @@ function Dashboard() {
 
   return (
     <MainLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      <main className="flex-1 p-2.5 sm:p-4 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+      <main className="flex-1 p-0.5 sm:px-1 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
         {/* Unified Top Control Bar */}
-        <div className="mb-2">
+        <div className="">
           <TaskFilter
             onFilter={handleFilter}
             viewMode={viewMode}
@@ -151,7 +177,7 @@ function Dashboard() {
         {/* Content Area */}
         <div className={cn(
           "flex-1 min-h-0",
-          viewMode === 'list' ? "overflow-y-auto scrollbar-hide" : "flex flex-col overflow-hidden"
+          viewMode === 'list' ? "flex flex-col overflow-hidden" : "flex flex-col overflow-hidden"
         )}>
           {viewMode === 'list' ? (
             <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
@@ -175,7 +201,7 @@ function Dashboard() {
 
         {/* Pagination Control Bar */}
         {viewMode === 'list' && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 mt-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl shadow-sm shrink-0 select-none">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-1 bg-slate-50/70 border border-slate-200/80 rounded-2xl shadow-sm shrink-0 select-none">
             {/* Left Side: Range Info */}
             <div className="text-[11px] text-slate-500 font-bold">
               {tasks.length > 0 ? (
@@ -190,7 +216,7 @@ function Dashboard() {
 
             {/* Center: Items Per Page Selector */}
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Per Page:</span>
+              <span className="text-[10px] font-black text-slate-400  ">Per Page:</span>
               <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
                 {[10, 25, 50, 100].map((size) => (
                   <button
@@ -473,7 +499,7 @@ function App() {
         if (response.ok) {
           const data = await response.json();
           const currentVersion = localStorage.getItem('app_version');
-          
+
           if (!currentVersion) {
             localStorage.setItem('app_version', data.version.toString());
           } else if (currentVersion !== data.version.toString()) {
@@ -485,7 +511,7 @@ function App() {
         console.error('Failed to check app version:', err);
       }
     };
-    
+
     checkVersion();
     // Optional: check version every 30 minutes if user leaves app open
     const interval = setInterval(checkVersion, 30 * 60 * 1000);

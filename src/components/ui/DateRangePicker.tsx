@@ -56,14 +56,26 @@ export function DateRangePicker({
     };
   });
 
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [tempRange, setTempRange] = React.useState<DateRange | undefined>(range);
+
   // Sync state with value prop
   React.useEffect(() => {
     if (value && (value.from || value.to)) {
       setRange({ from: value.from, to: value.to });
+      setTempRange({ from: value.from, to: value.to });
     } else {
       setRange(undefined);
+      setTempRange(undefined);
     }
   }, [value]);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      setTempRange(range);
+    }
+  };
 
   // Date presets list
   const presets = React.useMemo(() => {
@@ -121,28 +133,33 @@ export function DateRangePicker({
   }, []);
 
   const checkPresetActive = (presetVal: { from: Date; to: Date }) => {
-    if (!range?.from || !range?.to) return false;
-    return isSameDay(range.from, presetVal.from) && isSameDay(range.to, presetVal.to);
+    if (!tempRange?.from || !tempRange?.to) return false;
+    return isSameDay(tempRange.from, presetVal.from) && isSameDay(tempRange.to, presetVal.to);
   };
 
   const selectPreset = (presetVal: { from: Date; to: Date }) => {
-    const newRange = { from: presetVal.from, to: presetVal.to };
-    setRange(newRange);
-    if (onChange) {
-      onChange(newRange);
-    }
+    setTempRange({ from: presetVal.from, to: presetVal.to });
   };
 
   const handleSelect = (newRange: DateRange | undefined) => {
-    setRange(newRange);
+    setTempRange(newRange);
+  };
+
+  const handleCancel = () => {
+    setIsOpen(false);
+  };
+
+  const handleOk = () => {
+    setRange(tempRange);
     if (onChange) {
-      onChange(newRange ? { from: newRange.from, to: newRange.to } : undefined);
+      onChange(tempRange ? { from: tempRange.from, to: tempRange.to } : undefined);
     }
+    setIsOpen(false);
   };
 
   return (
     <div className={cn("grid gap-2", className)}>
-      <Popover>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
             id="date"
@@ -207,17 +224,36 @@ export function DateRangePicker({
           })}
         </div>
 
-        <Calendar
-          mode="range"
-          defaultMonth={range?.from}
-          selected={range}
-          onSelect={handleSelect}
-          numberOfMonths={isMobile ? 1 : 2}
-          className={cn(
-            "border-none p-3",
-            isMobile ? "rounded-b-[24px]" : "rounded-r-[24px]"
-          )}
-        />
+        <div className="flex flex-col">
+          <Calendar
+            mode="range"
+            defaultMonth={tempRange?.from}
+            selected={tempRange}
+            onSelect={handleSelect}
+            numberOfMonths={isMobile ? 1 : 2}
+            className={cn(
+              "border-none p-3",
+              isMobile ? "" : "rounded-tr-[24px]"
+            )}
+          />
+          <div className="flex items-center justify-end gap-2 p-3 border-t border-slate-100 mt-auto">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCancel}
+              className="h-8 px-4 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleOk}
+              className="h-8 px-5 text-xs font-bold rounded-xl bg-[#006699] text-white hover:bg-[#005580] shadow-sm"
+            >
+              OK
+            </Button>
+          </div>
+        </div>
       </PopoverContent>
       </Popover>
     </div>

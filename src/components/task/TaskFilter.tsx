@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar as CalendarIcon, Clipboard, Folder, ArrowUpDown, ChevronDown, Plus, LayoutGrid, List as ListIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FIELD_TEXT_STYLE } from '@/lib/fieldStyles';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { UserCombobox } from '@/components/ui/UserCombobox';
+import { Combobox } from '@/components/ui/Combobox';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   DropdownMenu,
@@ -16,7 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface FilterFormValues {
   taskCode?: string;
@@ -34,6 +36,7 @@ interface FilterFormValues {
   sortingColumnName?: string;
   sortingType?: string;
   folderNo?: string;
+  isAllFolder?: boolean;
   loginNo?: string;
   fromCreatedDate?: Date;
   toCreatedDate?: Date;
@@ -59,7 +62,7 @@ export function TaskFilter({
   onToggleFilters
 }: TaskFilterProps) {
   const authCompanies = useAuthStore((state) => state.company);
-  const companyNo = (authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1).toString();
+  const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1).toString();
 
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const { fetchFillValues } = useTaskStore();
@@ -82,6 +85,7 @@ export function TaskFilter({
       sortingColumnName: '',
       sortingType: '',
       folderNo: selectedFolder?.TaskFolderNo.toString(),
+      isAllFolder: false,
       loginNo: '',
       fromCreatedDate: undefined,
       toCreatedDate: undefined,
@@ -137,6 +141,9 @@ export function TaskFilter({
     setAppliedFilters(data); // Commit selected values to applied state!
     const cleanFilters: any = {};
     Object.entries(data).forEach(([key, value]) => {
+      if (key === 'isAllFolder') return;
+      if (key === 'folderNo' && data.isAllFolder) return;
+      
       if (value !== undefined && value !== '' && value !== null) {
         if (value instanceof Date) {
           cleanFilters[key] = value.toISOString();
@@ -168,6 +175,7 @@ export function TaskFilter({
       sortingColumnName: '',
       sortingType: '',
       folderNo: selectedFolder ? selectedFolder.TaskFolderNo.toString() : '',
+      isAllFolder: false,
       loginNo: '',
       fromCreatedDate: undefined,
       toCreatedDate: undefined,
@@ -200,9 +208,9 @@ export function TaskFilter({
         )}>
           <Card className="border border-slate-100/80 shadow-2xl bg-white/95 backdrop-blur-md rounded-[24px] p-6 w-full max-h-[80vh] flex flex-col overflow-hidden">
             <div className="pb-3 border-b border-slate-100 flex items-center justify-between shrink-0 mb-4">
-              <span className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-800 normal-case flex items-center gap-0.5">
                 <SlidersHorizontal size={14} className="text-[#006699]" />
-                Filter & Search Criteria
+                Filters & Sorting
               </span>
               <Button
                 type="button"
@@ -219,8 +227,8 @@ export function TaskFilter({
               <div className="overflow-y-auto pr-1.5 scrollbar-thin flex-1 max-h-[50vh] space-y-4 pb-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {/* Status */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <Clipboard size={12} className="text-slate-400" />
                       Status
                     </label>
@@ -229,12 +237,12 @@ export function TaskFilter({
                       control={control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
                             <SelectValue placeholder="All Status" />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl">
                             {fillValues?.status.map(s => (
-                              <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs font-medium">{s.Status}</SelectItem>
+                              <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="">{s.Status}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -243,8 +251,8 @@ export function TaskFilter({
                   </div>
 
                   {/* Priority */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <Tag size={12} className="text-slate-400" />
                       Priority
                     </label>
@@ -253,12 +261,12 @@ export function TaskFilter({
                       control={control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
                             <SelectValue placeholder="All Priority" />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl">
                             {fillValues?.priority.map(p => (
-                              <SelectItem key={p.OperTaskPriorityNo} value={p.OperTaskPriorityNo.toString()} className="text-xs font-medium">{p.Priority}</SelectItem>
+                              <SelectItem key={p.OperTaskPriorityNo} value={p.OperTaskPriorityNo.toString()} className="">{p.Priority}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -267,8 +275,8 @@ export function TaskFilter({
                   </div>
 
                   {/* Task ID / Code */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <Clipboard size={12} className="text-slate-400" />
                       Task ID / Code
                     </label>
@@ -276,14 +284,14 @@ export function TaskFilter({
                       name="taskCode"
                       control={control}
                       render={({ field }) => (
-                        <Input {...field} type="text" placeholder="Enter Task ID / Code" className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0" />
+                        <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
                       )}
                     />
                   </div>
 
                   {/* Category */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <Layers size={12} className="text-slate-400" />
                       Category
                     </label>
@@ -292,12 +300,12 @@ export function TaskFilter({
                       control={control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
                             <SelectValue placeholder="All Categories" />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl">
                             {fillValues?.category.map(c => (
-                              <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()} className="text-xs font-medium">{c.Category}</SelectItem>
+                              <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()} className="">{c.Category}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -306,8 +314,8 @@ export function TaskFilter({
                   </div>
 
                   {/* Task Type */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <Tag size={12} className="text-slate-400" />
                       Task Type
                     </label>
@@ -316,12 +324,12 @@ export function TaskFilter({
                       control={control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
                             <SelectValue placeholder="All Types" />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl">
                             {fillValues?.type.map(t => (
-                              <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()} className="text-xs font-medium">{t["Task Type"]}</SelectItem>
+                              <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()} className="">{t["Task Type"]}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -330,8 +338,8 @@ export function TaskFilter({
                   </div>
 
                   {/* Location */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <MapPin size={12} className="text-slate-400" />
                       Location
                     </label>
@@ -340,12 +348,12 @@ export function TaskFilter({
                       control={control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
                             <SelectValue placeholder="All Locations" />
                           </SelectTrigger>
                           <SelectContent className="rounded-2xl">
                             {fillValues?.location.map(l => (
-                              <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()} className="text-xs font-medium">{l.Location}</SelectItem>
+                              <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()} className="">{l.Location}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -354,10 +362,10 @@ export function TaskFilter({
                   </div>
 
                   {/* User */}
-                  <div className="space-y-1.5" id="dialog-form-group-loginNo">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5" id="dialog-form-group-loginNo">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <SlidersHorizontal size={12} className="text-slate-400" />
-                      User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-black">*</span>}
+                      User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-medium">*</span>}
                     </label>
                     <Controller
                       name="loginNo"
@@ -372,25 +380,23 @@ export function TaskFilter({
                         }
                       }}
                       render={({ field }) => (
-                        <UserCombobox
-                          value={field.value}
-                          onChange={(user) => {
-                            field.onChange(user.loginNo.toString());
-                            trigger('filterType');
-                          }}
+                        <UserCombobox value={field.value} onChange={(user) => {
+                          field.onChange(user.loginNo.toString());
+                          trigger('filterType');
+                        }}
                           placeholder="Search user..."
-                          className={cn("border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 h-11 rounded-2xl w-full", errors.loginNo && "border-red-500")}
+                          className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-500")}
                         />
                       )}
                     />
-                    {errors.loginNo && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.loginNo.message}</p>}
+                    {errors.loginNo && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.loginNo.message}</p>}
                   </div>
 
                   {/* Filter Type */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <SlidersHorizontal size={12} className="text-slate-400" />
-                      Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-black">*</span>}
+                      Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-medium">*</span>}
                     </label>
                     <Controller
                       name="filterType"
@@ -405,27 +411,22 @@ export function TaskFilter({
                         }
                       }}
                       render={({ field }) => (
-                        <Select onValueChange={(val) => {
+                        <Combobox value={field.value} onChange={(val) => {
                           field.onChange(val);
                           trigger('loginNo');
-                        }} value={field.value}>
-                          <SelectTrigger className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15", errors.filterType && "border-red-500")}>
-                            <SelectValue placeholder="Select Filter Type" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
-                            {fillValues?.filterType?.map(ft => (
-                              <SelectItem key={ft.FilterTypeNo} value={ft.FilterTypeName} className="text-xs font-medium">{ft.FilterTypeName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        }}
+                          options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
+                          placeholder="Select Filter Type"
+                          className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE, errors.filterType && "border-red-500")}
+                        />
                       )}
                     />
-                    {errors.filterType && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.filterType.message}</p>}
+                    {errors.filterType && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.filterType.message}</p>}
                   </div>
 
                   {/* Owner */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <SlidersHorizontal size={12} className="text-slate-400" />
                       Owner
                     </label>
@@ -433,48 +434,49 @@ export function TaskFilter({
                       name="ownerLoginNo"
                       control={control}
                       render={({ field }) => (
-                        <UserCombobox
-                          value={field.value}
-                          onChange={(user) => field.onChange(user.loginNo.toString())}
+                        <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
                           placeholder="Search owner..."
-                          className="border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 h-11 rounded-2xl w-full"
+                          className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE)}
                         />
                       )}
                     />
                   </div>
 
                   {/* Workspace Folder */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-                      <Folder size={12} className="text-slate-400" />
-                      Workspace Folder
-                    </label>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between ml-1 mb-1">
+                      <label className="text-[11px] font-medium text-slate-700 normal-case flex items-center gap-0.5">
+                        <Folder size={12} className="text-slate-400" />
+                        Workspace Folder
+                      </label>
+                      <Controller
+                        name="isAllFolder"
+                        control={control}
+                        render={({ field }) => (
+                          <label className="flex items-center gap-1.5 cursor-pointer mr-1">
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} className="h-3.5 w-3.5 rounded-[4px]" />
+                            <span className="text-[10px] text-slate-500 font-medium">Search All Folders</span>
+                          </label>
+                        )}
+                      />
+                    </div>
                     <Controller
                       name="folderNo"
                       control={control}
                       render={({ field }) => (
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')}
-                        >
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                            <SelectValue placeholder="All Folders" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
-                            {fillValues?.folder?.map(f => (
-                              <SelectItem key={f.TaskFolderNo} value={f.TaskFolderNo.toString()} className="text-xs font-medium">
-                                {f["Folder Name"]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
+                          <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
+                            placeholder="All Folders"
+                            className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                          />
+                        </div>
                       )}
                     />
                   </div>
 
                   {/* Sort Column */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <ArrowUpDown size={12} className="text-slate-400" />
                       Sort By Column
                     </label>
@@ -482,25 +484,17 @@ export function TaskFilter({
                       name="sortingColumnName"
                       control={control}
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                            <SelectValue placeholder="Select Sort Column" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
-                            {fillValues?.sortingColumns?.map(sc => (
-                              <SelectItem key={sc.SortingColumnName} value={sc.SortingColumnName} className="text-xs font-medium">
-                                {sc.DisplayName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.sortingColumns || []).map(sc => ({ value: sc.SortingColumnName, label: sc.DisplayName }))}
+                          placeholder="Select Sort Column"
+                          className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                        />
                       )}
                     />
                   </div>
 
                   {/* Sort Direction */}
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <ArrowUpDown size={12} className="text-slate-400" />
                       Sort Direction
                     </label>
@@ -508,22 +502,14 @@ export function TaskFilter({
                       name="sortingType"
                       control={control}
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                            <SelectValue placeholder="Select Direction" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
-                            <SelectItem value="asc" className="text-xs font-medium">Ascending</SelectItem>
-                            <SelectItem value="desc" className="text-xs font-medium">Descending</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Combobox value={field.value} onChange={field.onChange} options={[{ value: 'asc', label: 'Ascending' }, { value: 'desc', label: 'Descending' }]} placeholder="Select Direction" className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)} />
                       )}
                     />
                   </div>
 
                   {/* Due Date Range */}
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5 sm:col-span-2">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <CalendarIcon size={12} className="text-slate-400" />
                       Due Date Range
                     </label>
@@ -538,8 +524,8 @@ export function TaskFilter({
                   </div>
 
                   {/* Created Date Range */}
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                  <div className="space-y-0.5 sm:col-span-2">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <CalendarIcon size={12} className="text-slate-400" />
                       Created Date Range
                     </label>
@@ -561,13 +547,13 @@ export function TaskFilter({
                   type="button"
                   variant="ghost"
                   onClick={handleReset}
-                  className="h-10 px-5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:text-slate-700"
+                  className="h-10 px-5 rounded-xl border border-slate-200 text-xs font-medium text-slate-500 hover:text-slate-700"
                 >
                   Reset
                 </Button>
                 <Button
                   type="submit"
-                  className="h-10 px-6 rounded-xl bg-[#006699] hover:bg-[#005580] text-xs font-bold text-white shadow-md shadow-[#006699]/15"
+                  className="h-10 px-6 rounded-xl bg-[#006699] hover:bg-[#005580] text-xs font-medium text-white shadow-md shadow-[#006699]/15"
                 >
                   Apply Filters
                 </Button>
@@ -598,29 +584,25 @@ export function TaskFilter({
                 name="title"
                 control={control}
                 render={({ field }) => (
-                  <Input
-                    {...field}
-                    placeholder="Search tasks by title..."
-                    className="pl-10 h-10 sm:h-11 rounded-xl sm:rounded-2xl border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/15 bg-white shadow-sm font-bold text-xs text-slate-700 w-full"
-                  />
+                  <Input {...field} placeholder="Search task" className="pl-10 h-10 sm:h-11 rounded-xl sm:rounded-2xl border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/15 bg-white shadow-sm text-slate-700 w-full" />
                 )}
               />
             </div>
 
             {/* Action buttons toolbar: distributed evenly on mobile, aligned on desktop */}
-            <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto shrink-0">
+            <div className="flex items-center justify-between sm:justify-start gap-0.5 w-full sm:w-auto shrink-0">
               <Button
                 type="button"
                 onClick={() => toggleFilters()}
                 className={cn(
-                  "h-10 sm:h-11 px-3 sm:px-4 rounded-xl sm:rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-[10px] sm:text-xs uppercase tracking-wider transition-all duration-200 gap-1.5 sm:gap-2 shadow-sm shrink-0 flex-1 sm:flex-initial justify-center",
+                  "h-10 sm:h-11 px-3 sm:px-4 rounded-xl sm:rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium text-[10px] sm:text-xs normal-case transition-all duration-200 gap-0.5 sm:gap-0.5 shadow-sm shrink-0 flex-1 sm:flex-initial justify-center",
                   isFiltersOpen && "border-[#006699] text-[#006699] bg-[#e1ecf7]/50"
                 )}
               >
                 <SlidersHorizontal size={14} className={cn("transition-transform duration-300", isFiltersOpen && "rotate-180")} />
-                <span className="hidden sm:inline">FILTERS</span>
+                <span className="hidden sm:inline">Filters & Sorting</span>
                 {activeCount > 0 && (
-                  <span className="bg-[#006699] text-white text-[9px] h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center font-black">
+                  <span className="bg-[#006699] text-white text-[9px] h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center font-medium">
                     {activeCount}
                   </span>
                 )}
@@ -637,10 +619,10 @@ export function TaskFilter({
 
               <Button
                 type="submit"
-                className="h-10 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-md shadow-[#006699]/15 transition-all hover:scale-[1.02] active:scale-95 gap-1.5 sm:gap-2 shrink-0 flex-1 sm:flex-initial justify-center"
+                className="h-10 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] font-medium text-[10px] sm:text-xs normal-case text-white shadow-md shadow-[#006699]/15 transition-all hover:scale-[1.02] active:scale-95 gap-0.5 sm:gap-0.5 shrink-0 flex-1 sm:flex-initial justify-center"
               >
                 <Search size={14} strokeWidth={3.5} />
-                <span className="hidden sm:inline">SEARCH</span>
+                <span className="hidden sm:inline">Search</span>
               </Button>
 
               {/* Merged View Toggle Dropdown from Dashboard */}
@@ -650,9 +632,9 @@ export function TaskFilter({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-10 sm:h-11 px-3 sm:px-4 rounded-xl sm:rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700 shadow-sm gap-1.5 sm:gap-2.5 transition-all flex items-center justify-between text-[10px] sm:text-xs shrink-0 flex-1 sm:flex-initial"
+                      className="h-10 sm:h-11 px-3 sm:px-4 rounded-xl sm:rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-medium text-slate-700 shadow-sm gap-0.5 sm:gap-0.5.5 transition-all flex items-center justify-between text-[10px] sm:text-xs shrink-0 flex-1 sm:flex-initial"
                     >
-                      <span className="flex items-center gap-1.5 sm:gap-2">
+                      <span className="flex items-center gap-0.5 sm:gap-0.5">
                         {currentViewMode === 'list' ? (
                           <ListIcon size={14} className="text-[#006699]" />
                         ) : currentViewMode === 'board' ? (
@@ -671,7 +653,7 @@ export function TaskFilter({
                     <DropdownMenuItem
                       onClick={() => onViewModeChange('list')}
                       className={cn(
-                        "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
+                        "rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-0.5 transition-colors",
                         currentViewMode === 'list' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
                       )}
                     >
@@ -681,7 +663,7 @@ export function TaskFilter({
                     <DropdownMenuItem
                       onClick={() => onViewModeChange('board')}
                       className={cn(
-                        "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
+                        "rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-0.5 transition-colors",
                         currentViewMode === 'board' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
                       )}
                     >
@@ -691,7 +673,7 @@ export function TaskFilter({
                     <DropdownMenuItem
                       onClick={() => onViewModeChange('calendar')}
                       className={cn(
-                        "rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
+                        "rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-0.5 transition-colors",
                         currentViewMode === 'calendar' ? "bg-slate-100 text-[#006699]" : "text-slate-600 hover:bg-slate-50"
                       )}
                     >
@@ -707,10 +689,10 @@ export function TaskFilter({
                 <Button
                   type="button"
                   onClick={onCreateTask}
-                  className="h-10 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] font-black text-[10px] sm:text-xs uppercase tracking-widest text-white shadow-md shadow-[#006699]/15 transition-all hover:scale-[1.02] active:scale-95 gap-1.5 sm:gap-2 shrink-0 flex-1 sm:flex-initial justify-center"
+                  className="h-10 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] font-medium text-[10px] sm:text-xs normal-case text-white shadow-md shadow-[#006699]/15 transition-all hover:scale-[1.02] active:scale-95 gap-0.5 sm:gap-0.5 shrink-0 flex-1 sm:flex-initial justify-center"
                 >
                   <Plus size={14} strokeWidth={3.5} />
-                  <span className="hidden sm:inline">CREATE</span>
+                  <span className="hidden sm:inline">Create</span>
                 </Button>
               )}
             </div>
@@ -725,9 +707,9 @@ export function TaskFilter({
           <Card className="border border-slate-200/80 shadow-2xl bg-white/95 backdrop-blur-md rounded-[24px] p-6 w-full max-h-[80vh] flex flex-col overflow-hidden">
             {/* Header of the popup filter */}
             <div className="pb-3 border-b border-slate-100 flex items-center justify-between shrink-0 mb-4">
-              <span className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-800 normal-case flex items-center gap-0.5">
                 <SlidersHorizontal size={14} className="text-[#006699]" />
-                Filter & Search Criteria
+                Filters & Sorting
               </span>
               <Button
                 type="button"
@@ -744,8 +726,8 @@ export function TaskFilter({
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
                 {/* Status */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <Clipboard size={12} className="text-slate-400" />
                     Status
                   </label>
@@ -753,23 +735,17 @@ export function TaskFilter({
                     name="operTaskStatusNo"
                     control={control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                          <SelectValue placeholder="All Status" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {fillValues?.status.map(s => (
-                            <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs font-medium">{s.Status}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.status || []).map(s => ({ value: s.StatusNo.toString(), label: s.Status }))}
+                        placeholder="All Status"
+                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                      />
                     )}
                   />
                 </div>
 
                 {/* Priority */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <Tag size={12} className="text-slate-400" />
                     Priority
                   </label>
@@ -777,23 +753,17 @@ export function TaskFilter({
                     name="operTaskPriorityNo"
                     control={control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                          <SelectValue placeholder="All Priority" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {fillValues?.priority.map(p => (
-                            <SelectItem key={p.OperTaskPriorityNo} value={p.OperTaskPriorityNo.toString()} className="text-xs font-medium">{p.Priority}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.priority || []).map(p => ({ value: p.OperTaskPriorityNo.toString(), label: p.Priority }))}
+                        placeholder="All Priority"
+                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                      />
                     )}
                   />
                 </div>
 
                 {/* Task ID / Code */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <Clipboard size={12} className="text-slate-400" />
                     Task ID / Code
                   </label>
@@ -801,14 +771,14 @@ export function TaskFilter({
                     name="taskCode"
                     control={control}
                     render={({ field }) => (
-                      <Input {...field} type="text" placeholder="Enter Task ID / Code" className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0" />
+                      <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
                     )}
                   />
                 </div>
 
                 {/* Category */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <Layers size={12} className="text-slate-400" />
                     Category
                   </label>
@@ -816,23 +786,17 @@ export function TaskFilter({
                     name="operTaskCategoryNo"
                     control={control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                          <SelectValue placeholder="All Categories" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {fillValues?.category.map(c => (
-                            <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()} className="text-xs font-medium">{c.Category}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.category || []).map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category }))}
+                        placeholder="All Categories"
+                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                      />
                     )}
                   />
                 </div>
 
                 {/* Task Type */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <Tag size={12} className="text-slate-400" />
                     Task Type
                   </label>
@@ -840,23 +804,17 @@ export function TaskFilter({
                     name="operTaskTypeNo"
                     control={control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                          <SelectValue placeholder="All Types" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {fillValues?.type.map(t => (
-                            <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()} className="text-xs font-medium">{t["Task Type"]}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.type || []).map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] }))}
+                        placeholder="All Types"
+                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                      />
                     )}
                   />
                 </div>
 
                 {/* Location */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <MapPin size={12} className="text-slate-400" />
                     Location
                   </label>
@@ -864,25 +822,19 @@ export function TaskFilter({
                     name="operTaskLocationNo"
                     control={control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                          <SelectValue placeholder="All Locations" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {fillValues?.location.map(l => (
-                            <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()} className="text-xs font-medium">{l.Location}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.location || []).map(l => ({ value: l.OperLocationNo.toString(), label: l.Location }))}
+                        placeholder="All Locations"
+                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                      />
                     )}
                   />
                 </div>
 
                 {/* User */}
-                <div className="space-y-1.5" id="form-group-loginNo">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5" id="form-group-loginNo">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <SlidersHorizontal size={12} className="text-slate-400" />
-                    User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-black">*</span>}
+                    User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-medium">*</span>}
                   </label>
                   <Controller
                     name="loginNo"
@@ -897,25 +849,23 @@ export function TaskFilter({
                       }
                     }}
                     render={({ field }) => (
-                      <UserCombobox
-                        value={field.value}
-                        onChange={(user) => {
-                          field.onChange(user.loginNo.toString());
-                          trigger('filterType');
-                        }}
+                      <UserCombobox value={field.value} onChange={(user) => {
+                        field.onChange(user.loginNo.toString());
+                        trigger('filterType');
+                      }}
                         placeholder="Search user..."
-                        className={cn("border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 h-11 rounded-2xl w-full", errors.loginNo && "border-red-500")}
+                        className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-500")}
                       />
                     )}
                   />
-                  {errors.loginNo && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.loginNo.message}</p>}
+                  {errors.loginNo && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.loginNo.message}</p>}
                 </div>
 
                 {/* Filter Type */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <SlidersHorizontal size={12} className="text-slate-400" />
-                    Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-black">*</span>}
+                    Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-medium">*</span>}
                   </label>
                   <Controller
                     name="filterType"
@@ -930,27 +880,22 @@ export function TaskFilter({
                       }
                     }}
                     render={({ field }) => (
-                      <Select onValueChange={(val) => {
+                      <Combobox value={field.value} onChange={(val) => {
                         field.onChange(val);
                         trigger('loginNo');
-                      }} value={field.value}>
-                        <SelectTrigger className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15", errors.filterType && "border-red-500")}>
-                          <SelectValue placeholder="Select Filter Type" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {fillValues?.filterType?.map(ft => (
-                            <SelectItem key={ft.FilterTypeNo} value={ft.FilterTypeName} className="text-xs font-medium">{ft.FilterTypeName}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      }}
+                        options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
+                        placeholder="Select Filter Type"
+                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE, errors.filterType && "border-red-500")}
+                      />
                     )}
                   />
-                  {errors.filterType && <p className="text-[10px] text-red-500 font-bold ml-1">{errors.filterType.message}</p>}
+                  {errors.filterType && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.filterType.message}</p>}
                 </div>
 
                 {/* Owner */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <SlidersHorizontal size={12} className="text-slate-400" />
                     Owner
                   </label>
@@ -958,48 +903,49 @@ export function TaskFilter({
                     name="ownerLoginNo"
                     control={control}
                     render={({ field }) => (
-                      <UserCombobox
-                        value={field.value}
-                        onChange={(user) => field.onChange(user.loginNo.toString())}
+                      <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
                         placeholder="Search owner..."
-                        className="border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 h-11 rounded-2xl w-full"
+                        className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE)}
                       />
                     )}
                   />
                 </div>
 
                 {/* Workspace Folder */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
-                    <Folder size={12} className="text-slate-400" />
-                    Workspace Folder
-                  </label>
+                <div className="space-y-0.5">
+                  <div className="flex items-center justify-between ml-1 mb-1">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case flex items-center gap-0.5">
+                      <Folder size={12} className="text-slate-400" />
+                      Workspace Folder
+                    </label>
+                    <Controller
+                      name="isAllFolder"
+                      control={control}
+                      render={({ field }) => (
+                        <label className="flex items-center gap-1.5 cursor-pointer mr-1">
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} className="h-3.5 w-3.5 rounded-[4px]" />
+                          <span className="text-[10px] text-slate-500 font-medium">Search All Folders</span>
+                        </label>
+                      )}
+                    />
+                  </div>
                   <Controller
                     name="folderNo"
                     control={control}
                     render={({ field }) => (
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')}
-                      >
-                        <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                          <SelectValue placeholder="All Folders" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {fillValues?.folder?.map(f => (
-                            <SelectItem key={f.TaskFolderNo} value={f.TaskFolderNo.toString()} className="text-xs font-medium">
-                              {f["Folder Name"]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
+                        <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
+                          placeholder="All Folders"
+                          className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                        />
+                      </div>
                     )}
                   />
                 </div>
 
                 {/* Sort Column */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <ArrowUpDown size={12} className="text-slate-400" />
                     Sort By Column
                   </label>
@@ -1007,25 +953,17 @@ export function TaskFilter({
                     name="sortingColumnName"
                     control={control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                          <SelectValue placeholder="Select Sort Column" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {fillValues?.sortingColumns?.map(sc => (
-                            <SelectItem key={sc.SortingColumnName} value={sc.SortingColumnName} className="text-xs font-medium">
-                              {sc.DisplayName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.sortingColumns || []).map(sc => ({ value: sc.SortingColumnName, label: sc.DisplayName }))}
+                        placeholder="Select Sort Column"
+                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                      />
                     )}
                   />
                 </div>
 
                 {/* Sort Direction */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <ArrowUpDown size={12} className="text-slate-400" />
                     Sort Direction
                   </label>
@@ -1033,22 +971,14 @@ export function TaskFilter({
                     name="sortingType"
                     control={control}
                     render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                          <SelectValue placeholder="Select Direction" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          <SelectItem value="asc" className="text-xs font-medium">Ascending</SelectItem>
-                          <SelectItem value="desc" className="text-xs font-medium">Descending</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Combobox value={field.value} onChange={field.onChange} options={[{ value: 'asc', label: 'Ascending' }, { value: 'desc', label: 'Descending' }]} placeholder="Select Direction" className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)} />
                     )}
                   />
                 </div>
 
                 {/* Due Date Range */}
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5 sm:col-span-2">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <CalendarIcon size={12} className="text-slate-400" />
                     Due Date Range
                   </label>
@@ -1063,8 +993,8 @@ export function TaskFilter({
                 </div>
 
                 {/* Created Date Range */}
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                <div className="space-y-0.5 sm:col-span-2">
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <CalendarIcon size={12} className="text-slate-400" />
                     Created Date Range
                   </label>
@@ -1087,13 +1017,13 @@ export function TaskFilter({
                 type="button"
                 variant="ghost"
                 onClick={handleReset}
-                className="h-10 px-5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:text-slate-700"
+                className="h-10 px-5 rounded-xl border border-slate-200 text-xs font-medium text-slate-500 hover:text-slate-700"
               >
                 Reset
               </Button>
               <Button
                 type="submit"
-                className="h-10 px-6 rounded-xl bg-[#006699] hover:bg-[#005580] text-xs font-bold text-white shadow-md shadow-[#006699]/15"
+                className="h-10 px-6 rounded-xl bg-[#006699] hover:bg-[#005580] text-xs font-medium text-white shadow-md shadow-[#006699]/15"
               >
                 Apply Filters
               </Button>

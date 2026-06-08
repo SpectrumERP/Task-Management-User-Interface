@@ -120,7 +120,7 @@ export function AsyncAutoCompleteList({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-bold text-slate-700 hover:bg-slate-50/50 rounded-lg h-7 px-2",
+            "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-medium text-slate-700 hover:bg-slate-50/50 rounded-lg h-7 px-2",
             className
           )}
         >
@@ -157,11 +157,11 @@ export function AsyncAutoCompleteList({
             {isLoading && (
               <div className="flex items-center justify-center py-6 text-slate-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Searching...</span>
+                <span className="text-[10px] font-medium  ">Searching...</span>
               </div>
             )}
             {!isLoading && options.length === 0 && (
-              <CommandEmpty className="py-6 text-center text-[10px] text-slate-400 font-black uppercase tracking-wider">
+              <CommandEmpty className="py-6 text-center text-[10px] text-slate-400 font-medium normal-case">
                 No items found
               </CommandEmpty>
             )}
@@ -176,10 +176,10 @@ export function AsyncAutoCompleteList({
                       setSelectedLabel(opt.primaryValue);
                       setOpen(false);
                     }}
-                    className="text-[11px] font-bold py-1.5 px-2.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col items-start gap-0.5"
+                    className="text-[11px] font-medium py-1.5 px-2.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col items-start gap-0.5"
                   >
                     <div className="flex w-full items-center justify-between">
-                      <span className="text-slate-800 font-bold">{opt.primaryValue}</span>
+                      <span className="text-slate-800 font-medium">{opt.primaryValue}</span>
                       {value?.toString() === opt.id?.toString() && (
                         <Check className="h-3 w-3 text-[#006699] shrink-0" />
                       )}
@@ -272,11 +272,7 @@ export function CustomFieldsSection({
 
     if (!cf.customFieldNo) {
       return (
-        <Input
-          disabled
-          placeholder="Select custom field..."
-          className={cn(baseClasses, "cursor-not-allowed text-slate-400")}
-        />
+        <Input disabled placeholder="Select custom field..." className={cn(baseClasses, "cursor-not-allowed text-slate-400")} />
       );
     }
 
@@ -289,44 +285,25 @@ export function CustomFieldsSection({
     switch (dataTypeNo) {
       case 1: // Numeric
         return (
-          <Input
-            type="number"
-            placeholder="Enter numeric..."
-            value={cf.fieldValue}
-            onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
+          <Input type="number" placeholder="Enter numeric..." value={cf.fieldValue} onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
             className={baseClasses}
           />
         );
       case 2: // Float
         return (
-          <Input
-            type="number"
-            step="any"
-            placeholder="Enter decimal..."
-            value={cf.fieldValue}
-            onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
+          <Input type="number" step="any" placeholder="Enter decimal..." value={cf.fieldValue} onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
             className={baseClasses}
           />
         );
       case 3: // Alpha Numeric
         return (
-          <Input
-            type="text"
-            placeholder="Enter text..."
-            value={cf.fieldValue}
-            onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
+          <Input type="text" placeholder="Enter text..." value={cf.fieldValue} onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
             className={baseClasses}
           />
         );
       case 4: // Yes/No dropdown
         return (
-          <Combobox
-            options={[
-              { label: "Yes", value: "Yes" },
-              { label: "No", value: "No" }
-            ]}
-            value={cf.fieldValue}
-            onChange={(val) => updateField(index, 'fieldValue', val)}
+          <Combobox options={[ { label: "Yes", value: "Yes" }, { label: "No", value: "No" } ]} value={cf.fieldValue} onChange={(val) => updateField(index, 'fieldValue', val)}
             placeholder="Select..."
             className={baseClasses}
           />
@@ -359,10 +336,7 @@ export function CustomFieldsSection({
           }))
           : [];
         return (
-          <Combobox
-            options={options}
-            value={cf.fieldValue}
-            onChange={(val) => updateField(index, 'fieldValue', val)}
+          <Combobox options={options} value={cf.fieldValue} onChange={(val) => updateField(index, 'fieldValue', val)}
             placeholder="Select..."
             className={baseClasses}
           />
@@ -380,10 +354,7 @@ export function CustomFieldsSection({
         );
       default:
         return (
-          <Input
-            placeholder="Enter value..."
-            value={cf.fieldValue}
-            onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
+          <Input placeholder="Enter value..." value={cf.fieldValue} onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
             className={baseClasses}
           />
         );
@@ -395,7 +366,7 @@ export function CustomFieldsSection({
       <div className="flex items-center justify-between">
         {
           !hideLabel &&
-          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1"> Addition Fields </label>
+          <label className="text-[11px] font-medium text-slate-700 normal-case ml-1"> Addition Fields </label>
         }
         {!hideAddButton && (
           <Button
@@ -403,7 +374,7 @@ export function CustomFieldsSection({
             onClick={addField}
             variant="ghost"
             size="sm"
-            className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1"
+            className="h-7 text-[9px] font-medium text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1"
           >
             <Plus size={12} className="text-[#006699]" /> Add Additional Field
           </Button>
@@ -419,7 +390,7 @@ export function CustomFieldsSection({
               );
 
               return (
-                <div key={index} className="space-y-1.5 relative group">
+                <div key={index} className="space-y-0.5 relative group">
                   {!hideAddButton && (
                     <button
                       type="button"
@@ -430,12 +401,11 @@ export function CustomFieldsSection({
                     </button>
                   )}
                   {hideAddButton || cf.customFieldNo ? (
-                    <label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1 block truncate">
+                    <label className="text-slate-700 font-medium text-[11px] normal-case ml-1 block truncate">
                       {selectedField ? selectedField.customFieldName : 'Unknown Field'}
                     </label>
                   ) : (
-                    <Combobox
-                      options={(fillValues?.customFields || []).map((field: any) => ({
+                    <Combobox options={(fillValues?.customFields || []).map((field: any) => ({
                         label: field.customFieldName || '',
                         value: (field.customFieldNo || '').toString()
                       }))}
@@ -456,8 +426,8 @@ export function CustomFieldsSection({
               <table className="w-full text-left text-[11px] border-collapse">
                 <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
                   <tr>
-                    <th className="px-3 py-2 font-black text-slate-700 uppercase tracking-wider w-1/2">Field Name</th>
-                    <th className="px-3 py-2 font-black text-slate-700 uppercase tracking-wider w-1/2">Value</th>
+                    <th className="px-3 py-2 font-medium text-slate-700   w-1/2">Field Name</th>
+                    <th className="px-3 py-2 font-medium text-slate-700   w-1/2">Value</th>
                     <th className="px-2 py-2 w-10 text-center"></th>
                   </tr>
                 </thead>
@@ -465,8 +435,7 @@ export function CustomFieldsSection({
                   {customFields.map((cf, index) => (
                     <tr key={index} className="group hover:bg-white transition-colors">
                       <td className="px-2 py-1">
-                        <Combobox
-                          options={(fillValues?.customFields || []).map((field: any) => ({
+                        <Combobox options={(fillValues?.customFields || []).map((field: any) => ({
                             label: field.customFieldName || '',
                             value: (field.customFieldNo || '').toString()
                           }))}
@@ -497,7 +466,7 @@ export function CustomFieldsSection({
         )
       ) : (
         <div className="text-center py-6 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No additional fields added yet</span>
+          <span className="text-[10px] font-medium text-slate-400  ">No additional fields added yet</span>
         </div>
       )}
     </div>

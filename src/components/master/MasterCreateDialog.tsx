@@ -346,10 +346,10 @@ export function MasterCreateDialog({
             <Icon size={18} className="stroke-[2.5]" />
           </div>
           <div className="flex-1 text-left">
-            <DialogTitle className="text-sm font-black text-slate-800 uppercase tracking-widest leading-none">
+            <DialogTitle className="text-sm font-medium text-slate-800 leading-none">
               Create New {getMasterTitle().replace(' Master', '')}
             </DialogTitle>
-            {/* <DialogDescription className="text-[10px] text-slate-500 font-bold mt-1">
+            {/* <DialogDescription className="text-[10px] text-slate-500 font-medium mt-1">
               Fill in the fields below to register a new master entry.
             </DialogDescription> */}
           </div>
@@ -357,17 +357,14 @@ export function MasterCreateDialog({
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin">
           {/* Name / Label */}
-          <div className="space-y-1">
-            <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">{`${type || ''} Name`}</Label>
-            <Input
-              placeholder={`Enter new ${type || ''} name...`}
-              value={name}
-              onChange={(e) => {
+          <div className="space-y-0">
+            <Label  className="text-[10px] font-medium text-slate-700 ml-1">{`${type || ''} Name`}</Label>
+            <Input placeholder={`Enter new ${type || ''} name...`} value={name} onChange={(e) => {
                 setName(e.target.value);
                 if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
               }}
               className={cn(
-                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                 errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
               )}
             />
@@ -378,22 +375,22 @@ export function MasterCreateDialog({
           {type === 'category' && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-4 pt-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
                   <Checkbox
                     id="dialog-business-benefit"
                     checked={isBusinessBenefitApplicable}
                     onCheckedChange={(checked) => setIsBusinessBenefitApplicable(!!checked)}
                   />
-                  <Label htmlFor="dialog-business-benefit" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
+                  <Label htmlFor="dialog-business-benefit"  className="text-xs font-medium text-slate-700 cursor-pointer select-none">
                     Business Benefit
                   </Label>
                 </div>
               </div>
 
               {/* Color Coding Option */}
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1 block">Color Code</Label>
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Color Code</Label>
+                <div className="flex flex-wrap items-center gap-0.5">
                   {[
                     '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#06b6d4'
                   ].map((hex) => (
@@ -408,32 +405,29 @@ export function MasterCreateDialog({
                       style={{ backgroundColor: hex }}
                     />
                   ))}
-                  <div className="flex items-center gap-1.5 ml-auto border border-slate-200 rounded-xl px-2 py-0.5 bg-slate-50/50">
+                  <div className="flex items-center gap-0.5 ml-auto border border-slate-200 rounded-xl px-2 py-0.5 bg-slate-50/50">
                     <input
                       type="color"
                       value={color || '#000000'}
                       onChange={(e) => setColor(e.target.value)}
                       className="w-5 h-5 border-0 bg-transparent cursor-pointer rounded"
                     />
-                    <span className="text-[9px] font-mono font-black text-slate-500 uppercase">{color || 'NONE'}</span>
+                    <span className="text-[9px] font-mono font-medium text-slate-500">{color || 'NONE'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Checklist Editor */}
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1 flex items-center">
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1 flex items-center">
                   Checklist Items
-                  <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+                  <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
                     {checklist.length}
                   </span>
                 </Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add description..."
-                    value={newChecklistItem}
-                    onChange={(e) => setNewChecklistItem(e.target.value)}
-                    className="h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 rounded-xl"
+                <div className="flex gap-0.5">
+                  <Input placeholder="Add description..." value={newChecklistItem} onChange={(e) => setNewChecklistItem(e.target.value)}
+                    className="h-8 text-xs font-medium text-slate-700 bg-white border-slate-200 rounded-xl"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -462,7 +456,7 @@ export function MasterCreateDialog({
                 {checklist.length > 0 && (
                   <div className="bg-slate-50/50 border border-slate-100 rounded-xl max-h-36 overflow-y-auto divide-y divide-slate-100/50">
                     {checklist.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 text-xs font-bold text-slate-700">
+                      <div key={index} className="flex items-center justify-between p-2 text-xs font-medium text-slate-700">
                         <span className="truncate">{item.description}</span>
                         <button
                           type="button"
@@ -478,19 +472,16 @@ export function MasterCreateDialog({
               </div>
 
               {/* Subtask Templates */}
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1 flex items-center">
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1 flex items-center">
                   Subtask Templates
-                  <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+                  <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
                     {subtasks.length}
                   </span>
                 </Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add subtask title..."
-                    value={newSubtaskItem}
-                    onChange={(e) => setNewSubtaskItem(e.target.value)}
-                    className="h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 rounded-xl"
+                <div className="flex gap-0.5">
+                  <Input placeholder="Add subtask title..." value={newSubtaskItem} onChange={(e) => setNewSubtaskItem(e.target.value)}
+                    className="h-8 text-xs font-medium text-slate-700 bg-white border-slate-200 rounded-xl"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -519,7 +510,7 @@ export function MasterCreateDialog({
                 {subtasks.length > 0 && (
                   <div className="bg-slate-50/50 border border-slate-100 rounded-xl max-h-36 overflow-y-auto divide-y divide-slate-100/50">
                     {subtasks.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 text-xs font-bold text-slate-700">
+                      <div key={index} className="flex items-center justify-between p-2 text-xs font-medium text-slate-700">
                         <span className="truncate">{item.description}</span>
                         <button
                           type="button"
@@ -545,48 +536,39 @@ export function MasterCreateDialog({
 
           {type === 'priority' && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Priority Duration Value</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={priorityDuration ?? ''}
-                  onChange={(e) => {
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Priority Duration Value</Label>
+                <Input type="number" min={1} value={priorityDuration ?? ''} onChange={(e) => {
                     const val = e.target.value === '' ? null : Number(e.target.value);
                     setPriorityDuration(val);
                     if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-xl"
                 />
                 {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Frequency Unit</Label>
-                <Combobox
-                  options={(fillValues?.frequency || []).map((f: any) => ({
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Frequency Unit</Label>
+                <Combobox options={(fillValues?.frequency || []).map((f: any) => ({
                     label: f.FrequencyName || f.Frequency || f.name || '',
                     value: (f.FrequencyNo || f.id || '').toString()
                   }))}
                   value={priorityFrequencyNo}
                   onChange={setPriorityFrequencyNo}
                   placeholder="Select frequency..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full"
                 />
               </div>
 
-              <div className="space-y-1 col-span-2">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Sequence Number</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={sequence ?? ''}
-                  onChange={(e) => {
+              <div className="space-y-0 col-span-2">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Sequence Number</Label>
+                <Input type="number" min={1} value={sequence ?? ''} onChange={(e) => {
                     const val = e.target.value === '' ? null : Number(e.target.value);
                     setSequence(val);
                     if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-xl"
                 />
                 {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
               </div>
@@ -595,29 +577,20 @@ export function MasterCreateDialog({
 
           {type === 'folder' && (
             <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Folder Description</Label>
-                <Input
-                  placeholder="Enter short folder purpose..."
-                  value={description}
-                  onChange={(e) => {
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Folder Description</Label>
+                <Input placeholder="Enter short folder purpose..." value={description} onChange={(e) => {
                     setDescription(e.target.value);
                     if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-xl"
                 />
                 {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Parent Folder</Label>
-                <Combobox
-                  options={[
-                    { label: 'No Parent (Root)', value: 'none' },
-                    ...(Array.isArray(folderFillValues?.folders) ? folderFillValues.folders :
-                      Array.isArray(folderFillValues?.parentFolder) ? folderFillValues.parentFolder :
-                        Array.isArray(folderFillValues?.data) ? folderFillValues.data :
-                          Array.isArray(folderFillValues) ? folderFillValues : []).map((f: any) => ({
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Parent Folder</Label>
+                <Combobox options={[ { label: 'No Parent (Root)', value: 'none' }, ...(Array.isArray(folderFillValues?.folders) ? folderFillValues.folders : Array.isArray(folderFillValues?.parentFolder) ? folderFillValues.parentFolder : Array.isArray(folderFillValues?.data) ? folderFillValues.data : Array.isArray(folderFillValues) ? folderFillValues : []).map((f: any) => ({
                             label: f.folderName || f.taskFolderName || f.FolderName || f.name || '',
                             value: (f.taskFolderNo || f.TaskFolderNo || f.id || '').toString()
                           }))
@@ -625,7 +598,7 @@ export function MasterCreateDialog({
                   value={parentFolderNo}
                   onChange={setParentFolderNo}
                   placeholder="Select Parent Folder..."
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                 />
               </div>
             </div>
@@ -634,12 +607,9 @@ export function MasterCreateDialog({
           {type === 'location' && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Parent Location</Label>
-                  <Combobox
-                    options={[
-                      { label: "No Parent (Root)", value: "none" },
-                      ...(locationFillValues?.data?.locations || locationFillValues?.locations || []).map((l: any) => ({
+                <div className="space-y-0">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Parent Location</Label>
+                  <Combobox options={[ { label: "No Parent (Root)", value: "none" }, ...(locationFillValues?.data?.locations || locationFillValues?.locations || []).map((l: any) => ({
                         label: l.operLocationName || l.locationName || l.name || '',
                         value: (l.operLocationNo || l.id || '').toString()
                       }))
@@ -647,74 +617,61 @@ export function MasterCreateDialog({
                     value={parentLocationNo}
                     onChange={setParentLocationNo}
                     placeholder="Select Parent"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Incharge Lead</Label>
-                  <UserCombobox
-                    value={inchargeNo}
-                    onChange={(user) => {
+                <div className="space-y-0">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Incharge Lead</Label>
+                  <UserCombobox value={inchargeNo} onChange={(user) => {
                       setInchargeNo(user.loginNo.toString());
                       setInchargeLabel(user.printingName);
                       if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
                     }}
                     initialLabel={inchargeLabel}
                     placeholder="Search Incharge..."
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                   />
                   {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Location Region</Label>
-                <Combobox
-                  options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Location Region</Label>
+                <Combobox options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
                     label: r.regionName || '',
                     value: (r.regionNo || '').toString()
                   }))}
                   value={locationRegion}
                   onChange={setLocationRegion}
                   placeholder="Select Region"
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1 block">Address</Label>
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Address Line 1"
-                    value={address1}
-                    onChange={(e) => {
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Address</Label>
+                <div className="space-y-0">
+                  <Input placeholder="Address Line 1" value={address1} onChange={(e) => {
                       setAddress1(e.target.value);
                       if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
                     }}
-                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-xl"
                   />
                   {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
-                  <Input
-                    placeholder="Address Line 2 (Optional)"
-                    value={address2}
-                    onChange={(e) => setAddress2(e.target.value)}
-                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  <Input placeholder="Address Line 2 (Optional)" value={address2} onChange={(e) => setAddress2(e.target.value)}
+                    className="bg-white border-slate-200 h-10 rounded-xl"
                   />
-                  <Input
-                    placeholder="Address Line 3 (Optional)"
-                    value={address3}
-                    onChange={(e) => setAddress3(e.target.value)}
-                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  <Input placeholder="Address Line 3 (Optional)" value={address3} onChange={(e) => setAddress3(e.target.value)}
+                    className="bg-white border-slate-200 h-10 rounded-xl"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Country</Label>
-                  <Combobox
-                    options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                <div className="space-y-0">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country</Label>
+                  <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
                       label: c.countryName || '',
                       value: (c.countryNo || '').toString()
                     }))}
@@ -724,7 +681,7 @@ export function MasterCreateDialog({
                       if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
                     }}
                     placeholder="Select Country"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('country');
                       setIsNestedMasterOpen(true);
@@ -732,10 +689,9 @@ export function MasterCreateDialog({
                   />
                   {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">State / Province</Label>
-                  <Combobox
-                    options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                <div className="space-y-0">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">State / Province</Label>
+                  <Combobox options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
                       label: s.stateName || '',
                       value: (s.stateNo || '').toString()
                     }))}
@@ -745,7 +701,7 @@ export function MasterCreateDialog({
                       if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
                     }}
                     placeholder="Select State"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('state');
                       setIsNestedMasterOpen(true);
@@ -755,11 +711,10 @@ export function MasterCreateDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5">
-                <div className="space-y-1 col-span-2">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">City</Label>
-                  <Combobox
-                    options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+              <div className="grid grid-cols-3 gap-0.5.5">
+                <div className="space-y-0 col-span-2">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">City</Label>
+                  <Combobox options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
                       label: c.cityName || '',
                       value: (c.cityNo || '').toString()
                     }))}
@@ -769,7 +724,7 @@ export function MasterCreateDialog({
                       if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
                     }}
                     placeholder="Select City"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('city');
                       setIsNestedMasterOpen(true);
@@ -777,16 +732,13 @@ export function MasterCreateDialog({
                   />
                   {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</Label>
-                  <Input
-                    placeholder="ZIP"
-                    value={pinCode}
-                    onChange={(e) => {
+                <div className="space-y-0">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">PIN / ZIP Code</Label>
+                  <Input placeholder="ZIP" value={pinCode} onChange={(e) => {
                       setPinCode(e.target.value);
                       if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
                     }}
-                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-xl"
                   />
                   {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
                 </div>
@@ -796,80 +748,63 @@ export function MasterCreateDialog({
 
           {type === 'task-company' && (
             <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Alias Name</Label>
-                <Input
-                  placeholder="Enter alias"
-                  value={aliasName}
-                  onChange={(e) => setAliasName(e.target.value)}
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Alias Name</Label>
+                <Input placeholder="Enter alias" value={aliasName} onChange={(e) => setAliasName(e.target.value)}
                   maxLength={15}
-                  className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-xl"
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Location Name</Label>
-                <Input
-                  placeholder="Enter location name"
-                  value={locationName}
-                  onChange={(e) => setLocationName(e.target.value)}
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Location Name</Label>
+                <Input placeholder="Enter location name" value={locationName} onChange={(e) => setLocationName(e.target.value)}
                   maxLength={50}
-                  className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-xl"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1 block">Address</Label>
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Address Line 1"
-                    value={address1}
-                    onChange={(e) => setAddress1(e.target.value)}
-                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Address</Label>
+                <div className="space-y-0">
+                  <Input placeholder="Address Line 1" value={address1} onChange={(e) => setAddress1(e.target.value)}
+                    className="bg-white border-slate-200 h-10 rounded-xl"
                   />
-                  <Input
-                    placeholder="Address Line 2 (Optional)"
-                    value={address2}
-                    onChange={(e) => setAddress2(e.target.value)}
-                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  <Input placeholder="Address Line 2 (Optional)" value={address2} onChange={(e) => setAddress2(e.target.value)}
+                    className="bg-white border-slate-200 h-10 rounded-xl"
                   />
-                  <Input
-                    placeholder="Address Line 3 (Optional)"
-                    value={address3}
-                    onChange={(e) => setAddress3(e.target.value)}
-                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                  <Input placeholder="Address Line 3 (Optional)" value={address3} onChange={(e) => setAddress3(e.target.value)}
+                    className="bg-white border-slate-200 h-10 rounded-xl"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Country</Label>
-                  <Combobox
-                    options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                <div className="space-y-0">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country</Label>
+                  <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
                       label: c.countryName || '',
                       value: (c.countryNo || '').toString()
                     }))}
                     value={countryNo}
                     onChange={setCountryNo}
                     placeholder="Select Country"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('country');
                       setIsNestedMasterOpen(true);
                     }}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">State / Province</Label>
-                  <Combobox
-                    options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                <div className="space-y-0">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">State / Province</Label>
+                  <Combobox options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
                       label: s.stateName || '',
                       value: (s.stateNo || '').toString()
                     }))}
                     value={stateNo}
                     onChange={setStateNo}
                     placeholder="Select State"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('state');
                       setIsNestedMasterOpen(true);
@@ -878,31 +813,27 @@ export function MasterCreateDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5">
-                <div className="space-y-1 col-span-2">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">City</Label>
-                  <Combobox
-                    options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+              <div className="grid grid-cols-3 gap-0.5.5">
+                <div className="space-y-0 col-span-2">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">City</Label>
+                  <Combobox options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
                       label: c.cityName || '',
                       value: (c.cityNo || '').toString()
                     }))}
                     value={cityNo}
                     onChange={setCityNo}
                     placeholder="Select City"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold text-slate-700 w-full"
+                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('city');
                       setIsNestedMasterOpen(true);
                     }}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</Label>
-                  <Input
-                    placeholder="ZIP"
-                    value={pinCode}
-                    onChange={(e) => setPinCode(e.target.value)}
-                    className="bg-white border-slate-200 h-10 text-xs font-bold text-slate-700 rounded-xl"
+                <div className="space-y-0">
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">PIN / ZIP Code</Label>
+                  <Input placeholder="ZIP" value={pinCode} onChange={(e) => setPinCode(e.target.value)}
+                    className="bg-white border-slate-200 h-10 rounded-xl"
                   />
                 </div>
               </div>
@@ -910,25 +841,25 @@ export function MasterCreateDialog({
           )}
 
           {serverError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-2.5 rounded-2xl flex items-start gap-2 animate-pulse mt-2">
-              <span className="font-extrabold select-none">⚠️ Error:</span>
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-2.5 rounded-2xl flex items-start gap-0.5 animate-pulse mt-2">
+              <span className="font-medium select-none">⚠️ Error:</span>
               <span className="flex-1 whitespace-pre-wrap leading-relaxed">{serverError}</span>
             </div>
           )}
         </div>
 
-        <DialogFooter className="p-4 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+        <DialogFooter className="p-4 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-0.5 shrink-0">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl h-10 font-bold text-slate-500 hover:bg-slate-100 text-xs"
+            className="rounded-xl h-10 font-medium text-slate-500 hover:bg-slate-100 text-xs"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-xl h-10 bg-[#006699] hover:bg-[#005580] font-bold text-white shadow-md text-xs gap-2 min-w-[90px] flex items-center justify-center"
+            className="rounded-xl h-10 bg-[#006699] hover:bg-[#005580] font-medium text-white shadow-md text-xs gap-0.5 min-w-[90px] flex items-center justify-center"
           >
             {isSaving ? (
               <>

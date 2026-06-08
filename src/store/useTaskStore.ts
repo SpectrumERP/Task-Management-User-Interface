@@ -60,7 +60,7 @@ let activeFillValuesPromise: Promise<TaskFillValues | null> | null = null;
 
 const getCompanyNo = () => {
   const authCompanies = useAuthStore.getState().company;
-  return authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
+  return authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
 };
 
 export const useTaskStore = create<TaskState>((set, get) => ({
@@ -81,8 +81,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     if (activeFillValuesPromise) {
       return activeFillValuesPromise;
     }
-
-    const resolvedCompanyNo = companyNo || getCompanyNo().toString();
+    const resolvedCompanyNo = typeof (companyNo) === 'number' ? companyNo : getCompanyNo().toString();
 
     // 3. Otherwise, create a new pending promise, execute it, and cache the result!
     activeFillValuesPromise = (async () => {
@@ -139,7 +138,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (searchParamsCamel.folderNo !== undefined) searchParamsPascal.FolderNo = Number(searchParamsCamel.folderNo);
       if (searchParamsCamel.operTaskNo !== undefined && !isNaN(Number(searchParamsCamel.operTaskNo))) searchParamsPascal.OperTaskNo = Number(searchParamsCamel.operTaskNo);
       if (searchParamsCamel.taskCode !== undefined && searchParamsCamel.taskCode !== '') searchParamsPascal.TaskCode = searchParamsCamel.taskCode;
-      if (searchParamsCamel.title !== undefined) searchParamsPascal.Title = searchParamsCamel.title;
+      // Instead of sending title to backend, we'll use it for local keyword filtering across all columns
+      // if (searchParamsCamel.title !== undefined) searchParamsPascal.Title = searchParamsCamel.title;
       if (searchParamsCamel.operTaskCategoryNo !== undefined) searchParamsPascal.OperTaskCategoryNo = Number(searchParamsCamel.operTaskCategoryNo);
       if (searchParamsCamel.operTaskPriorityNo !== undefined) searchParamsPascal.OperTaskPriorityNo = Number(searchParamsCamel.operTaskPriorityNo);
       if (searchParamsCamel.operTaskStatusNo !== undefined) searchParamsPascal.OperTaskStatusNo = Number(searchParamsCamel.operTaskStatusNo);
@@ -198,7 +198,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         params: searchParamsPascal
       });
       if (response.success) {
-        const mappedTasks: Task[] = response.data.map(item => ({
+        let mappedTasks: Task[] = response.data.map(item => ({
           taskNo: item.operTaskNo,
           code: item.code || '',
           title: item.title,
@@ -207,10 +207,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           category_No: item.category?.operTaskCategoryNo || null,
           type_No: item.type?.operTaskTypeNo || null,
           project_No: item.project?.operTaskProjectNo || item.project?.projectNo || item.project?.project_No || item.project?.operTaskFolderNo || item.project?.folderNo || item.folder?.operTaskFolderNo || item.folder?.folderNo || item.folder?.TaskFolderNo || item.folder?.taskFolderNo || item.project_No || item.projectNo || item.folderNo || item.folder_No || null,
+          folderName: item.folder?.folderName || item.folder?.taskFolderName || item.folder?.FolderName || item.folder?.["Folder Name"] || item.project?.folderName || item.project?.taskFolderName || item.project?.FolderName || item.project?.["Folder Name"] || undefined,
           tags: item.tags ? item.tags.split(',') : [],
-          originator_user_No: item.createdBy?.id || null,
+          originator_user_No: item.originator?.id || item.createdBy?.id || null,
+          originatorDisplayName: item.originator?.displayName || '',
+          createdBy: item.createdBy,
+          createdDate: item.createdDate || item.createdBy?.createdDate || null,
           owner_user_No: item.assignedTo?.id || null,
           location_No: item.location?.operTaskLocationNo || null,
+          locationName: item.location?.locationName || undefined,
+          company: item.taskCompany?.taskCompanyNo || item.company || undefined,
+          companyName: item.taskCompany?.taskCompanyAlias || item.taskCompany?.taskCompanyName || item.company || undefined,
           status_No: item.status?.operTaskStatusNo || null,
           status: item.status?.statusName || 'Todo',
           priority: item.priority?.priorityName || 'Low',
@@ -219,6 +226,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           assignedDisplayName: item.assignedTo?.displayName,
           start_date: item.startDate,
           end_date: item.endDate,
+          completionDate: item.completionDate || null,
+          completionRemark: item.completionRemark || '',
           isAllDay: item.isAllday ?? item.isAllDay ?? false,
           calendarColor: item.colorCoding || '',
           estimated_effort_value: item.estimatedEfforts ?? null,
@@ -229,6 +238,31 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           check_list: [],
           task_comments: []
         }));
+        // Local Keyword Filtering
+        if (searchParamsCamel.title) {
+          const kw = searchParamsCamel.title.toLowerCase();
+          const fillValues = get().fillValues;
+          mappedTasks = mappedTasks.filter(task => {
+            const folderObj = fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No);
+            const folderName = task.folderName || (folderObj ? folderObj["Folder Name"] : (task.project_No?.toString() || ''));
+            const createdByName = task.createdBy?.displayName || task.originatorDisplayName || '';
+
+            return (
+              (task.code && task.code.toLowerCase().includes(kw)) ||
+              (task.title && task.title.toLowerCase().includes(kw)) ||
+              (task.status && task.status.toLowerCase().includes(kw)) ||
+              (task.categoryName && task.categoryName.toLowerCase().includes(kw)) ||
+              (task.typeName && task.typeName.toLowerCase().includes(kw)) ||
+              (task.priority && task.priority.toLowerCase().includes(kw)) ||
+              (task.assignedDisplayName && task.assignedDisplayName.toLowerCase().includes(kw)) ||
+              (folderName && folderName.toLowerCase().includes(kw)) ||
+              (createdByName && createdByName.toLowerCase().includes(kw)) ||
+              (task.start_date && task.start_date.toLowerCase().includes(kw)) ||
+              (task.end_date && task.end_date.toLowerCase().includes(kw))
+            );
+          });
+        }
+
         set({ tasks: mappedTasks });
       }
     } catch (error) {

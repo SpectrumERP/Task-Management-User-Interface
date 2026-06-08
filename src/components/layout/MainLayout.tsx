@@ -12,7 +12,9 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, activeTab = 'board', onTabChange }: MainLayoutProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('isSidebarCollapsed') === 'true';
+  });
 
   const handleTabChange = (id: string) => {
     if (onTabChange) {
@@ -60,7 +62,13 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
           activeTab={activeTab}
           onTabChange={handleTabChange}
           isCollapsed={isDesktopSidebarCollapsed}
-          onToggleCollapse={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+          onToggleCollapse={() => {
+            setIsDesktopSidebarCollapsed(prev => {
+              const next = !prev;
+              localStorage.setItem('isSidebarCollapsed', String(next));
+              return next;
+            });
+          }}
         />
       </div>
 

@@ -38,17 +38,17 @@ export function DateTimePicker({ date, onChange, placeholder, className, disable
           variant={"outline"}
           disabled={disabled}
           className={cn(
-            "w-full justify-start text-left font-bold rounded-2xl bg-white shadow-sm text-xs transition-all text-slate-700 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15 border",
-            !className?.includes("border-") && "border-slate-200",
-            !date && "text-slate-400 font-medium",
+            "w-full justify-start text-left font-medium rounded-xl bg-white shadow-sm text-sm transition-all text-slate-900 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15 border",
+            !className?.includes("border-") && "border-slate-300",
+            !date && "text-slate-500",
             className
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 shrink-0" />
+          <CalendarIcon className="mr-2 h-4 w-4 text-slate-500 shrink-0" />
           {date ? (
-            <span className="text-slate-700 font-bold text-xs">{format(date, hideTime ? "PPP" : "PPP p")}</span>
+            <span className="truncate">{format(date, hideTime ? "PPP" : "PPP p")}</span>
           ) : (
-            <span className="text-slate-400 font-medium text-xs">{displayPlaceholder}</span>
+            <span className="truncate">{displayPlaceholder}</span>
           )}
         </Button>
       </PopoverTrigger>
@@ -75,7 +75,7 @@ export function DateTimePicker({ date, onChange, placeholder, className, disable
           <div className="p-3 pt-2 border-t border-slate-100 flex flex-col gap-2.5 bg-slate-50/50 rounded-b-2xl">
             <div className="flex items-center gap-2">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Time Select</span>
+              <span className="text-[10px] font-black text-slate-600  ">Time Select</span>
             </div>
             <div className="flex items-center gap-1.5">
               {/* Hours Selector */}

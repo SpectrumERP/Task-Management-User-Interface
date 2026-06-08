@@ -2,6 +2,7 @@ import * as React from "react"
 import { Check, ChevronsUpDown, X, Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { FIELD_TEXT_STYLE } from "@/lib/fieldStyles"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -59,8 +60,9 @@ export function Combobox({
           className={cn(
             "w-full justify-between font-medium text-sm rounded-xl h-9 shadow-sm transition-all border relative pr-8",
             !className?.includes("border-") && "border-slate-300",
-            !value && "text-slate-400",
-            className
+            className,
+            FIELD_TEXT_STYLE,
+            !value && "text-slate-400"
           )}
         >
           <span className="truncate pr-2">{selectedOption ? selectedOption.label : placeholder}</span>

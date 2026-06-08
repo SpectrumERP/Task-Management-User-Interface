@@ -14,10 +14,9 @@ import {
   Building2,
   Globe,
   Building,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
-  Handshake
+  Handshake,
+  Menu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -66,54 +65,70 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
   }, [activeTab]);
 
   return (
-    <aside className={cn("h-full bg-[#f4f7fa] border-r flex flex-col p-4 shrink-0 transition-all duration-300", isCollapsed ? "w-[80px] items-center px-2" : "w-64", className)}>
+    <aside className={cn("h-full bg-[#f4f7fa] border-r flex flex-col shrink-0 transition-all duration-300", isCollapsed ? "w-[80px] items-center" : "w-64", className)}>
       {/* Brand */}
-      <div className={cn("flex items-center mb-8 px-2 relative", isCollapsed ? "justify-center" : "justify-between")}>
-        <div className="flex items-center justify-start py-1">
-          <img src={LogoImage} alt="SteelMont Logo" className={cn("h-10 w-auto object-contain transition-all", isCollapsed && "scale-75")} />
+      <div className={cn("flex items-center mb-2 relative", isCollapsed ? "flex-col gap-1 justify-center px-0 mt-2" : "justify-between px-2")}>
+        <div className={cn("flex items-center justify-start py-1 overflow-hidden transition-all duration-300", isCollapsed ? "w-14 h-10" : "w-auto")}>
+          <img src={LogoImage} alt="SteelMont Logo" className="h-10 w-auto max-w-none object-left object-contain" />
         </div>
         {onClose && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="lg:hidden h-8 w-8 rounded-lg hover:bg-slate-200/50 flex items-center justify-center"
+            className="lg:hidden h-8 w-8 rounded-lg hover:bg-slate-200/50 flex items-center justify-center shrink-0"
           >
             <X size={18} className="text-slate-500" />
+          </Button>
+        )}
+        {onToggleCollapse && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className="hidden lg:flex h-10 w-10 rounded-xl hover:bg-slate-200/50 text-slate-500 shrink-0"
+          >
+            <Menu size={20} />
           </Button>
         )}
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-6 overflow-y-auto pr-1 scrollbar-thin">
-        <div className="space-y-1">
+        <div className="space-y-0">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
               className={cn(
-                "w-full flex items-center transition-all font-bold text-sm",
+                "w-full flex items-center transition-all font-bold text-sm relative group",
                 isCollapsed ? "justify-center px-0 py-3 rounded-xl" : "gap-3 px-4 py-3 rounded-xl",
                 activeTab === item.id
                   ? "bg-[#e1ecf7] text-[#006699]"
                   : "text-slate-600 hover:bg-slate-200/50"
               )}
-              title={item.label}
             >
               <item.icon size={20} className={activeTab === item.id ? "text-[#006699]" : "text-slate-400"} />
               {!isCollapsed && <span>{item.label}</span>}
+
+              {isCollapsed && (
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-lg">
+                  {item.label}
+                  <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-4 border-transparent border-r-slate-800" />
+                </div>
+              )}
             </button>
           ))}
         </div>
 
         {/* Master Data Section */}
-        <div className="space-y-2">
+        <div className="space-y-0">
           {!isCollapsed && (
             <button
               onClick={() => setIsMasterExpanded(!isMasterExpanded)}
               className="w-full flex items-center justify-between px-4 mb-2 group cursor-pointer hover:bg-slate-200/50 py-1.5 rounded-lg transition-colors"
             >
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <h3 className="text-sm font-black text-slate-500   flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#00b4d8]" />
                 Master Data
               </h3>
@@ -137,16 +152,22 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
                   key={item.id}
                   onClick={() => onTabChange(item.id)}
                   className={cn(
-                    "w-full flex items-center transition-all font-bold text-[12px]",
+                    "w-full flex items-center transition-all font-bold text-sm relative group",
                     isCollapsed ? "justify-center px-0 py-2.5 rounded-xl" : "gap-3 px-4 py-2.5 rounded-xl",
                     isActive
                       ? "bg-[#e1ecf7] text-[#006699] shadow-sm"
                       : "text-slate-600 hover:bg-slate-200/40"
                   )}
-                  title={item.label}
                 >
                   <item.icon size={16} className={isActive ? "text-[#006699]" : "text-slate-400"} />
                   {!isCollapsed && <span>{item.label}</span>}
+
+                  {isCollapsed && (
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-lg">
+                      {item.label}
+                      <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-4 border-transparent border-r-slate-800" />
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -155,7 +176,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
       </nav>
 
       {/* Bottom Items */}
-      <div className="space-y-1 pt-1 border-t border-slate-200">
+      <div className="space-y-0 pt-1 border-t border-slate-200">
         {bottomItems.map((item) => (
           <button
             key={item.id}
@@ -171,19 +192,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         ))}
       </div>
 
-      {/* Collapse Toggle */}
-      {onToggleCollapse && (
-        <div className={cn("hidden lg:flex pt-1 mt-1", isCollapsed ? "justify-center" : "justify-end")}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleCollapse}
-            className="h-8 w-8 rounded-lg hover:bg-slate-200/50 text-slate-500"
-          >
-            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </Button>
-        </div>
-      )}
+
     </aside>
   );
 }
