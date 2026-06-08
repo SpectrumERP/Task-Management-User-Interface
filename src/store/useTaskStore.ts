@@ -17,6 +17,7 @@ interface FilterParams {
   toDueDate?: string;
   companyNo?: number;
   folderNo?: number;
+  isAllFolder?: boolean;
   sortingColumnName?: string;
   sortingType?: string;
   loginNo?: string;
@@ -42,6 +43,9 @@ export interface TaskFillValues {
 
 interface TaskState {
   tasks: Task[];
+  allTasks: Task[];
+  searchKeyword: string;
+  setSearchKeyword: (keyword: string) => void;
   isLoading: boolean;
   fillValues: TaskFillValues | null;
   isLoadingFillValues: boolean;
@@ -65,6 +69,37 @@ const getCompanyNo = () => {
 
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
+  allTasks: [],
+  searchKeyword: '',
+  setSearchKeyword: (keyword: string) => {
+    const kw = keyword.toLowerCase();
+    const fillValues = get().fillValues;
+    const all = get().allTasks;
+    if (!kw) {
+      set({ searchKeyword: keyword, tasks: all });
+      return;
+    }
+    const filtered = all.filter(task => {
+      const folderObj = fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No);
+      const folderName = task.folderName || (folderObj ? folderObj["Folder Name"] : (task.project_No?.toString() || ''));
+      const createdByName = task.createdBy?.displayName || task.originatorDisplayName || '';
+
+      return (
+        (task.code && task.code.toLowerCase().includes(kw)) ||
+        (task.title && task.title.toLowerCase().includes(kw)) ||
+        (task.status && task.status.toLowerCase().includes(kw)) ||
+        (task.categoryName && task.categoryName.toLowerCase().includes(kw)) ||
+        (task.typeName && task.typeName.toLowerCase().includes(kw)) ||
+        (task.priority && task.priority.toLowerCase().includes(kw)) ||
+        (task.assignedDisplayName && task.assignedDisplayName.toLowerCase().includes(kw)) ||
+        (folderName && folderName.toLowerCase().includes(kw)) ||
+        (createdByName && createdByName.toLowerCase().includes(kw)) ||
+        (task.start_date && task.start_date.toLowerCase().includes(kw)) ||
+        (task.end_date && task.end_date.toLowerCase().includes(kw))
+      );
+    });
+    set({ searchKeyword: keyword, tasks: filtered });
+  },
   isLoading: false,
   fillValues: null,
   isLoadingFillValues: false,
@@ -122,7 +157,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         }
       }
 
-      if (finalFolderNo === undefined && activeFolder) {
+      if (finalFolderNo === undefined && activeFolder && !filters?.isAllFolder) {
         finalFolderNo = (activeFolder as any).taskFolderNo || activeFolder.TaskFolderNo;
       }
       console.log("finalFolderNo", finalFolderNo);
@@ -135,7 +170,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const searchParamsPascal: any = {};
 
       if (searchParamsCamel.companyNo !== undefined) searchParamsPascal.CompanyNo = Number(searchParamsCamel.companyNo);
-      if (searchParamsCamel.folderNo !== undefined) searchParamsPascal.FolderNo = Number(searchParamsCamel.folderNo);
+      if (searchParamsCamel.isAllFolder) searchParamsPascal.IsAllFolder = true;
+      else if (searchParamsCamel.folderNo !== undefined) searchParamsPascal.FolderNo = Number(searchParamsCamel.folderNo);
       if (searchParamsCamel.operTaskNo !== undefined && !isNaN(Number(searchParamsCamel.operTaskNo))) searchParamsPascal.OperTaskNo = Number(searchParamsCamel.operTaskNo);
       if (searchParamsCamel.taskCode !== undefined && searchParamsCamel.taskCode !== '') searchParamsPascal.TaskCode = searchParamsCamel.taskCode;
       // Instead of sending title to backend, we'll use it for local keyword filtering across all columns
@@ -238,11 +274,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           check_list: [],
           task_comments: []
         }));
-        // Local Keyword Filtering
-        if (searchParamsCamel.title) {
-          const kw = searchParamsCamel.title.toLowerCase();
+        // Apply current search keyword if any
+        let filteredTasks = mappedTasks;
+        const kw = get().searchKeyword.toLowerCase();
+        if (kw) {
           const fillValues = get().fillValues;
-          mappedTasks = mappedTasks.filter(task => {
+          filteredTasks = mappedTasks.filter(task => {
             const folderObj = fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No);
             const folderName = task.folderName || (folderObj ? folderObj["Folder Name"] : (task.project_No?.toString() || ''));
             const createdByName = task.createdBy?.displayName || task.originatorDisplayName || '';
@@ -263,7 +300,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           });
         }
 
-        set({ tasks: mappedTasks });
+        set({ allTasks: mappedTasks, tasks: filteredTasks });
       }
     } catch (error) {
       console.error('Failed to fetch tasks:', error);
@@ -273,17 +310,20 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
   updateTask: (taskNo, updates) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) => (t.taskNo === taskNo ? { ...t, ...updates } : t)),
-    })),
+    set((state) => {
+      const newAllTasks = state.allTasks.map((t) => (t.taskNo === taskNo ? { ...t, ...updates } : t));
+      const newTasks = state.tasks.map((t) => (t.taskNo === taskNo ? { ...t, ...updates } : t));
+      return { allTasks: newAllTasks, tasks: newTasks };
+    }),
   deleteTask: (taskNo) =>
     set((state) => ({
+      allTasks: state.allTasks.filter((t) => t.taskNo !== taskNo),
       tasks: state.tasks.filter((t) => t.taskNo !== taskNo),
     })),
   moveTask: (taskNo, newStatus) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) =>
-        t.taskNo === taskNo ? { ...t, status: newStatus } : t
-      ),
-    })),
+    set((state) => {
+      const newAllTasks = state.allTasks.map((t) => t.taskNo === taskNo ? { ...t, status: newStatus } : t);
+      const newTasks = state.tasks.map((t) => t.taskNo === taskNo ? { ...t, status: newStatus } : t);
+      return { allTasks: newAllTasks, tasks: newTasks };
+    }),
 }));

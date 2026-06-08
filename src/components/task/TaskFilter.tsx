@@ -65,7 +65,7 @@ export function TaskFilter({
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1).toString();
 
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
-  const { fetchFillValues } = useTaskStore();
+  const { fetchFillValues, setSearchKeyword } = useTaskStore();
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
 
   const { control, handleSubmit, reset, watch, setValue, trigger, formState: { errors } } = useForm<FilterFormValues>({
@@ -141,9 +141,8 @@ export function TaskFilter({
     setAppliedFilters(data); // Commit selected values to applied state!
     const cleanFilters: any = {};
     Object.entries(data).forEach(([key, value]) => {
-      if (key === 'isAllFolder') return;
       if (key === 'folderNo' && data.isAllFolder) return;
-      
+
       if (value !== undefined && value !== '' && value !== null) {
         if (value instanceof Date) {
           cleanFilters[key] = value.toISOString();
@@ -159,6 +158,7 @@ export function TaskFilter({
   };
 
   const handleReset = () => {
+    setSearchKeyword('');
     reset({
       taskCode: '',
       title: '',
@@ -584,7 +584,15 @@ export function TaskFilter({
                 name="title"
                 control={control}
                 render={({ field }) => (
-                  <Input {...field} placeholder="Search task" className="pl-10 h-10 sm:h-11 rounded-xl sm:rounded-2xl border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/15 bg-white shadow-sm text-slate-700 w-full" />
+                  <Input 
+                    {...field} 
+                    placeholder="Search task" 
+                    className="pl-10 h-10 sm:h-11 rounded-xl sm:rounded-2xl border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/15 bg-white shadow-sm text-slate-700 w-full" 
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setSearchKeyword(e.target.value);
+                    }}
+                  />
                 )}
               />
             </div>

@@ -1285,11 +1285,6 @@ export function MasterManager({ type }: MasterManagerProps) {
     return found ? found.locationTypeNo : null;
   };
 
-  const parseOptionalCoordinate = (value: any) => {
-    if (value === undefined || value === null || value === '') return null;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
 
   const handlePortCountryChange = async (val: string) => {
     setCountryNo(val);
@@ -3436,7 +3431,7 @@ export function MasterManager({ type }: MasterManagerProps) {
            ========================================================================= */}
         {/* Location Modal */}
         <Dialog open={locationModalOpen} onOpenChange={setLocationModalOpen}>
-          <DialogContent className="rounded-3xl max-w-md p-6 border-none shadow-2xl bg-white select-none">
+          <DialogContent className="rounded-3xl max-w-3xl p-6 border-none shadow-2xl bg-white select-none">
             <DialogHeader className="pb-3 border-b border-slate-150">
               <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
                 <MapPin size={18} className="text-[#006699]" />
@@ -3444,7 +3439,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-2 pr-2">
               {/* Type */}
               <div className="space-y-0">
                 <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Location Type</label>
@@ -3589,64 +3584,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Map URL</label>
-                  <Input
-                    placeholder="Enter map URL..."
-                    value={locMapUrl}
-                    maxLength={2000}
-                    onChange={(e) => {
-                      setLocMapUrl(e.target.value);
-                      if (locErrors.mapUrl) setLocErrors(prev => ({ ...prev, mapUrl: '' }));
-                    }}
-                    className={cn(
-                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                      locErrors.mapUrl && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                    )}
-                  />
-                  {locErrors.mapUrl && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.mapUrl}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Latitude</label>
-                    <Input
-                      type="text"
-                      placeholder="Latitude"
-                      value={locLatitude}
-                      onChange={(e) => {
-                        setLocLatitude(e.target.value);
-                        if (locErrors.latitude) setLocErrors(prev => ({ ...prev, latitude: '' }));
-                      }}
-                      className={cn(
-                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                        locErrors.latitude && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                      )}
-                    />
-                    {locErrors.latitude && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.latitude}</p>}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Longitude</label>
-                    <Input
-                      type="text"
-                      placeholder="Longitude"
-                      value={locLongitude}
-                      onChange={(e) => {
-                        setLocLongitude(e.target.value);
-                        if (locErrors.longitude) setLocErrors(prev => ({ ...prev, longitude: '' }));
-                      }}
-                      className={cn(
-                        "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                        locErrors.longitude && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                      )}
-                    />
-                    {locErrors.longitude && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.longitude}</p>}
-                  </div>
-                </div>
               </div>
-            </div>
 
             <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
               <Button type="button" variant="ghost" onClick={() => setLocationModalOpen(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
@@ -3661,7 +3599,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* Contact Person Modal */}
         <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
-          <DialogContent className="rounded-3xl max-w-lg p-6 border-none shadow-2xl bg-white select-none">
+          <DialogContent className="rounded-3xl max-w-3xl p-6 border-none shadow-2xl bg-white select-none">
             <DialogHeader className="pb-3 border-b border-slate-150">
               <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
                 <User size={18} className="text-[#006699]" />
@@ -3672,12 +3610,12 @@ export function MasterManager({ type }: MasterManagerProps) {
               </DialogDescription> */}
             </DialogHeader>
 
-            <div className="space-y-4 py-4 max-h-[380px] overflow-y-auto pr-2 scrollbar-thin">
+            <div className="space-y-4 py-2 pr-2">
               <div className="grid grid-cols-2 gap-3">
                 {/* Contact Name */}
                 <div className="space-y-0 col-span-2">
-                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Representative Name</label>
-                  <Input placeholder="Enter representative name" value={contactName} onChange={(e) => {
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Contact Person Name</label>
+                  <Input placeholder="Enter contact person name" value={contactName} onChange={(e) => {
                     setContactName(e.target.value);
                     if (contactErrors.name) setContactErrors(prev => ({ ...prev, name: '' }));
                   }}
