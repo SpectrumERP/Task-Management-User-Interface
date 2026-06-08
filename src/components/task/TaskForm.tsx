@@ -1694,7 +1694,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             {initialData?.parentTask && (
               <div className="mb-5 flex items-center gap-1.5 border border-blue-100 bg-blue-50/50 px-3 py-1.5 rounded-lg w-fit">
                 <ExternalLink size={12} className="text-blue-600" />
-                <span className="text-[11px] text-slate-600 font-medium">Sub-task of:</span>
+                <span className="text-[11px] text-slate-600 font-medium">Parent Task:</span>
                 <Link to={`/task/${initialData.parentTask.operTaskNo}`} className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 hover:underline transition-colors">
                   {initialData.parentTask.title}
                 </Link>
@@ -2730,7 +2730,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         {/* 5. Execution Detail */}
         {!hiddenSections.includes('checklist') && (
           <FormSection
-            title="Check Lists"
+            title={checklist.length > 0 ? `Check Lists (${completedCount}/${checklist.length} (${progressPercent}%))` : "Check Lists"}
             icon={CheckCircle}
             headerAction={
               <Button
@@ -2747,21 +2747,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <div className="space-y-3">
               {/* Checklist Section */}
               <div className="mb-6 space-y-3">
-                <div className="px-1 max-w-md">
-                  <div className="space-y-0">
-                    <div className="flex items-center justify-between text-[10px] font-medium text-slate-700">
-                      <span>Task Completion</span>
-                      <span className="text-[#006699]">{progressPercent}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200 mt-1.5">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progressPercent}%` }}
-                        className="h-full bg-[#006699] rounded-full shadow-[0_0_8px_rgba(0,102,153,0.3)]"
-                      />
-                    </div>
-                  </div>
-                </div>
 
                 <div className="space-y-0">
                   {checklistFields.map((field, index) => (

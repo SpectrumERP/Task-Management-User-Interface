@@ -1652,7 +1652,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                 country: l.country?.countryName || '',
                 state: l.state?.stateName || '',
                 city: l.city?.cityName || '',
-                pinCode: l.pinCode || ''
+                pinCode: l.pinCode || '',
+                mapUrl: l.mapUrl || '',
+                latitude: l.latitude || 0,
+                longitude: l.longitude || 0
               }));
               setCompanyLocations(mappedLocations);
 
@@ -2949,7 +2952,7 @@ export function MasterManager({ type }: MasterManagerProps) {
     const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
 
     return (
-      <div className="space-y-5 pb-5">
+      <div className="space-y-4 pb-4">
         {/* =========================================================================
             HEADER SECTION (General Information)
            ========================================================================= */}
@@ -3600,7 +3603,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                 <div className="space-y-0">
                   <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Phone</label>
                   <Input placeholder="Enter phone" value={contactPhone} onChange={(e) => {
-                    setContactPhone(e.target.value);
+                    const val = e.target.value.replace(/[^\d+()\-\s]/g, '');
+                    setContactPhone(val);
                     if (contactErrors.phone) setContactErrors(prev => ({ ...prev, phone: '' }));
                   }}
                     className={cn(
@@ -4936,9 +4940,9 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   if (isFormPage) {
     return (
-      <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-6 gap-4 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+      <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
         {/* Breadcrumb Header */}
-        <div className="flex items-start shrink-0 mb-1 px-1 justify-between">
+        <div className="flex items-start shrink-0 mb-0 px-1 justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <button onClick={() => navigate(`/master/${type}`)} className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded">Masters</button>
             <ChevronRight size={16} className="text-slate-400" />
@@ -4982,7 +4986,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         <Card className="flex-1 rounded-[28px] border-none shadow-xl shadow-slate-200/40 bg-white flex flex-col p-0 outline-none overflow-hidden max-w-6xl w-full mx-auto">
 
           {/* Form Content Area */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 scrollbar-thin">
             {renderFormContent()}
           </form>
 
@@ -5143,9 +5147,9 @@ export function MasterManager({ type }: MasterManagerProps) {
   );
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-6 gap-4 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
       {/* Breadcrumb Header */}
-      <div className="flex items-center shrink-0 mb-1 px-1">
+      <div className="flex items-center shrink-0 mb-0 px-1">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <button className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded cursor-default">Masters</button>
           <ChevronRight size={16} className="text-slate-400" />
@@ -5154,7 +5158,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       </div>
 
       {/* Filters & Actions Section */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
         {/* Search Input Card */}
         <Card className="flex-1 p-3.5 border-none shadow-md shadow-slate-200/20 bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl flex items-center gap-3 h-10 sm:h-11">
           <Search size={16} className="text-slate-400 ml-1 shrink-0" />
