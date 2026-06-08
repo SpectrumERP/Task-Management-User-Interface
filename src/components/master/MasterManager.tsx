@@ -2984,11 +2984,11 @@ export function MasterManager({ type }: MasterManagerProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* System Code */}
-            <div className="space-y-0">
-              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Code</label>
-              <Input disabled value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : ''}
-                className="bg-slate-100/80 border-slate-200/50 h-10 rounded-xl cursor-not-allowed select-none"
-              />
+            <div className="flex items-center gap-1.5 h-full pt-4">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Code:</label>
+              <div className="text-xs font-medium text-slate-500 select-none">
+                {editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
+              </div>
             </div>
 
             {/* Business Entity Name */}
@@ -5870,7 +5870,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
                       <tr className="border-b border-slate-100 bg-slate-50/50">
                         <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600   pl-4">Code</th>
-                        <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">{type.replace(/-/g, ' ')} Name</th>
+                        <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600 capitalize">{type.replace(/-/g, ' ')} Name</th>
                         {type === 'category' && (
                           <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Features</th>
                         )}

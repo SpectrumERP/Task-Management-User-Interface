@@ -1702,10 +1702,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             )}
             {/* Row 1: Task ID & Task Title */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-x-8 gap-y-4">
-              <div className="space-y-0" id="form-group-code">
-                <Label className="text-slate-700 font-medium text-[11px] ml-1">Task Code</Label>
-                <Input placeholder="Auto generate" disabled {...form.register('code')} className={cn("rounded-xl h-9 font-mono text-slate-900 shadow-sm", form.formState.errors.code && "border-red-500")} />
-                {form.formState.errors.code && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.code.message}</p>}
+              <div className="flex items-center gap-1.5 h-full pt-4" id="form-group-code">
+                <Label className="text-slate-700 font-medium text-[11px] ml-1">Task Code:</Label>
+                <div className="text-xs font-medium text-slate-500 select-none bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                  {form.watch('code') || 'AUTO-GEN-CODE'}
+                </div>
               </div>
               <div className="space-y-0 lg:col-span-3" id="form-group-title">
                 <Label className="text-slate-700 font-medium text-[11px] ml-1">
