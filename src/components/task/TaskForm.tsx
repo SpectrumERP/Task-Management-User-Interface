@@ -48,7 +48,7 @@ import {
 
 
 
-import { useNavigate, useSearchParams, useBlocker } from 'react-router-dom';
+import { useNavigate, useSearchParams, useBlocker, Link } from 'react-router-dom';
 
 const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) => z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title cannot exceed 200 characters'),
@@ -103,21 +103,29 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
   collaborators: z.array(z.object({
     userName: z.string().min(1, 'User Name is required'),
     displayName: z.string().min(1, 'Display Name is required'),
-    email: z.string().email('Invalid email'),
-    loginNo: z.number().optional(),
+    email: z.string().optional(),
+    loginNo: z.union([z.number(), z.string()]).optional(),
     isFromTeam: z.boolean().optional()
   })).optional().default([]),
   informed_to: z.array(z.object({
     userName: z.string().min(1, 'User Name is required'),
     displayName: z.string().min(1, 'Display Name is required'),
-    email: z.string().email('Invalid email'),
-    loginNo: z.number().optional(),
+    email: z.string().optional(),
+    loginNo: z.union([z.number(), z.string()]).optional(),
     isFromTeam: z.boolean().optional()
   })).optional().default([]),
   actual_efforts: z.array(z.object({
-    date: z.string().min(1, 'Date is required'),
-    hours: z.string().min(1, 'Hours is required'),
-    description: z.string().optional()
+    date: z.string().optional(),
+    hours: z.string().optional(),
+    description: z.string().optional(),
+    operTaskEffortLogDetailNo: z.number().optional(),
+    createdBy: z.object({
+      loginNo: z.number().optional(),
+      displayName: z.string().optional(),
+      email: z.string().optional(),
+      userName: z.string().optional(),
+      isFromTeam: z.boolean().optional()
+    }).optional()
   })).optional().default([]),
   check_list: z.array(z.object({
     id: z.string(),
@@ -133,7 +141,8 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     completionRemark: z.string().optional(),
     completionDate: z.string().optional(),
     operTaskNo: z.number().optional(),
-    assignedDisplayName: z.string().optional()
+    assignedDisplayName: z.string().optional(),
+    type_No: z.string().optional()
   })).optional().default([]),
   custom_fields: z.array(z.object({
     customFieldNo: z.string(),
@@ -214,6 +223,7 @@ interface TaskFillValues {
   userGroup: { UserGroupNo: number; UserGroupName: string; Code: string }[];
   folder: { TaskFolderNo: number; "Folder Name": string; Code: string }[];
   frequency?: { FrequencyNo: number; Frequency?: string; FrequencyName?: string }[];
+  taskCompany?: any[];
 }
 
 const statusTransitions: Record<string, string[]> = {
@@ -229,13 +239,13 @@ const statusTransitions: Record<string, string[]> = {
   "Close": []
 };
 
-function FormSection({ title, icon: Icon, children, headerAction }: { title: string, icon: any, children: React.ReactNode, headerAction?: React.ReactNode }) {
+function FormSection({ title, icon: Icon, children, headerAction }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode }) {
   return (
-    <div className="space-y-1 pt-2 first:pt-0">
+    <div className="space-y-0 pt-2 first:pt-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 border-l-4 border-[#006699] -ml-4 sm:-ml-8 pl-3 sm:pl-7">
-        <div className="flex items-center gap-2">
-          <Icon size={16} className="text-[#006699]" />
-          <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">{title}</h3>
+        <div className="flex items-center gap-0.5">
+          {Icon && <Icon size={16} className="text-[#006699]" />}
+          {title && <h3 className="text-sm font-medium text-slate-800">{title}</h3>}
         </div>
         {headerAction}
       </div>
@@ -309,7 +319,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
         endDate: st.endDate || st.end_date || '',
         completionDate: st.completionDate || '',
-        completionRemark: st.completionRemark || ''
+        completionRemark: st.completionRemark || '',
+        type_No: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
+        operTaskTypeNo: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
+        category_No: st.category?.operTaskCategoryNo || st.operTaskCategoryNo || '',
+        priority_No: st.priority?.operTaskPriorityNo || st.operTaskPriorityNo || '',
+        status_No: st.status?.operTaskStatusNo || st.operTaskStatusNo || ''
       }));
     }
     return initialData?.taskNo ? tasks.filter(t => t.parent_task_No === initialData.taskNo) : [];
@@ -330,7 +345,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
         endDate: st.endDate || st.end_date || '',
         completionDate: st.completionDate || '',
-        completionRemark: st.completionRemark || ''
+        completionRemark: st.completionRemark || '',
+        type_No: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
+        operTaskTypeNo: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
+        category_No: st.category?.operTaskCategoryNo || st.operTaskCategoryNo || '',
+        priority_No: st.priority?.operTaskPriorityNo || st.operTaskPriorityNo || '',
+        status_No: st.status?.operTaskStatusNo || st.operTaskStatusNo || ''
       })));
     } else {
       setLocalSubtasks(initialData?.taskNo ? tasks.filter(t => t.parent_task_No === initialData.taskNo) : []);
@@ -396,7 +416,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const handleMasterCreateSuccess = async (createdId: string, label: string) => {
     try {
       const currentCompany = form.getValues('company');
-      const companyNo = currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
+      const companyNo = currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
       // 1. Force refresh full fillValues from API
       const updatedValues = await fetchFillValues(companyNo.toString(), true);
       if (updatedValues) {
@@ -452,14 +472,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const hideSectionsParam = searchParams.get('hideSections') || '';
   const hiddenSections = hideSectionsParam.split(',').map(s => s.trim().toLowerCase());
 
-  const { hasDraft, hasExistingDraft, saveDraft, clearDraft, getDraft, isRestoringRef } = useFormDraft(initialData?.taskNo || null);
+  const isShowTopAdditionalFields = searchParams.get('isShowTopAdditionalFields') === 'true';
+
+  const { saveDraft, clearDraft, getDraft, isRestoringRef } = useFormDraft(initialData?.taskNo || null);
   const [showDraftRestore, setShowDraftRestore] = useState(false);
 
   useEffect(() => {
-    if (hasExistingDraft && !initialData?.taskNo) {
-      setShowDraftRestore(true);
-    }
-  }, [hasExistingDraft, initialData]);
+    // Logic for restoring draft
+  }, [initialData]);
 
   const handleRestoreDraft = () => {
     const draftData = getDraft();
@@ -519,8 +539,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       informed_to: initialData?.informed_to || [],
       actual_efforts: initialData?.actual_efforts?.map(e => ({
         date: e.date,
-        hours: e.hours.toString(),
-        description: e.description
+        hours: e.hours?.toString() || '',
+        description: e.description,
+        createdBy: e.createdBy,
       })) || [],
       check_list: initialData?.check_list || [],
       sub_tasks: [],
@@ -573,7 +594,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               originator_user_No: d.originator?.id || 1,
               owner_user_No: d.owner?.id || null,
               location_No: d.location?.operTaskLocationNo || null,
-              company: d.company || 'Glacier',
+              company: d?.taskCompany?.taskCompanyNo || '',
               start_date: d.startDate,
               end_date: d.endDate,
               estimated_effort_value: d.estimatedEfforts?.hours || '',
@@ -626,7 +647,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   }, [localSubtasks]);
 
   useEffect(() => {
-    const subscription = form.watch((value, { name, type }) => {
+    const subscription = form.watch(() => {
       if (!form.formState.isDirty || isRestoringRef.current) return;
       const timer = setTimeout(() => {
         saveDraft({
@@ -776,6 +797,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       const payload = {
         operTaskNo: st.operTaskNo || null,
         parentTaskNo: initialData.taskNo,
+        operTaskTypeNo: st.type_No ? parseInt(st.type_No) : null,
         title: st.title,
         ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : 0,
         endDate: st.endDate || null,
@@ -802,6 +824,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     appendSubtask({
       id: Date.now().toString(),
       operTaskNo: st.taskNo,
+      type_No: st.type_No?.toString() || st.operTaskTypeNo?.toString() || '',
       title: st.title || '',
       description: '',
       ownerLoginNo: st.ownerLoginNo?.toString() || st.assignedTo?.id?.toString() || st.assignedTo?.loginNo?.toString() || st.owner?.id?.toString() || '',
@@ -850,7 +873,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
     try {
       const currentCompany = form.getValues('company');
-      const compNo = currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
+      const compNo = currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
       let response: any = null;
       try {
         response = await apiService.get<any>(`/api/master/task-categories/load-data/${categoryNo}?companyNo=${compNo}`);
@@ -884,26 +907,43 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         // 3. Set the subtasks data in the subtask templates section (for new tasks)
         const rawSubTasks = data.subtasks || data.subTasks;
         if (rawSubTasks && rawSubTasks.length > 0) {
-          const mappedSubTasks = rawSubTasks.map((item: any, index: number) => ({
-            taskNo: -(Date.now() + index), // Use negative ID for local unsaved templates
-            code: '',
-            title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
-            status: 'Draft',
-            ownerLoginNo: '',
-            assignedDisplayName: '-',
-            endDate: '',
-            completionDate: '',
-            completionRemark: ''
-          }));
-          setLocalSubtasks(prev => {
-            // Keep existing saved subtasks, replace templated ones
-            const savedTasks = prev.filter(t => t.taskNo > 0);
-            return [...savedTasks, ...mappedSubTasks];
-          });
-          replaceSubtask([]);
+          if (!initialData) {
+            // New task: load templates into editable mode
+            const editableSubtasks = rawSubTasks.map((item: any, index: number) => ({
+              id: Date.now().toString() + index,
+              operTaskNo: null,
+              title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
+              description: '',
+              ownerLoginNo: '',
+              endDate: '',
+              completionDate: '',
+              completionRemark: ''
+            }));
+            replaceSubtask(editableSubtasks);
+            setLocalSubtasks(prev => prev.filter(t => t.taskNo > 0));
+          } else {
+            // Existing task: load templates into read-only view
+            const mappedSubTasks = rawSubTasks.map((item: any, index: number) => ({
+              taskNo: -(Date.now() + index),
+              code: '',
+              title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
+              status: 'Draft',
+              ownerLoginNo: '',
+              assignedDisplayName: '-',
+              endDate: '',
+              completionDate: '',
+              completionRemark: ''
+            }));
+            setLocalSubtasks(prev => {
+              const savedTasks = prev.filter(t => t.taskNo > 0);
+              return [...savedTasks, ...mappedSubTasks];
+            });
+          }
         } else {
           setLocalSubtasks(prev => prev.filter(t => t.taskNo > 0));
-          replaceSubtask([]);
+          if (!initialData) {
+            replaceSubtask([]);
+          }
         }
 
         // 4. Set the customFields data in the custom fields section
@@ -927,8 +967,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const companyNo = currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
-        const response = await fetchFillValues(companyNo.toString(), true);
+        const initialCompany = form.getValues('company') || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
+        const response = await fetchFillValues(initialCompany.toString(), true);
         if (response) {
           setFillValues(response as TaskFillValues);
         }
@@ -939,6 +979,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           if (authUser) {
             form.setValue('originator_user_No', authUser.LoginNo?.toString() || authUser.loginNo?.toString() || '101');
           }
+
+          if (response) {
+            const categoryParam = searchParams.get('category');
+            if (categoryParam && (response as any).category) {
+              const matchedCategory = (response as any).category.find((c: any) => c.Category?.toLowerCase() === categoryParam.toLowerCase());
+              if (matchedCategory) {
+                form.setValue('category_No', matchedCategory.OperTaskCategoryNo.toString());
+                handleCategoryChange(matchedCategory.OperTaskCategoryNo.toString());
+              }
+            }
+
+            const typeParam = searchParams.get('type');
+            if (typeParam && (response as any).type) {
+              const matchedType = (response as any).type.find((t: any) => t['Task Type']?.toLowerCase() === typeParam.toLowerCase());
+              if (matchedType) {
+                form.setValue('type_No', matchedType.OperTaskTypeNo.toString());
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to fetch task options:', error);
@@ -948,7 +1007,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     };
 
     fetchOptions();
-  }, [authCompanies, authUser, initialData, form, fetchFillValues, currentCompany]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authCompanies, authUser, initialData, form, fetchFillValues, searchParams]);
 
   useEffect(() => {
     if (initialData) {
@@ -983,7 +1043,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         benefit_period: initialData.benefit_period || 'One Time',
         collaborators: initialData.collaborators?.map(c => ({ userName: c.userName || '', displayName: c.displayName || '', email: c.email || '', loginNo: c.loginNo })) || [],
         informed_to: initialData.informed_to?.map(i => ({ userName: i.userName || '', displayName: i.displayName || '', email: i.email || '', loginNo: i.loginNo })) || [],
-        actual_efforts: initialData.actual_efforts?.map(e => ({ date: e.date, hours: e.hours.toString(), description: e.description })) || [],
+        actual_efforts: initialData.actual_efforts?.map(e => ({ date: e.date, hours: e.hours?.toString() || '', description: e.description, operTaskEffortLogDetailNo: e.operTaskEffortLogDetailNo, createdBy: e.createdBy })) || [],
         check_list: initialData.check_list || [],
         sub_tasks: [],
         custom_fields: (initialData as any).customFields?.map((cf: any) => ({
@@ -1103,8 +1163,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   };
 
   const startUpload = async (tempId: string, file: File) => {
-    const selectedCompany = form.watch('company');
-    const companyNo = parseInt(selectedCompany) || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
+    const companyNo = authCompanies?.[0]?.HeadOfficeNo || authCompanies?.[0]?.headOfficeNo || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
 
     try {
       // 1. Create entry in DB
@@ -1326,7 +1385,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
     const payload = {
       operTaskNo: initialData ? initialData.taskNo : null,
-      companyNo: parseInt(data.company) || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1,
+      companyNo: parseInt(data.company) || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1,
+      OperTaskCompanyNo: parseInt(data.company) || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1,
       title: data.title || null,
       code: data.code || null,
       description: data.description || null,
@@ -1370,6 +1430,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       subTasks: [
         ...(!initialData ? localSubtasks.map((st: any) => ({
           operTaskNo: null,
+          operTaskTypeNo: st.type_No ? parseInt(st.type_No) : (st.operTaskTypeNo ? parseInt(st.operTaskTypeNo) : null),
           title: st.title || null,
           description: st.description || null,
           ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
@@ -1380,6 +1441,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         })) : []),
         ...(data.sub_tasks || []).map((st: any) => ({
           operTaskNo: st.operTaskNo || null,
+          operTaskTypeNo: st.type_No ? parseInt(st.type_No) : null,
           title: st.title || null,
           description: st.description || null,
           ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
@@ -1395,7 +1457,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       })),
       comments: [],
       effortLogs: data.actual_efforts.map((effort: any) => ({
-        logDate: effort.date ? new Date(effort.date).toISOString() : null,
+        LoginNo: effort.createdBy?.loginNo || 0,
+        effortDate: effort.date ? new Date(effort.date).toISOString() : null,
         efforts: parseFloat(effort.hours) || null,
         description: effort.description || null
       })),
@@ -1424,6 +1487,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         });
       }
       clearDraft();
+      form.reset(data); // Reset form state to clear isDirty flag
       setShowSuccessAlert(true);
     } catch (error: any) {
       console.error('Failed to save task:', error);
@@ -1525,7 +1589,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
-        <p className="text-slate-500 font-bold text-sm animate-pulse uppercase tracking-widest">Synchronizing Application Data...</p>
+        <p className="text-slate-500 font-medium text-sm animate-pulse">Synchronizing Application Data...</p>
       </div>
     );
   }
@@ -1536,15 +1600,19 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     : [];
 
   const filteredStatuses = fillValues?.status.filter(s => {
-    if (!initialData) return s.Status === 'Draft';
     return s.Status === currentStatus || allowedNextStatuses.includes(s.Status);
   }) || [];
 
-  // Company options from auth data
-  const companyOptions = authCompanies?.map(c => ({
-    label: c.CompanyName || c.companyName || c.name || 'Unknown Company',
-    value: (c.companyNo || c.CompanyNo || '').toString()
-  })) || [];
+  // Company options from fillValues taskCompany, fallback to auth data
+  const companyOptions = (fillValues?.taskCompany && fillValues.taskCompany.length > 0)
+    ? fillValues.taskCompany.map(c => ({
+      label: c.AliasName || c.CompanyName || c.Code || 'Unknown Company',
+      value: (c.OperTaskCompanyNo || '').toString()
+    }))
+    : authCompanies?.map(c => ({
+      label: c.CompanyName || c.companyName || c.name || 'Unknown Company',
+      value: (c.companyNo || c.CompanyNo || '').toString()
+    })) || [];
 
   const collabError = form.formState.errors.collaborators;
   const hasCollabError = collabError && !Array.isArray(collabError) && (collabError as any).message;
@@ -1560,9 +1628,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <div className="h-16 w-16 bg-sky-50 rounded-2xl flex items-center justify-center text-[#006699] border border-sky-100 shadow-sm animate-bounce">
               <UploadCloud size={32} />
             </div>
-            <h3 className="mt-4 text-base font-black text-slate-800 uppercase tracking-wider">Drop to Upload</h3>
-            <p className="mt-2 text-xs font-bold text-slate-500">Release files anywhere to attach to this task.</p>
-            <div className="mt-4 flex items-center gap-4 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+            <h3 className="mt-4 text-base font-medium text-slate-800">Drop to Upload</h3>
+            <p className="mt-2 text-xs font-medium text-slate-500">Release files anywhere to attach to this task.</p>
+            <div className="mt-4 flex items-center gap-4 text-[10px] font-medium text-slate-400">
               <span>PDF & Images Only</span>
               <span className="h-1.5 w-1.5 rounded-full bg-slate-300"></span>
               <span>Max 10MB</span>
@@ -1585,25 +1653,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           title="Task Detail"
           icon={Info}
           headerAction={
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <div className="flex flex-wrap items-center gap-0.5">
               <Controller
                 name="isPrivate"
                 control={form.control}
                 render={({ field }) => (
                   <div className="flex items-center space-x-2 mr-2">
                     <Checkbox id="isPrivate" checked={field.value} onCheckedChange={field.onChange} />
-                    <label htmlFor="isPrivate" className="text-xs font-black text-slate-600 uppercase tracking-wider cursor-pointer">Private Task</label>
+                    <label htmlFor="isPrivate" className="text-xs font-medium text-slate-700 cursor-pointer">Private Task</label>
                   </div>
                 )}
               />
-              <div className="flex items-center gap-2 sm:gap-3 bg-slate-50/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</Label>
+              <div className="flex items-center gap-0.5 sm:gap-3 bg-slate-50/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+                <Label className="text-[10px] font-medium text-slate-700">Status</Label>
                 <Controller
                   name="status"
                   control={form.control}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="rounded-xl h-8 border-transparent bg-transparent text-slate-900 font-bold text-xs shadow-none hover:bg-slate-100 w-[120px] sm:w-[160px]">
+                      <SelectTrigger className="rounded-xl h-8 border-transparent bg-transparent text-slate-900 shadow-none hover:bg-slate-100 w-[120px] sm:w-[160px]">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
@@ -1617,65 +1685,47 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     </Select>
                   )}
                 />
+                {form.formState.errors.status && <p className="text-[10px] text-red-500 font-medium ml-1 absolute -bottom-4">{form.formState.errors.status.message}</p>}
               </div>
             </div>
           }
         >
-          <div className="space-y-1">
+          <div className="space-y-0">
+            {initialData?.parentTask && (
+              <div className="mb-5 flex items-center gap-1.5 border border-blue-100 bg-blue-50/50 px-3 py-1.5 rounded-lg w-fit">
+                <ExternalLink size={12} className="text-blue-600" />
+                <span className="text-[11px] text-slate-600 font-medium">Sub-task of:</span>
+                <Link to={`/task/${initialData.parentTask.operTaskNo}`} className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 hover:underline transition-colors">
+                  {initialData.parentTask.title}
+                </Link>
+              </div>
+            )}
             {/* Row 1: Task ID & Task Title */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-x-8 gap-y-4">
-              <div className="space-y-1" id="form-group-code">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Code</Label>
-                <Input
-                  placeholder="Auto Generate"
-                  disabled
-                  {...form.register('code')}
-                  className={cn(
-                    "rounded-xl h-9 font-mono text-slate-900 font-medium text-sm shadow-sm",
-                    form.formState.errors.code && "border-red-500"
-                  )}
-                />
-                {form.formState.errors.code && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.code.message}</p>}
+              <div className="space-y-0" id="form-group-code">
+                <Label className="text-slate-700 font-medium text-[11px] ml-1">Task Code</Label>
+                <Input placeholder="Auto generate" disabled {...form.register('code')} className={cn("rounded-xl h-9 font-mono text-slate-900 shadow-sm", form.formState.errors.code && "border-red-500")} />
+                {form.formState.errors.code && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.code.message}</p>}
               </div>
-              <div className="space-y-1 lg:col-span-3" id="form-group-title">
-                <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
-                  Task Title {isSubTask && <span className="text-red-500 font-black">*</span>}
+              <div className="space-y-0 lg:col-span-3" id="form-group-title">
+                <Label className="text-slate-700 font-medium text-[11px] ml-1">
+                  Task Title {isSubTask && <span className="text-red-500 font-medium">*</span>}
                 </Label>
-                <Input
-                  placeholder="Enter task title"
-                  {...form.register('title')}
-                  className={cn(
-                    "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm transition-all",
-                    form.formState.errors.title
-                      ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                      : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                  )}
-                  maxLength={200}
-                />
-                {form.formState.errors.title && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.title.message}</p>}
+                <Input placeholder="Enter task title" {...form.register('title')} className={cn("rounded-xl h-9 text-slate-900 shadow-sm transition-all", form.formState.errors.title ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={200} />
+                {form.formState.errors.title && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.title.message}</p>}
               </div>
             </div>
 
             {/* Row 2: Task Description */}
-            <div className="space-y-1" id="form-group-description">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Description</Label>
-              <Textarea
-                placeholder="Describe the task in detail..."
-                className={cn(
-                  "min-h-[60px] rounded-xl p-3 leading-relaxed text-slate-900 font-medium text-sm shadow-sm transition-all",
-                  form.formState.errors.description
-                    ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                    : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                )}
-                {...form.register('description')}
-                maxLength={1000}
-              />
-              {form.formState.errors.description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.description.message}</p>}
+            <div className="space-y-0" id="form-group-description">
+              <Label className="text-slate-700 font-medium text-[11px] ml-1">Task Description</Label>
+              <Textarea placeholder="Enter description" className={cn("min-h-[60px] rounded-xl p-3 leading-relaxed text-slate-900 shadow-sm transition-all", form.formState.errors.description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")} {...form.register('description')} maxLength={1000} />
+              {form.formState.errors.description && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.description.message}</p>}
             </div>
 
             {/* Row 4: Tags */}
-            <div className="space-y-1">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Tags</Label>
+            <div className="space-y-0">
+              <Label className="text-slate-700 font-medium text-[11px] ml-1">Tags</Label>
               <Controller
                 name="tags"
                 control={form.control}
@@ -1692,157 +1742,137 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </div>
         </FormSection>
 
-        <FormSection
-          title="Category Detail"
-          icon={Info}
-        >
-          {/* Row 3: Category, Type, Priority */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-4">
-            <div className="space-y-1" id="form-group-category_No">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Category</Label>
-              <Controller
-                name="category_No"
-                control={form.control}
-                render={({ field }) => (
-                  <Combobox
-                    disabled={isSubTask}
-                    options={fillValues?.category
-                      .filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
+        {!hiddenSections.includes('categories') && (
+          <FormSection
+            title="Category Detail"
+            icon={Info}
+          >
+            {/* Row 3: Category, Type, Priority */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-8 gap-y-4">
+              <div className="space-y-0" id="form-group-category_No">
+                <Label className="text-slate-700 font-medium text-[11px] ml-1">Category</Label>
+                <Controller
+                  name="category_No"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Combobox disabled={isSubTask} options={fillValues?.category.filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
                       .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
-                    value={field.value}
-                    onChange={(val) => {
-                      field.onChange(val);
-                      handleCategoryChange(val);
-                    }}
-                    placeholder="Select category"
-                    className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    onAddNew={() => {
-                      setActiveMasterType('category');
-                      setIsMasterCreateOpen(true);
-                    }}
-                    addNewLabel="Add New Category"
-                  />
-                )}
-              />
-              {form.formState.errors.category_No && <p className="text-[10px] text-red-500 font-bold ml-1">Category is required</p>}
-            </div>
-            <div className="space-y-1" id="form-group-type_No">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Type</Label>
-              <Controller
-                name="type_No"
-                control={form.control}
-                render={({ field }) => (
-                  <Combobox
-                    disabled={isSubTask}
-                    options={fillValues?.type
-                      .filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val);
+                        handleCategoryChange(val);
+                      }}
+                      placeholder="Select category"
+                      className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('category');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Category"
+                    />
+                  )}
+                />
+                {form.formState.errors.category_No && <p className="text-[10px] text-red-500 font-medium ml-1">Category is required</p>}
+              </div>
+              <div className="space-y-0" id="form-group-type_No">
+                <Label className="text-slate-700 font-medium text-[11px] ml-1">Type</Label>
+                <Controller
+                  name="type_No"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Combobox disabled={isSubTask} options={fillValues?.type.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
                       .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select type"
-                    className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    onAddNew={() => {
-                      setActiveMasterType('type');
-                      setIsMasterCreateOpen(true);
-                    }}
-                    addNewLabel="Add New Type"
-                  />
-                )}
-              />
-              {form.formState.errors.type_No && <p className="text-[10px] text-red-500 font-bold ml-1">Type is required</p>}
-            </div>
-            <div className="space-y-1" id="form-group-folder_No">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Folder</Label>
-              <Controller
-                name="folder_No"
-                control={form.control}
-                render={({ field }) => (
-                  <Combobox
-                    disabled={isSubTask}
-                    options={fillValues?.folder
-                      .map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select folder"
-                    className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    isClearable={false}
-                    onAddNew={() => {
-                      setActiveMasterType('folder');
-                      setIsMasterCreateOpen(true);
-                    }}
-                    addNewLabel="Add New Folder"
-                  />
-                )}
-              />
-              {form.formState.errors.folder_No && <p className="text-[10px] text-red-500 font-bold ml-1">Folder is required</p>}
-            </div>
-            <div className="space-y-1" id="form-group-priority_No">
-              <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Priority</Label>
-              <Controller
-                name="priority_No"
-                control={form.control}
-                render={({ field }) => (
-                  <Combobox
-                    disabled={isSubTask}
-                    options={fillValues?.priority
-                      .filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select type"
+                      className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('type');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Type"
+                    />
+                  )}
+                />
+                {form.formState.errors.type_No && <p className="text-[10px] text-red-500 font-medium ml-1">Type is required</p>}
+              </div>
+              <div className="space-y-0" id="form-group-folder_No">
+                <Label className="text-slate-700 font-medium text-[11px] ml-1">Folder</Label>
+                <Controller
+                  name="folder_No"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Combobox disabled={isSubTask} options={fillValues?.folder.map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select folder"
+                      className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      isClearable={false}
+                      onAddNew={() => {
+                        setActiveMasterType('folder');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Folder"
+                    />
+                  )}
+                />
+                {form.formState.errors.folder_No && <p className="text-[10px] text-red-500 font-medium ml-1">Folder is required</p>}
+              </div>
+              <div className="space-y-0" id="form-group-priority_No">
+                <Label className="text-slate-700 font-medium text-[11px] ml-1">Priority</Label>
+                <Controller
+                  name="priority_No"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Combobox disabled={isSubTask} options={fillValues?.priority.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
                       .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select priority"
-                    className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                    onAddNew={() => {
-                      setActiveMasterType('priority');
-                      setIsMasterCreateOpen(true);
-                    }}
-                    addNewLabel="Add New Priority"
-                  />
-                )}
-              />
-              {form.formState.errors.priority_No && <p className="text-[10px] text-red-500 font-bold ml-1">Priority is required</p>}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select priority"
+                      className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                      onAddNew={() => {
+                        setActiveMasterType('priority');
+                        setIsMasterCreateOpen(true);
+                      }}
+                      addNewLabel="Add New Priority"
+                    />
+                  )}
+                />
+                {form.formState.errors.priority_No && <p className="text-[10px] text-red-500 font-medium ml-1">Priority is required</p>}
+              </div>
             </div>
-          </div>
 
-        </FormSection>
+          </FormSection>
+        )}
 
         {/* 2. Ownership & Responsibility */}
         {!hiddenSections.includes('ownership') && (
-          <FormSection title="Ownership & Responsibility" icon={Users}>
+          <FormSection title="Ownership" icon={Users}>
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-1" id="form-group-company">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Company</Label>
+                <div className="space-y-0" id="form-group-company">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Company</Label>
                   <Controller
                     name="company"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox
-                        disabled={isSubTask}
-                        options={companyOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Search company..."
-                        className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        onAddNew={() => {
-                          setActiveMasterType('company' as any);
-                          setIsMasterCreateOpen(true);
-                        }}
+                      <Combobox disabled={isSubTask} options={companyOptions} value={field.value} onChange={field.onChange} placeholder="Select company" className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""} onAddNew={() => {
+                        setActiveMasterType('task-company' as any);
+                        setIsMasterCreateOpen(true);
+                      }}
                       />
                     )}
                   />
-                  {form.formState.errors.company && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.company.message}</p>}
+                  {form.formState.errors.company && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.company.message}</p>}
                 </div>
-                <div className="space-y-1" id="form-group-location_No">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Location</Label>
+                <div className="space-y-0" id="form-group-location_No">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Business location</Label>
                   <Controller
                     name="location_No"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox
-                        disabled={isSubTask}
-                        options={fillValues?.location
-                          .filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]')
-                          .map(l => ({ label: l.Location, value: l.OperLocationNo.toString() })) || []}
+                      <Combobox disabled={isSubTask} options={fillValues?.location.filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]')
+                        .map(l => ({ label: l.Location, value: l.OperLocationNo.toString() })) || []}
                         value={field.value}
                         onChange={field.onChange}
                         placeholder="Select location"
@@ -1855,61 +1885,64 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       />
                     )}
                   />
-                  {form.formState.errors.location_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.location_No.message}</p>}
+                  {form.formState.errors.location_No && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.location_No.message}</p>}
                 </div>
-                <div className="space-y-1" id="form-group-owner_user_No">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
-                    Task Owner {isSubTask && <span className="text-red-500 font-black">*</span>}
+                <div className="space-y-0" id="form-group-owner_user_No">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">
+                    Task Owner {isSubTask && <span className="text-red-500 font-medium">*</span>}
                   </Label>
                   <Controller
                     name="owner_user_No"
                     control={form.control}
                     render={({ field }) => (
-                      <UserCombobox
-                        value={field.value}
-                        onChange={(user) => field.onChange(user.loginNo.toString())}
-                        placeholder="Search member..."
+                      <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
+                        placeholder="Select member"
                         initialLabel={initialData?.assignedDisplayName || undefined}
                         className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                         disabled={isPrivateTask}
                       />
                     )}
                   />
-                  {form.formState.errors.owner_user_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.owner_user_No.message}</p>}
+                  {form.formState.errors.owner_user_No && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.owner_user_No.message}</p>}
                 </div>
-                <div className="space-y-1" id="form-group-originator_user_No">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Task Originator</Label>
+                <div className="space-y-0" id="form-group-originator_user_No">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Task Originator</Label>
                   <Controller
                     name="originator_user_No"
                     control={form.control}
                     render={({ field }) => (
-                      <UserCombobox
-                        value={field.value}
-                        onChange={(user) => field.onChange(user.loginNo.toString())}
-                        placeholder="Search member..."
+                      <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
+                        placeholder="Select member"
                         initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
                         className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                         isClearable={false}
                       />
                     )}
                   />
-                  {form.formState.errors.originator_user_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.originator_user_No.message}</p>}
+                  {form.formState.errors.originator_user_No && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.originator_user_No.message}</p>}
                 </div>
               </div>
+            </div>
+          </FormSection>
+        )}
 
+        {/* 2. Inform To */}
+        {!hiddenSections.includes('informto') && (
+          <FormSection>
+            <div className="space-y-3">
               {!isPrivateTask && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Collaborators Grid */}
-                  <div className="space-y-1" id="form-group-collaborators">
+                  <div className="space-y-0" id="form-group-collaborators">
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-1">
-                        <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Collaborators</h4>
-                        <div className="flex items-center gap-2">
-                          <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
+                        <h4 className="text-[11px] font-medium text-slate-700">Collaborators</h4>
+                        <div className="flex items-center gap-0.5 mb-2">
+                          <Label className="text-slate-700 font-medium text-[11px] font-medium">Team:</Label>
                           <div className="relative flex items-center">
                             <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
                               <SelectTrigger className={cn("rounded-lg h-6 border-slate-300 text-[9px] w-[140px] bg-slate-50 shadow-none px-2", selectedCollabTeam && "[&>span]:pr-5")}>
-                                <SelectValue placeholder="Quick Add" />
+                                <SelectValue placeholder="Select team" />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl">
                                 {fillValues?.userGroup.map(group => (
@@ -1934,7 +1967,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           </div>
                         </div>
                       </div>
-                      <Button type="button" onClick={() => appendCollab({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
+                      <Button type="button" onClick={() => appendCollab({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-medium text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
                         <UserPlus size={12} /> Add
                       </Button>
                     </div>
@@ -1943,9 +1976,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         <table className="w-full text-left text-[11px] border-collapse">
                           <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
                             <tr>
-                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                              <th className="px-3 py-1.5 font-medium text-slate-700">User Name</th>
+                              <th className="px-3 py-1.5 font-medium text-slate-700">Display Name</th>
+                              <th className="px-3 py-1.5 font-medium text-slate-700">Email</th>
                               <th className="px-2 py-1.5 w-8"></th>
                             </tr>
                           </thead>
@@ -1957,16 +1990,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     name={`collaborators.${index}.userName`}
                                     control={form.control}
                                     render={({ field: nameField }) => (
-                                      <UserCombobox
-                                        value={nameField.value}
-                                        onChange={(user) => {
-                                          nameField.onChange(user.loginId);
-                                          form.setValue(`collaborators.${index}.displayName`, user.printingName);
-                                          form.setValue(`collaborators.${index}.email`, user.email || '');
-                                          form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
-                                        }}
-                                        placeholder="User Name"
-                                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                                      <UserCombobox value={nameField.value} onChange={(user) => {
+                                        nameField.onChange(user.loginId);
+                                        form.setValue(`collaborators.${index}.displayName`, user.printingName);
+                                        form.setValue(`collaborators.${index}.email`, user.email || '');
+                                        form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
+                                      }}
+                                        placeholder="Select username"
+                                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm font-medium text-slate-900 bg-transparent shadow-none px-2"
                                         initialLabel={nameField.value}
                                         disabled={field.isFromTeam}
                                       />
@@ -1974,10 +2005,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   />
                                 </td>
                                 <td className="px-2 py-1">
-                                  <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                                  <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
                                 </td>
                                 <td className="px-2 py-1">
-                                  <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                                  <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
                                 </td>
                                 <td className="px-1 py-1 text-center">
                                   {!field.isFromTeam && (
@@ -1997,20 +2028,20 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         </table>
                       </div>
                     </div>
-                    {hasCollabError && <p className="text-[10px] text-red-500 font-bold ml-1">{collabError.message}</p>}
+                    {hasCollabError && <p className="text-[10px] text-red-500 font-medium ml-1">{collabError.message}</p>}
                   </div>
 
                   {/* Inform To Grid */}
-                  <div className="space-y-1" id="form-group-informed_to">
+                  <div className="space-y-0" id="form-group-informed_to">
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-1">
-                        <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Inform To</h4>
-                        <div className="flex items-center gap-2">
-                          <Label className="text-[9px] text-slate-700 font-extrabold">Team:</Label>
+                        <h4 className="text-[11px] font-medium text-slate-700">Inform To</h4>
+                        <div className="flex items-center gap-0.5 mb-2">
+                          <Label className="text-slate-700 font-medium text-[11px] font-medium">Team:</Label>
                           <div className="relative flex items-center">
                             <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
                               <SelectTrigger className={cn("rounded-lg h-6 border-slate-300 text-[9px] w-[140px] bg-slate-50 shadow-none px-2", selectedCollabTeam && "[&>span]:pr-5")}>
-                                <SelectValue placeholder="Quick Add" />
+                                <SelectValue placeholder="Select team" />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl">
                                 {fillValues?.userGroup.map(group => (
@@ -2035,18 +2066,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           </div>
                         </div>
                       </div>
-                      <Button type="button" onClick={() => appendInform({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
+                      <Button type="button" onClick={() => appendInform({ userName: '', displayName: '', email: '' })} variant="ghost" size="sm" className="h-7 text-[9px] font-medium text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
                         <UserPlus size={12} /> Add
                       </Button>
                     </div>
                     <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasInformError && "border-red-500 ring-2 ring-red-500/10")}>
                       <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
-                        <table className="w-full text-left text-[11px] border-collapse">
+                        <table className="w-full text-left text-sm border-collapse">
                           <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
                             <tr>
-                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                              <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                              <th className="px-3 py-1.5 font-medium text-slate-700">User Name</th>
+                              <th className="px-3 py-1.5 font-medium text-slate-700">Display Name</th>
+                              <th className="px-3 py-1.5 font-medium text-slate-700">Email</th>
                               <th className="px-2 py-1.5 w-8"></th>
                             </tr>
                           </thead>
@@ -2058,16 +2089,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     name={`informed_to.${index}.userName`}
                                     control={form.control}
                                     render={({ field: nameField }) => (
-                                      <UserCombobox
-                                        value={nameField.value}
-                                        onChange={(user) => {
-                                          nameField.onChange(user.loginId);
-                                          form.setValue(`informed_to.${index}.displayName`, user.printingName);
-                                          form.setValue(`informed_to.${index}.email`, user.email || '');
-                                          form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
-                                        }}
-                                        placeholder="User Name"
-                                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
+                                      <UserCombobox value={nameField.value} onChange={(user) => {
+                                        nameField.onChange(user.loginId);
+                                        form.setValue(`informed_to.${index}.displayName`, user.printingName);
+                                        form.setValue(`informed_to.${index}.email`, user.email || '');
+                                        form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
+                                      }}
+                                        placeholder="Select username"
+                                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm bg-transparent shadow-none px-2"
                                         initialLabel={nameField.value}
                                         disabled={field.isFromTeam}
                                       />
@@ -2075,10 +2104,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   />
                                 </td>
                                 <td className="px-2 py-1">
-                                  <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                                  <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
                                 </td>
                                 <td className="px-2 py-1">
-                                  <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                                  <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
                                 </td>
                                 <td className="px-1 py-1 text-center">
                                   {!field.isFromTeam && (
@@ -2098,11 +2127,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         </table>
                       </div>
                     </div>
-                    {hasInformError && <p className="text-[10px] text-red-500 font-bold ml-1">{informError.message}</p>}
+                    {hasInformError && <p className="text-[10px] text-red-500 font-medium ml-1">{informError.message}</p>}
                   </div>
                 </div>
               )}
             </div>
+          </FormSection>
+        )}
+
+        {isShowTopAdditionalFields && (
+          <FormSection title="Additional Fields" icon={Sparkles}>
+            <CustomFieldsSection
+              customFields={(form.watch('custom_fields') as any) || []}
+              onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
+              companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
+              hideAddButton={true}
+              viewMode="grid"
+              hideLabel={true}
+            />
           </FormSection>
         )}
 
@@ -2113,8 +2155,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
 
-                <div className="space-y-1 flex flex-col justify-end">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">All-Day Options</Label>
+                <div className="space-y-0 flex flex-col justify-end">
                   <Controller
                     name="isAllDay"
                     control={form.control}
@@ -2126,83 +2167,61 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           onCheckedChange={field.onChange}
                           className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
                         />
-                        <label htmlFor="isAllDay" className="text-xs font-bold text-slate-700 cursor-pointer select-none">All-Day Task</label>
+                        <label htmlFor="isAllDay" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">All-Day Task</label>
                       </div>
                     )}
                   />
                 </div>
-                <div className="space-y-1" id="form-group-start_date">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Start Date</Label>
+                <div className="space-y-0" id="form-group-start_date">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Start Date</Label>
                   <Controller
                     name="start_date"
                     control={form.control}
                     render={({ field }) => (
-                      <DateTimePicker
-                        date={field.value ? new Date(field.value) : undefined}
-                        onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                      <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
                         placeholder={isAllDay ? "Select start date" : "Select start date & time"}
                         hideTime={isAllDay}
                         className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                       />
                     )}
                   />
-                  {form.formState.errors.start_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.start_date.message}</p>}
+                  {form.formState.errors.start_date && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.start_date.message}</p>}
                 </div>
 
-                <div className="space-y-1" id="form-group-end_date">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">
-                    Due Date {isSubTask && <span className="text-red-500 font-black">*</span>}
+                <div className="space-y-0" id="form-group-end_date">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">
+                    Due Date {isSubTask && <span className="text-red-500 font-medium">*</span>}
                   </Label>
                   <Controller
                     name="end_date"
                     control={form.control}
                     render={({ field }) => (
-                      <DateTimePicker
-                        date={field.value ? new Date(field.value) : undefined}
-                        onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                      <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
                         placeholder={isAllDay ? "Select due date" : "Select due date & time"}
                         hideTime={isAllDay}
                         className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                       />
                     )}
                   />
-                  {form.formState.errors.end_date && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.end_date.message}</p>}
+                  {form.formState.errors.end_date && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.end_date.message}</p>}
                 </div>
               </div>
 
               {/* Row 2: Estimated Effort, Calendar Color */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
-                <div className="space-y-1 md:col-span-1" id="form-group-estimated_effort_value">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Effort</Label>
-                  <div className="flex gap-2">
-                    <div className="flex-1 space-y-1">
-                      <Input
-                        type="number"
-                        step="0"
-                        placeholder=""
-                        {...form.register('estimated_effort_value')}
-                        isDecimal={false}
-                        className={cn(
-                          "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right w-full transition-all",
-                          form.formState.errors.estimated_effort_value
-                            ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                            : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                        )}
-                        maxLength={8}
-                      />
+                <div className="space-y-0 md:col-span-1" id="form-group-estimated_effort_value">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Estimated Effort</Label>
+                  <div className="flex gap-0.5">
+                    <div className="flex-1 space-y-0">
+                      <Input type="number" step="0" placeholder="" {...form.register('estimated_effort_value')} isDecimal={false} className={cn("rounded-xl h-9 text-slate-900 shadow-sm text-right w-full transition-all", form.formState.errors.estimated_effort_value ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={8} />
                     </div>
                     <Controller
                       name="estimated_effort_unit"
                       control={form.control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className={cn(
-                            "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm w-32 transition-all",
-                            form.formState.errors.estimated_effort_unit
-                              ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                              : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                          )}>
-                            <SelectValue placeholder="Unit" />
+                          <SelectTrigger className={cn("rounded-xl h-9 text-slate-900 shadow-sm w-32 transition-all", form.formState.errors.estimated_effort_unit ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")}>
+                            <SelectValue placeholder="Select estimated effort unit" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl bg-white border border-slate-200">
                             {fillValues?.frequency?.map(f => (
@@ -2215,45 +2234,82 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       )}
                     />
                   </div>
-                  {form.formState.errors.estimated_effort_value && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_value.message}</p>}
-                  {!form.formState.errors.estimated_effort_value && form.formState.errors.estimated_effort_unit && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_effort_unit.message}</p>}
+                  {form.formState.errors.estimated_effort_value && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.estimated_effort_value.message}</p>}
+                  {!form.formState.errors.estimated_effort_value && form.formState.errors.estimated_effort_unit && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.estimated_effort_unit.message}</p>}
                 </div>
 
-                <div className="space-y-1 md:col-span-1" id="form-group-calendarColor">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Calendar Color</Label>
+                <div className="space-y-0 md:col-span-1" id="form-group-calendarColor">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Calendar Color</Label>
                   <Controller
                     name="calendarColor"
                     control={form.control}
                     render={({ field }) => (
-                      <div className="relative flex items-center bg-white border border-slate-350 rounded-xl h-9 px-3.5 shadow-sm hover:bg-slate-50 transition-all cursor-pointer select-none">
-                        <div
-                          className="w-4 h-4 rounded-full border border-slate-200 shadow-sm shrink-0 mr-3"
-                          style={{ backgroundColor: field.value && field.value !== 'none' ? field.value : "#cbd5e1" }}
-                        />
-                        <span className="text-slate-900 font-bold text-sm flex-1">
-                          {field.value && field.value !== 'none' ? field.value : "None"}
-                        </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Select
+                          value={
+                            !field.value || field.value === 'none' || field.value === '' ? 'none' :
+                              [
+                                '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
+                                '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
+                              ].includes(field.value) ? field.value : 'custom'
+                          }
+                          onValueChange={(val) => {
+                            if (val === 'none') field.onChange('');
+                            else if (val === 'custom') field.onChange('#000000'); // default custom
+                            else field.onChange(val);
+                          }}
+                        >
+                          <SelectTrigger className="w-full sm:w-[220px] h-10 bg-white border-slate-200 rounded-xl focus:ring-[#006699]/20">
+                            <SelectValue placeholder="Select color" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              <div className="flex items-center gap-2">
+                                <X size={14} className="text-slate-400" />
+                                <span>None</span>
+                              </div>
+                            </SelectItem>
+                            {[
+                              { hex: '#93c5fd', name: 'Blue' },
+                              { hex: '#fca5a5', name: 'Red' },
+                              { hex: '#86efac', name: 'Green' },
+                              { hex: '#fdba74', name: 'Orange' },
+                              { hex: '#d8b4fe', name: 'Purple' },
+                              { hex: '#f9a8d4', name: 'Pink' },
+                              { hex: '#a5b4fc', name: 'Indigo' },
+                              { hex: '#67e8f9', name: 'Cyan' },
+                            ].map((preset) => (
+                              <SelectItem key={preset.hex} value={preset.hex}>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: preset.hex }} />
+                                  <span>{preset.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="custom">
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full border border-slate-200 bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
+                                <span>Custom Color</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
 
-                        <input
-                          type="color"
-                          value={field.value && field.value !== 'none' ? field.value : "#006699"}
-                          onChange={(e) => field.onChange(e.target.value)}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-xl"
-                        />
-
-                        {field.value && field.value !== 'none' && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              field.onChange("");
-                            }}
-                            className="relative z-10 p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors ml-2"
-                          >
-                            <X size={12} strokeWidth={2.5} />
-                          </button>
-                        )}
+                        {/* Custom Color Input */}
+                        {field.value && field.value !== 'none' && ![
+                          '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
+                          '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
+                        ].includes(field.value) && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-xl bg-slate-50">
+                              <input
+                                type="color"
+                                value={field.value || '#000000'}
+                                onChange={(e) => field.onChange(e.target.value)}
+                                className="w-7 h-7 border-0 bg-transparent cursor-pointer rounded"
+                              />
+                              <span className="text-xs font-mono font-medium text-slate-500 uppercase">{field.value}</span>
+                            </div>
+                          )}
                       </div>
                     )}
                   />
@@ -2282,34 +2338,32 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   )}
                 />
                 <div className="space-y-0.5">
-                  <Label htmlFor="benefit-section" className="text-sm font-bold text-slate-800 cursor-pointer">Business Benefit Applicable</Label>
+                  <Label htmlFor="benefit-section" className="text-sm font-medium text-slate-700 cursor-pointer">Business Benefit Applicable</Label>
                 </div>
               </div>
 
               {isBenefitApplicable && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-1" id="form-group-business_benefit_type_No">
-                    <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Type</Label>
+                  <div className="space-y-0" id="form-group-business_benefit_type_No">
+                    <Label className="text-slate-700 font-medium text-[11px] ml-1">Benefit Type</Label>
                     <Controller
                       name="business_benefit_type_No"
                       control={form.control}
                       render={({ field }) => (
-                        <Combobox
-                          options={(fillValues?.benefitType || [])
-                            .filter((b: any) => {
-                              const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
-                              const lower = label.toLowerCase();
-                              return lower !== 'all' && lower !== '[all]';
-                            })
-                            .map((b: any) => {
-                              const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
-                              const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
-                              return { label, value: val };
-                            })
-                          }
+                        <Combobox options={(fillValues?.benefitType || []).filter((b: any) => {
+                          const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
+                          const lower = label.toLowerCase();
+                          return lower !== 'all' && lower !== '[all]';
+                        })
+                          .map((b: any) => {
+                            const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
+                            const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
+                            return { label, value: val };
+                          })
+                        }
                           value={field.value}
                           onChange={field.onChange}
-                          placeholder="Select benefit type..."
+                          placeholder="Select benefit type"
                           className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                           onAddNew={() => {
                             setActiveMasterType('benefit-type' as any);
@@ -2318,22 +2372,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         />
                       )}
                     />
-                    {form.formState.errors.business_benefit_type_No && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_type_No.message}</p>}
+                    {form.formState.errors.business_benefit_type_No && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.business_benefit_type_No.message}</p>}
                   </div>
-                  <div className="space-y-1" id="form-group-benefit_period">
-                    <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Period</Label>
+                  <div className="space-y-0" id="form-group-benefit_period">
+                    <Label className="text-slate-700 font-medium text-[11px] ml-1">Benefit Period</Label>
                     <Controller
                       name="benefit_period"
                       control={form.control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className={cn(
-                            "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm transition-all",
-                            form.formState.errors.benefit_period
-                              ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                              : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                          )}>
-                            <SelectValue placeholder="Select period" />
+                          <SelectTrigger className={cn("rounded-xl h-9 text-slate-900 shadow-sm transition-all", form.formState.errors.benefit_period ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")}>
+                            <SelectValue placeholder="Select benefit period" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
                             <SelectItem value="One Time">One Time</SelectItem>
@@ -2343,63 +2392,26 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         </Select>
                       )}
                     />
-                    {form.formState.errors.benefit_period && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.benefit_period.message}</p>}
+                    {form.formState.errors.benefit_period && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.benefit_period.message}</p>}
                   </div>
                   {!shouldHideBenefitAmount && (
                     <>
-                      <div className="space-y-1" id="form-group-estimated_benefit_amount">
-                        <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Estimated Benefit Amount</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder=""
-                          {...form.register('estimated_benefit_amount')}
-                          isDecimal={true}
-                          decimalPlaces={2}
-                          className={cn(
-                            "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
-                            form.formState.errors.estimated_benefit_amount
-                              ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                              : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                          )}
-                          maxLength={8}
-                        />
-                        {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
+                      <div className="space-y-0" id="form-group-estimated_benefit_amount">
+                        <Label className="text-slate-700 font-medium text-[11px] ml-1">Estimated Benefit Amount</Label>
+                        <Input type="number" step="0.01" placeholder="" {...form.register('estimated_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("rounded-xl h-9 text-slate-900 shadow-sm text-right transition-all", form.formState.errors.estimated_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={8} />
+                        {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
                       </div>
-                      <div className="space-y-1" id="form-group-actual_benefit_amount">
-                        <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Actual Benefit Amount</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder=""
-                          {...form.register('actual_benefit_amount')}
-                          isDecimal={true}
-                          decimalPlaces={2}
-                          className={cn(
-                            "rounded-xl h-9 text-slate-900 font-medium text-sm shadow-sm text-right transition-all",
-                            form.formState.errors.actual_benefit_amount
-                              ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                              : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]"
-                          )}
-                          maxLength={8}
-                        />
-                        {form.formState.errors.actual_benefit_amount && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.actual_benefit_amount.message}</p>}
+                      <div className="space-y-0" id="form-group-actual_benefit_amount">
+                        <Label className="text-slate-700 font-medium text-[11px] ml-1">Actual Benefit Amount</Label>
+                        <Input type="number" step="0.01" placeholder="" {...form.register('actual_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("rounded-xl h-9 text-slate-900 shadow-sm text-right transition-all", form.formState.errors.actual_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={8} />
+                        {form.formState.errors.actual_benefit_amount && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.actual_benefit_amount.message}</p>}
                       </div>
                     </>
                   )}
-                  <div className="space-y-1 md:col-span-2" id="form-group-business_benefit_description">
-                    <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Benefit Description</Label>
-                    <Textarea
-                      placeholder="Describe the business benefit in detail..."
-                      {...form.register('business_benefit_description')}
-                      className={cn(
-                        "min-h-[80px] rounded-xl input-section text-slate-900 font-medium text-sm shadow-sm transition-all",
-                        form.formState.errors.business_benefit_description
-                          ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                          : "focus:ring-[#006699]/15 focus:border-[#006699]"
-                      )}
-                    />
-                    {form.formState.errors.business_benefit_description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.business_benefit_description.message}</p>}
+                  <div className="space-y-0 md:col-span-2" id="form-group-business_benefit_description">
+                    <Label className="text-slate-700 font-medium text-[11px] ml-1">Benefit Description</Label>
+                    <Textarea placeholder="Enter business benefit description" {...form.register('business_benefit_description')} className={cn("min-h-[80px] rounded-xl input-section text-slate-900 shadow-sm transition-all", form.formState.errors.business_benefit_description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")} />
+                    {form.formState.errors.business_benefit_description && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.business_benefit_description.message}</p>}
                   </div>
                 </div>
               )}
@@ -2408,41 +2420,37 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         )}
 
         {!isSubTask && !hiddenSections.includes('subtasks') && (
-          <FormSection title='Sub Tasks' icon={FileText}>
-            <div className="space-y-2 pb-5 border-b border-slate-100">
-              <div className="flex items-center justify-between">
-                <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-                  Sub-Tasks
-                  {localSubtasks.length > 0 && (
-                    <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                      {localSubtasks.length}
-                    </span>
-                  )}
-                </h4>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  disabled={subtaskFields.length > 0}
-                  onClick={() => appendSubtask({ id: Date.now().toString(), title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '', operTaskNo: 0 })}
-                  className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700 shrink-0 disabled:opacity-50"
-                >
-                  <Plus size={14} className="text-[#006699]" /> Add Sub-Task
-                </Button>
-              </div>
-
+          <FormSection
+            title='Sub Tasks'
+            icon={FileText}
+            headerAction={
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                disabled={subtaskFields.length > 0}
+                onClick={() => appendSubtask({ id: Date.now().toString(), type_No: '', title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '', operTaskNo: 0 })}
+                className="rounded-xl font-medium border-slate-300 hover:bg-slate-50 h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95 text-slate-700 shrink-0 disabled:opacity-50"
+              >
+                <Plus size={12} className="text-[#006699]" /> Add Sub-Task
+              </Button>
+            }
+          >
+            <div className="space-y-0 mt-2">
               {localSubtasks.length > 0 || subtaskFields.length > 0 ? (
                 <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
                   <table className="w-full text-left border-collapse text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="pl-4 pr-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Sub-Task Title <span className="text-red-500">*</span></th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Owner</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Due Date</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Completion Date</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider max-w-[150px]">Completion Remark</th>
-                        <th className="pl-0.5 pr-2 py-0.5 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                        <th className="px-1 py-0.5 text-[10px] font-medium text-slate-500 w-[40px]">Sl. No.</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 w-[180px]">Type</th>
+                        <th className="pl-2 pr-0.5 py-0.5 text-[10px] font-medium text-slate-500">Sub-Task Title <span className="text-red-500">*</span></th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Status</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Owner</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 whitespace-nowrap">Due Date</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 whitespace-nowrap">Completion Date</th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 max-w-[150px]">Completion Remark</th>
+                        <th className="pl-0.5 pr-2 py-0.5 text-[10px] font-medium text-slate-500 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2453,17 +2461,36 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           const index = editIndex;
                           return (
                             <tr key={field.id} className="bg-[#f8fbff] hover:bg-[#f0f6fc] transition-colors group">
+                              <td className="px-1 py-1 align-top text-xs font-medium text-slate-500 mt-1">
+                                {idx + 1}.
+                              </td>
+                              <td className="px-0.5 py-0 align-top w-[180px]">
+                                <Controller
+                                  name={`sub_tasks.${index}.type_No`}
+                                  control={form.control}
+                                  render={({ field: subField }) => (
+                                    <div className="flex flex-col mt-1.5">
+                                      <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                        value={subField.value || ''}
+                                        onChange={(val) => {
+                                          subField.onChange(val);
+                                        }}
+                                        placeholder="Select type"
+                                      />
+                                    </div>
+                                  )}
+                                />
+                              </td>
                               <td className="px-0.5 py-0 align-top">
-                                <div className="flex flex-grow items-start gap-2 py-1.5">
-                                  <span className="text-xs font-bold text-slate-500 mt-2">{idx + 1}.</span>
+                                <div className="flex flex-grow items-start gap-0.5 py-1.5">
                                   <div className="flex-1">
-                                    <span className="text-xs font-bold text-slate-800 break-words pt-0.5">{task.title}</span>
+                                    <span className="text-xs font-medium text-slate-800 break-words pt-0.5">{task.title}</span>
                                   </div>
                                 </div>
                               </td>
                               <td className="px-0.5 py-0 align-top">
-                                <div className=" flex items-center">
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{task.status || 'Draft'}</span>
+                                <div className="flex items-center">
+                                  <span className="text-[10px] font-medium text-slate-400">{task.status || 'Draft'}</span>
                                 </div>
                               </td>
                               <td className="px-0.5 py-0 align-top">
@@ -2472,19 +2499,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   control={form.control}
                                   render={({ field: subField }) => (
                                     <div className="flex flex-col">
-                                      <UserCombobox
-                                        value={subField.value || ''}
-                                        onChange={(user) => {
-                                          const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
-                                          subField.onChange(val);
-                                          form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
-                                          form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
-                                        }}
-                                        placeholder="Search owner..."
+                                      <UserCombobox value={subField.value || ''} onChange={(user) => {
+                                        const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                        subField.onChange(val);
+                                        form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
+                                        form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
+                                      }}
+                                        placeholder="Search owner"
                                         error={!!form.formState.errors.sub_tasks?.[index]?.ownerLoginNo}
                                       />
                                       {form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && (
-                                        <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
+                                        <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
                                       )}
                                     </div>
                                   )}
@@ -2495,9 +2520,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   name={`sub_tasks.${index}.endDate`}
                                   control={form.control}
                                   render={({ field: subField }) => (
-                                    <DateTimePicker
-                                      date={subField.value ? new Date(subField.value) : undefined}
-                                      onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                    <DateTimePicker date={subField.value ? new Date(subField.value) : undefined} onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
                                       placeholder="Select date"
                                       hideTime={true}
                                     />
@@ -2509,9 +2532,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   name={`sub_tasks.${index}.completionDate`}
                                   control={form.control}
                                   render={({ field: subField }) => (
-                                    <DateTimePicker
-                                      date={subField.value ? new Date(subField.value) : undefined}
-                                      onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                    <DateTimePicker date={subField.value ? new Date(subField.value) : undefined} onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
                                       placeholder="Select date"
                                       hideTime={true}
                                     />
@@ -2519,20 +2540,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 />
                               </td>
                               <td className="px-0.5 py-0 align-top">
-                                <Textarea
-                                  {...form.register(`sub_tasks.${index}.completionRemark`)}
-                                  placeholder="Remark..."
-                                  rows={1}
-                                  className="border-slate-200 shadow-sm min-h-[20px] h-auto py-1.5 px-2 text-xs rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20"
-                                  maxLength={500}
-                                />
+                                <Textarea {...form.register(`sub_tasks.${index}.completionRemark`)} placeholder="Remark..." rows={1} className="border-slate-200 shadow-sm min-h-[20px] h-auto py-1.5 px-2 rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20" maxLength={500} />
                               </td>
                               <td className="px-0.5 py-0 text-right align-top">
-                                <div className="h-8 flex items-center justify-end gap-1.5">
-                                  <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-bold border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
+                                <div className="h-8 flex items-center justify-end gap-0.5">
+                                  <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
                                     <X size={12} className="mr-1" />
                                   </Button>
-                                  <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-bold bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                                  <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
                                     {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
                                   </Button>
                                 </div>
@@ -2543,20 +2558,27 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
                         return (
                           <tr key={task.taskNo} className="bg-white hover:bg-slate-50 transition-colors group">
+                            <td className="px-1 py-1 align-top text-xs font-medium text-slate-500 mt-1">
+                              {idx + 1}.
+                            </td>
+                            <td className="px-0.5 py-0 align-top w-[180px]">
+                              <span className="text-xs font-semibold text-slate-700 block mt-2">
+                                {fillValues?.type?.find(t => t.OperTaskTypeNo.toString() === task.type_No?.toString() || t.OperTaskTypeNo.toString() === task.operTaskTypeNo?.toString())?.["Task Type"] || '-'}
+                              </span>
+                            </td>
                             <td className="px-0.5 py-0 min-w-[300px]">
-                              <div className="flex flex-col gap-0.5 whitespace-normal py-1.5">
-                                <div className="flex gap-1.5 items-start">
-                                  <span className="text-xs font-bold text-slate-500 pt-0.5">{idx + 1}.</span>
-                                  <span className="text-xs font-bold text-slate-800 break-words pt-0.5">{task.title}</span>
+                              <div className="flex flex-col gap-0.5 whitespace-normal py-1.5 pl-2">
+                                <div className="flex gap-0.5 items-start">
+                                  <span className="text-xs font-medium text-slate-800 break-words pt-0.5">{task.title}</span>
                                 </div>
                                 {task.code || task.taskNo > 0 ? (
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">{task.code || `${task.taskNo}`}</span>
+                                  <span className="text-[10px] font-medium text-slate-400">{task.code || `${task.taskNo}`}</span>
                                 ) : null}
                               </div>
                             </td>
                             <td className="px-0.5 py-0">
                               <span className={cn(
-                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                                "px-2 py-0.5 rounded-full text-[9px] font-medium  ",
                                 task.status === 'Done' || task.status === 'Complete' ? "bg-green-100/80 text-green-800" :
                                   task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
                                     task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
@@ -2566,7 +2588,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               </span>
                             </td>
                             <td className="px-0.5 py-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-0.5">
                                 {task.assignedDisplayName && task.assignedDisplayName !== '-' && (
                                   <UserAvatar loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined} displayName={task.assignedDisplayName} size="sm" />
                                 )}
@@ -2579,7 +2601,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             <td className="px-0.5 py-0 whitespace-nowrap">
                               <span className="text-xs font-semibold text-slate-700">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</span>
                             </td>
-                            <td className="px-0.5 py-0 ">
+                            <td className="px-0.5 py-0">
                               <span className="text-xs font-semibold text-slate-700 truncate block" title={task.completionRemark}>{task.completionRemark || '-'}</span>
                             </td>
                             <td className="px-0.5 py-0 text-right">
@@ -2600,27 +2622,40 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         if (localSubtasks.some((st: any) => st.taskNo === field.operTaskNo)) return null;
                         return (
                           <tr key={field.id} className="bg-[#f8fbff] hover:bg-[#f0f6fc] transition-colors group">
+                            <td className="px-1 py-1 align-top text-xs font-medium text-slate-500 mt-1">
+                              {localSubtasks.length + index + 1}.
+                            </td>
+                            <td className="px-0.5 py-0 align-top w-[180px]">
+                              <Controller
+                                name={`sub_tasks.${index}.type_No`}
+                                control={form.control}
+                                render={({ field: subField }) => (
+                                  <div className="flex flex-col mt-1.5">
+                                    <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                      value={subField.value || ''}
+                                      onChange={(val) => {
+                                        subField.onChange(val);
+                                      }}
+                                      placeholder="Select type"
+                                    />
+                                  </div>
+                                )}
+                              />
+                            </td>
                             <td className="px-0.5 py-0 min-w-[400px] align-top">
-                              <div className="flex items-start gap-2 py-1.5 pl-2.5">
-                                <span className="text-xs font-bold text-slate-500 mt-2">{localSubtasks.length + index + 1}.</span>
+                              <div className="flex items-start gap-0.5 py-1.5 pl-2.5">
+                                <span className="text-xs font-medium text-slate-500 mt-2">{localSubtasks.length + index + 1}.</span>
                                 <div className="flex-1">
-                                  <Input
-                                    {...form.register(`sub_tasks.${index}.title`)}
-                                    placeholder="New Sub Task Title..."
-                                    className={cn(
-                                      "border-slate-200 shadow-sm h-8 px-2 text-xs rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",
-                                    )}
-                                    maxLength={200}
-                                  />
+                                  <Input {...form.register(`sub_tasks.${index}.title`)} placeholder="Enter task title" className={cn("border-slate-200 shadow-sm h-8 px-2 rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",)} maxLength={200} />
                                   {form.formState.errors.sub_tasks?.[index]?.title && (
-                                    <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
+                                    <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
                                   )}
                                 </div>
                               </div>
                             </td>
                             <td className="px-0.5 py-0 align-top">
                               <div className="h-9 flex items-center">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Draft</span>
+                                <span className="text-[10px] font-medium text-slate-400">Draft</span>
                               </div>
                             </td>
                             <td className="px-0.5 py-0 align-top">
@@ -2629,18 +2664,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 control={form.control}
                                 render={({ field: subField }) => (
                                   <div className="flex flex-col">
-                                    <UserCombobox
-                                      value={subField.value || ''}
-                                      onChange={(user) => {
-                                        const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
-                                        subField.onChange(val);
-                                        form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
-                                        form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
-                                      }}
+                                    <UserCombobox value={subField.value || ''} onChange={(user) => {
+                                      const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                      subField.onChange(val);
+                                      form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
+                                      form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
+                                    }}
                                       placeholder="Search owner..."
                                     />
                                     {form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && (
-                                      <span className="text-[9px] text-red-500 font-bold mt-1 block">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
+                                      <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.sub_tasks[index]?.ownerLoginNo?.message}</span>
                                     )}
                                   </div>
                                 )}
@@ -2651,9 +2684,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 name={`sub_tasks.${index}.endDate`}
                                 control={form.control}
                                 render={({ field: subField }) => (
-                                  <DateTimePicker
-                                    date={subField.value ? new Date(subField.value) : undefined}
-                                    onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                  <DateTimePicker date={subField.value ? new Date(subField.value) : undefined} onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
                                     placeholder="Select date"
                                     hideTime={true}
                                   />
@@ -2665,9 +2696,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 name={`sub_tasks.${index}.completionDate`}
                                 control={form.control}
                                 render={({ field: subField }) => (
-                                  <DateTimePicker
-                                    date={subField.value ? new Date(subField.value) : undefined}
-                                    onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                  <DateTimePicker date={subField.value ? new Date(subField.value) : undefined} onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
                                     placeholder="Select date"
                                     hideTime={true}
                                   />
@@ -2675,20 +2704,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               />
                             </td>
                             <td className="px-0.5 py-0 align-top">
-                              <Textarea
-                                {...form.register(`sub_tasks.${index}.completionRemark`)}
-                                placeholder="Remark..."
-                                rows={1}
-                                className="border-slate-200 shadow-sm min-h-[20px] h-auto py-2 px-3 text-sm rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20"
-                                maxLength={500}
-                              />
+                              <Textarea {...form.register(`sub_tasks.${index}.completionRemark`)} placeholder="Enter remark" rows={1} className="border-slate-200 shadow-sm min-h-[20px] h-auto py-2 px-3 rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20" maxLength={500} />
                             </td>
                             <td className="px-0.5 py-0 text-right align-top">
-                              <div className="h-9 flex items-center justify-end gap-1.5">
-                                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-bold border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
+                              <div className="h-9 flex items-center justify-end gap-0.5">
+                                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
                                   <X size={12} />
                                 </Button>
-                                <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-bold bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                                <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
                                   {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                                 </Button>
                               </div>
@@ -2699,52 +2722,48 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     </tbody>
                   </table>
                 </div>
-              ) : (
-                <div className="text-center py-6 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No sub-tasks available</span>
-                </div>
-              )}
+              ) : null}
             </div>
           </FormSection>
         )}
 
         {/* 5. Execution Detail */}
         {!hiddenSections.includes('checklist') && (
-          <FormSection title="Execution Detail" icon={CheckCircle}>
+          <FormSection
+            title="Check Lists"
+            icon={CheckCircle}
+            headerAction={
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
+                className="rounded-xl font-medium border-slate-300 hover:bg-slate-50 h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95 text-slate-700"
+              >
+                <Plus size={12} className="text-[#006699]" /> Add Checklist Item
+              </Button>
+            }
+          >
             <div className="space-y-3">
               {/* Checklist Section */}
               <div className="mb-6 space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex flex-col gap-1 flex-1 max-w-md">
-                    <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Checklist</h4>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[10px] font-black text-slate-700 uppercase tracking-wider">
-                        <span>Task Completion</span>
-                        <span className="text-[#006699]">{progressPercent}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progressPercent}%` }}
-                          className="h-full bg-[#006699] rounded-full shadow-[0_0_8px_rgba(0,102,153,0.3)]"
-                        />
-                      </div>
+                <div className="px-1 max-w-md">
+                  <div className="space-y-0">
+                    <div className="flex items-center justify-between text-[10px] font-medium text-slate-700">
+                      <span>Task Completion</span>
+                      <span className="text-[#006699]">{progressPercent}%</span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
-                      className="rounded-xl font-bold border-slate-300 hover:bg-slate-50 h-9 px-4 text-[11px] uppercase shadow-sm gap-2 transition-all active:scale-95 text-slate-700"
-                    >
-                      <Plus size={14} className="text-[#006699]" /> Add Checklist Item
-                    </Button>
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200 mt-1.5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPercent}%` }}
+                        className="h-full bg-[#006699] rounded-full shadow-[0_0_8px_rgba(0,102,153,0.3)]"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-0">
                   {checklistFields.map((field, index) => (
                     <motion.div
                       key={field.id}
@@ -2752,7 +2771,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
                       className={cn(
-                        "group flex items-center gap-2 px-1 rounded-xl border transition-all duration-300",
+                        "group flex items-center gap-0.5 px-1 rounded-xl border transition-all duration-300",
                         form.watch(`check_list.${index}.completed`)
                           ? "bg-slate-50/80 border-slate-200 opacity-70"
                           : "bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-[#006699]/30 focus-within:border-[#006699] focus-within:ring-2 focus-within:ring-[#006699]/10"
@@ -2777,16 +2796,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         )}
                       />
                       <div className="flex-1">
-                        <Input
-                          {...form.register(`check_list.${index}.description`)}
-                          placeholder="Specify checklist requirement..."
-                          className={cn(
-                            "border-none bg-transparent shadow-none p-0 h-auto text-sm font-medium transition-all duration-300 focus-visible:ring-0",
-                            form.watch(`check_list.${index}.completed`)
-                              ? "text-slate-400 line-through decoration-2"
-                              : "text-slate-800"
-                          )}
-                        />
+                        <Input {...form.register(`check_list.${index}.description`)} placeholder="Enter checklist" className={cn("border-none bg-transparent shadow-none p-0 h-auto transition-all duration-300 focus-visible:ring-0", form.watch(`check_list.${index}.completed`) ? "text-slate-400 line-through decoration-2" : "text-slate-800")} />
                       </div>
                       <button
                         type="button"
@@ -2798,15 +2808,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     </motion.div>
                   ))}
 
-                  {checklistFields.length === 0 && (
-                    <div className="text-center py-12 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
-                      <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
-                        <CheckCircle size={24} className="text-slate-300" />
-                      </div>
-                      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No checklist items defined</p>
-                      <p className="text-slate-400 text-[10px] mt-1">Click "Add Checklist Item" to start tracking milestones</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -2817,56 +2818,40 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         {!hiddenSections.includes('execution_note') && (
           <FormSection title="Task Execution Note" icon={FileText}>
             <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+              <div className="space-y-0">
+                <label className="text-[10px] font-medium text-slate-700 ml-1">
                   Execution Notes
                 </label>
                 <Controller
                   name="executionNotes"
                   control={form.control}
                   render={({ field }) => (
-                    <Textarea
-                      {...field}
-                      placeholder="Enter detailed execution notes, outcomes, or observations here..."
-                      className="min-h-[100px] text-xs font-semibold input-section bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0 text-slate-800"
-                    />
+                    <Textarea {...field} placeholder="Enter execution note" className="min-h-[100px] input-section bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0 text-slate-800" maxLength={1000} />
                   )}
                 />
               </div>
               {/* Row 3: Completion Date, Completion Remark */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
-                <div className="space-y-1.5 md:col-span-1" id="form-group-completionDate">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Completion Date</Label>
+                <div className="space-y-0.5 md:col-span-1" id="form-group-completionDate">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Completion Date</Label>
                   <Controller
                     name="completionDate"
                     control={form.control}
                     render={({ field }) => (
-                      <DateTimePicker
-                        date={field.value ? new Date(field.value) : undefined}
-                        onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                      <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
                         placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
                         hideTime={isAllDay}
                         className={form.formState.errors.completionDate ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                       />
                     )}
                   />
-                  {form.formState.errors.completionDate && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.completionDate.message}</p>}
+                  {form.formState.errors.completionDate && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.completionDate.message}</p>}
                 </div>
 
-                <div className="space-y-1.5 md:col-span-2" id="form-group-completionRemark">
-                  <Label className="text-slate-700 font-black text-[11px] uppercase tracking-wider ml-1">Completion Remark</Label>
-                  <Textarea
-                    placeholder="Enter completion remark"
-                    {...form.register('completionRemark')}
-                    maxLength={500}
-                    className={cn(
-                      "min-h-[80px] resize-none rounded-xl text-sm transition-all text-slate-900 font-medium",
-                      form.formState.errors.completionRemark
-                        ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10"
-                        : "border-slate-300 focus:border-[#006699] focus:ring-[#006699]/15"
-                    )}
-                  />
-                  {form.formState.errors.completionRemark && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.completionRemark.message}</p>}
+                <div className="space-y-0.5 md:col-span-2" id="form-group-completionRemark">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Completion Remark</Label>
+                  <Textarea placeholder="Enter completion remark" {...form.register('completionRemark')} maxLength={500} className={cn("min-h-[80px] resize-none rounded-xl transition-all text-slate-900 ", form.formState.errors.completionRemark ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:border-[#006699] focus:ring-[#006699]/15")} />
+                  {form.formState.errors.completionRemark && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.completionRemark.message}</p>}
                 </div>
               </div>
             </div>
@@ -2891,15 +2876,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <div className="h-12 w-12 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#006699] group-hover:scale-110 transition-all">
                   <UploadCloud size={22} />
                 </div>
-                <p className="mt-3 text-xs font-black text-slate-700 uppercase tracking-wider">Drag & drop files or click to upload</p>
-                <p className="mt-1 text-[10px] font-bold text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
+                <p className="mt-3 text-xs font-medium text-slate-700">Drag & drop files or click to upload</p>
+                <p className="mt-1 text-[10px] font-medium text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
               </div>
 
               {/* Active Uploading Files Queue */}
               {uploadingFiles.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Uploading Queue</h4>
-                  <div className="space-y-2">
+                  <h4 className="text-[10px] font-medium text-slate-500 ml-1">Uploading Queue</h4>
+                  <div className="space-y-0">
                     {uploadingFiles.map(file => (
                       <motion.div
                         key={file.tempId}
@@ -2919,8 +2904,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-slate-900 truncate leading-none mb-1">{file.name}</p>
-                            <span className="text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                            <p className="text-xs font-medium text-slate-900 truncate leading-none mb-1">{file.name}</p>
+                            <span className="text-[9px] font-medium flex items-center gap-0.5">
                               {file.status === 'pending' && <span className="text-slate-500">Pending upload...</span>}
                               {file.status === 'uploading' && (
                                 <span className="text-[#006699] flex items-center gap-1">
@@ -2933,7 +2918,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 </span>
                               )}
                               {file.status === 'failed' && (
-                                <span className="text-red-600 font-extrabold flex items-center gap-1">
+                                <span className="text-red-600 font-medium flex items-center gap-1">
                                   Failed: {file.errorMessage || "Network error"}
                                 </span>
                               )}
@@ -2941,7 +2926,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
                           {file.status === 'failed' && (
                             <Button
                               type="button"
@@ -2976,7 +2961,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
                 return (
                   <div className="space-y-3 pt-2">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Attached Documents ({attachments.length})</h4>
+                    <h4 className="text-[10px] font-medium text-slate-500 ml-1">Attached Documents ({attachments.length})</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {attachments.map((file: any) => (
                         <motion.div
@@ -2990,16 +2975,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
                             </div>
                             <div className="min-w-0">
-                              <div className="flex items-baseline gap-2 mb-0.5">
-                                <p className="text-xs font-bold text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
+                              <div className="flex items-baseline gap-0.5 mb-0.5">
+                                <p className="text-xs font-medium text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
                                 {file.size ? (
-                                  <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
+                                  <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
                                 ) : null}
                               </div>
                               <button
                                 type="button"
                                 onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
-                                className="text-[9px] font-black text-[#006699] uppercase tracking-wider hover:underline block text-left"
+                                className="text-[9px] font-medium text-[#006699] hover:underline block text-left"
                               >
                                 View document
                               </button>
@@ -3045,24 +3030,26 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </FormSection>
         )}
 
-        <FormSection title="Additional Fields" icon={Sparkles}>
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            <CustomFieldsSection
-              customFields={(form.watch('custom_fields') as any) || []}
-              onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
-              companyNo={currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1}
-              hideAddButton={true}
-              viewMode="grid"
-            />
-          </div>
-        </FormSection>
+        {!isShowTopAdditionalFields && (
+          <FormSection title="Additional Fields" icon={Sparkles}>
+            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+              <CustomFieldsSection
+                customFields={(form.watch('custom_fields') as any) || []}
+                onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
+                companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
+                hideAddButton={true}
+                viewMode="grid"
+              />
+            </div>
+          </FormSection>
+        )}
       </form>
 
       {/* Save/Update Confirmation Dialog */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
               Confirm {initialData ? "Update" : "Save"}
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
@@ -3070,7 +3057,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               variant="outline"
@@ -3078,7 +3065,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 setShowConfirm(false);
                 setFormDataToSave(null);
               }}
-              className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
             >
               No
             </Button>
@@ -3089,7 +3076,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   proceedSubmit(formDataToSave);
                 }
               }}
-              className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
+              className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs shadow-md shadow-[#006699]/10 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95"
             >
               Yes
             </Button>
@@ -3100,29 +3087,29 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
         <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl [&>button]:hidden">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
               Remove Attachment
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
               Do you want to delete?
-              {/* Are you sure <span className="font-bold text-slate-700">"{attachmentToDelete?.name}"</span>? */}
+              {/* Are you sure <span className="font-medium text-slate-700">"{attachmentToDelete?.name}"</span>? */}
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               variant="outline"
               disabled={isDeletingAttachment}
               onClick={() => setAttachmentToDelete(null)}
-              className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
             >
               No
             </Button>
             <Button
               disabled={isDeletingAttachment}
               onClick={confirmRemoveAttachment}
-              className="h-10 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest shadow-md shadow-red-600/10 gap-2 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center min-w-[70px]"
+              className="h-10 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/10 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center min-w-[70px]"
             >
               {isDeletingAttachment ? (
                 <>
@@ -3152,7 +3139,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
             </div>
 
-            <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">
+            <h3 className="text-lg font-medium text-slate-800 tracking-tight mb-1">
               Success
             </h3>
 
@@ -3168,7 +3155,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 setShowSuccessAlert(false);
                 if (onComplete) onComplete();
               }}
-              className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
+              className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
             >
               OK
             </Button>
@@ -3185,25 +3172,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <Info size={24} />
               </div>
               <div>
-                <DialogTitle className="text-base font-black text-slate-800 tracking-tight uppercase">
+                <DialogTitle className="text-base font-medium text-slate-800 tracking-tight">
                   File Upload Blocked
                 </DialogTitle>
-                <DialogDescription className="text-xs font-bold text-slate-500 mt-0.5">
+                <DialogDescription className="text-xs font-medium text-slate-500 mt-0.5">
                   Some files do not meet the upload criteria.
                 </DialogDescription>
               </div>
             </div>
 
             {/* List of failed files */}
-            <div className="mt-4 max-h-[160px] overflow-y-auto space-y-2 border border-slate-100/80 rounded-2xl p-3 bg-slate-50/50">
+            <div className="mt-4 max-h-[160px] overflow-y-auto space-y-0 border border-slate-100/80 rounded-2xl p-3 bg-slate-50/50">
               {invalidFiles.map((file, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs">
-                  <span className="text-red-500 font-extrabold shrink-0 mt-0.5">✕</span>
+                <div key={idx} className="flex items-start gap-0.5 text-xs">
+                  <span className="text-red-500 font-medium shrink-0 mt-0.5">✕</span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-slate-700 truncate leading-tight">{file.name}</p>
-                    <p className="text-[10px] font-bold text-red-500 leading-none mt-0.5">{file.reason}</p>
+                    <p className="font-medium text-slate-700 truncate leading-tight">{file.name}</p>
+                    <p className="text-[10px] font-medium text-red-500 leading-none mt-0.5">{file.reason}</p>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400 shrink-0 self-center">
+                  <span className="text-[10px] font-medium text-slate-400 shrink-0 self-center">
                     {formatFileSize(file.size)}
                   </span>
                 </div>
@@ -3212,29 +3199,29 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
             {/* Criteria requirements list */}
             <div className="mt-5 space-y-3.5">
-              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+              <h4 className="text-[10px] font-medium text-slate-500">
                 Attachment Criteria Requirements
               </h4>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100/60 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider leading-none mb-1.5">Allowed Types</p>
-                  <p className="text-xs font-black text-slate-700">PDF & Images</p>
-                  <p className="text-[9px] font-bold text-slate-400 mt-1">.pdf, .jpg, .jpeg, .png, .gif, .webp</p>
+                  <p className="text-[10px] font-medium text-slate-400 leading-none mb-1.5">Allowed Types</p>
+                  <p className="text-xs font-medium text-slate-700">PDF & Images</p>
+                  <p className="text-[9px] font-medium text-slate-400 mt-1">.pdf, .jpg, .jpeg, .png, .gif, .webp</p>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100/60 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider leading-none mb-1.5">Maximum Size</p>
-                  <p className="text-xs font-black text-slate-700">10 MB</p>
-                  <p className="text-[9px] font-bold text-slate-400 mt-1">Per individual file</p>
+                  <p className="text-[10px] font-medium text-slate-400 leading-none mb-1.5">Maximum Size</p>
+                  <p className="text-xs font-medium text-slate-700">10 MB</p>
+                  <p className="text-[9px] font-medium text-slate-400 mt-1">Per individual file</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               onClick={() => setShowWarningDialog(false)}
-              className="w-full sm:w-auto h-9 text-xs font-black uppercase tracking-wider rounded-xl bg-slate-800 text-white hover:bg-slate-900 border-none shadow-sm transition-all"
+              className="w-full sm:w-auto h-9 text-xs font-medium rounded-xl bg-slate-800 text-white hover:bg-slate-900 border-none shadow-sm transition-all"
             >
               OK
             </Button>
@@ -3246,7 +3233,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       <Dialog open={!!subtaskToDelete} onOpenChange={(open) => !open && !isDeletingSubtask && setSubtaskToDelete(null)}>
         <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl [&>button]:hidden">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
               <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
                 <Trash2 size={16} className="text-red-600" />
               </div>
@@ -3256,13 +3243,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               Are you sure you want to delete this sub-task? This action cannot be undone.
             </DialogDescription> */}
           </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               variant="ghost"
               onClick={() => setSubtaskToDelete(null)}
               disabled={isDeletingSubtask}
-              className="rounded-xl text-xs font-bold h-9 px-4 text-slate-600 hover:bg-slate-200/50 transition-colors"
+              className="rounded-xl text-xs font-medium h-9 px-4 text-slate-600 hover:bg-slate-200/50 transition-colors"
             >
               Cancel
             </Button>
@@ -3270,7 +3257,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               type="button"
               onClick={handleDeleteSubtask}
               disabled={isDeletingSubtask}
-              className="rounded-xl text-xs font-bold h-9 px-5 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 gap-2 transition-all"
+              className="rounded-xl text-xs font-medium h-9 px-5 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 gap-0.5 transition-all"
             >
               {isDeletingSubtask ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
               Delete
@@ -3283,7 +3270,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         open={isMasterCreateOpen}
         onOpenChange={setIsMasterCreateOpen}
         type={activeMasterType}
-        companyNo={currentCompany || authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1}
+        companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
         fillValues={fillValues}
         onSuccess={handleMasterCreateSuccess}
       />
@@ -3296,7 +3283,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               We found an unsaved draft for this task. Would you like to restore it and continue working?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+          <DialogFooter className="mt-4 gap-0.5 sm:gap-0">
             <Button variant="outline" onClick={() => { setShowDraftRestore(false); clearDraft(); }}>
               Discard
             </Button>
@@ -3312,7 +3299,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-3xl border-slate-200">
           <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500" />
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
+            <DialogTitle className="flex items-center gap-0.5 text-xl font-medium text-slate-800">
               <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
                 <AlertCircle size={18} strokeWidth={3} />
               </div>
@@ -3323,10 +3310,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 flex gap-3">
-            <Button type="button" variant="outline" className="flex-1 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50" onClick={() => blocker.reset?.()}>
+            <Button type="button" variant="outline" className="flex-1 rounded-xl font-medium border-slate-200 text-slate-600 hover:bg-slate-50" onClick={() => blocker.reset?.()}>
               Stay on Page
             </Button>
-            <Button type="button" variant="default" className="flex-1 rounded-xl font-bold bg-yellow-500 hover:bg-yellow-600 text-white shadow-md hover:shadow-lg" onClick={() => blocker.proceed?.()}>
+            <Button type="button" variant="default" className="flex-1 rounded-xl font-medium bg-yellow-500 hover:bg-yellow-600 text-white shadow-md hover:shadow-lg" onClick={() => blocker.proceed?.()}>
               Leave Page
             </Button>
           </DialogFooter>

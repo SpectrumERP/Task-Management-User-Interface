@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { TaskForm } from '@/components/task/TaskForm';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
+import { ChevronRight, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/apiService';
@@ -139,9 +139,11 @@ export default function TaskDetail() {
 
         // Map actual efforts
         const mappedEfforts = (d.effortLogs || []).map((e: any) => ({
+          operTaskEffortLogDetailNo: e.operTaskEffortLogDetailNo || 0,
           date: e.effortDate || e.logDate || '',
           hours: e.effortHours || e.efforts || null,
-          description: e.effortDescription || e.description || ''
+          description: e.effortDescription || e.description || '',
+          createdBy: e.createdBy || null
         }));
 
         const mappedTask: Task = {
@@ -155,11 +157,13 @@ export default function TaskDetail() {
           type_No: d.type?.operTaskTypeNo || null,
           project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || null,
           parent_task_No: d.parentTask?.operTaskNo || d.parentTaskNo || null,
+          parentTask: d.parentTask ? { operTaskNo: d.parentTask.operTaskNo, title: d.parentTask.title } : undefined,
           tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
           originator_user_No: d.originator?.id || 1,
           owner_user_No: d.owner?.id || null,
           location_No: d.location?.operTaskLocationNo || null,
-          company: d.company || 'Glacier',
+          company: d?.taskCompany?.taskCompanyNo || '',
+          companyName: d?.taskCompany?.taskCompanyAlias || '',
           start_date: d.startDate,
           end_date: d.endDate,
           completionDate: d.completionDate,
@@ -236,25 +240,19 @@ export default function TaskDetail() {
     >
       <div className="flex-1 w-full flex flex-col bg-[#f1f5f9] overflow-hidden">
         {/* Fixed Header Section */}
-        <div className="w-full px-2 sm:px-6 py-1.5 sm:py-2 bg-white border-b border-slate-200 shadow-sm z-20">
+        <div className="w-full px-2 sm:px-6 py-1.5 sm:py-2 z-20">
           <div className="flex flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <button
                 onClick={handleGoBack}
-                className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md transition-all"
+                className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded"
               >
-                <ChevronLeft size={20} className="text-[#006699]" />
-              </Button>
-              <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
-                  {isEdit ? 'Update Task' : 'Create Task'}
-                </h2>
-                {/* <p className="text-slate-500 text-[11px] font-bold">
-                  {isEdit ? `Modifying task reference CP-${100 + (task?.taskNo || 0)}` : 'Initiate a new execution item in the Glacier environment.'}
-                </p> */}
-              </div>
+                Tasks List
+              </button>
+              <ChevronRight size={16} className="text-slate-400" />
+              <span className="text-slate-900 font-bold tracking-tight">
+                {isEdit ? 'Update Task' : 'Create Task'}
+              </span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -264,7 +262,7 @@ export default function TaskDetail() {
                 type="button"
                 onClick={handleGoBack}
                 disabled={isSaving}
-                className="rounded-xl h-9 px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
+                className="rounded-xl px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
               >
                 <X size={16} />
                 <span className="hidden sm:inline">Cancel</span>
@@ -273,7 +271,7 @@ export default function TaskDetail() {
                 type="submit"
                 form="task-form"
                 disabled={isSaving}
-                className="rounded-xl h-9 px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                className="rounded-xl px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
                   <>
@@ -314,9 +312,9 @@ export default function TaskDetail() {
         </div>
 
         {/* Scrollable Form Content */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 scrollbar-hide">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-[16px] sm:rounded-[24px] p-4 sm:p-8 shadow-xl shadow-slate-200/40 border border-slate-100 h-fit min-h-[400px] flex flex-col justify-center">
+        <div className="flex-1 overflow-y-auto sm:px-8 sm:pt-1 pb-6 sm:pb-8 scrollbar-hide">
+          <div className="max-w-8xl mx-auto">
+            <div className="bg-white rounded-[16px] sm:rounded-[20px] p-4 sm:px-8 shadow-xl shadow-slate-200/40 border border-slate-100 h-fit min-h-[400px] flex flex-col justify-center">
               {isFetching ? (
                 <div className="flex flex-col items-center justify-center gap-4 py-20">
                   <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />

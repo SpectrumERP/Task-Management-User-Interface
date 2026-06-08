@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { AlertCircle, Edit, FileText, Loader2, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { AlertCircle, ChevronRight, Edit, FileText, Loader2, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Combobox } from '@/components/ui/Combobox';
@@ -21,9 +21,9 @@ import { DealOption, deleteDeal, fetchDivisionsByCompany, searchDeals } from './
 export function DealSearchPage() {
   const navigate = useNavigate();
   const authCompanies = useAuthStore((state) => state.company) || [];
-  const defaultCompanyNo = (authCompanies[0]?.companyNo || authCompanies[0]?.CompanyNo || '').toString();
+  const defaultCompanyNo = (authCompanies[0]?.CompanyNo || authCompanies[0]?.companyNo || '').toString();
   const companyOptions = useMemo(() => authCompanies.map((company: any) => ({
-    value: (company.companyNo || company.CompanyNo || '').toString(),
+    value: (company.CompanyNo || company.companyNo || '').toString(),
     label: company.companyName || company.CompanyName || company.name || company.alias || `Company ${company.companyNo || company.CompanyNo}`,
   })).filter((company: any) => company.value), [authCompanies]);
 
@@ -135,14 +135,15 @@ export function DealSearchPage() {
     <div className="flex-1 overflow-hidden flex flex-col bg-[#f1f5f9]">
       <div className="px-3 sm:px-6 py-3 bg-white border-b border-slate-200 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">Sales Deals</h1>
-            <p className="text-[11px] font-bold text-slate-500">Search, create, and update sales deal documents.</p>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <button className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded cursor-default">Sales</button>
+            <ChevronRight size={16} className="text-slate-400" />
+            <span className="text-slate-900 font-bold tracking-tight">Sales Deals</span>
           </div>
           <Button
             type="button"
             onClick={() => navigate('/sales/deals/new')}
-            className="h-9 rounded-xl bg-[#006699] hover:bg-[#005580] text-white text-xs font-bold gap-2 shadow-lg shadow-[#006699]/20"
+            className="h-9 rounded-xl bg-[#006699] hover:bg-[#005580] text-white text-xs font-medium gap-0.5 shadow-lg shadow-[#006699]/20"
           >
             <Plus size={15} />
             New Deal
@@ -153,61 +154,53 @@ export function DealSearchPage() {
       <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4">
         <Card className="rounded-2xl border-slate-100 shadow-sm p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Company</label>
-              <Combobox
-                options={companyOptions}
-                value={filters.companyNo || ''}
-                onChange={(value) => setFilters((prev) => ({
+            <div className="space-y-0.5">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Company</label>
+              <Combobox options={companyOptions} value={filters.companyNo || ''} onChange={(value) => setFilters((prev) => ({
                   ...prev,
                   companyNo: value,
                   divisionNo: '',
                 }))}
                 placeholder="Select company"
                 searchPlaceholder="Search company..."
-                className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Division</label>
-              <Combobox
-                options={divisionOptions}
-                value={filters.divisionNo || ''}
-                onChange={(value) => setFilters((prev) => ({ ...prev, divisionNo: value }))}
+            <div className="space-y-0.5">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Division</label>
+              <Combobox options={divisionOptions} value={filters.divisionNo || ''} onChange={(value) => setFilters((prev) => ({ ...prev, divisionNo: value }))}
                 disabled={!filters.companyNo || isLoadingDivisions}
                 placeholder={!filters.companyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "All divisions"}
                 searchPlaceholder="Search division..."
-                className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 
-            {/* <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Document No Yearly</label>
-              <Input
-                value={filters.documentNoYearly || ''}
-                onChange={(event) => setFilters((prev) => ({ ...prev, documentNoYearly: event.target.value }))}
-                className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold"
+            {/* <div className="space-y-0.5">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document No Yearly</label>
+              <Input value={filters.documentNoYearly || ''} onChange={(event) => setFilters((prev) => ({ ...prev, documentNoYearly: event.target.value }))}
+                className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-medium"
                 placeholder="Enter document no"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">From Date</label>
+            <div className="space-y-0.5">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">From Date</label>
               <DatePicker date={filters.fromDocumentDate} onChange={(date) => setFilters((prev) => ({ ...prev, fromDocumentDate: date }))} placeholder="From date" />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">To Date</label>
+            <div className="space-y-0.5">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">To Date</label>
               <DatePicker date={filters.toDocumentDate} onChange={(date) => setFilters((prev) => ({ ...prev, toDocumentDate: date }))} placeholder="To date" />
             </div> */}
 
-            <div className="flex items-end gap-2">
-              <Button type="button" variant="outline" onClick={resetFilters} className="h-11 rounded-xl text-xs font-bold gap-2 flex-1">
+            <div className="flex items-end gap-0.5">
+              <Button type="button" variant="outline" onClick={resetFilters} className="h-11 rounded-xl text-xs font-medium gap-0.5 flex-1">
                 <RotateCcw size={14} />
                 Reset
               </Button>
-              <Button type="button" onClick={applyFilters} className="h-11 rounded-xl bg-[#006699] hover:bg-[#005580] text-white text-xs font-bold gap-2 flex-1">
+              <Button type="button" onClick={applyFilters} className="h-11 rounded-xl bg-[#006699] hover:bg-[#005580] text-white text-xs font-medium gap-0.5 flex-1">
                 <Search size={14} />
                 Search
               </Button>
@@ -221,7 +214,7 @@ export function DealSearchPage() {
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
                   {['Company', 'Division', 'Document No Yearly', 'Document Date', 'Description', 'Actions'].map((heading) => (
-                    <th key={heading} className={cn("px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest", heading === 'Actions' && "text-right")}>
+                    <th key={heading} className={cn("px-4 py-3 text-[11px] font-semibold text-slate-600  ", heading === 'Actions' && "text-right")}>
                       {heading}
                     </th>
                   ))}
@@ -231,7 +224,7 @@ export function DealSearchPage() {
                 {isLoading ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-16 text-center">
-                      <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-500">
+                      <div className="flex items-center justify-center gap-0.5 text-xs font-medium text-slate-500">
                         <Loader2 size={16} className="animate-spin text-[#006699]" />
                         Loading sales deals...
                       </div>
@@ -240,17 +233,17 @@ export function DealSearchPage() {
                 ) : deals.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-16 text-center">
-                      <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <div className="flex flex-col items-center gap-0.5 text-slate-400">
                         <FileText size={26} />
-                        <p className="text-xs font-bold">No records found</p>
+                        <p className="text-xs font-medium">No records found</p>
                       </div>
                     </td>
                   </tr>
                 ) : deals.map((deal) => (
                   <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 py-3 text-xs font-bold text-slate-700">{deal.companyName || deal.companyNo}</td>
-                    <td className="px-4 py-3 text-xs font-bold text-slate-700">{deal.divisionName || deal.divisionNo || 'N/A'}</td>
-                    <td className="px-4 py-3 text-xs font-black text-slate-800">{deal.documentNoYearly}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-slate-700">{deal.companyName || deal.companyNo}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-slate-700">{deal.divisionName || deal.divisionNo || 'N/A'}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-slate-800">{deal.documentNoYearly}</td>
                     <td className="px-4 py-3 text-xs font-semibold text-slate-600">
                       {deal.documentDate ? format(new Date(deal.documentDate), 'MMM dd, yyyy') : 'N/A'}
                     </td>
@@ -291,7 +284,7 @@ export function DealSearchPage() {
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}>
         <DialogContent className="rounded-2xl max-w-sm p-0 border-none shadow-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <DialogTitle className="text-lg font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
               <AlertCircle size={20} className="text-red-500" />
               Confirm Deletion
             </DialogTitle>
@@ -299,13 +292,13 @@ export function DealSearchPage() {
               Do you want to delete?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-2xl">
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-2xl">
             <Button
               type="button"
               variant="outline"
               disabled={isDeleting}
               onClick={() => setDeleteTarget(null)}
-              className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
             >
               No
             </Button>
@@ -313,7 +306,7 @@ export function DealSearchPage() {
               type="button"
               disabled={isDeleting}
               onClick={confirmDelete}
-              className="h-10 px-5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-widest shadow-md shadow-red-500/20 gap-2"
+              className="h-10 px-5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium text-xs normal-case shadow-md shadow-red-500/20 gap-0.5"
             >
               {isDeleting && <Loader2 size={14} className="animate-spin" />}
               Yes

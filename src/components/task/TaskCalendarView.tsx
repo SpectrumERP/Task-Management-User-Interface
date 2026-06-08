@@ -191,10 +191,10 @@ export function TaskCalendarView({
   // Get Status styles
   const getStatusBadge = (status: TaskStatus) => {
     switch (status) {
-      case 'Done': return <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><CheckCircle2 size={10} /> Done</span>;
-      case 'In Progress': return <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full"><Clock size={10} /> Progress</span>;
-      case 'In Review': return <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full"><Layers size={10} /> Review</span>;
-      default: return <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Todo</span>;
+      case 'Done': return <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><CheckCircle2 size={10} /> Done</span>;
+      case 'In Progress': return <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full"><Clock size={10} /> Progress</span>;
+      case 'In Review': return <span className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full"><Layers size={10} /> Review</span>;
+      default: return <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Todo</span>;
     }
   };
 
@@ -232,7 +232,7 @@ export function TaskCalendarView({
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b border-slate-150 bg-slate-50/30">
           {weekdays.map(day => (
-            <div key={day} className="py-3 text-center text-[10px] font-black text-slate-500 uppercase tracking-widest border-r last:border-r-0 border-slate-150/60">
+            <div key={day} className="py-3 text-center text-[10px] font-medium text-slate-500 normal-case border-r last:border-r-0 border-slate-150/60">
               {day}
             </div>
           ))}
@@ -260,7 +260,7 @@ export function TaskCalendarView({
                 <div className="flex items-center justify-between mb-2">
                   <span
                     className={cn(
-                      "text-xs font-extrabold transition-all",
+                      "text-xs font-medium transition-all",
                       isToday ? "bg-[#006699] text-white w-6 h-6 rounded-full flex items-center justify-center shadow-md shadow-[#006699]/15" : "text-slate-700",
                       !isCurrentMonth && "text-slate-400 opacity-40"
                     )}
@@ -280,7 +280,7 @@ export function TaskCalendarView({
                 </div>
 
                 {/* Day tasks list */}
-                <div className="space-y-1.5 flex-1 overflow-hidden">
+                <div className="space-y-0.5 flex-1 overflow-hidden">
                   {visibleTasks.map(task => {
                       const customColor = task.calendarColor && task.calendarColor !== 'none' ? task.calendarColor : null;
                       const isHovered = hoveredTaskNo === task.taskNo;
@@ -305,12 +305,12 @@ export function TaskCalendarView({
                             zIndex: isHovered ? 9999 : undefined
                           }}
                           className={cn(
-                            "px-2 py-1 rounded-full text-[10px] font-bold truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm flex items-center justify-between border",
+                            "px-2 py-1 rounded-full text-[10px] font-medium truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm flex items-center justify-between border",
                             task.isAllDay ? "" : "hover:bg-slate-50"
                           )}
                           title={task.title}
                         >
-                          <div className="flex items-center gap-1.5 truncate max-w-[85%]">
+                          <div className="flex items-center gap-0.5 truncate max-w-[85%]">
                             {customColor && !task.isAllDay && (
                               <span 
                                 className="w-1.5 h-1.5 rounded-full shrink-0 border border-black/5 shadow-inner" 
@@ -329,7 +329,7 @@ export function TaskCalendarView({
                   {overflowCount > 0 && (
                     <button
                       onClick={() => setSelectedDayTasks({ date, tasks: dayTasks })}
-                      className="w-full text-left px-2.5 py-0.5 text-[9px] font-black text-[#006699] uppercase tracking-wider hover:underline animate-pulse shrink-0"
+                      className="w-full text-left px-2.5 py-0.5 text-[9px] font-medium text-[#006699] normal-case hover:underline animate-pulse shrink-0"
                     >
                       + {overflowCount} more
                     </button>
@@ -446,9 +446,9 @@ export function TaskCalendarView({
             const isToday = new Date().toDateString() === date.toDateString();
             return (
               <div key={idx} className="py-2.5 text-center border-r last:border-r-0 border-slate-150 flex flex-col items-center justify-center">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                <span className="text-[10px] font-medium text-slate-400  ">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
                 <span className={cn(
-                  "text-sm font-black w-7 h-7 rounded-full flex items-center justify-center mt-0.5",
+                  "text-sm font-medium w-7 h-7 rounded-full flex items-center justify-center mt-0.5",
                   isToday ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15" : "text-slate-800"
                 )}>
                   {date.getDate()}
@@ -460,13 +460,13 @@ export function TaskCalendarView({
 
         {/* All-Day tasks bar */}
         <div className="grid grid-cols-8 border-b border-slate-150 bg-amber-50/10 min-h-[40px] items-center">
-          <div className="px-2 text-center text-[9px] font-black text-amber-600 uppercase tracking-widest border-r border-slate-150 h-full flex items-center justify-center">
+          <div className="px-2 text-center text-[9px] font-medium text-amber-600 normal-case border-r border-slate-150 h-full flex items-center justify-center">
             All-Day
           </div>
           {days.map((date, idx) => {
             const dayAllDayTasks = tasks.filter(t => t.isAllDay && isTaskOnDate(t, date));
             return (
-              <div key={idx} className="p-1 border-r last:border-r-0 border-slate-150 space-y-1 self-stretch flex flex-col justify-start">
+              <div key={idx} className="p-1 border-r last:border-r-0 border-slate-150 space-y-0 self-stretch flex flex-col justify-start">
                 {dayAllDayTasks.map(t => {
                   const hasColor = t.calendarColor && t.calendarColor !== 'none';
                   return (
@@ -477,7 +477,7 @@ export function TaskCalendarView({
                         backgroundColor: hasColor ? t.calendarColor : '#94a3b8',
                         color: hasColor ? getContrastColor(t.calendarColor!) : '#ffffff'
                       }}
-                      className="px-2 py-0.5 rounded-md text-[9px] font-bold truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm"
+                      className="px-2 py-0.5 rounded-md text-[9px] font-medium truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm"
                       title={t.title}
                     >
                       {t.title}
@@ -501,7 +501,7 @@ export function TaskCalendarView({
             {/* Time markers column */}
             <div className="col-span-1 border-r border-slate-150 bg-slate-50/30">
               {hours.map(h => (
-                <div key={h} className="h-[50px] text-right pr-3 pt-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                <div key={h} className="h-[50px] text-right pr-3 pt-1 text-[9px] font-medium text-slate-400 normal-case">
                   {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
                 </div>
               ))}
@@ -555,8 +555,8 @@ export function TaskCalendarView({
                         )}
                       >
                         <div className="overflow-hidden">
-                          <h4 className="text-[10px] font-black text-slate-800 leading-tight truncate">{task.title}</h4>
-                          <span className="text-[8px] font-bold text-slate-400 block mt-0.5">
+                          <h4 className="text-[10px] font-medium text-slate-800 leading-tight truncate">{task.title}</h4>
+                          <span className="text-[8px] font-medium text-slate-400 block mt-0.5">
                             {task.start_date ? new Date(task.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                           </span>
                         </div>
@@ -587,15 +587,15 @@ export function TaskCalendarView({
     return (
       <div className="flex flex-col h-full bg-white rounded-3xl border border-slate-150 shadow-xl overflow-hidden animate-in fade-in duration-300">
         {/* Date / Day view all-day panel */}
-        <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex flex-col gap-2">
+        <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex flex-col gap-0.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-slate-450 uppercase tracking-widest">Single Day Timeline</span>
-            <span className="text-xs font-bold text-[#006699]">{dayTasks.length} Scheduled Tasks</span>
+            <span className="text-xs font-medium text-slate-450  ">Single Day Timeline</span>
+            <span className="text-xs font-medium text-[#006699]">{dayTasks.length} Scheduled Tasks</span>
           </div>
 
           {allDayTasks.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mt-1">
-              <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest mr-1.5">All-Day:</span>
+            <div className="flex flex-wrap items-center gap-0.5 mt-1">
+              <span className="text-[10px] font-medium text-amber-600   mr-1.5">All-Day:</span>
               {allDayTasks.map(t => {
                 const hasColor = t.calendarColor && t.calendarColor !== 'none';
                 return (
@@ -606,7 +606,7 @@ export function TaskCalendarView({
                       backgroundColor: hasColor ? t.calendarColor : '#94a3b8',
                       color: hasColor ? getContrastColor(t.calendarColor!) : '#ffffff'
                     }}
-                    className="px-3 py-1 rounded-xl text-xs font-bold cursor-pointer shadow-sm transition-all hover:scale-105"
+                    className="px-3 py-1 rounded-xl text-xs font-medium cursor-pointer shadow-sm transition-all hover:scale-105"
                   >
                     {t.title}
                   </div>
@@ -628,7 +628,7 @@ export function TaskCalendarView({
             {/* Left hour labels */}
             <div className="col-span-1 border-r border-slate-150 bg-slate-50/20">
               {hours.map(h => (
-                <div key={h} className="h-[50px] text-right pr-4 pt-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                <div key={h} className="h-[50px] text-right pr-4 pt-2 text-[9px] font-medium text-slate-400 normal-case">
                   {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
                 </div>
               ))}
@@ -676,12 +676,12 @@ export function TaskCalendarView({
                     )}
                   >
                     <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-xs font-black text-slate-800 truncate">{task.title}</h4>
+                      <div className="flex items-center justify-between gap-0.5">
+                        <h4 className="text-xs font-medium text-slate-800 truncate">{task.title}</h4>
                         {getStatusBadge(task.status)}
                       </div>
 
-                      <p className="text-[10px] text-slate-400 font-bold mt-1">
+                      <p className="text-[10px] text-slate-400 font-medium mt-1">
                         {task.start_date ? new Date(task.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} - {' '}
                         {task.end_date ? new Date(task.end_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </p>
@@ -695,13 +695,13 @@ export function TaskCalendarView({
 
                     <div className="flex items-center justify-between mt-4 pt-2 border-t border-slate-100">
                       <span className={cn(
-                        "text-[9px] font-black uppercase px-2 py-0.5 rounded-md border tracking-wider",
+                        "text-[9px] font-medium  px-2 py-0.5 rounded-md border ",
                         getPriorityStyle(task.priority)
                       )}>
                         {task.priority}
                       </span>
                       {task.assignedDisplayName && (
-                        <span className="flex items-center gap-1 text-[9px] font-bold text-slate-500">
+                        <span className="flex items-center gap-1 text-[9px] font-medium text-slate-500">
                           <User size={10} className="text-[#006699]" />
                           {task.assignedDisplayName}
                         </span>
@@ -742,8 +742,8 @@ export function TaskCalendarView({
       return (
         <div className="flex flex-col items-center justify-center p-16 bg-white rounded-3xl border border-slate-150 shadow-xl text-center">
           <CalendarIcon className="h-14 w-14 text-slate-300 animate-bounce mb-4" />
-          <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">No Scheduled Tasks</h3>
-          <p className="text-xs text-slate-450 font-bold mt-1 max-w-xs">Use the list, board, or task form to schedule start and due dates for your tasks.</p>
+          <h3 className="text-sm font-medium text-slate-800  ">No Scheduled Tasks</h3>
+          <p className="text-xs text-slate-450 font-medium mt-1 max-w-xs">Use the list, board, or task form to schedule start and due dates for your tasks.</p>
         </div>
       );
     }
@@ -760,15 +760,15 @@ export function TaskCalendarView({
               {/* Date node Column */}
               <div className="lg:col-span-1 border-l-4 border-[#006699] pl-4 flex flex-col justify-center">
                 <span className={cn(
-                  "text-[10px] font-black uppercase tracking-widest",
+                  "text-[10px] font-medium  ",
                   isToday ? "text-[#006699] animate-pulse" : "text-slate-400"
                 )}>
                   {isToday ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'long' })}
                 </span>
-                <span className="text-xl font-black text-slate-800 mt-1">
+                <span className="text-xl font-medium text-slate-800 mt-1">
                   {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
-                <span className="text-xs font-bold text-slate-400 mt-0.5">{date.getFullYear()}</span>
+                <span className="text-xs font-medium text-slate-400 mt-0.5">{date.getFullYear()}</span>
               </div>
 
               {/* Tasks list inside Card */}
@@ -782,29 +782,29 @@ export function TaskCalendarView({
                       onClick={() => onTaskClick(task.taskNo)}
                       className="group border border-slate-150/80 rounded-2xl p-4 bg-white hover:bg-slate-50/50 hover:shadow-md cursor-pointer transition-all duration-200 hover:scale-[1.01] flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center flex-wrap gap-2">
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center flex-wrap gap-0.5">
                           {customColor && (
                             <span
                               style={{ backgroundColor: customColor }}
                               className="w-2.5 h-2.5 rounded-full inline-block shadow-sm"
                             />
                           )}
-                          <span className="text-[10px] font-mono font-bold text-slate-400">#{task.code || `TSK-${task.taskNo}`}</span>
+                          <span className="text-[10px] font-mono font-medium text-slate-400">#{task.code || `TSK-${task.taskNo}`}</span>
                           {getStatusBadge(task.status)}
                         </div>
 
-                        <h4 className="text-xs font-black text-slate-800 group-hover:text-[#006699] transition-colors">{task.title}</h4>
+                        <h4 className="text-xs font-medium text-slate-800 group-hover:text-[#006699] transition-colors">{task.title}</h4>
                         {task.description && (
-                          <p className="text-[10px] text-slate-450 font-bold line-clamp-1 leading-normal">{task.description}</p>
+                          <p className="text-[10px] text-slate-450 font-medium line-clamp-1 leading-normal">{task.description}</p>
                         )}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-3 shrink-0">
                         {/* Time range */}
-                        <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-150">
+                        <div className="flex items-center gap-0.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-150">
                           <Clock size={11} className="text-[#006699]" />
-                          <span className="text-[9px] font-black text-slate-600 uppercase tracking-wider">
+                          <span className="text-[9px] font-medium text-slate-600  ">
                             {task.isAllDay ? 'All Day' : (
                               <>
                                 {task.start_date ? new Date(task.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} - {' '}
@@ -816,7 +816,7 @@ export function TaskCalendarView({
 
                         {/* Priority */}
                         <span className={cn(
-                          "text-[9px] font-black uppercase px-2 py-0.5 rounded-md border tracking-wider",
+                          "text-[9px] font-medium  px-2 py-0.5 rounded-md border ",
                           getPriorityStyle(task.priority)
                         )}>
                           {task.priority}
@@ -830,7 +830,7 @@ export function TaskCalendarView({
                               displayName={task.assignedDisplayName}
                               className="h-4.5 w-4.5 text-[8px]"
                             />
-                            <span className="text-[9px] font-bold text-slate-700">{task.assignedDisplayName}</span>
+                            <span className="text-[9px] font-medium text-slate-700">{task.assignedDisplayName}</span>
                           </div>
                         )}
                       </div>
@@ -846,13 +846,13 @@ export function TaskCalendarView({
   };
 
   return (
-    <div className="space-y-2 flex flex-col flex-1 min-h-0">
+    <div className="space-y-0 flex flex-col flex-1 min-h-0">
       {/* Calendar Header with Controls */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white rounded-3xl border border-slate-150 p-3 sm:p-4 md:p-1.5 md:py-1 shadow-lg shadow-slate-100/30 shrink-0">
 
         {/* Navigation buttons: takes full width on mobile, aligned left on desktop */}
-        <div className="flex items-center justify-between md:justify-start gap-2 w-full md:w-auto">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center justify-between md:justify-start gap-0.5 w-full md:w-auto">
+          <div className="flex items-center gap-0.5 sm:gap-0.5">
             <Button
               variant="outline"
               size="sm"
@@ -867,7 +867,7 @@ export function TaskCalendarView({
               variant="outline"
               size="sm"
               onClick={handleToday}
-              className="h-10 px-4 sm:px-5 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-[10px] sm:text-xs font-black text-slate-700 uppercase tracking-widest transition-all active:scale-95 shrink-0"
+              className="h-10 px-4 sm:px-5 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-[10px] sm:text-xs font-medium text-slate-700 normal-case transition-all active:scale-95 shrink-0"
             >
               TODAY
             </Button>
@@ -884,7 +884,7 @@ export function TaskCalendarView({
           </div>
 
           {/* Date range header */}
-          <h2 className="text-[10px] sm:text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5 sm:gap-2 select-none">
+          <h2 className="text-[10px] sm:text-xs font-medium text-slate-800 normal-case flex items-center gap-0.5 sm:gap-0.5 select-none">
             <CalendarIcon size={14} className="text-[#006699]" />
             {formatDateHeader()}
           </h2>
@@ -892,14 +892,14 @@ export function TaskCalendarView({
 
         {/* Unified Calendar Right Control Actions: horizontal layout stacking neatly below on mobile */}
         <div className="flex flex-col sm:flex-row md:flex-row items-stretch sm:items-center justify-between md:justify-end gap-3 w-full md:w-auto shrink-0 border-t border-slate-100 md:border-none pt-2.5 md:pt-0">
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-start">
+          <div className="flex items-center gap-0.5 w-full sm:w-auto justify-start sm:justify-start">
             {onToggleFilters && (
               <Button
                 type="button"
                 variant="outline"
                 onClick={onToggleFilters}
                 className={cn(
-                  "h-10 px-3.5 sm:px-4 rounded-xl sm:rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-[10px] sm:text-xs uppercase tracking-wider transition-all duration-200 gap-1.5 sm:gap-2 shadow-sm shrink-0 flex-1 sm:flex-initial justify-center",
+                  "h-10 px-3.5 sm:px-4 rounded-xl sm:rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium text-[10px] sm:text-xs normal-case transition-all duration-200 gap-0.5 sm:gap-0.5 shadow-sm shrink-0 flex-1 sm:flex-initial justify-center",
                   showFilters && "border-[#006699] text-[#006699] bg-[#e1ecf7]/50"
                 )}
               >
@@ -914,9 +914,9 @@ export function TaskCalendarView({
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 px-3.5 sm:px-4 rounded-xl sm:rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-700 shadow-sm gap-1.5 sm:gap-2.5 transition-all flex items-center justify-between text-[10px] sm:text-xs shrink-0 flex-1 sm:flex-initial"
+                    className="h-10 px-3.5 sm:px-4 rounded-xl sm:rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-medium text-slate-700 shadow-sm gap-0.5 sm:gap-0.5.5 transition-all flex items-center justify-between text-[10px] sm:text-xs shrink-0 flex-1 sm:flex-initial"
                   >
-                    <span className="flex items-center gap-1.5 sm:gap-2">
+                    <span className="flex items-center gap-0.5 sm:gap-0.5">
                       <CalendarIcon size={14} className="text-[#006699]" />
                       <span className="hidden xs:inline">Calendar View</span>
                       <span className="xs:hidden">Calendar</span>
@@ -927,21 +927,21 @@ export function TaskCalendarView({
                 <DropdownMenuContent align="end" className="rounded-xl border border-slate-100 p-1 min-w-[140px] shadow-xl bg-white z-[60]">
                   <DropdownMenuItem
                     onClick={() => onViewModeChange('list')}
-                    className="rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors text-slate-600 hover:bg-slate-50"
+                    className="rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-0.5 transition-colors text-slate-600 hover:bg-slate-50"
                   >
                     <ListIcon size={14} />
                     List View
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onViewModeChange('board')}
-                    className="rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors text-slate-600 hover:bg-slate-50"
+                    className="rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-0.5 transition-colors text-slate-600 hover:bg-slate-50"
                   >
                     <LayoutGrid size={14} />
                     Board View
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onViewModeChange('calendar')}
-                    className="rounded-lg text-xs font-bold px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors bg-slate-100 text-[#006699]"
+                    className="rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-0.5 transition-colors bg-slate-100 text-[#006699]"
                   >
                     <CalendarIcon size={14} />
                     Calendar View
@@ -958,7 +958,7 @@ export function TaskCalendarView({
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 className={cn(
-                  "px-3 sm:px-4 py-1.5 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-widest transition-all duration-200 flex-1 sm:flex-initial text-center justify-center",
+                  "px-3 sm:px-4 py-1.5 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-medium uppercase tracking-tight sm:tracking-widest transition-all duration-200 flex-1 sm:flex-initial text-center justify-center",
                   viewMode === mode
                     ? "bg-white text-[#006699] shadow-md shadow-slate-250/20"
                     : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/20"
@@ -976,7 +976,7 @@ export function TaskCalendarView({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-32 gap-3 bg-white rounded-3xl border border-slate-150 shadow-md">
             <span className="w-8 h-8 rounded-full border-4 border-[#006699] border-t-transparent animate-spin" />
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Updating Schedule View...</p>
+            <p className="text-[10px] font-medium text-slate-400 normal-case animate-pulse">Updating Schedule View...</p>
           </div>
         ) : (
           <>
@@ -992,12 +992,12 @@ export function TaskCalendarView({
       <Dialog open={selectedDayTasks !== null} onOpenChange={() => setSelectedDayTasks(null)}>
         <DialogContent className="rounded-3xl border border-slate-100 bg-white max-w-md p-6 shadow-2xl">
           <DialogHeader className="border-b border-slate-100 pb-3 flex flex-col gap-1">
-            <DialogTitle className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+            <DialogTitle className="text-sm font-medium text-slate-800 normal-case flex items-center gap-0.5">
               <Sparkles size={16} className="text-[#006699]" />
               Schedule Details
             </DialogTitle>
             {selectedDayTasks && (
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+              <p className="text-xs text-slate-400 font-medium normal-case">
                 {selectedDayTasks.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
             )}
@@ -1018,8 +1018,8 @@ export function TaskCalendarView({
                   className="p-3 rounded-2xl border border-slate-150 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.01] flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0">
-                    <h4 className="text-xs font-black text-slate-800 leading-tight truncate">{task.title}</h4>
-                    <span className="text-[9px] font-bold text-slate-450 block mt-1">
+                    <h4 className="text-xs font-medium text-slate-800 leading-tight truncate">{task.title}</h4>
+                    <span className="text-[9px] font-medium text-slate-450 block mt-1">
                       {task.isAllDay ? 'All Day Task' : (
                         <>
                           {task.start_date ? new Date(task.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} - {' '}
@@ -1030,7 +1030,7 @@ export function TaskCalendarView({
                   </div>
 
                   <span className={cn(
-                    "text-[8px] font-black uppercase px-2 py-0.5 rounded-md border tracking-wider",
+                    "text-[8px] font-medium  px-2 py-0.5 rounded-md border ",
                     getPriorityStyle(task.priority)
                   )}>
                     {task.priority}

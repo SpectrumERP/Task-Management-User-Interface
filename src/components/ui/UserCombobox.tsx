@@ -44,7 +44,7 @@ export function UserCombobox({
   const [options, setOptions] = React.useState<UserResponse[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedLabel, setSelectedLabel] = React.useState(initialLabel || "")
-  
+
   const authUser = useAuthStore(state => state.user)
   const loginNo = authUser?.loginNo || 0
 
@@ -77,8 +77,8 @@ export function UserCombobox({
     if (value) {
       // 1. Check if it matches the authenticated user (instant check)
       const isAuthUser = authUser && (
-        authUser.loginNo?.toString() === value || 
-        authUser.LoginNo?.toString() === value || 
+        authUser.loginNo?.toString() === value ||
+        authUser.LoginNo?.toString() === value ||
         authUser.id?.toString() === value
       );
       if (isAuthUser) {
@@ -101,12 +101,12 @@ export function UserCombobox({
         try {
           const results = await userService.searchUsers('', loginNo);
           let matched = results.find(u => u.loginNo.toString() === value);
-          
+
           if (!matched) {
             const resultsA = await userService.searchUsers('a', loginNo);
             matched = resultsA.find(u => u.loginNo.toString() === value);
           }
-          
+
           if (matched) {
             setSelectedLabel(matched.printingName);
           } else {
@@ -171,7 +171,7 @@ export function UserCombobox({
           className={cn(
             "w-full justify-between transition-all border shadow-sm relative pr-8",
             !className?.includes("border-") && "border-slate-300",
-            !className?.includes("text-") && "text-[11px] font-bold text-slate-900",
+            !className?.includes("text-") && "text-sm font-medium text-slate-900",
             !className?.includes("rounded-") && "rounded-xl",
             !className?.includes("h-") && "h-9",
             className,
@@ -198,13 +198,13 @@ export function UserCombobox({
       <PopoverContent className="w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 z-[9999]" align="start">
         <Command className="rounded-xl border-slate-200" shouldFilter={false}>
           <div className="border-b border-slate-100 bg-slate-50/50">
-            <CommandInput 
-              placeholder="Type to search..." 
-              className="h-10 border-none focus:ring-0 bg-transparent" 
+            <CommandInput
+              placeholder="Type to search..."
+              className="h-10 border-none focus:ring-0 bg-transparent"
               onValueChange={setSearch}
             />
           </div>
-          
+
           <div className="grid grid-cols-3 px-3 py-2 bg-slate-100/80 border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-wider">
             <div>User Name</div>
             <div>Display Name</div>

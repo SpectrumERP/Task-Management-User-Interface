@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, CheckCircle, Loader2, Save, X } from 'lucide-react';
+import { ChevronRight, CheckCircle, Loader2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Input } from '@/components/ui/input';
@@ -34,9 +34,9 @@ export function DealForm() {
   const { id } = useParams<{ id?: string }>();
   const isEdit = !!id;
   const authCompanies = useAuthStore((state) => state.company) || [];
-  const defaultCompanyNo = (authCompanies[0]?.companyNo || authCompanies[0]?.CompanyNo || '').toString();
+  const defaultCompanyNo = (authCompanies[0]?.CompanyNo || authCompanies[0]?.companyNo || '').toString();
   const companyOptions = useMemo(() => authCompanies.map((company: any) => ({
-    value: (company.companyNo || company.CompanyNo || '').toString(),
+    value: (company.CompanyNo || company.companyNo || '').toString(),
     label: company.companyName || company.CompanyName || company.name || company.alias || `Company ${company.companyNo || company.CompanyNo}`,
   })).filter((company: any) => company.value), [authCompanies]);
 
@@ -143,20 +143,18 @@ export function DealForm() {
     <div className="flex-1 w-full flex flex-col bg-[#f1f5f9] overflow-hidden">
       <div className="w-full px-2 sm:px-6 py-1.5 sm:py-2 bg-white border-b border-slate-200 shadow-sm z-20">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <button
+              type="button"
               onClick={() => navigate('/sales/deals')}
-              className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 shadow-sm hover:shadow-md"
+              className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded"
             >
-              <ChevronLeft size={20} className="text-[#006699]" />
-            </Button>
-            <div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
-                {isEdit ? 'Update Sales Deal' : 'Create Sales Deal'}
-              </h2>
-            </div>
+              Sales Deals
+            </button>
+            <ChevronRight size={16} className="text-slate-400" />
+            <span className="text-slate-900 font-bold tracking-tight">
+              {isEdit ? 'Update' : 'New'}
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -165,7 +163,7 @@ export function DealForm() {
               type="button"
               onClick={() => navigate('/sales/deals')}
               disabled={isSaving}
-              className="rounded-xl h-9 px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 gap-2 text-xs"
+              className="rounded-xl h-9 px-3 sm:px-5 font-medium text-slate-600 hover:bg-slate-100 gap-0.5 text-xs"
             >
               <X size={16} />
               <span className="hidden sm:inline">Cancel</span>
@@ -174,7 +172,7 @@ export function DealForm() {
               type="submit"
               form="sales-deal-form"
               disabled={isSaving || isFetching}
-              className="rounded-xl h-9 px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 text-xs text-white"
+              className="rounded-xl h-9 px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-medium shadow-lg shadow-[#006699]/20 gap-0.5 text-xs text-white"
             >
               {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
@@ -188,60 +186,49 @@ export function DealForm() {
           {isFetching ? (
             <div className="flex flex-col items-center justify-center gap-4 py-20">
               <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
-              <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Loading Sales Deal...</p>
+              <p className="text-slate-500 font-medium text-sm normal-case">Loading Sales Deal...</p>
             </div>
           ) : (
             <form id="sales-deal-form" onSubmit={form.handleSubmit(submitForm)} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Company <span className="text-red-500">*</span></label>
+                <div className="space-y-0">
+                  <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Company <span className="text-red-500">*</span></label>
                   <Controller
                     name="companyNo"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox
-                        options={companyOptions}
-                        value={field.value}
-                        onChange={(value) => {
+                      <Combobox options={companyOptions} value={field.value} onChange={(value) => {
                           field.onChange(value);
                           form.setValue('divisionNo', '', { shouldDirty: true, shouldValidate: true });
                         }}
                         placeholder="Select company"
                         searchPlaceholder="Search company..."
-                        className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                        className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                       />
                     )}
                   />
-                  {form.formState.errors.companyNo && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.companyNo.message}</p>}
+                  {form.formState.errors.companyNo && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.companyNo.message}</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Division</label>
+                <div className="space-y-0">
+                  <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Division</label>
                   <Controller
                     name="divisionNo"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox
-                        options={divisionOptions}
-                        value={field.value}
-                        onChange={field.onChange}
-                        disabled={!watchedCompanyNo || isLoadingDivisions}
-                        placeholder={!watchedCompanyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "Select division"}
-                        searchPlaceholder="Search division..."
-                        className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-                      />
+                      <Combobox options={divisionOptions} value={field.value} onChange={field.onChange} disabled={!watchedCompanyNo || isLoadingDivisions} placeholder={!watchedCompanyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "Select division"} searchPlaceholder="Search division..." className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none" />
                     )}
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Document No Yearly <span className="text-red-500">*</span></label>
-                  <Input {...form.register('documentNoYearly')} maxLength={30} className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold" placeholder="Enter document no" />
-                  {form.formState.errors.documentNoYearly && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.documentNoYearly.message}</p>}
+                <div className="space-y-0">
+                  <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document No Yearly <span className="text-red-500">*</span></label>
+                  <Input {...form.register('documentNoYearly')} maxLength={30} className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm" placeholder="Enter document no" />
+                  {form.formState.errors.documentNoYearly && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.documentNoYearly.message}</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Document Date <span className="text-red-500">*</span></label>
+                <div className="space-y-0">
+                  <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document Date <span className="text-red-500">*</span></label>
                   <Controller
                     name="documentDate"
                     control={form.control}
@@ -249,14 +236,14 @@ export function DealForm() {
                       <DatePicker date={field.value} onChange={field.onChange} placeholder="Select document date" />
                     )}
                   />
-                  {form.formState.errors.documentDate && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.documentDate.message}</p>}
+                  {form.formState.errors.documentDate && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.documentDate.message}</p>}
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Description <span className="text-red-500">*</span></label>
-                <Textarea {...form.register('description')} maxLength={1000} className="min-h-[140px] rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-bold resize-none" placeholder="Enter description" />
-                {form.formState.errors.description && <p className="text-[10px] text-red-500 font-bold ml-1">{form.formState.errors.description.message}</p>}
+              <div className="space-y-0">
+                <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Description <span className="text-red-500">*</span></label>
+                <Textarea {...form.register('description')} maxLength={1000} className="min-h-[140px] rounded-2xl border-slate-200 bg-white shadow-sm resize-none" placeholder="Enter description" />
+                {form.formState.errors.description && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.description.message}</p>}
               </div>
             </form>
           )}
@@ -266,18 +253,18 @@ export function DealForm() {
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-black text-slate-800 tracking-tight">
+            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight">
               Confirm {isEdit ? 'Update' : 'Save'}
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
               Do you want to {isEdit ? 'update' : 'save'}?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
-            <Button type="button" variant="outline" disabled={isSaving} onClick={() => setShowConfirm(false)} className="h-10 px-4 rounded-xl text-xs font-bold">
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
+            <Button type="button" variant="outline" disabled={isSaving} onClick={() => setShowConfirm(false)} className="h-10 px-4 rounded-xl text-xs font-medium">
               No
             </Button>
-            <Button type="button" disabled={isSaving} onClick={confirmSave} className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest gap-2">
+            <Button type="button" disabled={isSaving} onClick={confirmSave} className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs normal-case gap-0.5">
               {isSaving && <Loader2 size={14} className="animate-spin" />}
               Yes
             </Button>
@@ -291,11 +278,11 @@ export function DealForm() {
             <div className="w-14 h-14 bg-emerald-50 rounded-full border border-emerald-100/80 flex items-center justify-center mb-4 shadow-sm">
               <CheckCircle className="w-7 h-7 text-emerald-600" />
             </div>
-            <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">Success</h3>
+            <h3 className="text-lg font-medium text-slate-800 tracking-tight mb-1">Success</h3>
             <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">Data save sucessfully.</p>
           </div>
           <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 flex justify-center">
-            <Button type="button" onClick={() => navigate('/sales/deals')} className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest">
+            <Button type="button" onClick={() => navigate('/sales/deals')} className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs normal-case">
               OK
             </Button>
           </div>

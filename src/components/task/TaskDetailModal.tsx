@@ -144,7 +144,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           originator_user_No: d.originator?.id || null,
           owner_user_No: d.owner?.id || null,
           location_No: d.location?.operTaskLocationNo || null,
-          company: d.company || 'Glacier',
+          company: d.taskCompany?.taskCompanyNo || '',
+          createdDate: d.createdDate || d.created_date || null,
+          createdBy: { displayName: d.createdBy?.displayName || d.createdBy?.printingName || d.createdBy?.loginId || '' },
           start_date: d.startDate,
           end_date: d.endDate,
           isAllDay: d.isAllday ?? d.isAllDay ?? false,
@@ -225,12 +227,12 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
         {/* 1. Modal Sticky Top Header */}
         <div className="px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shadow-sm">
+            <span className="text-[10px] font-medium text-slate-700   bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shadow-sm">
               {task?.code || (task ? `CP-${100 + task.taskNo}` : 'LOADING')}
             </span>
             {task && (
               <span className={cn(
-                "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                "px-2.5 py-0.5 rounded-full text-[9px] font-medium  ",
                 task.status === 'Done' ? "bg-green-50 text-green-700 border border-green-200" :
                   task.status === 'In Progress' ? "bg-blue-50 text-blue-700 border border-blue-200" :
                     task.status === 'In Review' ? "bg-purple-50 text-purple-700 border border-purple-200" :
@@ -241,7 +243,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
             )}
           </div>
 
-          <div className="flex items-center gap-2 pr-8">
+          <div className="flex items-center gap-0.5 pr-8">
             {task && (
               <Button
                 type="button"
@@ -249,7 +251,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                   navigate(`/task/${task.taskNo}`);
                   onClose();
                 }}
-                className="h-8 text-xs font-black uppercase tracking-widest gap-1.5 px-4 rounded-xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-md shadow-[#006699]/10 hover:scale-[1.02] active:scale-95 transition-all"
+                className="h-8 text-xs font-medium normal-case gap-0.5 px-4 rounded-xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-md shadow-[#006699]/10 hover:scale-[1.02] active:scale-95 transition-all"
               >
                 <Edit size={13} strokeWidth={2.5} />
                 Edit Task
@@ -263,45 +265,57 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           {isLoading && !task ? (
             <div className="h-full flex flex-col items-center justify-center gap-3 py-20">
               <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
-              <p className="text-slate-800 font-black text-xs uppercase tracking-widest animate-pulse">Syncing Task Schema...</p>
+              <p className="text-slate-800 font-medium text-xs normal-case animate-pulse">Syncing Task Schema...</p>
             </div>
           ) : task ? (
-            <div className="p-6 space-y-6">
+            <div className="p-3 space-y-2">
               {/* TOP ROW: Title, desc, checklist vs specs sidebar */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
                 {/* Left Column (2/3 width) - Title, Description, Checklist, Collaborators */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="lg:col-span-2 space-y-2">
                   {/* Title & Description Block */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
                     <div>
-                      <h3 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
+                      <h3 className="text-lg font-medium text-slate-900 tracking-tight leading-tight">
                         {task.title}
                       </h3>
-                      <p className="text-[10px] font-bold text-slate-600 mt-1">
-                        Originator: <span className="text-slate-900 font-extrabold">{task.originatorDisplayName || 'Unknown'}</span>
-                      </p>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+                        <p className="text-[10px] font-medium text-slate-600">
+                          Originator: <span className="text-slate-900 font-medium">{task.originatorDisplayName || 'Unknown'}</span>
+                        </p>
+                        {task.createdBy?.displayName && (
+                          <p className="text-[10px] font-medium text-slate-600">
+                            Created By: <span className="text-slate-900 font-medium">{task.createdBy.displayName}</span>
+                          </p>
+                        )}
+                        {task.createdDate && (
+                          <p className="text-[10px] font-medium text-slate-600">
+                            Created On: <span className="text-slate-900 font-medium">{format(new Date(task.createdDate), 'MMM dd, yyyy')}</span>
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     {task.description ? (
-                      <div className="text-xs font-bold text-slate-800 leading-relaxed whitespace-pre-wrap bg-slate-50 border border-slate-200/60 p-4 rounded-xl shadow-inner">
+                      <div className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-wrap bg-slate-50 border border-slate-200/60 p-4 rounded-xl shadow-inner">
                         {task.description}
                       </div>
                     ) : (
-                      <p className="text-slate-500 font-black text-[11px] italic">No description provided for this task.</p>
+                      <p className="text-slate-500 font-medium text-[11px] italic">No description provided for this task.</p>
                     )}
                   </div>
 
                   {/* Checklist Block */}
                   {task.check_list && task.check_list.length > 0 && (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                      <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                      <div className="flex items-center gap-0.5 mb-2">
                         <div className="h-7 w-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 shadow-sm">
                           <CheckSquare size={15} />
                         </div>
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Checklist</h4>
+                        <h4 className="text-xs font-medium text-slate-900  ">Checklist</h4>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-0">
                         {task.check_list.map((item) => (
                           <div key={item.id} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200/60">
                             <input
@@ -311,7 +325,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                               className="h-4 w-4 rounded border-slate-300 text-[#006699] focus:ring-[#006699] disabled:opacity-80 cursor-not-allowed"
                             />
                             <span className={cn(
-                              "text-xs font-bold",
+                              "text-xs font-medium",
                               item.completed ? "text-slate-500 line-through font-medium" : "text-slate-900"
                             )}>
                               {item.description}
@@ -322,104 +336,38 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                     </div>
                   )}
 
-                  {/* Collaborators & Informed Lists (Desktop/Tablet View) */}
-                  <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Collaborators */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                      <h5 className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-3">Collaborators</h5>
-                      {task.collaborators && task.collaborators.length > 0 ? (
-                        <div className="space-y-2">
-                          {task.collaborators.map((c, i) => (
-                            <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                              <UserAvatar
-                                loginNo={c.loginNo}
-                                displayName={c.displayName}
-                                size="sm"
-                              />
-                              <div className="min-w-0">
-                                <p className="text-[10px] font-black text-slate-900 truncate leading-none">{c.displayName}</p>
-                                <span className="text-[8px] font-extrabold text-slate-600 truncate">{c.email}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-500 font-extrabold italic py-1">No collaborators assigned</p>
-                      )}
-                    </div>
-
-                    {/* Informed To */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                      <h5 className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-3">Informed To</h5>
-                      {task.informed_to && task.informed_to.length > 0 ? (
-                        <div className="space-y-2">
-                          {task.informed_to.map((inf, i) => (
-                            <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                              <UserAvatar
-                                loginNo={inf.loginNo}
-                                displayName={inf.displayName}
-                                size="sm"
-                              />
-                              <div className="min-w-0">
-                                <p className="text-[10px] font-black text-slate-900 truncate leading-none">{inf.displayName}</p>
-                                <span className="text-[8px] font-extrabold text-slate-600 truncate">{inf.email}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-500 font-extrabold italic py-1">No informed users assigned</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Attached Documents Block */}
-                  {task.attachments && task.attachments.length > 0 && (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="h-7 w-7 rounded-lg bg-[#006699]/5 border border-[#006699]/15 flex items-center justify-center text-[#006699] shadow-sm">
-                          <Paperclip size={15} />
-                        </div>
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Attached Documents</h4>
+                  {/* Task Execution Note */}
+                  {(task.executionNotes || task.execution_notes) && (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
+                      <div className="border-b border-slate-100 pb-1 flex items-center gap-0.5">
+                        <FileText className="text-[#006699]" size={16} />
+                        <h4 className="text-xs font-medium text-slate-900  ">Task Execution Note</h4>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {task.attachments.map((file: any) => (
-                          <div
-                            key={file.id}
-                            className="flex items-center justify-between p-3 bg-slate-50/40 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
-                                {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-baseline gap-2 mb-0.5">
-                                  <p className="text-xs font-bold text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
-                                  {file.size ? (
-                                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
-                                  ) : null}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
-                                  className="text-[9px] font-black text-[#006699] uppercase tracking-wider hover:underline block text-left"
-                                >
-                                  Open Document
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <p className="text-xs text-slate-700 font-semibold leading-relaxed whitespace-pre-line bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                        {task.executionNotes || task.execution_notes}
+                      </p>
                     </div>
                   )}
+
+                  {/* BOTTOM ROW: Full-width Task Activity & Audit Logs */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1 mt-2">
+                    <div className="border-b border-slate-100 pb-3 mb-2">
+                      <h4 className="text-xs font-medium text-slate-900  ">Activity & Effort Tracking</h4>
+                      <p className="text-[10px] font-medium text-slate-600">Post dynamic updates, ask questions, and record task timeline audits.</p>
+                    </div>
+                    <TaskActivity
+                      taskNo={task.taskNo}
+                      comments={task.task_comments}
+                      efforts={task.actual_efforts}
+                      onRefresh={fetchTaskDetails}
+                    />
+                  </div>
                 </div>
 
                 {/* Right Column (1/3 width) - Specifications Sidebar */}
-                <div className="space-y-6">
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-                    <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-widest mb-1">Task Specifications</h4>
+                <div className="space-y-2">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
+                    <h4 className="text-[10px] font-medium text-slate-700   mb-1">Task Specifications</h4>
 
                     {/* Owner Block */}
                     <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
@@ -429,18 +377,18 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         size="lg"
                       />
                       <div>
-                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-wider block">Owner</span>
-                        <h4 className="text-xs font-black text-slate-900 leading-tight">{task.assignedDisplayName || 'Unassigned'}</h4>
+                        <span className="text-[8px] font-medium text-slate-600   block">Owner</span>
+                        <h4 className="text-xs font-medium text-slate-900 leading-tight">{task.assignedDisplayName || 'Unassigned'}</h4>
                       </div>
                     </div>
 
                     {/* Dynamic Info Key-Value Rows */}
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-1 pt-1">
                       {/* Priority */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                        <span className="font-bold text-slate-600 flex items-center gap-1.5"><AlertCircle size={13} className="text-slate-500" /> Priority</span>
+                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><AlertCircle size={13} className="text-slate-500" /> Priority</span>
                         <span className={cn(
-                          "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest",
+                          "px-2 py-0.5 rounded-md text-[9px] font-medium  ",
                           task.priority_No >= 3 ? "bg-orange-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"
                         )}>
                           {task.priority}
@@ -455,11 +403,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || '#f1f5f9';
                         const textColor = getContrastColor(bgColor);
                         return (
-                          <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                            <span className="font-bold text-slate-600 flex items-center gap-1.5"><Layers size={13} className="text-slate-500" /> Category</span>
+                          <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                            <span className="font-medium text-slate-600 flex items-center gap-0.5"><Layers size={13} className="text-slate-500" /> Category</span>
                             <span
                               style={{ backgroundColor: bgColor, color: textColor }}
-                              className="font-black px-2 py-0.5 border border-black/5 rounded-md text-[10px] shadow-sm/50 uppercase tracking-wider"
+                              className="font-medium px-2 py-0.5 border border-black/5 rounded-md text-[10px] shadow-sm/50 normal-case"
                             >
                               {task.categoryName}
                             </span>
@@ -469,150 +417,162 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
                       {/* Type */}
                       {task.typeName && (
-                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                          <span className="font-bold text-slate-600 flex items-center gap-1.5"><FolderClosed size={13} className="text-slate-500" /> Type</span>
-                          <span className="font-black text-slate-955 bg-slate-50 px-2 py-0.5 border border-slate-200 rounded-md text-[10px]">{task.typeName}</span>
+                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><FolderClosed size={13} className="text-slate-500" /> Type</span>
+                          <span className="font-medium text-slate-955 bg-slate-50 px-2 py-0.5 border border-slate-200 rounded-md text-[10px]">{task.typeName}</span>
                         </div>
                       )}
 
                       {/* Company */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                        <span className="font-bold text-slate-600 flex items-center gap-1.5"><Building2 size={13} className="text-slate-500" /> Company</span>
-                        <span className="font-black text-slate-900">
+                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><Building2 size={13} className="text-slate-500" /> Company</span>
+                        <span className="font-medium text-slate-900">
                           {typeof task.company === 'object' && task.company
-                            ? ((task.company as any).companyName || (task.company as any).CompanyName || (task.company as any).name || 'Glacier')
-                            : (task.company || 'Glacier')}
+                            ? ((task.company as any).companyName || (task.company as any).CompanyName || (task.company as any).name || '')
+                            : (task.company || '')}
                         </span>
                       </div>
 
                       {/* Location */}
                       {task.location_No > 0 && (
-                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                          <span className="font-bold text-slate-600 flex items-center gap-1.5"><MapPin size={13} className="text-slate-500" /> Location</span>
-                          <span className="font-black text-slate-900">Ref ID: {task.location_No}</span>
+                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><MapPin size={13} className="text-slate-500" /> Location</span>
+                          <span className="font-medium text-slate-900">Ref ID: {task.location_No}</span>
                         </div>
                       )}
 
                       {/* Start Date */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                        <span className="font-bold text-slate-600 flex items-center gap-1.5"><Calendar size={13} className="text-slate-500" /> Start Date</span>
-                        <span className="font-black text-slate-900">{task.start_date ? format(new Date(task.start_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
+                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><Calendar size={13} className="text-slate-500" /> Start Date</span>
+                        <span className="font-medium text-slate-900">{task.start_date ? format(new Date(task.start_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
                       </div>
 
                       {/* Due Date */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
-                        <span className="font-bold text-slate-600 flex items-center gap-1.5"><Calendar size={13} className="text-slate-500" /> Due Date</span>
-                        <span className="font-black text-slate-900">{task.end_date ? format(new Date(task.end_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
+                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><Calendar size={13} className="text-slate-500" /> Due Date</span>
+                        <span className="font-medium text-slate-900">{task.end_date ? format(new Date(task.end_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
                       </div>
 
                       {/* Business Benefit Details */}
                       {task.is_business_benefit_applicable && (
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 space-y-2 mt-2">
-                          <span className="text-[8px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-1"><Coins size={11} /> Business Benefit</span>
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 space-y-0 mt-2">
+                          <span className="text-[8px] font-medium text-emerald-800   flex items-center gap-1"><Coins size={11} /> Business Benefit</span>
                           <div className="flex justify-between text-[11px]">
-                            <span className="font-bold text-slate-700">Period:</span>
-                            <span className="font-black text-slate-900">{task.benefit_period}</span>
+                            <span className="font-medium text-slate-700">Period:</span>
+                            <span className="font-medium text-slate-900">{task.benefit_period}</span>
                           </div>
                           <div className="flex justify-between text-[11px]">
-                            <span className="font-bold text-slate-700">Estimated:</span>
-                            <span className="font-black text-emerald-800">₹{task.estimated_benefit_amount}</span>
+                            <span className="font-medium text-slate-700">Estimated:</span>
+                            <span className="font-medium text-emerald-800">₹{task.estimated_benefit_amount}</span>
                           </div>
                           <div className="flex justify-between text-[11px]">
-                            <span className="font-bold text-slate-700">Actual:</span>
-                            <span className="font-black text-emerald-800">₹{task.actual_benefit_amount}</span>
+                            <span className="font-medium text-slate-700">Actual:</span>
+                            <span className="font-medium text-emerald-800">₹{task.actual_benefit_amount}</span>
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Collaborators & Informed Lists (Mobile View) */}
-                  <div className="grid grid-cols-1 gap-4 md:hidden">
-                    {/* Collaborators */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                      <h5 className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-3">Collaborators</h5>
-                      {task.collaborators && task.collaborators.length > 0 ? (
-                        <div className="space-y-2">
-                          {task.collaborators.map((c, i) => (
-                            <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                              <UserAvatar
-                                loginNo={c.loginNo}
-                                displayName={c.displayName}
-                                size="sm"
-                              />
-                              <div className="min-w-0">
-                                <p className="text-[10px] font-black text-slate-900 truncate leading-none">{c.displayName}</p>
-                                <span className="text-[8px] font-extrabold text-slate-600 truncate">{c.email}</span>
+                  {/* Collaborators & Informed Lists */}
+                  {(task.collaborators?.length > 0 || task.informed_to?.length > 0) && (
+                    <div className="grid grid-cols-1 gap-2">
+                      {/* Collaborators */}
+                      {task.collaborators && task.collaborators.length > 0 && (
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                          <h5 className="text-[10px] font-medium text-slate-700   mb-2">Collaborators</h5>
+                          <div className="space-y-0">
+                            {task.collaborators.map((c, i) => (
+                              <div key={i} className="flex items-center gap-0.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                                <UserAvatar
+                                  loginNo={c.loginNo}
+                                  displayName={c.displayName}
+                                  size="sm"
+                                />
+                                <div className="min-w-0 ml-1">
+                                  <p className="text-[10px] font-medium text-slate-900 truncate leading-none">{c.displayName}</p>
+                                  <span className="text-[8px] font-medium text-slate-600 truncate block">{c.email}</span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-500 font-extrabold italic py-1">No collaborators assigned</p>
+                      )}
+
+                      {/* Informed To */}
+                      {task.informed_to && task.informed_to.length > 0 && (
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                          <h5 className="text-[10px] font-medium text-slate-700   mb-2">Informed To</h5>
+                          <div className="space-y-0">
+                            {task.informed_to.map((inf, i) => (
+                              <div key={i} className="flex items-center gap-0.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                                <UserAvatar
+                                  loginNo={inf.loginNo}
+                                  displayName={inf.displayName}
+                                  size="sm"
+                                />
+                                <div className="min-w-0 ml-1">
+                                  <p className="text-[10px] font-medium text-slate-900 truncate leading-none">{inf.displayName}</p>
+                                  <span className="text-[8px] font-medium text-slate-600 truncate block">{inf.email}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
+                  )}
 
-                    {/* Informed To */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                      <h5 className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-3">Informed To</h5>
-                      {task.informed_to && task.informed_to.length > 0 ? (
-                        <div className="space-y-2">
-                          {task.informed_to.map((inf, i) => (
-                            <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                              <UserAvatar
-                                loginNo={inf.loginNo}
-                                displayName={inf.displayName}
-                                size="sm"
-                              />
+                  {/* Attached Documents Block */}
+                  {task.attachments && task.attachments.length > 0 && (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm mt-2">
+                      <div className="flex items-center gap-1 mb-2">
+                        <div className="h-7 w-7 rounded-lg bg-[#006699]/5 border border-[#006699]/15 flex items-center justify-center text-[#006699] shadow-sm">
+                          <Paperclip size={15} />
+                        </div>
+                        <h4 className="text-xs font-medium text-slate-900  ">Attached Documents</h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2">
+                        {task.attachments.map((file: any) => (
+                          <div
+                            key={file.id}
+                            className="flex items-center justify-between p-2.5 bg-slate-50/40 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+                                {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
+                              </div>
                               <div className="min-w-0">
-                                <p className="text-[10px] font-black text-slate-900 truncate leading-none">{inf.displayName}</p>
-                                <span className="text-[8px] font-extrabold text-slate-600 truncate">{inf.email}</span>
+                                <div className="flex items-baseline gap-0.5 mb-0.5">
+                                  <p className="text-xs font-medium text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {file.size ? (
+                                    <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">{formatFileSize(file.size)}</span>
+                                  ) : null}
+                                  <span className="text-slate-300 text-[9px]">•</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
+                                    className="text-[9px] font-medium text-[#006699] normal-case hover:underline block text-left"
+                                  >
+                                    Open
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-500 font-extrabold italic py-1">No informed users assigned</p>
-                      )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              </div>
-
-              {/* Task Execution Note */}
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
-                <div className="border-b border-slate-100 pb-2 flex items-center gap-2">
-                  <FileText className="text-[#006699]" size={16} />
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Task Execution Note</h4>
-                </div>
-                {task.executionNotes || task.execution_notes ? (
-                  <p className="text-xs text-slate-700 font-semibold leading-relaxed whitespace-pre-line bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                    {task.executionNotes || task.execution_notes}
-                  </p>
-                ) : (
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-wider italic text-center py-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                    No execution notes provided yet.
-                  </p>
-                )}
-              </div>
-
-              {/* BOTTOM ROW: Full-width Task Activity & Audit Logs */}
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-                <div className="border-b border-slate-100 pb-3 mb-2">
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Activity & Effort Tracking</h4>
-                  <p className="text-[10px] font-bold text-slate-600">Post dynamic updates, ask questions, and record task timeline audits.</p>
-                </div>
-                <TaskActivity
-                  taskNo={task.taskNo}
-                  comments={task.task_comments}
-                  efforts={task.actual_efforts}
-                  onRefresh={fetchTaskDetails}
-                />
               </div>
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center py-20">
-              <p className="text-slate-600 font-bold text-sm">Failed to load task details</p>
+              <p className="text-slate-600 font-medium text-sm">Failed to load task details</p>
             </div>
           )}
         </div>

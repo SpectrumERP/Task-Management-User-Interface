@@ -14,7 +14,7 @@ interface BoardProps {
 export function Board({ onAddTask, onTaskClick }: BoardProps) {
   const { tasks, moveTask, fetchTasks, isLoading: isTasksLoading, fetchFillValues } = useTaskStore();
   const { company: authCompanies } = useAuthStore();
-  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
+  const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
   const [statuses, setStatuses] = useState<{ StatusNo: number; Status: string }[]>([]);
   const [isStatusesLoading, setIsStatusesLoading] = useState(true);
 

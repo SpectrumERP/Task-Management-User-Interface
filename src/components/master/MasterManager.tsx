@@ -55,6 +55,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
 
@@ -73,7 +80,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   const { fillValues } = useTaskStore();
   const { company: authCompanies } = useAuthStore();
-  const companyNo = authCompanies?.[0]?.companyNo || authCompanies?.[0]?.CompanyNo || 1;
+  const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
@@ -102,7 +109,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [currentStartsWith, setCurrentStartsWith] = useState<string>('');
   const [companyViewMode, setCompanyViewMode] = useState<'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment'>('list');
   const [isLoadingMoreCompanies, setIsLoadingMoreCompanies] = useState(false);
-  const [pageSize, setPageSize] = useState<number>(20);
+  const [pageSize] = useState<number>(20);
   const [apiCountries, setApiCountries] = useState<any[]>([]);
   const [_isLoadingCountries, setIsLoadingCountries] = useState(false);
   const [apiStates, setApiStates] = useState<any[]>([]);
@@ -110,7 +117,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [apiCities, setApiCities] = useState<any[]>([]);
   const [_isLoadingCities, setIsLoadingCities] = useState(false);
   const [apiTaskCompanies, setApiTaskCompanies] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
 
   // Task Company specific states
   const [tcCompanyName, setTcCompanyName] = useState('');
@@ -532,22 +539,6 @@ export function MasterManager({ type }: MasterManagerProps) {
         setIsLoadingMoreCompanies(false);
       }
     }
-  };
-
-  const handlePageSizeChange = (newSize: number) => {
-    // Clear loaded range cache for the new page size layout
-    loadedRanges.current = { min: 999999, max: 0 };
-
-    setPageSize(newSize);
-    setIsLoadingMoreCompanies(true);
-    fetchCompanies({
-      pageSize: newSize,
-      appendMode: 'replace',
-      cursorRowNo: undefined,
-      direction: undefined
-    }).finally(() => {
-      setIsLoadingMoreCompanies(false);
-    });
   };
 
   // Trigger fetch and reset ranges when view mode changes
@@ -1417,6 +1408,9 @@ export function MasterManager({ type }: MasterManagerProps) {
       setLocState('');
       setLocCity('');
       setLocPin('');
+      setLocMapUrl('');
+      setLocLatitude('');
+      setLocLongitude('');
       setLocErrors({});
       setEditingLocationIndex(null);
       setContactName('');
@@ -1883,7 +1877,7 @@ export function MasterManager({ type }: MasterManagerProps) {
     if (type !== 'company') return [];
 
     // Sort all matching companies alphabetically by name
-    const sorted = [...filteredList].sort((a, b) =>
+    const sorted = [...paginatedList].sort((a, b) =>
       (a.name || '').localeCompare(b.name || '')
     );
 
@@ -2052,33 +2046,34 @@ export function MasterManager({ type }: MasterManagerProps) {
       if (!portAlias || portAlias === '') {
         newErrors.portAlias = 'Port Alias is required';
       }
-      if (!countryNo || countryNo === 'none' || countryNo === '') {
-        newErrors.countryNo = 'Country is required';
-      }
-      if (!stateNo || stateNo === 'none' || stateNo === '') {
-        newErrors.stateNo = 'State is required';
-      }
-      if (!cityNo || cityNo === 'none' || cityNo === '') {
-        newErrors.cityNo = 'City is required';
-      }
+      // if (!countryNo || countryNo === 'none' || countryNo === '') {
+      //   newErrors.countryNo = 'Country is required';
+      // }
+      // if (!stateNo || stateNo === 'none' || stateNo === '') {
+      //   newErrors.stateNo = 'State is required';
+      // }
+      // if (!cityNo || cityNo === 'none' || cityNo === '') {
+      //   newErrors.cityNo = 'City is required';
+      // }
     } else if (type === 'location') {
       if (!address1.trim()) {
         newErrors.address1 = 'Address Line 1 is required';
       }
-      if (!pinCode.trim()) {
-        newErrors.pinCode = 'PIN / ZIP Code is required';
-      } else if (pinCode.trim().length !== 6) {
-        newErrors.pinCode = 'PIN / ZIP Code must be exactly 6 characters';
+      // if (!pinCode.trim()) {
+      //   newErrors.pinCode = 'PIN / ZIP Code is required';
+      // } else 
+      if (pinCode.trim().length !== 10) {
+        newErrors.pinCode = 'PIN / ZIP Code must be exactly 10 characters';
       }
-      if (!countryNo || countryNo === 'none' || countryNo === '') {
-        newErrors.countryNo = 'Country is required';
-      }
-      if (!stateNo || stateNo === 'none' || stateNo === '') {
-        newErrors.stateNo = 'State is required';
-      }
-      if (!cityNo || cityNo === 'none' || cityNo === '') {
-        newErrors.cityNo = 'City is required';
-      }
+      // if (!countryNo || countryNo === 'none' || countryNo === '') {
+      //   newErrors.countryNo = 'Country is required';
+      // }
+      // if (!stateNo || stateNo === 'none' || stateNo === '') {
+      //   newErrors.stateNo = 'State is required';
+      // }
+      // if (!cityNo || cityNo === 'none' || cityNo === '') {
+      //   newErrors.cityNo = 'City is required';
+      // }
       if (!inchargeNo || inchargeNo === 'none' || inchargeNo === '') {
         newErrors.inchargeNo = 'Incharge Lead is required';
       }
@@ -2089,20 +2084,20 @@ export function MasterManager({ type }: MasterManagerProps) {
       if (companyLocations.length === 0) {
         newErrors.companyLocations = 'At least one location is required';
       }
-      if (companyAttachments.length === 0) {
-        newErrors.attachments = 'At least one attachment is mandatory';
-      }
-    } else if (type === 'state') {
-      if (!stateCountryNo || stateCountryNo === 'none' || stateCountryNo === '') {
-        newErrors.stateCountryNo = 'Country is required';
-      }
-    } else if (type === 'city') {
-      if (!cityCityCountryNo || cityCityCountryNo === 'none' || cityCityCountryNo === '') {
-        newErrors.cityCityCountryNo = 'Country is required';
-      }
-      if (!cityCityStateNo || cityCityStateNo === 'none' || cityCityStateNo === '') {
-        newErrors.cityCityStateNo = 'State is required';
-      }
+      // if (companyAttachments.length === 0) {
+      //   newErrors.attachments = 'At least one attachment is mandatory';
+      // }
+      // } else if (type === 'state') {
+      //   if (!stateCountryNo || stateCountryNo === 'none' || stateCountryNo === '') {
+      //     newErrors.stateCountryNo = 'Country is required';
+      //   }
+      // } else if (type === 'city') {
+      //   if (!cityCityCountryNo || cityCityCountryNo === 'none' || cityCityCountryNo === '') {
+      //     newErrors.cityCityCountryNo = 'Country is required';
+      //   }
+      //   if (!cityCityStateNo || cityCityStateNo === 'none' || cityCityStateNo === '') {
+      //     newErrors.cityCityStateNo = 'State is required';
+      //   }
     } else if (type === 'task-company') {
       if (!tcCompanyName.trim()) {
         newErrors.tcCompanyName = 'Company Name is required';
@@ -2292,11 +2287,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             ports: computedPorts,
             attachment: computedAttachments
           };
-          try {
-            await apiService.post('/api/master/business-entities/save', payload);
-          } catch (apiErr) {
-            console.error("Update API save failed:", apiErr);
-          }
+          await apiService.post('/api/master/business-entities/save', payload);
 
           await fetchCompanies();
         } else if (type === 'task-company') {
@@ -2483,16 +2474,12 @@ export function MasterManager({ type }: MasterManagerProps) {
             ports: computedPorts,
             attachment: computedAttachments
           };
-          try {
-            await apiService.post('/api/master/business-entities/save', payload);
-          } catch (apiErr) {
-            console.error("Add API save failed:", apiErr);
-          }
+          await apiService.post('/api/master/business-entities/save', payload);
 
           await fetchCompanies();
         } else if (type === 'task-company') {
           const payload = {
-            operTaskCompanyNo: parseInt(id) || null,
+            operTaskCompanyNo: id ? parseInt(id) : null,
             companyName: tcCompanyName,
             aliasName: tcAliasName,
             locationName: tcLocationName,
@@ -2585,14 +2572,14 @@ export function MasterManager({ type }: MasterManagerProps) {
                 newFieldErrors.address2 = msg;
               } else if (propLower === 'address3') {
                 newFieldErrors.address3 = msg;
-              } else if (propLower === 'cityno' || propLower === 'city') {
-                newFieldErrors.cityNo = msg;
-              } else if (propLower === 'pincode' || propLower === 'zip') {
-                newFieldErrors.pinCode = msg;
-              } else if (propLower === 'stateno' || propLower === 'state') {
-                newFieldErrors.stateNo = msg;
-              } else if (propLower === 'countryno' || propLower === 'country') {
-                newFieldErrors.countryNo = msg;
+                // } else if (propLower === 'cityno' || propLower === 'city') {
+                //   newFieldErrors.cityNo = msg;
+                // } else if (propLower === 'pincode' || propLower === 'zip') {
+                //   newFieldErrors.pinCode = msg;
+                // } else if (propLower === 'stateno' || propLower === 'state') {
+                //   newFieldErrors.stateNo = msg;
+                // } else if (propLower === 'countryno' || propLower === 'country') {
+                //   newFieldErrors.countryNo = msg;
               } else if (propLower === 'regionno' || propLower === 'locationregion') {
                 newFieldErrors.locationRegion = msg;
               } else if (propLower === 'description') {
@@ -2690,22 +2677,15 @@ export function MasterManager({ type }: MasterManagerProps) {
   const addCompanyLocation = () => {
     const errs: Record<string, string> = {};
     if (!locAddress.trim()) errs.address = 'Location address is required';
-    if (!locCountry || locCountry === 'none') errs.country = 'Country is required';
-    if (!locState || locState === 'none') errs.state = 'State is required';
-    if (!locCity || locCity === 'none') errs.city = 'City is required';
-    if (!locPin.trim()) {
-      errs.pin = 'PIN Code is required';
-    }
-
-    if (locMapUrl.trim() && locMapUrl.trim().length > 2000) {
-      errs.mapUrl = 'Map URL must be 2000 characters or less';
-    }
-    if (locLatitude.trim() && Number.isNaN(Number(locLatitude))) {
-      errs.latitude = 'Latitude must be a valid number';
-    }
-    if (locLongitude.trim() && Number.isNaN(Number(locLongitude))) {
-      errs.longitude = 'Longitude must be a valid number';
-    }
+    // if (!locCountry || locCountry === 'none') errs.country = 'Country is required';
+    // if (!locState || locState === 'none') errs.state = 'State is required';
+    // if (!locCity || locCity === 'none') errs.city = 'City is required';
+    // if (!locPin.trim()) {
+    //   errs.pin = 'PIN Code is required';
+    // } else 
+    // if (locPin.trim().length !== 6) {
+    //   errs.pin = 'PIN Code must be exactly 10 characters';
+    // }
 
     if (Object.keys(errs).length > 0) {
       setLocErrors(errs);
@@ -2815,14 +2795,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
     if (!contactDesignation.trim()) errs.designation = 'Designation is required';
     if (!contactDepartment.trim()) errs.department = 'Department is required';
-    if (!contactCountry.trim() || contactCountry === 'none') errs.country = 'Country is required';
-    if (!contactState.trim() || contactState === 'none') errs.state = 'State is required';
-    if (!contactCity.trim() || contactCity === 'none') errs.city = 'City is required';
-    if (!contactPinCode.trim()) {
-      errs.pinCode = 'PIN Code is required';
-    } else if (contactPinCode.trim().length !== 6) {
-      errs.pinCode = 'PIN Code must be exactly 6 characters';
-    }
+
 
     if (Object.keys(errs).length > 0) {
       setContactErrors(errs);
@@ -3005,39 +2978,33 @@ export function MasterManager({ type }: MasterManagerProps) {
             HEADER SECTION (General Information)
            ========================================================================= */}
         <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
+          <div className="flex items-center gap-0.5 pb-2 border-b border-slate-200/80">
             <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
               <Building size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">General Business Entity Information</h3>
+              <h3 className="text-sm font-medium text-slate-800 tracking-tight">General Business Entity Information</h3>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* System Code */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Code</label>
-              <Input
-                disabled
-                value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : ''}
-                className="bg-slate-100/80 border-slate-200/50 h-10 text-xs font-bold text-slate-500 rounded-xl cursor-not-allowed select-none"
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Code</label>
+              <Input disabled value={editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : ''}
+                className="bg-slate-100/80 border-slate-200/50 h-10 rounded-xl cursor-not-allowed select-none"
               />
             </div>
 
             {/* Business Entity Name */}
-            <div className="space-y-1 md:col-span-2">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Business Entity Name <span className="text-red-500">*</span></label>
-              <Input
-                placeholder="Enter Business Entity Name..."
-                value={name}
-                maxLength={100}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-                }}
+            <div className="space-y-0 md:col-span-2">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Business Entity Name <span className="text-red-500">*</span></label>
+              <Input placeholder="Enter Business Entity Name" value={name} maxLength={100} onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+              }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                   errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -3045,67 +3012,49 @@ export function MasterManager({ type }: MasterManagerProps) {
             </div>
 
             {/* Type */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Business Entity Type <span className="text-red-500">*</span></label>
-              <select
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Business Entity Type <span className="text-red-500">*</span></label>
+              <Combobox
+                options={businessEntityTypes.map((t: any) => ({ label: t.operCRMBusinessEntityTypeName, value: t.operCRMBusinessEntityTypeNo.toString() }))}
                 value={companyType}
-                onChange={(e) => {
-                  setCompanyType(e.target.value);
+                onChange={(val) => {
+                  setCompanyType(val);
                   if (errors.companyType) setErrors(prev => ({ ...prev, companyType: '' }));
                 }}
+                placeholder="Select business entity type"
                 className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   errors.companyType && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
-              >
-                <option value="">Select Business Entity Type</option>
-                {businessEntityTypes.map((t: any) => (
-                  <option key={t.operCRMBusinessEntityTypeNo} value={t.operCRMBusinessEntityTypeNo.toString()}>
-                    {t.operCRMBusinessEntityTypeName}
-                  </option>
-                ))}
-              </select>
+              />
               {errors.companyType && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.companyType}</p>}
             </div>
 
             {/* Timezone */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Timezone</label>
-              <select
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Timezone</label>
+              <Combobox
+                options={timeZones.map((tz: any) => ({ label: tz.crmTimeZoneName, value: tz.crmTimeZoneNo.toString() }))}
                 value={companyTimeZoneNo}
-                onChange={(e) => setCompanyTimeZoneNo(e.target.value)}
-                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              >
-                <option value="">Select Timezone</option>
-                {timeZones.map((tz: any) => (
-                  <option key={tz.crmTimeZoneNo} value={tz.crmTimeZoneNo.toString()}>
-                    {tz.crmTimeZoneName}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setCompanyTimeZoneNo(val)}
+                placeholder="Select timezone"
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+              />
             </div>
 
             {/* Credit Insurance Limit */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Credit Insurance Limit</label>
-              <Input
-                type="number"
-                placeholder="Insurance Limit..."
-                value={creditLimit || ''}
-                onChange={(e) => setCreditLimit(e.target.value ? Number(e.target.value) : null)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Credit Insurance Limit</label>
+              <Input type="number" placeholder="Enter credit insurance limit" value={creditLimit || ''} onChange={(e) => setCreditLimit(e.target.value ? Number(e.target.value) : null)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
               />
             </div>
 
             {/* VAT / GST No */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">VAT / GST No</label>
-              <Input
-                placeholder="Registration Number..."
-                value={companyVatGst}
-                maxLength={30}
-                onChange={(e) => setCompanyVatGst(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">VAT / GST No</label>
+              <Input placeholder="Enter VAT No. / GST No." value={companyVatGst} maxLength={30} onChange={(e) => setCompanyVatGst(e.target.value)}
+                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
               />
             </div>
           </div>
@@ -3116,12 +3065,12 @@ export function MasterManager({ type }: MasterManagerProps) {
            ========================================================================= */}
         <div className="space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
               <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
                 <MapPin size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-black text-slate-800 tracking-tight">Locations <span className="text-red-500">*</span></h3>
+                <h3 className="text-sm font-medium text-slate-800 tracking-tight">Locations <span className="text-red-500">*</span></h3>
                 {/* <p className="text-[10px] text-slate-500 font-semibold leading-none">Branch offices, warehouses, and industrial plants</p> */}
               </div>
             </div>
@@ -3141,7 +3090,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 setLocLongitude('');
                 setLocationModalOpen(true);
               }}
-              className="h-8 rounded-lg px-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs gap-1.5 flex items-center shadow"
+              className="h-8 rounded-lg px-3 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs gap-0.5 flex items-center shadow"
             >
               <Plus size={14} />
               Add Location
@@ -3149,16 +3098,10 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
 
           {errors.companyLocations && (
-            <p className="text-[10px] text-red-500 font-bold ml-1">{errors.companyLocations}</p>
+            <p className="text-[10px] text-red-500 font-medium ml-1">{errors.companyLocations}</p>
           )}
 
-          {companyLocations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/20 text-slate-400 text-center">
-              <MapPin size={32} className="stroke-1 mb-2 text-slate-300" />
-              <p className="text-xs font-bold">No Locations Added</p>
-              <p className="text-[10px] text-slate-500 font-medium">At least one branch address or warehouse is required.</p>
-            </div>
-          ) : (
+          {companyLocations.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {companyLocations.map((loc, idx) => (
                 <div key={idx} className="bg-white border border-slate-200/70 rounded-2xl p-4 shadow-sm relative group hover:border-[#006699]/40 transition-colors">
@@ -3185,10 +3128,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                     <div className="p-2 bg-slate-100 rounded-xl text-slate-600 shrink-0">
                       <Building size={16} />
                     </div>
-                    <div className="space-y-1.5 pr-14">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-0.5 pr-14">
+                      <div className="flex items-center gap-0.5">
                         <span className={cn(
-                          "px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wide",
+                          "px-2 py-0.5 rounded-md text-[9px] font-medium  tracking-wide",
                           getLocationTypeName(loc.type) === 'Office' ? "bg-blue-50 text-blue-700 border border-blue-100" :
                             getLocationTypeName(loc.type) === 'Warehouse' ? "bg-amber-50 text-amber-700 border border-amber-100" :
                               "bg-emerald-50 text-emerald-700 border border-emerald-100"
@@ -3196,8 +3139,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                           {getLocationTypeName(loc.type)}
                         </span>
                       </div>
-                      <p className="text-xs font-bold text-slate-700 leading-snug">{loc.address}</p>
-                      <div className="text-[10px] text-slate-500 font-bold flex flex-wrap items-center gap-1.5">
+                      <p className="text-xs font-medium text-slate-700 leading-snug">{loc.address}</p>
+                      <div className="text-[10px] text-slate-500 font-medium flex flex-wrap items-center gap-0.5">
                         <span>{loc.city}</span>
                         <span>•</span>
                         <span>{loc.state}</span>
@@ -3219,13 +3162,13 @@ export function MasterManager({ type }: MasterManagerProps) {
            ========================================================================= */}
         <div className="space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
               <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
                 <User size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-black text-slate-800 tracking-tight">Contact Persons</h3>
-                <p className="text-[10px] text-slate-500 font-semibold leading-none">Corporate representatives & point of contacts</p>
+                <h3 className="text-sm font-medium text-slate-800 tracking-tight">Contact Persons</h3>
+                {/* <p className="text-[10px] text-slate-500 font-semibold leading-none">Corporate representatives & point of contacts</p> */}
               </div>
             </div>
             <Button
@@ -3245,20 +3188,14 @@ export function MasterManager({ type }: MasterManagerProps) {
                 setContactErrors({});
                 setContactModalOpen(true);
               }}
-              className="h-8 rounded-lg px-3 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs gap-1.5 flex items-center shadow"
+              className="h-8 rounded-lg px-3 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs gap-0.5 flex items-center shadow"
             >
               <Plus size={14} />
               Add Contact Person
             </Button>
           </div>
 
-          {companyContacts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/20 text-slate-400 text-center">
-              <User size={32} className="stroke-1 mb-2 text-slate-300" />
-              <p className="text-xs font-bold">No Contact Persons Added</p>
-              <p className="text-[10px] text-slate-500 font-medium">Add representative contacts for active business communications.</p>
-            </div>
-          ) : (
+          {companyContacts.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {companyContacts.map((c, idx) => (
                 <div key={idx} className="bg-white border border-slate-200/70 rounded-2xl p-4 shadow-sm relative group hover:border-[#006699]/40 transition-colors">
@@ -3282,21 +3219,21 @@ export function MasterManager({ type }: MasterManagerProps) {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#006699]/10 text-[#006699] flex items-center justify-center font-black text-xs shrink-0 uppercase">
+                    <div className="w-9 h-9 rounded-xl bg-[#006699]/10 text-[#006699] flex items-center justify-center font-medium text-xs shrink-0 uppercase">
                       {c.name ? c.name.substring(0, 2) : 'CP'}
                     </div>
-                    <div className="space-y-1.5 pr-14 min-w-0">
+                    <div className="space-y-0.5 pr-14 min-w-0">
                       <div>
-                        <h4 className="text-xs font-black text-slate-800 leading-snug truncate">{c.name || c.contactName}</h4>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200/50">
+                        <h4 className="text-xs font-medium text-slate-800 leading-snug truncate">{c.name || c.contactName}</h4>
+                        <div className="flex flex-wrap items-center gap-0.5 mt-1">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-medium border border-slate-200/50">
                             {c.designation}
                           </span>
-                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200/50">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-medium border border-slate-200/50">
                             {c.department}
                           </span>
                           <span className={cn(
-                            "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border",
+                            "px-1.5 py-0.5 rounded text-[8px] font-medium   border",
                             (c.status || 'Active') === 'Active'
                               ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                               : "bg-slate-50 text-slate-500 border-slate-200/60"
@@ -3305,7 +3242,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                           </span>
                         </div>
                       </div>
-                      <div className="text-[10px] font-semibold space-y-1 text-slate-500">
+                      <div className="text-[10px] font-semibold space-y-0 text-slate-500">
                         <p className="flex items-center gap-1"><span className="text-slate-400">Phone:</span> <strong className="text-slate-700">{c.phone}</strong></p>
                         <p className="flex items-center gap-1"><span className="text-slate-400">Email:</span> <strong className="text-[#006699] select-all">{c.email}</strong></p>
                         {c.address && (
@@ -3324,44 +3261,41 @@ export function MasterManager({ type }: MasterManagerProps) {
             PORTS SECTION (Import / Export Port Tags)
            ========================================================================= */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
+          <div className="flex items-center gap-0.5 pb-2 border-b border-slate-200/80">
             <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
               <Globe size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">Preffered Ports</h3>
-              <p className="text-[10px] text-slate-500 font-semibold leading-none">Preffered ports for shipping & logistics</p>
+              <h3 className="text-sm font-medium text-slate-800 tracking-tight">Preferred Ports</h3>
+              {/* <p className="text-[10px] text-slate-500 font-semibold leading-none">Preffered ports for shipping & logistics</p> */}
             </div>
           </div>
 
           <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
-            <div className="flex gap-2">
-              <select
+            <div className="flex gap-0.5">
+              <Combobox
+                options={portsList.map((p: string) => ({ label: p, value: p }))}
                 value={selectedPortName}
-                onChange={(e) => setSelectedPortName(e.target.value)}
-                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-              >
-                <option value="">-- Choose Port to Assign --</option>
-                {portsList.map((p: string, idx: number) => (
-                  <option key={idx} value={p}>{p}</option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedPortName(val)}
+                placeholder="Select Port"
+                className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+              />
               <Button
                 type="button"
                 onClick={addCompanyPort}
                 disabled={!selectedPortName}
-                className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shrink-0 shadow disabled:opacity-50"
+                className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs shrink-0 shadow disabled:opacity-50"
               >
                 Assign
               </Button>
             </div>
 
             {companyPorts.length === 0 ? (
-              <p className="text-[10px] text-slate-400 font-bold italic text-center py-2">No ports assigned to this company profile.</p>
+              <p className="text-[10px] text-slate-400 font-medium italic text-center py-2">No ports assigned to this company profile.</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-0.5">
                 {companyPorts.map((port, idx) => (
-                  <div key={idx} className="bg-white border border-[#006699]/15 text-[#006699] text-xs font-black rounded-lg px-2.5 py-1 flex items-center gap-1.5 shadow-sm">
+                  <div key={idx} className="bg-white border border-[#006699]/15 text-[#006699] text-xs font-medium rounded-lg px-2.5 py-1 flex items-center gap-0.5 shadow-sm">
                     <span>{port.portName}</span>
                     <button
                       type="button"
@@ -3382,12 +3316,12 @@ export function MasterManager({ type }: MasterManagerProps) {
             ATTACHMENTS SECTION (File Upload with Attachment Service)
            ========================================================================= */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
+          <div className="flex items-center gap-0.5 pb-2 border-b border-slate-200/80">
             <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
               <FileText size={18} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">Document Attachments <span className="text-red-500">*</span></h3>
+              <h3 className="text-sm font-medium text-slate-800 tracking-tight">Document Attachments <span className="text-red-500">*</span></h3>
 
             </div>
           </div>
@@ -3425,24 +3359,35 @@ export function MasterManager({ type }: MasterManagerProps) {
             </div>
 
             {/* List of Attachments */}
-            <div className="md:col-span-2 space-y-2">
+            <div className="md:col-span-2 space-y-0">
               {companyAttachments.length === 0 ? (
                 <div className="flex h-[140px] items-center justify-center border border-slate-200 rounded-2xl bg-slate-50/20 text-slate-400 italic text-xs font-semibold">
                   At least one attachment is mandatory to save.
                 </div>
               ) : (
-                <div className="max-h-[160px] overflow-y-auto space-y-1.5 pr-2 scrollbar-thin">
+                <div className="max-h-[160px] overflow-y-auto space-y-0.5 pr-2 scrollbar-thin">
                   {companyAttachments.map((att, idx) => (
                     <div key={idx} className="bg-white border border-slate-150 rounded-xl p-3 flex items-center justify-between gap-3 shadow-sm hover:border-[#006699]/30 transition-colors">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-0.5.5 min-w-0">
                         <div className="p-2 bg-slate-100 rounded-lg text-slate-600 shrink-0">
                           <FileText size={16} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-black text-slate-700 truncate leading-snug">{att.fileName}</p>
-                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono">
-                            {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached File'}
-                          </p>
+                          <div className="flex items-baseline gap-0.5 mb-0.5">
+                            <p className="text-xs font-medium text-slate-700 truncate leading-snug">{att.fileName}</p>
+                            <span className="text-[10px] text-slate-400 font-medium normal-case font-mono">
+                              ({att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached File'})
+                            </span>
+                          </div>
+                          {(att.id || att.docNo) && (
+                            <button
+                              type="button"
+                              onClick={() => attachmentService.downloadAttachment(att.id || att.docNo, att.fileName || 'document')}
+                              className="text-[9px] font-medium text-[#006699] hover:underline block text-left mt-0.5"
+                            >
+                              View document
+                            </button>
+                          )}
                         </div>
                       </div>
                       <button
@@ -3493,7 +3438,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         <Dialog open={locationModalOpen} onOpenChange={setLocationModalOpen}>
           <DialogContent className="rounded-3xl max-w-md p-6 border-none shadow-2xl bg-white select-none">
             <DialogHeader className="pb-3 border-b border-slate-150">
-              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
                 <MapPin size={18} className="text-[#006699]" />
                 {editingLocationIndex !== null ? 'Edit Location Address' : 'Add Location Address'}
               </DialogTitle>
@@ -3501,143 +3446,146 @@ export function MasterManager({ type }: MasterManagerProps) {
 
             <div className="space-y-4 py-4">
               {/* Type */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Location Type</label>
-                <select
+              <div className="space-y-0">
+                <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Location Type</label>
+                <Combobox
+                  options={(businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []).map((lt: any) => ({ label: lt.locationTypeName, value: lt.locationTypeNo.toString() }))}
                   value={locType}
-                  onChange={(e) => setLocType(e.target.value)}
-                  className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
-                >
-                  <option value="">Select Location Type</option>
-                  {(businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []).map((lt: any) => (
-                    <option key={lt.locationTypeNo} value={lt.locationTypeNo.toString()}>{lt.locationTypeName}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setLocType(val)}
+                  placeholder="Select Location Type"
+                  className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                />
               </div>
 
               {/* Address */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Street Address</label>
+              <div className="space-y-0">
+                <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Address</label>
                 <textarea
                   rows={2}
-                  placeholder="Enter branch street address..."
+                  placeholder="Enter address"
                   value={locAddress}
                   onChange={(e) => {
                     setLocAddress(e.target.value);
                     if (locErrors.address) setLocErrors(prev => ({ ...prev, address: '' }));
                   }}
                   className={cn(
-                    "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 min-h-[50px] resize-y",
+                    "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 min-h-[50px] resize-y",
                     locErrors.address && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
                 />
-                {locErrors.address && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.address}</p>}
+                {locErrors.address && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.address}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {/* Country */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Country</label>
-                  <select
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Country</label>
+                  <Combobox
+                    options={countries.map((c: any) => ({ label: c.countryName, value: c.countryName }))}
                     value={locCountry}
-                    onChange={async (e) => {
-                      const countryName = e.target.value;
-                      setLocCountry(countryName);
+                    onChange={async (val) => {
+                      setLocCountry(val);
                       setLocState('');
                       setLocCity('');
                       setLocStatesList([]);
                       setLocCitiesList([]);
                       if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
 
-                      const foundCountry = countries.find((c: any) => c.countryName === countryName);
+                      const foundCountry = countries.find((c: any) => c.countryName === val);
                       if (foundCountry) {
                         const statesData = await fetchStatesByCountry(foundCountry.countryNo);
                         setLocStatesList(statesData);
                       }
                     }}
+                    placeholder="Select country"
                     className={cn(
-                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       locErrors.country && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
-                  >
-                    <option value="">Select Country</option>
-                    {countries.map((c: any) => (
-                      <option key={c.countryNo} value={c.countryName}>{c.countryName}</option>
-                    ))}
-                  </select>
-                  {locErrors.country && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.country}</p>}
+                  />
+                  {locErrors.country && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.country}</p>}
                 </div>
 
                 {/* State */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">State</label>
-                  <select
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">State</label>
+                  <Combobox
+                    options={locStatesList.map((s: any) => ({ label: s.stateName, value: s.stateName }))}
                     value={locState}
-                    onChange={async (e) => {
-                      const stateName = e.target.value;
-                      setLocState(stateName);
+                    onChange={async (val) => {
+                      setLocState(val);
                       setLocCity('');
                       setLocCitiesList([]);
                       if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
 
-                      const foundState = locStatesList.find((s: any) => s.stateName === stateName);
+                      const foundState = locStatesList.find((s: any) => s.stateName === val);
                       if (foundState) {
                         const citiesData = await fetchCitiesByState(foundState.stateNo);
                         setLocCitiesList(citiesData);
                       }
                     }}
+                    placeholder="Select state"
                     className={cn(
-                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       locErrors.state && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
-                  >
-                    <option value="">Select State</option>
-                    {locStatesList.map((s: any) => (
-                      <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
-                    ))}
-                  </select>
-                  {locErrors.state && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.state}</p>}
+                  />
+                  {locErrors.state && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.state}</p>}
                 </div>
 
                 {/* City */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">City</label>
-                  <select
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">City</label>
+                  <Combobox
+                    options={locCitiesList.map((ci: any) => ({ label: ci.cityName, value: ci.cityName }))}
                     value={locCity}
-                    onChange={(e) => {
-                      setLocCity(e.target.value);
+                    onChange={(val) => {
+                      setLocCity(val);
                       if (locErrors.city) setLocErrors(prev => ({ ...prev, city: '' }));
                     }}
+                    placeholder="Select city"
                     className={cn(
-                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       locErrors.city && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
-                  >
-                    <option value="">Select City</option>
-                    {locCitiesList.map((ci: any) => (
-                      <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
-                    ))}
-                  </select>
-                  {locErrors.city && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.city}</p>}
+                  />
+                  {locErrors.city && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.city}</p>}
                 </div>
 
                 {/* PIN Code */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">PIN / ZIP Code</label>
-                  <Input
-                    placeholder="ZIP Code..."
-                    value={locPin}
-                    maxLength={10}
-                    onChange={(e) => {
-                      setLocPin(e.target.value);
-                      if (locErrors.pin) setLocErrors(prev => ({ ...prev, pin: '' }));
-                    }}
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">PIN / ZIP Code</label>
+                  <Input placeholder="Enter PIN / ZIP Code" value={locPin} maxLength={10} onChange={(e) => {
+                    setLocPin(e.target.value);
+                    if (locErrors.pin) setLocErrors(prev => ({ ...prev, pin: '' }));
+                  }}
                     className={cn(
-                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       locErrors.pin && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
-                  {locErrors.pin && <p className="text-[9px] text-red-500 font-bold ml-1">{locErrors.pin}</p>}
+                  {locErrors.pin && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.pin}</p>}
+                </div>
+                {/* Map URL */}
+                <div className="space-y-0 col-span-2">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Map URL</label>
+                  <Input placeholder="Enter Map URL" value={locMapUrl} maxLength={2000} onChange={(e) => setLocMapUrl(e.target.value)}
+                    className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                  />
+                </div>
+                {/* Latitude */}
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Latitude</label>
+                  <Input placeholder="Enter Latitude" value={locLatitude} maxLength={15} onChange={(e) => setLocLatitude(e.target.value)}
+                    className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                  />
+                </div>
+                {/* Longitude */}
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Longitude</label>
+                  <Input placeholder="Enter Longitude" value={locLongitude} maxLength={15} onChange={(e) => setLocLongitude(e.target.value)}
+                    className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                  />
                 </div>
               </div>
 
@@ -3700,11 +3648,11 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
             </div>
 
-            <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-2 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
-              <Button type="button" variant="ghost" onClick={() => setLocationModalOpen(false)} className="rounded-xl h-9 text-xs font-bold text-slate-500 hover:bg-slate-100">
+            <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
+              <Button type="button" variant="ghost" onClick={() => setLocationModalOpen(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
                 Cancel
               </Button>
-              <Button type="button" onClick={addCompanyLocation} className="rounded-xl h-9 text-xs font-bold bg-[#006699] hover:bg-[#005580] text-white">
+              <Button type="button" onClick={addCompanyLocation} className="rounded-xl h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white">
                 {editingLocationIndex !== null ? 'Save Changes' : 'Add Location'}
               </Button>
             </DialogFooter>
@@ -3715,242 +3663,210 @@ export function MasterManager({ type }: MasterManagerProps) {
         <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
           <DialogContent className="rounded-3xl max-w-lg p-6 border-none shadow-2xl bg-white select-none">
             <DialogHeader className="pb-3 border-b border-slate-150">
-              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
                 <User size={18} className="text-[#006699]" />
                 {editingContactIndex !== null ? 'Edit Contact Person' : 'Add Contact Person'}
               </DialogTitle>
-              <DialogDescription className="text-[11px] text-slate-500 font-semibold leading-tight">
+              {/* <DialogDescription className="text-[11px] text-slate-500 font-semibold leading-tight">
                 {editingContactIndex !== null ? 'Modify representative profile.' : 'Add representative profile and point of contact details.'}
-              </DialogDescription>
+              </DialogDescription> */}
             </DialogHeader>
 
             <div className="space-y-4 py-4 max-h-[380px] overflow-y-auto pr-2 scrollbar-thin">
               <div className="grid grid-cols-2 gap-3">
                 {/* Contact Name */}
-                <div className="space-y-1 col-span-2">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Representative Name</label>
-                  <Input
-                    placeholder="Enter full name..."
-                    value={contactName}
-                    onChange={(e) => {
-                      setContactName(e.target.value);
-                      if (contactErrors.name) setContactErrors(prev => ({ ...prev, name: '' }));
-                    }}
+                <div className="space-y-0 col-span-2">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Representative Name</label>
+                  <Input placeholder="Enter representative name" value={contactName} onChange={(e) => {
+                    setContactName(e.target.value);
+                    if (contactErrors.name) setContactErrors(prev => ({ ...prev, name: '' }));
+                  }}
                     className={cn(
-                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
-                  {contactErrors.name && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.name}</p>}
+                  {contactErrors.name && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.name}</p>}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Designation</label>
-                  <Input
-                    placeholder="Enter designation..."
-                    value={contactDesignation}
-                    onChange={(e) => {
-                      setContactDesignation(e.target.value);
-                      if (contactErrors.designation) setContactErrors(prev => ({ ...prev, designation: '' }));
-                    }}
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Designation</label>
+                  <Input placeholder="Enter designation" value={contactDesignation} onChange={(e) => {
+                    setContactDesignation(e.target.value);
+                    if (contactErrors.designation) setContactErrors(prev => ({ ...prev, designation: '' }));
+                  }}
                     className={cn(
-                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.designation && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
-                  {contactErrors.designation && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.designation}</p>}
+                  {contactErrors.designation && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.designation}</p>}
                 </div>
 
                 {/* Department - Text Field */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Department</label>
-                  <Input
-                    placeholder="Enter department..."
-                    value={contactDepartment}
-                    onChange={(e) => {
-                      setContactDepartment(e.target.value);
-                      if (contactErrors.department) setContactErrors(prev => ({ ...prev, department: '' }));
-                    }}
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Department</label>
+                  <Input placeholder="Enter department" value={contactDepartment} onChange={(e) => {
+                    setContactDepartment(e.target.value);
+                    if (contactErrors.department) setContactErrors(prev => ({ ...prev, department: '' }));
+                  }}
                     className={cn(
-                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.department && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
-                  {contactErrors.department && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.department}</p>}
+                  {contactErrors.department && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.department}</p>}
                 </div>
 
                 {/* Phone */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Direct Phone</label>
-                  <Input
-                    placeholder="Enter phone number..."
-                    value={contactPhone}
-                    onChange={(e) => {
-                      setContactPhone(e.target.value);
-                      if (contactErrors.phone) setContactErrors(prev => ({ ...prev, phone: '' }));
-                    }}
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Phone</label>
+                  <Input placeholder="Enter phone" value={contactPhone} onChange={(e) => {
+                    setContactPhone(e.target.value);
+                    if (contactErrors.phone) setContactErrors(prev => ({ ...prev, phone: '' }));
+                  }}
                     className={cn(
-                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.phone && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
-                  {contactErrors.phone && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.phone}</p>}
+                  {contactErrors.phone && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.phone}</p>}
                 </div>
 
                 {/* Email */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Email Address</label>
-                  <Input
-                    placeholder="Enter email address..."
-                    value={contactEmail}
-                    onBlur={validateEmailBlur}
-                    onChange={(e) => {
-                      setContactEmail(e.target.value);
-                      if (contactErrors.email) setContactErrors(prev => ({ ...prev, email: '' }));
-                    }}
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Email</label>
+                  <Input placeholder="Enter email" value={contactEmail} onBlur={validateEmailBlur} onChange={(e) => {
+                    setContactEmail(e.target.value);
+                    if (contactErrors.email) setContactErrors(prev => ({ ...prev, email: '' }));
+                  }}
                     className={cn(
-                      "bg-white border-slate-200 hover:border-slate-355 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border-slate-200 hover:border-slate-355 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.email && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
-                  {contactErrors.email && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.email}</p>}
+                  {contactErrors.email && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.email}</p>}
                 </div>
 
                 {/* Address */}
-                <div className="space-y-1 col-span-2">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Contact Address</label>
-                  <Input
-                    placeholder="Enter street address..."
-                    value={contactAddress}
-                    onChange={(e) => setContactAddress(e.target.value)}
-                    className="bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                <div className="space-y-0 col-span-2">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Address</label>
+                  <Input placeholder="Enter address" value={contactAddress} onChange={(e) => setContactAddress(e.target.value)}
+                    className="bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
                   />
                 </div>
 
                 {/* Country */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Country</label>
-                  <select
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Country</label>
+                  <Combobox
+                    options={countries.map((c: any) => ({ label: c.countryName, value: c.countryName }))}
                     value={contactCountry}
-                    onChange={async (e) => {
-                      const countryName = e.target.value;
-                      setContactCountry(countryName);
+                    onChange={async (val) => {
+                      setContactCountry(val);
                       setContactState('');
                       setContactCity('');
                       setContactStatesList([]);
                       setContactCitiesList([]);
                       if (contactErrors.country) setContactErrors(prev => ({ ...prev, country: '' }));
 
-                      const foundCountry = countries.find((c: any) => c.countryName === countryName);
+                      const foundCountry = countries.find((c: any) => c.countryName === val);
                       if (foundCountry) {
                         const statesData = await fetchStatesByCountry(foundCountry.countryNo);
                         setContactStatesList(statesData);
                       }
                     }}
+                    placeholder="Select country"
                     className={cn(
-                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.country && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
-                  >
-                    <option value="">Select Country</option>
-                    {countries.map((c: any) => (
-                      <option key={c.countryNo} value={c.countryName}>{c.countryName}</option>
-                    ))}
-                  </select>
-                  {contactErrors.country && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.country}</p>}
+                  />
+                  {contactErrors.country && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.country}</p>}
                 </div>
 
                 {/* State */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">State</label>
-                  <select
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">State</label>
+                  <Combobox
+                    options={contactStatesList.map((s: any) => ({ label: s.stateName, value: s.stateName }))}
                     value={contactState}
-                    onChange={async (e) => {
-                      const stateName = e.target.value;
-                      setContactState(stateName);
+                    onChange={async (val) => {
+                      setContactState(val);
                       setContactCity('');
                       setContactCitiesList([]);
                       if (contactErrors.state) setContactErrors(prev => ({ ...prev, state: '' }));
 
-                      const foundState = contactStatesList.find((s: any) => s.stateName === stateName);
+                      const foundState = contactStatesList.find((s: any) => s.stateName === val);
                       if (foundState) {
                         const citiesData = await fetchCitiesByState(foundState.stateNo);
                         setContactCitiesList(citiesData);
                       }
                     }}
+                    placeholder="Select state"
                     className={cn(
-                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.state && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
-                  >
-                    <option value="">Select State</option>
-                    {contactStatesList.map((s: any) => (
-                      <option key={s.stateNo} value={s.stateName}>{s.stateName}</option>
-                    ))}
-                  </select>
-                  {contactErrors.state && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.state}</p>}
+                  />
+                  {contactErrors.state && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.state}</p>}
                 </div>
 
                 {/* City */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">City</label>
-                  <select
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">City</label>
+                  <Combobox
+                    options={contactCitiesList.map((ci: any) => ({ label: ci.cityName, value: ci.cityName }))}
                     value={contactCity}
-                    onChange={(e) => {
-                      setContactCity(e.target.value);
+                    onChange={(val) => {
+                      setContactCity(val);
                       if (contactErrors.city) setContactErrors(prev => ({ ...prev, city: '' }));
                     }}
+                    placeholder="Select city"
                     className={cn(
-                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.city && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
-                  >
-                    <option value="">Select City</option>
-                    {contactCitiesList.map((ci: any) => (
-                      <option key={ci.cityNo} value={ci.cityName}>{ci.cityName}</option>
-                    ))}
-                  </select>
-                  {contactErrors.city && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.city}</p>}
+                  />
+                  {contactErrors.city && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.city}</p>}
                 </div>
 
                 {/* PIN Code */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">PIN Code <span className="text-red-500">*</span></label>
-                  <Input
-                    placeholder="Enter PIN Code..."
-                    value={contactPinCode}
-                    maxLength={10}
-                    onChange={(e) => {
-                      setContactPinCode(e.target.value);
-                      if (contactErrors.pinCode) setContactErrors(prev => ({ ...prev, pinCode: '' }));
-                    }}
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">PIN/Zip Code</label>
+                  <Input placeholder="Enter PIN/Zip Code" value={contactPinCode} maxLength={10} onChange={(e) => {
+                    setContactPinCode(e.target.value);
+                    if (contactErrors.pinCode) setContactErrors(prev => ({ ...prev, pinCode: '' }));
+                  }}
                     className={cn(
-                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                      "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                       contactErrors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                     )}
                   />
-                  {contactErrors.pinCode && <p className="text-[9px] text-red-500 font-bold ml-1">{contactErrors.pinCode}</p>}
+                  {contactErrors.pinCode && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.pinCode}</p>}
                 </div>
 
                 {/* Status dropdown */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider ml-0.5">Status</label>
-                  <select
+                <div className="space-y-0">
+                  <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Status</label>
+                  <Combobox
+                    options={[
+                      { label: 'Active', value: 'Active' },
+                      { label: 'Inactive', value: 'Inactive' }
+                    ]}
                     value={contactStatus}
-                    onChange={(e) => setContactStatus(e.target.value)}
-                    className="bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 text-xs font-bold text-slate-700 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                    onChange={(val) => setContactStatus(val)}
+                    placeholder="Select status"
+                    className="bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                  />
                 </div>
               </div>
             </div>
 
-            <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-2 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
-              <Button type="button" variant="ghost" onClick={() => setContactModalOpen(false)} className="rounded-xl h-9 text-xs font-bold text-slate-500 hover:bg-slate-100">
+            <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
+              <Button type="button" variant="ghost" onClick={() => setContactModalOpen(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
                 Cancel
               </Button>
-              <Button type="button" onClick={addCompanyContact} className="rounded-xl h-9 text-xs font-bold bg-[#006699] hover:bg-[#005580] text-white">
+              <Button type="button" onClick={addCompanyContact} className="rounded-xl h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white">
                 {editingContactIndex !== null ? 'Save Changes' : 'Add Contact'}
               </Button>
             </DialogFooter>
@@ -3967,27 +3883,23 @@ export function MasterManager({ type }: MasterManagerProps) {
     return (
       <>
         {/* Disabled System Code */}
-        <div className="flex items-center gap-2 px-1 mb-4">
-          <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Code:</label>
-          <div className="text-xs font-bold text-slate-500 select-none">
+        <div className="flex items-center gap-0.5 px-1 mb-4">
+          <label className="text-[11px] font-medium text-slate-700 normal-case">Code:</label>
+          <div className="text-xs font-medium text-slate-500 select-none">
             {editingId ? (list.find((c: any) => c.id === editingId)?.code || '') : 'AUTO-GEN-CODE'}
           </div>
         </div>
 
         {/* Standard Name Input */}
         {type !== 'task-company' && (
-          <div className="space-y-1">
-            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">{type.replace(/-/g, ' ')} Name</label>
-            <Input
-              placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name...`}
-              value={name}
-              maxLength={50}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-              }}
+          <div className="space-y-0">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">{type.replace(/-/g, ' ')} Name</label>
+            <Input placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name`} value={name} maxLength={50} onChange={(e) => {
+              setName(e.target.value);
+              if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+            }}
               className={cn(
-                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                 errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
               )}
             />
@@ -3997,78 +3909,71 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* ----------------- PORT EXTRA FIELDS ----------------- */}
         {type === 'port' && (<>
-          <div className="space-y-1">
-            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Port Alias</label>
-            <Input
-              placeholder="Enter Port Alias"
-              value={portAlias}
-              maxLength={10}
-              onChange={(e) => {
-                setPortAlias(e.target.value);
-                if (errors.portAlias) setErrors(prev => ({ ...prev, portAlias: '' }));
-              }}
-              className={cn("bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+          <div className="space-y-0">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Port Alias</label>
+            <Input placeholder="Enter Port Alias" value={portAlias} maxLength={10} onChange={(e) => {
+              setPortAlias(e.target.value);
+              if (errors.portAlias) setErrors(prev => ({ ...prev, portAlias: '' }));
+            }}
+              className={cn("bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                 errors.portAlias && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500")}
             />
             {errors.portAlias && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.portAlias}</p>}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
-              <Combobox
-                options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-                  label: c.countryName || '',
-                  value: (c.countryNo || '').toString()
-                }))}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Country</label>
+              <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                label: c.countryName || '',
+                value: (c.countryNo || '').toString()
+              }))}
                 value={countryNo}
                 onChange={handlePortCountryChange}
-                placeholder="Select Country"
-                searchPlaceholder="Search country..."
+                placeholder="Select country"
+                searchPlaceholder="Search country"
                 className={cn(
-                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500"
                 )}
               />
               {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
-              <Combobox
-                options={portStatesList.map((s: any) => ({
-                  label: s.stateName || '',
-                  value: (s.stateNo || '').toString()
-                }))}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">State / Province</label>
+              <Combobox options={portStatesList.map((s: any) => ({
+                label: s.stateName || '',
+                value: (s.stateNo || '').toString()
+              }))}
                 value={stateNo}
                 onChange={handlePortStateChange}
                 disabled={!countryNo}
-                placeholder={countryNo ? "Select State" : "Select country first"}
-                searchPlaceholder="Search state..."
+                placeholder={countryNo ? "Select state" : "Select country first"}
+                searchPlaceholder="Search state"
                 className={cn(
-                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500"
                 )}
               />
               {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
-              <Combobox
-                options={portCitiesList.map((c: any) => ({
-                  label: c.cityName || '',
-                  value: (c.cityNo || '').toString()
-                }))}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">City</label>
+              <Combobox options={portCitiesList.map((c: any) => ({
+                label: c.cityName || '',
+                value: (c.cityNo || '').toString()
+              }))}
                 value={cityNo}
                 onChange={(val) => {
                   setCityNo(val);
                   if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
                 }}
                 disabled={!stateNo}
-                placeholder={stateNo ? "Select City" : "Select state first"}
-                searchPlaceholder="Search city..."
+                placeholder={stateNo ? "Select city" : "Select state first"}
+                searchPlaceholder="Search city"
                 className={cn(
-                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:border-red-500"
                 )}
               />
@@ -4081,55 +3986,74 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* Color Coding Option (Category only) */}
         {type === 'category' && (
-          <div className="space-y-2.5">
-            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 block">Color Code</label>
+          <div className="space-y-0.5">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 block">Color Code</label>
             <div className="flex flex-wrap items-center gap-3">
-              {/* Premium Color Presets */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setColor('')}
-                  className={cn(
-                    "h-7 w-7 rounded-full border-2 transition-all hover:scale-110 active:scale-95 flex items-center justify-center bg-slate-100 text-slate-400",
-                    color === '' ? "border-slate-800 scale-105" : "border-slate-200 hover:border-slate-300"
-                  )}
-                  title="No Color"
-                >
-                  <X size={12} strokeWidth={3} />
-                </button>
-                {[
-                  { hex: '#3b82f6', name: 'Blue' },
-                  { hex: '#ef4444', name: 'Red' },
-                  { hex: '#10b981', name: 'Green' },
-                  { hex: '#f59e0b', name: 'Orange' },
-                  { hex: '#8b5cf6', name: 'Purple' },
-                  { hex: '#ec4899', name: 'Pink' },
-                  { hex: '#6366f1', name: 'Indigo' },
-                  { hex: '#06b6d4', name: 'Cyan' },
-                ].map((preset) => (
-                  <button
-                    key={preset.hex}
-                    type="button"
-                    onClick={() => setColor(preset.hex)}
-                    className={cn(
-                      "h-7 w-7 rounded-full border-2 transition-all hover:scale-110 active:scale-95",
-                      color === preset.hex ? "border-slate-800 scale-105" : "border-transparent"
-                    )}
-                    style={{ backgroundColor: preset.hex }}
-                    title={preset.name}
-                  />
-                ))}
-              </div>
-              {/* Custom Color Input */}
-              <div className="flex items-center gap-2 ml-auto border border-slate-200 rounded-xl px-2.5 py-1 bg-slate-50/50">
-                <input
-                  type="color"
-                  value={color || '#000000'}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-6 h-6 border-0 bg-transparent cursor-pointer rounded"
-                />
-                <span className="text-[10px] font-mono font-black text-slate-500 uppercase">{color || 'NONE'}</span>
-              </div>
+              <Select
+                value={
+                  color === '' ? 'none' :
+                    [
+                      '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
+                      '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
+                    ].includes(color) ? color : 'custom'
+                }
+                onValueChange={(val) => {
+                  if (val === 'none') setColor('');
+                  else if (val === 'custom') setColor('#000000'); // default custom
+                  else setColor(val);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[220px] h-10 bg-white border-slate-200 rounded-xl focus:ring-[#006699]/20">
+                  <SelectValue placeholder="Select color code" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <div className="flex items-center gap-2">
+                      <X size={14} className="text-slate-400" />
+                      <span>None</span>
+                    </div>
+                  </SelectItem>
+                  {[
+                    { hex: '#93c5fd', name: 'Blue' },
+                    { hex: '#fca5a5', name: 'Red' },
+                    { hex: '#86efac', name: 'Green' },
+                    { hex: '#fdba74', name: 'Orange' },
+                    { hex: '#d8b4fe', name: 'Purple' },
+                    { hex: '#f9a8d4', name: 'Pink' },
+                    { hex: '#a5b4fc', name: 'Indigo' },
+                    { hex: '#67e8f9', name: 'Cyan' },
+                  ].map((preset) => (
+                    <SelectItem key={preset.hex} value={preset.hex}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: preset.hex }} />
+                        <span>{preset.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full border border-slate-200 bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
+                      <span>Custom Color</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Custom Color Input - only show if 'custom' is selected */}
+              {color !== '' && ![
+                '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
+                '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
+              ].includes(color) && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-xl bg-slate-50">
+                    <input
+                      type="color"
+                      value={color || '#000000'}
+                      onChange={(e) => setColor(e.target.value)}
+                      className="w-7 h-7 border-0 bg-transparent cursor-pointer rounded"
+                    />
+                    <span className="text-xs font-mono font-medium text-slate-500 uppercase">{color}</span>
+                  </div>
+                )}
             </div>
           </div>
         )}
@@ -4138,43 +4062,40 @@ export function MasterManager({ type }: MasterManagerProps) {
         {type === 'category' && (
           <div className="space-y-5 pt-2">
             <div className="flex flex-col sm:flex-row gap-6 pt-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0.5">
                 <Checkbox
                   id="business-benefit"
                   checked={isBusinessBenefitApplicable}
                   onCheckedChange={(checked) => setIsBusinessBenefitApplicable(!!checked)}
                 />
-                <label htmlFor="business-benefit" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
+                <label htmlFor="business-benefit" className="text-xs font-medium text-slate-700 cursor-pointer select-none">
                   Business Benefit
                 </label>
               </div>
             </div>
 
-            {/* Checklist Descriptions Array Editor */}
-            <div className="space-y-2.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center">
-                Checklist Items (Descriptions Array)
-                <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+            {/* Checklist Editor */}
+            <div className="space-y-0.5">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center">
+                Checklist Items
+                <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
                   {checklist.length}
                 </span>
               </label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add description..."
-                  value={newChecklistItem}
-                  onChange={(e) => setNewChecklistItem(e.target.value)}
+              <div className="flex gap-0.5">
+                <Input placeholder="Enter description" value={newChecklistItem} onChange={(e) => setNewChecklistItem(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       addChecklistItem();
                     }
                   }}
-                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
                 />
                 <Button
                   type="button"
                   onClick={addChecklistItem}
-                  className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                  className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs"
                 >
                   Add
                 </Button>
@@ -4204,12 +4125,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                               className="h-4 w-4 rounded border-slate-300 shrink-0"
                             />
                             {isEditing ? (
-                              <Input
-                                value={tempEditText}
-                                onChange={(e) => setTempEditText(e.target.value)}
-                                placeholder="Edit checklist item..."
+                              <Input value={tempEditText} onChange={(e) => setTempEditText(e.target.value)}
+                                placeholder="Edit checklist"
                                 className={cn(
-                                  "h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
+                                  "h-8 text-xs font-medium text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
                                   !tempEditText.trim() && "border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400"
                                 )}
                                 onKeyDown={(e) => {
@@ -4233,14 +4152,14 @@ export function MasterManager({ type }: MasterManagerProps) {
                                 autoFocus
                               />
                             ) : (
-                              <span className={cn("text-xs font-bold text-slate-750 truncate", isChecked && "line-through text-slate-400 font-semibold")}>
+                              <span className={cn("text-xs font-medium text-slate-750 truncate", isChecked && "line-through text-slate-400 font-semibold")}>
                                 {desc}
                               </span>
                             )}
                           </div>
 
                           {/* Actions */}
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-0.5 shrink-0">
                             {isEditing ? (
                               <>
                                 <button
@@ -4307,41 +4226,37 @@ export function MasterManager({ type }: MasterManagerProps) {
               )}
             </div>
 
-            {/* Sub-tasks Descriptions Array Editor */}
-            <div className="space-y-2.5">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1 flex items-center">
-                Sub-tasks (Descriptions Array)
-                <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+            {/* Sub-tasks Editor */}
+            <div className="space-y-0.5">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center">
+                Sub-tasks
+                <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
                   {subtasks.length}
                 </span>
               </label>
-              <div className="flex gap-2">
-                <Combobox
-                  options={((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]).map((t: any) => ({
-                    label: t.operTaskTypeName || t.taskTypeName || t.TaskTypeName || t.name || '',
-                    value: (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString()
-                  }))}
+              <div className="flex gap-0.5">
+                <Combobox options={((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]).map((t: any) => ({
+                  label: t.operTaskTypeName || t.taskTypeName || t.TaskTypeName || t.name || '',
+                  value: (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString()
+                }))}
                   value={newSubtaskTaskTypeNo}
                   onChange={(val) => setNewSubtaskTaskTypeNo(val)}
-                  placeholder="Select task type..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-[220px] min-w-[220px] transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  placeholder="Select task type"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-[220px] min-w-[220px] transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                 />
-                <Input
-                  placeholder="Add sub-task description..."
-                  value={newSubtaskItem}
-                  onChange={(e) => setNewSubtaskItem(e.target.value)}
+                <Input placeholder="Enter sub-task description" value={newSubtaskItem} onChange={(e) => setNewSubtaskItem(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       addSubtaskItem();
                     }
                   }}
-                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
                 />
                 <Button
                   type="button"
                   onClick={addSubtaskItem}
-                  className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                  className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs"
                 >
                   Add
                 </Button>
@@ -4375,23 +4290,20 @@ export function MasterManager({ type }: MasterManagerProps) {
                         >
                           <div className="flex items-center gap-3 min-w-0 flex-1 pl-1">
                             {isEditing ? (
-                              <div className="flex items-center gap-2 w-full">
-                                <Combobox
-                                  options={((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]).map((t: any) => ({
-                                    label: t.operTaskTypeName || t.taskTypeName || t.TaskTypeName || t.name || '',
-                                    value: (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString()
-                                  }))}
+                              <div className="flex items-center gap-0.5 w-full">
+                                <Combobox options={((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]).map((t: any) => ({
+                                  label: t.operTaskTypeName || t.taskTypeName || t.TaskTypeName || t.name || '',
+                                  value: (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString()
+                                }))}
                                   value={tempEditSubtaskTaskTypeNo}
                                   onChange={(val) => setTempEditSubtaskTaskTypeNo(val)}
-                                  placeholder="Select task type..."
-                                  className="h-8 rounded-lg border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-[220px] min-w-[220px] transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                                  placeholder="Select task type"
+                                  className="h-8 rounded-lg border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-[220px] min-w-[220px] transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                                 />
-                                <Input
-                                  value={tempEditText}
-                                  onChange={(e) => setTempEditText(e.target.value)}
-                                  placeholder="Edit sub-task description..."
+                                <Input value={tempEditText} onChange={(e) => setTempEditText(e.target.value)}
+                                  placeholder="Edit sub-task description"
                                   className={cn(
-                                    "h-8 text-xs font-bold text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
+                                    "h-8 text-xs font-medium text-slate-700 bg-white border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] px-2.5 rounded-lg w-full transition-all",
                                     !tempEditText.trim() && "border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400"
                                   )}
                                   onKeyDown={(e) => {
@@ -4418,13 +4330,13 @@ export function MasterManager({ type }: MasterManagerProps) {
                                 />
                               </div>
                             ) : (
-                              <div className="min-w-0 flex items-center gap-2">
+                              <div className="min-w-0 flex items-center gap-0.5">
                                 {taskTypeLabel && (
-                                  <span className="inline-flex items-center rounded-full bg-[#e1ecf7] px-2 py-0.5 text-[10px] font-extrabold text-[#006699] shrink-0">
+                                  <span className="inline-flex items-center rounded-full bg-[#e1ecf7] px-2 py-0.5 text-[10px] font-medium text-[#006699] shrink-0">
                                     {taskTypeLabel}
                                   </span>
                                 )}
-                                <span className="text-xs font-bold text-slate-750 truncate">
+                                <span className="text-xs font-medium text-slate-750 truncate">
                                   {desc}
                                 </span>
                               </div>
@@ -4432,7 +4344,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                           </div>
 
                           {/* Actions */}
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-0.5 shrink-0">
                             {isEditing ? (
                               <>
                                 <button
@@ -4514,57 +4426,48 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* ----------------- PRIORITY EXTRA FIELDS ----------------- */}
         {type === 'priority' && (
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Priority Duration Value</label>
-              <Input
-                type="number"
-                min={1}
-                value={priorityDuration ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? null : Number(e.target.value);
-                  setPriorityDuration(val);
-                  if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
-                }}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Default Estimation Duration</label>
+              <Input type="number" min={1} maxLength={3} value={priorityDuration ?? ''} onChange={(e) => {
+                const val = e.target.value === '' ? null : Number(e.target.value);
+                setPriorityDuration(val);
+                if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
+              }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                   errors.priorityDuration && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
               {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
             </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Frequency Unit</label>
-              <Combobox
-                options={(fillValues?.frequency || []).map((f: any) => ({
-                  label: f.FrequencyName || f.Frequency || f.name || '',
-                  value: (f.FrequencyNo || f.id || '').toString()
-                }))}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Default Estimation Unit</label>
+              <Combobox options={(fillValues?.frequency || []).map((f: any) => ({
+                label: f.FrequencyName || f.Frequency || f.name || '',
+                value: (f.FrequencyNo || f.id || '').toString()
+              }))}
                 value={priorityFrequencyNo}
                 onChange={(val) => {
                   setPriorityFrequencyNo(val);
                   if (errors.priorityFrequencyNo) setErrors(prev => ({ ...prev, priorityFrequencyNo: '' }));
                 }}
-                placeholder="Select frequency..."
+                placeholder="Select default estimation unit"
                 className={cn(
-                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.priorityFrequencyNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
               {errors.priorityFrequencyNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityFrequencyNo}</p>}
             </div>
-            <div className="space-y-1 col-span-2">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Number</label>
-              <Input
-                type="number"
-                min={1}
-                value={sequence ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? null : Number(e.target.value);
-                  setSequence(val);
-                  if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
-                }}
+            <div className="space-y-0 col-span-2">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Sequence Number</label>
+              <Input type="number" min={1} maxLength={5} value={sequence ?? ''} onChange={(e) => {
+                const val = e.target.value === '' ? null : Number(e.target.value);
+                setSequence(val);
+                if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
+              }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                   errors.sequence && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -4575,14 +4478,10 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* ----------------- BUSINESS ENTITY TYPE EXTRA FIELDS ----------------- */}
         {type === 'business-entity-type' && (
-          <div className="space-y-1">
-            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Description</label>
-            <Textarea
-              placeholder="Enter business entity type description..."
-              value={description}
-              maxLength={500}
-              onChange={(e) => setDescription(e.target.value)}
-              className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+          <div className="space-y-0">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Description</label>
+            <Textarea placeholder="Enter Description" value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)}
+              className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
             />
           </div>
         )}
@@ -4590,17 +4489,14 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* ----------------- FOLDER EXTRA FIELDS ----------------- */}
         {type === 'folder' && (
           <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Folder Description</label>
-              <Input
-                placeholder="Enter short directory purpose..."
-                value={description}
-                onChange={(e) => {
-                  setDescription(e.target.value);
-                  if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
-                }}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Folder Description</label>
+              <Input placeholder="Enter Folder Description" value={description} onChange={(e) => {
+                setDescription(e.target.value);
+                if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+              }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                   errors.description && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -4608,39 +4504,29 @@ export function MasterManager({ type }: MasterManagerProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Parent Folder</label>
-                <Combobox
-                  options={[
-                    { label: 'No Parent (Root)', value: 'none' },
-                    ...(Array.isArray(folderFillValues?.folders) ? folderFillValues.folders :
-                      Array.isArray(folderFillValues?.parentFolder) ? folderFillValues.parentFolder :
-                        Array.isArray(folderFillValues?.data) ? folderFillValues.data :
-                          Array.isArray(folderFillValues) ? folderFillValues : []).map((f: any) => ({
-                            label: f.folderName || f.taskFolderName || f.FolderName || f.name || '',
-                            value: (f.taskFolderNo || f.TaskFolderNo || f.id || '').toString()
-                          }))
-                  ]}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Parent Folder</label>
+                <Combobox options={[{ label: 'No Parent (Root)', value: 'none' }, ...(Array.isArray(folderFillValues?.folders) ? folderFillValues.folders : Array.isArray(folderFillValues?.parentFolder) ? folderFillValues.parentFolder : Array.isArray(folderFillValues?.data) ? folderFillValues.data : Array.isArray(folderFillValues) ? folderFillValues : []).map((f: any) => ({
+                  label: f.folderName || f.taskFolderName || f.FolderName || f.name || '',
+                  value: (f.taskFolderNo || f.TaskFolderNo || f.id || '').toString()
+                }))
+                ]}
                   value={parentFolderNo}
                   onChange={setParentFolderNo}
-                  placeholder="Select Parent Folder..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  placeholder="Select Parent Folder"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Sequence Order</label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={sequence ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? null : Number(e.target.value);
-                    setSequence(val);
-                    if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
-                  }}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Sequence Order</label>
+                <Input type="number" min={1} value={sequence ?? ''} onChange={(e) => {
+                  const val = e.target.value === '' ? null : Number(e.target.value);
+                  setSequence(val);
+                  if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
+                }}
                   className={cn(
-                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                     errors.sequence && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
                 />
@@ -4653,14 +4539,11 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* ----------------- USER GROUP EXTRA FIELDS ----------------- */}
         {type === 'user-group' && (
           <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Group Description</label>
-              <Input
-                placeholder="E.g., Core team that reviews task approvals..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Group Description</label>
+              <Input placeholder="Enter Group Description" value={description} onChange={(e) => setDescription(e.target.value)}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                   errors.description && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -4670,9 +4553,9 @@ export function MasterManager({ type }: MasterManagerProps) {
             <div className="space-y-3" id="form-group-members">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
-                  <h4 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Group Members</h4>
+                  <h4 className="text-[11px] font-medium text-slate-700  ">Group Members</h4>
                 </div>
-                <Button type="button" onClick={addGridUser} variant="ghost" size="sm" className="h-7 text-[9px] font-bold text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
+                <Button type="button" onClick={addGridUser} variant="ghost" size="sm" className="h-7 text-[9px] font-medium text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
                   <UserPlus size={12} /> Add
                 </Button>
               </div>
@@ -4680,9 +4563,9 @@ export function MasterManager({ type }: MasterManagerProps) {
                 <table className="w-full text-left text-[11px] border-collapse">
                   <thead className="bg-slate-100/80 border-b border-slate-200">
                     <tr>
-                      <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">User Name</th>
-                      <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Display Name</th>
-                      <th className="px-3 py-1.5 font-black text-slate-700 uppercase tracking-wider">Email</th>
+                      <th className="px-3 py-1.5 font-semibold text-slate-700  ">User Name</th>
+                      <th className="px-3 py-1.5 font-semibold text-slate-700  ">Display Name</th>
+                      <th className="px-3 py-1.5 font-semibold text-slate-700  ">Email</th>
                       <th className="px-2 py-1.5 w-8"></th>
                     </tr>
                   </thead>
@@ -4690,19 +4573,17 @@ export function MasterManager({ type }: MasterManagerProps) {
                     {selectedUsers.map((field, index) => (
                       <tr key={index} className="group hover:bg-white transition-colors">
                         <td className="px-2 py-1">
-                          <UserCombobox
-                            value={field.userName}
-                            onChange={(user) => updateGridUser(index, user)}
+                          <UserCombobox value={field.userName} onChange={(user) => updateGridUser(index, user)}
                             placeholder="User Name"
                             className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
                             initialLabel={field.userName}
                           />
                         </td>
                         <td className="px-2 py-1">
-                          <Input disabled value={field.displayName} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                          <Input disabled value={field.displayName} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
                         </td>
                         <td className="px-2 py-1">
-                          <Input disabled value={field.email} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 font-bold" />
+                          <Input disabled value={field.email} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
                         </td>
                         <td className="px-1 py-1 text-center">
                           <button type="button" onClick={() => removeGridUser(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
@@ -4726,17 +4607,16 @@ export function MasterManager({ type }: MasterManagerProps) {
 
         {/* ----------------- BENEFIT TYPE EXTRA FIELDS ----------------- */}
         {type === 'benefit-type' && (
-          <div className="space-y-1">
-            <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Valuation Scale / Type</label>
-            <Combobox
-              options={(benefitFillValues?.valuationTypes || []).map((v: any) => ({
-                label: v.valuationTypeName || v.name || '',
-                value: (v.valuationTypeNo || v.id || '').toString()
-              }))}
+          <div className="space-y-0">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Valuation Scale / Type</label>
+            <Combobox options={(benefitFillValues?.valuationTypes || []).map((v: any) => ({
+              label: v.valuationTypeName || v.name || '',
+              value: (v.valuationTypeNo || v.id || '').toString()
+            }))}
               value={valuationtypeNo}
               onChange={setValuationtypeNo}
-              placeholder="Select Valuation Type..."
-              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+              placeholder="Select Valuation Scale / Type"
+              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
             />
           </div>
         )}
@@ -4745,37 +4625,32 @@ export function MasterManager({ type }: MasterManagerProps) {
         {type === 'location' && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Parent Location</label>
-                <Combobox
-                  options={[
-                    { label: "No Parent (Root)", value: "none" },
-                    ...(locationFillValues?.data?.locations || locationFillValues?.locations || apiLocations || []).filter((l: any) => (l.operLocationNo || l.id || '').toString() !== editingId).map((l: any) => ({
-                      label: l.operLocationName || l.locationName || l.name || '',
-                      value: (l.operLocationNo || l.id || '').toString()
-                    }))
-                  ]}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Parent Location</label>
+                <Combobox options={[{ label: "No Parent (Root)", value: "none" }, ...(locationFillValues?.data?.locations || locationFillValues?.locations || apiLocations || []).filter((l: any) => (l.operLocationNo || l.id || '').toString() !== editingId).map((l: any) => ({
+                  label: l.operLocationName || l.locationName || l.name || '',
+                  value: (l.operLocationNo || l.id || '').toString()
+                }))
+                ]}
                   value={parentLocationNo}
                   onChange={setParentLocationNo}
-                  placeholder="Select Parent"
+                  placeholder="Select Parent Location"
                   searchPlaceholder="Search parent..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Incharge Lead</label>
-                <UserCombobox
-                  value={inchargeNo}
-                  onChange={(user) => {
-                    setInchargeNo(user.loginNo.toString());
-                    setInchargeLabel(user.printingName);
-                    if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
-                  }}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Incharge Lead</label>
+                <UserCombobox value={inchargeNo} onChange={(user) => {
+                  setInchargeNo(user.loginNo.toString());
+                  setInchargeLabel(user.printingName);
+                  if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
+                }}
                   initialLabel={inchargeLabel}
                   placeholder="Search Incharge Lead..."
                   className={cn(
-                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                     errors.inchargeNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500 focus-visible:ring-red-500/10 focus-visible:border-red-500"
                   )}
                 />
@@ -4783,69 +4658,55 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Location Region</label>
-              <Combobox
-                options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
-                  label: r.regionName || '',
-                  value: (r.regionNo || '').toString()
-                }))}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Location Region</label>
+              <Combobox options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
+                label: r.regionName || '',
+                value: (r.regionNo || '').toString()
+              }))}
                 value={locationRegion}
                 onChange={setLocationRegion}
-                placeholder="Select Region"
+                placeholder="Select Location Region"
                 searchPlaceholder="Search region..."
-                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address</label>
-              <div className="space-y-2">
-                <Input
-                  placeholder="Address Line 1"
-                  value={address1}
-                  maxLength={150}
-                  onChange={(e) => {
-                    setAddress1(e.target.value);
-                    if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
-                  }}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Address</label>
+              <div className="space-y-0">
+                <Input placeholder="Enter Address" value={address1} maxLength={150} onChange={(e) => {
+                  setAddress1(e.target.value);
+                  if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
+                }}
                   className={cn(
-                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                     errors.address1 && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
                 />
                 {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
-                <Input
-                  placeholder="Address Line 2 (Optional)"
-                  value={address2}
-                  maxLength={150}
-                  onChange={(e) => setAddress2(e.target.value)}
-                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                <Input placeholder="Address Line 2 (Optional)" value={address2} maxLength={150} onChange={(e) => setAddress2(e.target.value)}
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
                 />
-                <Input
-                  placeholder="Address Line 3 (Optional)"
-                  value={address3}
-                  maxLength={150}
-                  onChange={(e) => setAddress3(e.target.value)}
-                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+                <Input placeholder="Address Line 3 (Optional)" value={address3} maxLength={150} onChange={(e) => setAddress3(e.target.value)}
+                  className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
-                <Combobox
-                  options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-                    label: c.countryName || '',
-                    value: (c.countryNo || '').toString()
-                  }))}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Country</label>
+                <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                  label: c.countryName || '',
+                  value: (c.countryNo || '').toString()
+                }))}
                   value={countryNo}
                   onChange={handleLocationCountryChange}
                   placeholder="Select Country"
                   searchPlaceholder="Search country..."
                   className={cn(
-                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                     errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
                   onAddNew={() => {
@@ -4855,20 +4716,19 @@ export function MasterManager({ type }: MasterManagerProps) {
                 />
                 {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State / Province</label>
-                <Combobox
-                  options={locStatesList.map((s: any) => ({
-                    label: s.stateName || '',
-                    value: (s.stateNo || '').toString()
-                  }))}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">State / Province</label>
+                <Combobox options={locStatesList.map((s: any) => ({
+                  label: s.stateName || '',
+                  value: (s.stateNo || '').toString()
+                }))}
                   value={stateNo}
                   onChange={handleLocationStateChange}
                   disabled={!countryNo}
                   placeholder={countryNo ? "Select State" : "Select country first"}
                   searchPlaceholder="Search state..."
                   className={cn(
-                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                     errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
                   onAddNew={() => {
@@ -4880,14 +4740,13 @@ export function MasterManager({ type }: MasterManagerProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5">
-              <div className="space-y-1 col-span-2">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
-                <Combobox
-                  options={locCitiesList.map((c: any) => ({
-                    label: c.cityName || '',
-                    value: (c.cityNo || '').toString()
-                  }))}
+            <div className="grid grid-cols-3 gap-0.5.5">
+              <div className="space-y-0 col-span-2">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">City</label>
+                <Combobox options={locCitiesList.map((c: any) => ({
+                  label: c.cityName || '',
+                  value: (c.cityNo || '').toString()
+                }))}
                   value={cityNo}
                   onChange={(val) => {
                     setCityNo(val);
@@ -4897,7 +4756,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                   placeholder={stateNo ? "Select City" : "Select state first"}
                   searchPlaceholder="Search city..."
                   className={cn(
-                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                     errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
                   onAddNew={() => {
@@ -4907,18 +4766,14 @@ export function MasterManager({ type }: MasterManagerProps) {
                 />
                 {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">PIN / ZIP Code</label>
-                <Input
-                  placeholder="ZIP"
-                  value={pinCode}
-                  maxLength={10}
-                  onChange={(e) => {
-                    setPinCode(e.target.value);
-                    if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
-                  }}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">PIN / ZIP Code</label>
+                <Input placeholder="Enter PIN / ZIP Code" value={pinCode} maxLength={10} onChange={(e) => {
+                  setPinCode(e.target.value);
+                  if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
+                }}
                   className={cn(
-                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                     errors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                   )}
                 />
@@ -4933,22 +4788,21 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* STATE MASTER FIELDS */}
         {type === 'state' && (
           <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
-              <Combobox
-                options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-                  label: c.countryName || '',
-                  value: (c.countryNo || '').toString()
-                }))}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Country</label>
+              <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                label: c.countryName || '',
+                value: (c.countryNo || '').toString()
+              }))}
                 value={stateCountryNo}
                 onChange={(val) => {
                   setStateCountryNo(val);
                   if (errors.stateCountryNo) setErrors(prev => ({ ...prev, stateCountryNo: '' }));
                 }}
-                placeholder="Select Country..."
+                placeholder="Select Country"
                 searchPlaceholder="Search country..."
                 className={cn(
-                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.stateCountryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
                 onAddNew={() => {
@@ -4958,30 +4812,26 @@ export function MasterManager({ type }: MasterManagerProps) {
               />
               {errors.stateCountryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateCountryNo}</p>}
             </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">GST State Code</label>
-              <Input
-                placeholder="e.g., 06 (for Maharashtra)"
-                value={gstStateCode}
-                maxLength={2}
-                onChange={(e) => {
-                  setGstStateCode(e.target.value);
-                  if (errors.gstStateCode) setErrors(prev => ({ ...prev, gstStateCode: '' }));
-                }}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">GST State Code</label>
+              <Input placeholder="Enter GST State Code" value={gstStateCode} maxLength={2} onChange={(e) => {
+                setGstStateCode(e.target.value);
+                if (errors.gstStateCode) setErrors(prev => ({ ...prev, gstStateCode: '' }));
+              }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 text-xs font-bold text-slate-700 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                   errors.gstStateCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
               {errors.gstStateCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.gstStateCode}</p>}
             </div>
-            {/* <div className="space-y-2 flex items-center gap-3">
+            {/* <div className="space-y-0 flex items-center gap-3">
               <Checkbox
                 checked={isUnionTerritory}
                 onCheckedChange={(checked) => setIsUnionTerritory(checked as boolean)}
                 className="rounded-md border-slate-300"
               />
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider cursor-pointer">
+              <label className="text-[11px] font-medium text-slate-700 normal-case cursor-pointer">
                 Is Union Territory
               </label>
             </div> */}
@@ -4991,13 +4841,12 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* CITY MASTER FIELDS */}
         {type === 'city' && (
           <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
-              <Combobox
-                options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-                  label: c.countryName || '',
-                  value: (c.countryNo || '').toString()
-                }))}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Country</label>
+              <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                label: c.countryName || '',
+                value: (c.countryNo || '').toString()
+              }))}
                 value={cityCityCountryNo}
                 onChange={(val) => {
                   setCityCityCountryNo(val);
@@ -5010,10 +4859,10 @@ export function MasterManager({ type }: MasterManagerProps) {
                     });
                   }
                 }}
-                placeholder="Select Country..."
+                placeholder="Select Country"
                 searchPlaceholder="Search country..."
                 className={cn(
-                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.cityCityCountryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
                 onAddNew={() => {
@@ -5023,13 +4872,12 @@ export function MasterManager({ type }: MasterManagerProps) {
               />
               {errors.cityCityCountryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityCityCountryNo}</p>}
             </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State</label>
-              <Combobox
-                options={availableCityStates.map((s: any) => ({
-                  label: s.stateName || s.name || '',
-                  value: (s.stateNo || s.id || '').toString()
-                }))}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">State</label>
+              <Combobox options={availableCityStates.map((s: any) => ({
+                label: s.stateName || s.name || '',
+                value: (s.stateNo || s.id || '').toString()
+              }))}
                 value={cityCityStateNo}
                 onChange={(val) => {
                   setCityCityStateNo(val);
@@ -5039,7 +4887,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 placeholder={cityCityCountryNo ? "Select State..." : "Select country first"}
                 searchPlaceholder="Search state..."
                 className={cn(
-                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                  "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
                   errors.cityCityStateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
                 onAddNew={() => {
@@ -5056,88 +4904,75 @@ export function MasterManager({ type }: MasterManagerProps) {
         {type === 'task-company' && (
           <div className="space-y-4">
             <div className="flex gap-3">
-              <div className="space-y-1 w-3/4">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Company Name <span className="text-red-500">*</span></label>
-                <Input
-                  value={tcCompanyName}
-                  onChange={(e) => {
-                    setTcCompanyName(e.target.value);
-                    if (errors.tcCompanyName) setErrors(prev => ({ ...prev, tcCompanyName: '' }));
-                  }}
+              <div className="space-y-0 w-3/4">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Company Name <span className="text-red-500">*</span></label>
+                <Input value={tcCompanyName} onChange={(e) => {
+                  setTcCompanyName(e.target.value);
+                  if (errors.tcCompanyName) setErrors(prev => ({ ...prev, tcCompanyName: '' }));
+                }}
                   maxLength={100}
-                  placeholder="Enter company name"
+                  placeholder="Enter Company Name"
                   className={cn(
-                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full",
+                    "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full",
                     errors.tcCompanyName && "border-red-500 focus:ring-red-500/10"
                   )}
                 />
                 {errors.tcCompanyName && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.tcCompanyName}</p>}
               </div>
 
-              <div className="space-y-1 w-1/4">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Alias</label>
-                <Input
-                  value={tcAliasName}
-                  onChange={(e) => setTcAliasName(e.target.value)}
+              <div className="space-y-0 w-1/4">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Alias</label>
+                <Input value={tcAliasName} onChange={(e) => setTcAliasName(e.target.value)}
                   maxLength={15}
-                  placeholder="Enter alias"
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+                  placeholder="Enter Alias"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Location Name</label>
-              <Input
-                value={tcLocationName}
-                onChange={(e) => setTcLocationName(e.target.value)}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Location Name</label>
+              <Input value={tcLocationName} onChange={(e) => setTcLocationName(e.target.value)}
                 maxLength={50}
-                placeholder="Enter location name"
-                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+                placeholder="Enter Location Name"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address 1</label>
-              <Input
-                value={tcAddress1}
-                onChange={(e) => setTcAddress1(e.target.value)}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Address 1</label>
+              <Input value={tcAddress1} onChange={(e) => setTcAddress1(e.target.value)}
                 maxLength={50}
-                placeholder="Enter address line 1"
-                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+                placeholder="Enter Address 1"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address 2</label>
-              <Input
-                value={tcAddress2}
-                onChange={(e) => setTcAddress2(e.target.value)}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Address 2</label>
+              <Input value={tcAddress2} onChange={(e) => setTcAddress2(e.target.value)}
                 maxLength={50}
-                placeholder="Enter address line 2"
-                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+                placeholder="Enter Address 2"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Address 3</label>
-              <Input
-                value={tcAddress3}
-                onChange={(e) => setTcAddress3(e.target.value)}
+            <div className="space-y-0">
+              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Address 3</label>
+              <Input value={tcAddress3} onChange={(e) => setTcAddress3(e.target.value)}
                 maxLength={50}
-                placeholder="Enter address line 3"
-                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+                placeholder="Enter Address 3"
+                className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Country</label>
-                <Combobox
-                  options={taskCompanyCountries.map((c: any) => ({
-                    label: c.countryName || '',
-                    value: (c.countryNo || '').toString()
-                  }))}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Country</label>
+                <Combobox options={taskCompanyCountries.map((c: any) => ({
+                  label: c.countryName || '',
+                  value: (c.countryNo || '').toString()
+                }))}
                   value={tcCountryNo}
                   onChange={(val) => {
                     setTcCountryNo(val);
@@ -5149,9 +4984,9 @@ export function MasterManager({ type }: MasterManagerProps) {
                       setTaskCompanyStates([]);
                     }
                   }}
-                  placeholder="Select Country..."
+                  placeholder="Select Country"
                   searchPlaceholder="Search country..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                   onAddNew={() => {
                     setActiveMasterType('country');
                     setIsMasterCreateOpen(true);
@@ -5159,13 +4994,12 @@ export function MasterManager({ type }: MasterManagerProps) {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">State</label>
-                <Combobox
-                  options={taskCompanyStates.map((s: any) => ({
-                    label: s.stateName || s.name || '',
-                    value: (s.stateNo || s.id || '').toString()
-                  }))}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">State</label>
+                <Combobox options={taskCompanyStates.map((s: any) => ({
+                  label: s.stateName || s.name || '',
+                  value: (s.stateNo || s.id || '').toString()
+                }))}
                   value={tcStateNo}
                   onChange={(val) => {
                     setTcStateNo(val);
@@ -5179,7 +5013,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                   disabled={!tcCountryNo}
                   placeholder={tcCountryNo ? "Select State..." : "Select country first"}
                   searchPlaceholder="Search state..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                   onAddNew={() => {
                     setActiveMasterType('state');
                     setIsMasterCreateOpen(true);
@@ -5187,19 +5021,18 @@ export function MasterManager({ type }: MasterManagerProps) {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">City</label>
-                <Combobox
-                  options={taskCompanyCities.map((c: any) => ({
-                    label: c.cityName || c.name || '',
-                    value: (c.cityNo || c.id || '').toString()
-                  }))}
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">City</label>
+                <Combobox options={taskCompanyCities.map((c: any) => ({
+                  label: c.cityName || c.name || '',
+                  value: (c.cityNo || c.id || '').toString()
+                }))}
                   value={tcCityNo}
                   onChange={(val) => setTcCityNo(val)}
                   disabled={!tcStateNo}
                   placeholder={tcStateNo ? "Select City..." : "Select state first"}
                   searchPlaceholder="Search city..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                   onAddNew={() => {
                     setActiveMasterType('city');
                     setIsMasterCreateOpen(true);
@@ -5207,13 +5040,11 @@ export function MasterManager({ type }: MasterManagerProps) {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider ml-1">Pin Code</label>
-                <Input
-                  value={tcPinCode}
-                  onChange={(e) => setTcPinCode(e.target.value)}
-                  placeholder="Enter pin code"
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+              <div className="space-y-0">
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Pin Code</label>
+                <Input value={tcPinCode} onChange={(e) => setTcPinCode(e.target.value)}
+                  placeholder="Enter Pin Code"
+                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
                   maxLength={6}
                 />
               </div>
@@ -5229,20 +5060,20 @@ export function MasterManager({ type }: MasterManagerProps) {
       <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-6 gap-4 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
         {/* Breadcrumb Header */}
         <div className="flex items-start shrink-0 mb-1 px-1 justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-            <span onClick={() => navigate(`/master/${type}`)} className="hover:text-slate-700 cursor-pointer transition-colors">Masters</span>
-            <span className="text-slate-300 font-normal">/</span>
-            <span onClick={() => navigate(`/master/${type}`)} className="hover:text-slate-700 cursor-pointer transition-colors">{title}</span>
-            <span className="text-slate-300 font-normal">/</span>
-            <span className="text-[#006699] font-black">{editingId ? 'Edit Record' : 'Add New Record'}</span>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <button onClick={() => navigate(`/master/${type}`)} className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded">Masters</button>
+            <ChevronRight size={16} className="text-slate-400" />
+            <button onClick={() => navigate(`/master/${type}`)} className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded">{title}</button>
+            <ChevronRight size={16} className="text-slate-400" />
+            <span className="text-slate-900 font-bold tracking-tight">{editingId ? 'Edit' : 'New'}</span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             <Button
               type="button"
               variant="ghost"
               onClick={() => navigate(`/master/${type}`)}
-              className="rounded-xl h-9 px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs flex items-center"
+              className="rounded-xl h-9 px-3 sm:px-5 font-medium text-slate-600 hover:bg-slate-100 transition-colors gap-0.5 text-xs flex items-center"
             >
               <X size={16} />
               Cancel
@@ -5251,7 +5082,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               type="button"
               onClick={handleSubmit}
               disabled={isSaving}
-              className="rounded-xl h-9 px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold text-white shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center justify-center"
+              className="rounded-xl h-9 px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-medium text-white shadow-lg shadow-[#006699]/20 gap-0.5 transition-all hover:scale-105 active:scale-95 text-xs disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {isSaving ? (
                 <>
@@ -5277,8 +5108,8 @@ export function MasterManager({ type }: MasterManagerProps) {
           </form>
 
           {serverError && (
-            <div className="mx-6 mb-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-2 shadow-sm animate-pulse shrink-0">
-              <span className="font-extrabold select-none">⚠️ Error:</span>
+            <div className="mx-6 mb-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-0.5 shadow-sm animate-pulse shrink-0">
+              <span className="font-medium select-none">⚠️ Error:</span>
               <span className="flex-1 whitespace-pre-wrap leading-relaxed">{serverError}</span>
             </div>
           )}
@@ -5289,18 +5120,18 @@ export function MasterManager({ type }: MasterManagerProps) {
         <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
           <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl">
             <DialogHeader className="p-6 pb-4">
-              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
                 Confirm Save
               </DialogTitle>
               <DialogDescription className="text-sm text-slate-500 mt-2">
                 Are you sure you want to save these changes?
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
-              <Button variant="ghost" onClick={() => setShowConfirm(false)} className="rounded-xl h-9 text-xs font-bold text-slate-500 hover:bg-slate-100">
+            <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
+              <Button variant="ghost" onClick={() => setShowConfirm(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
                 No, Cancel
               </Button>
-              <Button onClick={handleConfirmSave} className="rounded-xl h-9 text-xs font-bold bg-[#006699] hover:bg-[#005580] text-white shadow-md">
+              <Button onClick={handleConfirmSave} className="rounded-xl h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white shadow-md">
                 Yes, Save
               </Button>
             </DialogFooter>
@@ -5315,7 +5146,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping"></div>
                 <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
               </div>
-              <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">Success</h3>
+              <h3 className="text-lg font-medium text-slate-800 tracking-tight mb-1">Success</h3>
               <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">Data saved successfully.</p>
             </div>
             <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 flex justify-center">
@@ -5325,7 +5156,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                   setShowSuccessAlert(false);
                   navigate(`/master/${type}`);
                 }}
-                className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
+                className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs normal-case shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
               >
                 OK
               </Button>
@@ -5336,14 +5167,110 @@ export function MasterManager({ type }: MasterManagerProps) {
     );
   }
 
+  const renderPaginationBar = () => (
+    <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-4 select-none mt-auto shrink-0">
+      {/* Left Side: Range Info */}
+      <div className="text-[11px] text-slate-500 font-medium">
+        Showing <span className="text-slate-800 font-medium">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
+        <span className="text-slate-800 font-medium">{endIndex}</span> of{" "}
+        <span className="text-slate-800 font-medium">{totalItems}</span> records
+      </div>
+
+      {/* Center: Items Per Page Selector */}
+      <div className="flex items-center gap-0.5">
+        <span className="text-[10px] font-medium text-slate-400  ">Per Page:</span>
+        <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+          {[10, 25, 50].map((size) => (
+            <button
+              key={size}
+              type="button"
+              onClick={() => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              className={cn(
+                "h-6 px-2.5 rounded-md text-[10px] font-medium tracking-wide uppercase transition-all",
+                itemsPerPage === size
+                  ? "bg-[#006699] text-white shadow-sm font-medium"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+              )}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Right Side: Page Controls */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={safeCurrentPage === 1}
+          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+          className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+        >
+          <ChevronLeft size={14} strokeWidth={2.5} />
+        </Button>
+
+        <div className="flex items-center gap-1">
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((page) => {
+              return (
+                page === 1 ||
+                page === totalPages ||
+                Math.abs(page - safeCurrentPage) <= 1
+              );
+            })
+            .map((page, idx, arr) => {
+              const isPageActive = safeCurrentPage === page;
+              const hasGap = idx > 0 && page - arr[idx - 1] > 1;
+
+              return (
+                <React.Fragment key={page}>
+                  {hasGap && (
+                    <span className="text-[10px] font-medium text-slate-400 px-1 select-none">
+                      ...
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={cn(
+                      "h-7 w-7 rounded-lg text-[10px] font-medium transition-all flex items-center justify-center border shadow-sm",
+                      isPageActive
+                        ? "bg-[#006699] border-[#006699] text-white font-medium shadow-md shadow-[#006699]/10"
+                        : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:text-slate-900"
+                    )}
+                  >
+                    {page}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={safeCurrentPage === totalPages}
+          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+          className="h-7 w-7 rounded-lg text-slate-505 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+        >
+          <ChevronRight size={14} strokeWidth={2.5} />
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-6 gap-4 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
       {/* Breadcrumb Header */}
       <div className="flex items-center shrink-0 mb-1 px-1">
-        <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-          <span className="hover:text-slate-700 cursor-pointer transition-colors">Masters</span>
-          <span className="text-slate-300 font-normal">/</span>
-          <span className="text-[#006699] font-black">{title}</span>
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <button className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded cursor-default">Masters</button>
+          <ChevronRight size={16} className="text-slate-400" />
+          <span className="text-slate-900 font-bold tracking-tight">{title}</span>
         </div>
       </div>
 
@@ -5352,11 +5279,8 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* Search Input Card */}
         <Card className="flex-1 p-3.5 border-none shadow-md shadow-slate-200/20 bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl flex items-center gap-3 h-10 sm:h-11">
           <Search size={16} className="text-slate-400 ml-1 shrink-0" />
-          <Input
-            placeholder={`Search ${title.toLowerCase()} records by name, code...`}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none text-xs font-bold text-slate-700 h-full p-0 focus-visible:ring-0 placeholder:text-slate-400 placeholder:font-semibold flex-1"
+          <Input placeholder={`Search ${title.toLowerCase()} records by name, code...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-transparent border-none text-xs font-medium text-slate-700 h-full p-0 focus-visible:ring-0 placeholder:text-slate-400 placeholder:font-semibold flex-1"
           />
           {searchQuery && (
             <Button
@@ -5376,7 +5300,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             <button
               onClick={() => setCompanyViewMode('list')}
               className={cn(
-                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-medium transition-all flex items-center gap-1 h-7 sm:h-8",
                 companyViewMode === 'list'
                   ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
                   : "text-slate-500 hover:text-slate-750 hover:bg-slate-100/50"
@@ -5388,7 +5312,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             <button
               onClick={() => setCompanyViewMode('album')}
               className={cn(
-                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-medium transition-all flex items-center gap-1 h-7 sm:h-8",
                 companyViewMode === 'album'
                   ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
                   : "text-slate-500 hover:text-slate-750 hover:bg-slate-100/50"
@@ -5400,7 +5324,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             <button
               onClick={() => setCompanyViewMode('contact-list')}
               className={cn(
-                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-medium transition-all flex items-center gap-1 h-7 sm:h-8",
                 companyViewMode === 'contact-list'
                   ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
                   : "text-slate-500 hover:text-slate-755 hover:bg-slate-100/50"
@@ -5412,7 +5336,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             <button
               onClick={() => setCompanyViewMode('contact-album')}
               className={cn(
-                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-medium transition-all flex items-center gap-1 h-7 sm:h-8",
                 companyViewMode === 'contact-album'
                   ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
                   : "text-slate-500 hover:text-slate-755 hover:bg-slate-100/50"
@@ -5424,7 +5348,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             <button
               onClick={() => setCompanyViewMode('attachment')}
               className={cn(
-                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-black transition-all flex items-center gap-1 h-7 sm:h-8",
+                "px-2.5 py-1.5 rounded-lg sm:rounded-xl text-[10px] font-medium transition-all flex items-center gap-1 h-7 sm:h-8",
                 companyViewMode === 'attachment'
                   ? "bg-[#006699] text-white shadow-md shadow-[#006699]/15 scale-[1.02]"
                   : "text-slate-500 hover:text-slate-755 hover:bg-slate-100/50"
@@ -5436,26 +5360,10 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
         )}
 
-        {type === 'company' && (
-          <div className="flex items-center bg-white/90 px-3 py-1 rounded-xl sm:rounded-2xl border border-slate-200/40 shadow-md shrink-0 gap-2 h-7 sm:h-8">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Page Size:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
-              className="bg-transparent border-none text-[10px] font-black text-[#006699] focus:ring-0 cursor-pointer outline-none pr-1"
-            >
-              <option value={10}>10 rows</option>
-              <option value={20}>20 rows</option>
-              <option value={50}>50 rows</option>
-              <option value={100}>100 rows</option>
-            </select>
-          </div>
-        )}
-
         {/* Add Record Button */}
         <Button
           onClick={handleAddClick}
-          className="h-10 sm:h-11 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] text-white shadow-lg shadow-[#006699]/15 font-black text-xs uppercase tracking-widest gap-2 shrink-0 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center"
+          className="h-10 sm:h-11 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] text-white shadow-lg shadow-[#006699]/15 font-medium text-xs normal-case gap-0.5 shrink-0 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center"
         >
           <Plus size={14} strokeWidth={3.5} />
           Add Record
@@ -5471,463 +5379,464 @@ export function MasterManager({ type }: MasterManagerProps) {
                 <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
                   <Icon size={32} />
                 </div>
-                <h3 className="text-sm font-bold text-slate-700">No Companies Found</h3>
+                <h3 className="text-sm font-medium text-slate-700">No Companies Found</h3>
                 <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
               </div>
             ) : (
-              <div className="flex-1 min-h-0 flex gap-3 relative select-none">
-                {/* Scrollable List container */}
-                <div
-                  className="flex-1 overflow-y-auto overflow-x-auto pr-10 scrollbar-thin space-y-6 pb-12"
-                  id="company-scroll-container"
-                  onScroll={(e) => {
-                    const target = e.currentTarget;
-                    const currentScrollTop = target.scrollTop;
-                    const isScrollingDown = currentScrollTop > lastScrollTopRef.current;
-                    const isScrollingUp = currentScrollTop < lastScrollTopRef.current;
-                    lastScrollTopRef.current = currentScrollTop;
+              <div className="flex-1 min-h-0 flex flex-col relative select-none">
+                <div className="flex-1 min-h-0 flex gap-3 relative">
+                  {/* Scrollable List container */}
+                  <div
+                    className="flex-1 overflow-y-auto overflow-x-auto pr-10 scrollbar-thin space-y-6 pb-12"
+                    id="company-scroll-container"
+                    onScroll={(e) => {
+                      const target = e.currentTarget;
+                      const currentScrollTop = target.scrollTop;
+                      const isScrollingDown = currentScrollTop > lastScrollTopRef.current;
+                      const isScrollingUp = currentScrollTop < lastScrollTopRef.current;
+                      lastScrollTopRef.current = currentScrollTop;
 
-                    const isNearBottom = isScrollingDown && target.scrollHeight > target.clientHeight && (target.scrollHeight - currentScrollTop - target.clientHeight < 80);
-                    const isNearTop = isScrollingUp && currentScrollTop < 20;
+                      const isNearBottom = isScrollingDown && target.scrollHeight > target.clientHeight && (target.scrollHeight - currentScrollTop - target.clientHeight < 80);
+                      const isNearTop = isScrollingUp && currentScrollTop < 20;
 
-                    if (isNearBottom && !isLoadingMoreCompanies) {
-                      handleLoadMore('down');
-                    } else if (isNearTop && !isLoadingMoreCompanies) {
-                      handleLoadMore('up');
-                    }
-                  }}
-                  onWheel={(e) => {
-                    const target = e.currentTarget;
-                    if (target.scrollTop === 0 && e.deltaY < 0 && !isLoadingMoreCompanies) {
-                      handleLoadMore('up');
-                    }
-                  }}
-                >
-                  {companyViewMode === 'list' ? (
-                    /* GRID LIST VIEW */
-                    <div className="bg-white rounded-2xl border border-slate-150 shadow-md flex flex-col overflow-visible">
-                      <table className="w-full border-collapse text-left">
-                        <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
-                          <tr>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Code</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity Name</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Address</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">VAT/GST No</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Credit Limit</th>
-                            <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {filteredList.map((company: any) => {
-                            const locStr = [company.address, company.cityName, company.stateName, company.countryName].filter(Boolean).join(', ') || 'N/A';
-                            return (
-                              <tr key={company.id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
-                                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/50 text-[10px]">
-                                    {company.code}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
-                                  {company.name}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-semibold text-slate-600">
-                                  <span className={cn(
-                                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border",
-                                    company.type === 'Buy'
-                                      ? "bg-sky-50 text-sky-600 border-sky-100"
-                                      : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                  )}>
-                                    {company.type}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[200px] truncate" title={locStr}>
-                                  {locStr}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
-                                  {company.vatGst || 'N/A'}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-extrabold text-slate-700">
-                                  {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                </td>
-                                <td className="px-4 py-3 text-xs text-center pr-5">
-                                  <div className="flex items-center justify-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleEditClick(company)}
-                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
-                                    >
-                                      <Edit size={13} />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeleteClick(company.id)}
-                                      className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
-                                    >
-                                      <Trash2 size={13} />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : companyViewMode === 'album' ? (
-                    /* ALBUM VIEW CARD LIST */
-                    <div className="space-y-6">
-                      {groupedCompanies.map((group) => (
-                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                            <span>Alphabet {group.letter}</span>
-                            <span className="text-[10px] opacity-70">{group.items.length} Entities</span>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {group.items.map((company: any) => (
-                              <Card key={company.id} className="relative rounded-xl border border-slate-150 shadow-sm hover:shadow-lg hover:border-[#006699]/20 p-3.5 bg-white transition-all duration-300 flex flex-col gap-3 overflow-hidden group">
-                                {/* Top Header Card Info */}
-                                <div className="flex items-start justify-between gap-2.5">
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    {/* Company Avatar Badge */}
-                                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-xs shadow-md shadow-[#006699]/10 shrink-0 uppercase">
-                                      {company.name ? company.name.substring(0, 2) : 'BE'}
+                      if (isNearBottom && !isLoadingMoreCompanies) {
+                        handleLoadMore('down');
+                      } else if (isNearTop && !isLoadingMoreCompanies) {
+                        handleLoadMore('up');
+                      }
+                    }}
+                    onWheel={(e) => {
+                      const target = e.currentTarget;
+                      if (target.scrollTop === 0 && e.deltaY < 0 && !isLoadingMoreCompanies) {
+                        handleLoadMore('up');
+                      }
+                    }}
+                  >
+                    {companyViewMode === 'list' ? (
+                      /* GRID LIST VIEW */
+                      <div className="bg-white rounded-2xl border border-slate-150 shadow-md flex flex-col overflow-visible">
+                        <table className="w-full border-collapse text-left">
+                          <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
+                            <tr>
+                              <th className="px-4 py-3 text-[11px] font-semibold text-slate-600   pl-5">Code</th>
+                              <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Business Entity Name</th>
+                              <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Type</th>
+                              <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Primary Address</th>
+                              <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">VAT/GST No.</th>
+                              <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Credit Limit</th>
+                              <th className="px-4 py-3 text-[11px] font-semibold text-slate-600   text-center pr-5">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {paginatedList.map((company: any) => {
+                              const locStr = [company.address, company.cityName, company.stateName, company.countryName].filter(Boolean).join(', ') || 'N/A';
+                              return (
+                                <tr key={company.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="px-4 py-3 text-xs font-medium text-slate-700 pl-5">
+                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/50 text-[10px]">
+                                      {company.code}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-medium text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                    {company.name}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                    <span className={cn(
+                                      "px-2 py-0.5 rounded-full text-[9px] font-medium   border",
+                                      company.type === 'Buy'
+                                        ? "bg-sky-50 text-sky-600 border-sky-100"
+                                        : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                    )}>
+                                      {company.type}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[200px] truncate" title={locStr}>
+                                    {locStr}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
+                                    {company.vatGst || 'N/A'}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs font-medium text-slate-700">
+                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-center pr-5">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleEditClick(company)}
+                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
+                                      >
+                                        <Edit size={13} />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeleteClick(company.id)}
+                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
+                                      >
+                                        <Trash2 size={13} />
+                                      </Button>
                                     </div>
-                                    <div className="min-w-0">
-                                      <h4 className="text-[11px] font-black text-slate-900 leading-tight group-hover:text-[#006699] transition-colors truncate" title={company.name}>{company.name}</h4>
-                                      <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                        <span className="text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/50">
-                                          {company.code}
-                                        </span>
-                                        <span className={cn(
-                                          "text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded border",
-                                          company.type === 'Buy'
-                                            ? "bg-sky-50 text-sky-600 border-sky-100"
-                                            : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                        )}>
-                                          {company.type}
-                                        </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : companyViewMode === 'album' ? (
+                      /* ALBUM VIEW CARD LIST */
+                      <div className="space-y-6">
+                        {groupedCompanies.map((group) => (
+                          <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                            <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-medium text-[#006699] normal-case backdrop-blur-sm flex items-center justify-between shadow-sm">
+                              <span>Alphabet {group.letter}</span>
+                              <span className="text-[10px] opacity-70">{group.items.length} Entities</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {group.items.map((company: any) => (
+                                <Card key={company.id} className="relative rounded-xl border border-slate-150 shadow-sm hover:shadow-lg hover:border-[#006699]/20 p-3.5 bg-white transition-all duration-300 flex flex-col gap-3 overflow-hidden group">
+                                  {/* Top Header Card Info */}
+                                  <div className="flex items-start justify-between gap-0.5.5">
+                                    <div className="flex items-center gap-0.5.5 min-w-0">
+                                      {/* Company Avatar Badge */}
+                                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-medium text-xs shadow-md shadow-[#006699]/10 shrink-0 uppercase">
+                                        {company.name ? company.name.substring(0, 2) : 'BE'}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h4 className="text-[11px] font-medium text-slate-900 leading-tight group-hover:text-[#006699] transition-colors truncate" title={company.name}>{company.name}</h4>
+                                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                          <span className="text-[8px] font-medium   px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/50">
+                                            {company.code}
+                                          </span>
+                                          <span className={cn(
+                                            "text-[8px] font-medium   px-1.5 py-0.5 rounded border",
+                                            company.type === 'Buy'
+                                              ? "bg-sky-50 text-sky-600 border-sky-100"
+                                              : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                          )}>
+                                            {company.type}
+                                          </span>
+                                        </div>
                                       </div>
                                     </div>
+
+                                    {/* Actions Button */}
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleEditClick(company)}
+                                        className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
+                                      >
+                                        <Edit size={11} />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeleteClick(company.id)}
+                                        className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
+                                      >
+                                        <Trash2 size={11} />
+                                      </Button>
+                                    </div>
                                   </div>
 
-                                  {/* Actions Button */}
-                                  <div className="flex items-center gap-0.5 shrink-0">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleEditClick(company)}
-                                      className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
-                                    >
-                                      <Edit size={11} />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeleteClick(company.id)}
-                                      className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
-                                    >
-                                      <Trash2 size={11} />
-                                    </Button>
+                                  {/* Middle Address & Finance details */}
+                                  <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 py-1.5 border-t border-b border-slate-100 text-[10px] font-semibold text-slate-500">
+                                    <div className="col-span-2">
+                                      <span className="text-[8px] font-medium  text-[#006699] block  mb-0.5">Primary Location</span>
+                                      <span className="text-slate-800 font-medium block truncate leading-snug" title={company.address || 'N/A'}>
+                                        {company.address || 'N/A'}
+                                      </span>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <span className="text-[8px] font-medium  text-slate-400 block  mb-0.5">City & PIN Code</span>
+                                      <span className="text-slate-700 font-medium block truncate" title={[company.city, company.pinCode].filter(Boolean).join(' - ')}>
+                                        {[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'}
+                                      </span>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <span className="text-[8px] font-medium  text-slate-400 block  mb-0.5">State & Country</span>
+                                      <span className="text-slate-700 font-medium block truncate" title={[company.state, company.country].filter(Boolean).join(', ')}>
+                                        {[company.state, company.country].filter(Boolean).join(', ') || 'N/A'}
+                                      </span>
+                                    </div>
+                                    <div className="col-span-2 min-w-0">
+                                      <span className="text-[8px] font-medium  text-slate-400 block  mb-0.5">Credit limit & GST</span>
+                                      <span className="text-slate-700 font-medium block truncate" title={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}>
+                                        {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
+                                        {company.vatGst ? ` | GST: ${company.vatGst}` : ''}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
 
-                                {/* Middle Address & Finance details */}
-                                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 py-1.5 border-t border-b border-slate-100 text-[10px] font-semibold text-slate-500">
-                                  <div className="col-span-2">
-                                    <span className="text-[8px] font-extrabold uppercase text-[#006699] block tracking-wider mb-0.5">Primary Location</span>
-                                    <span className="text-slate-800 font-bold block truncate leading-snug" title={company.address || 'N/A'}>
-                                      {company.address || 'N/A'}
+                                  {/* Footer statistics */}
+                                  <div className="flex items-center justify-between text-[9px] font-medium text-slate-400 pt-0.5 mt-auto">
+                                    <span className="flex items-center gap-1 min-w-0">
+                                      <User size={10} className="text-slate-400 shrink-0" />
+                                      Created By: <strong className="text-slate-600 truncate max-w-[100px]">{company.displayName || company.userName || 'System'}</strong>
+                                    </span>
+                                    <span className="text-[8px] text-slate-400 font-semibold shrink-0">
+                                      {company.createdDate ? new Date(company.createdDate).toLocaleDateString() : ''}
                                     </span>
                                   </div>
-                                  <div className="min-w-0">
-                                    <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">City & PIN Code</span>
-                                    <span className="text-slate-700 font-bold block truncate" title={[company.city, company.pinCode].filter(Boolean).join(' - ')}>
-                                      {[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="min-w-0">
-                                    <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">State & Country</span>
-                                    <span className="text-slate-700 font-bold block truncate" title={[company.state, company.country].filter(Boolean).join(', ')}>
-                                      {[company.state, company.country].filter(Boolean).join(', ') || 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="col-span-2 min-w-0">
-                                    <span className="text-[8px] font-extrabold uppercase text-slate-400 block tracking-wider mb-0.5">Credit limit & GST</span>
-                                    <span className="text-slate-700 font-bold block truncate" title={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}>
-                                      {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                      {company.vatGst ? ` | GST: ${company.vatGst}` : ''}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Footer statistics */}
-                                <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 pt-0.5 mt-auto">
-                                  <span className="flex items-center gap-1 min-w-0">
-                                    <User size={10} className="text-slate-400 shrink-0" />
-                                    Created By: <strong className="text-slate-600 truncate max-w-[100px]">{company.displayName || company.userName || 'System'}</strong>
-                                  </span>
-                                  <span className="text-[8px] text-slate-400 font-semibold shrink-0">
-                                    {company.createdDate ? new Date(company.createdDate).toLocaleDateString() : ''}
-                                  </span>
-                                </div>
-                              </Card>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : companyViewMode === 'contact-list' ? (
-                    /* CONTACT PERSON LIST VIEW */
-                    <div className="space-y-6">
-                      {groupedCompanies.map((group) => {
-                        const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
-                        if (!hasContacts) return null;
-
-                        return (
-                          <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                            <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                              <span>Alphabet {group.letter}</span>
-                              <span className="text-[10px] opacity-70">Contacts</span>
+                                </Card>
+                              ))}
                             </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : companyViewMode === 'contact-list' ? (
+                      /* CONTACT PERSON LIST VIEW */
+                      <div className="space-y-6">
+                        {groupedCompanies.map((group) => {
+                          const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
+                          if (!hasContacts) return null;
 
-                            <div className="bg-white rounded-2xl border border-slate-150 shadow-md flex flex-col overflow-visible">
-                              <table className="w-full border-collapse text-left">
-                                <thead className="sticky top-[28px] z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
-                                  <tr>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-5">Contact Name</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Entity</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Designation</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Department</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Email</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center pr-5">Parent Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                  {group.items.map((company: any) =>
-                                    (company.contacts || []).map((contact: any, cIdx: number) => (
-                                      <tr key={`${company.id}-${cIdx}`} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-4 py-3 text-xs font-bold text-slate-700 pl-5">
-                                          {contact.contactPersonName || contact.contactName || contact.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
-                                          {company.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-semibold text-slate-600">
-                                          {contact.designation || 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-semibold text-slate-500">
-                                          {contact.department || 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
-                                          {contact.phoneNo || contact.phone || 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs font-semibold text-slate-550">
-                                          {contact.email || 'N/A'}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs">
+                          return (
+                            <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                              <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-medium text-[#006699] normal-case backdrop-blur-sm flex items-center justify-between shadow-sm">
+                                <span>Alphabet {group.letter}</span>
+                                <span className="text-[10px] opacity-70">Contacts</span>
+                              </div>
+
+                              <div className="bg-white rounded-2xl border border-slate-150 shadow-md flex flex-col overflow-visible">
+                                <table className="w-full border-collapse text-left">
+                                  <thead className="sticky top-[28px] z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
+                                    <tr>
+                                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-600   pl-5">Contact Name</th>
+                                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Business Entity</th>
+                                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Designation</th>
+                                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Department</th>
+                                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Phone</th>
+                                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Email</th>
+                                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Status</th>
+                                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-600   text-center pr-5">Parent Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {group.items.map((company: any) =>
+                                      (company.contacts || []).map((contact: any, cIdx: number) => (
+                                        <tr key={`${company.id}-${cIdx}`} className="hover:bg-slate-50/50 transition-colors">
+                                          <td className="px-4 py-3 text-xs font-medium text-slate-700 pl-5">
+                                            {contact.contactPersonName || contact.contactName || contact.name}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-medium text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                            {company.name}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                            {contact.designation || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+                                            {contact.department || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
+                                            {contact.phoneNo || contact.phone || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs font-semibold text-slate-550">
+                                            {contact.email || 'N/A'}
+                                          </td>
+                                          <td className="px-4 py-3 text-xs">
+                                            <span className={cn(
+                                              "px-2 py-0.5 rounded text-[8px] font-medium  ",
+                                              (contact.status || 'Active') === 'Active'
+                                                ? "bg-emerald-100/60 text-emerald-700"
+                                                : "bg-slate-105 text-slate-500"
+                                            )}>
+                                              {contact.status || 'Active'}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-3 text-xs text-center pr-5">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => handleEditClick(company)}
+                                              className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
+                                            >
+                                              <Edit size={13} />
+                                            </Button>
+                                          </td>
+                                        </tr>
+                                      ))
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : companyViewMode === 'contact-album' ? (
+                      /* CONTACT PERSON ALBUM VIEW */
+                      <div className="space-y-6">
+                        {groupedCompanies.map((group) => {
+                          const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
+                          if (!hasContacts) return null;
+
+                          return (
+                            <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                              <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-medium text-[#006699] normal-case backdrop-blur-sm flex items-center justify-between shadow-sm">
+                                <span>Alphabet {group.letter}</span>
+                                <span className="text-[10px] opacity-70">Contact Cards</span>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {group.items.map((company: any) =>
+                                  (company.contacts || []).map((contact: any, cIdx: number) => {
+                                    const cName = contact.contactPersonName || contact.contactName || contact.name;
+                                    return (
+                                      <Card key={`${company.id}-${cIdx}`} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl p-4 bg-white transition-all flex flex-col gap-3 group">
+                                        <div className="flex items-start justify-between gap-0.5">
+                                          <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-medium text-sm shadow-md shrink-0 uppercase">
+                                              {cName ? cName.substring(0, 2) : 'CP'}
+                                            </div>
+                                            <div>
+                                              <h4 className="text-xs font-medium text-slate-800 leading-tight">{cName}</h4>
+                                              <p className="text-[9px] font-medium text-slate-400 mt-0.5">{contact.designation || 'Representative'} ({contact.department || 'General'})</p>
+                                            </div>
+                                          </div>
                                           <span className={cn(
-                                            "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                                            "px-2 py-0.5 rounded text-[8px] font-medium   shrink-0",
                                             (contact.status || 'Active') === 'Active'
                                               ? "bg-emerald-100/60 text-emerald-700"
                                               : "bg-slate-105 text-slate-500"
                                           )}>
                                             {contact.status || 'Active'}
                                           </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-xs text-center pr-5">
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleEditClick(company)}
-                                            className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
-                                          >
-                                            <Edit size={13} />
-                                          </Button>
-                                        </td>
-                                      </tr>
-                                    ))
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : companyViewMode === 'contact-album' ? (
-                    /* CONTACT PERSON ALBUM VIEW */
-                    <div className="space-y-6">
-                      {groupedCompanies.map((group) => {
-                        const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
-                        if (!hasContacts) return null;
+                                        </div>
 
-                        return (
-                          <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                            <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                              <span>Alphabet {group.letter}</span>
-                              <span className="text-[10px] opacity-70">Contact Cards</span>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {group.items.map((company: any) =>
-                                (company.contacts || []).map((contact: any, cIdx: number) => {
-                                  const cName = contact.contactPersonName || contact.contactName || contact.name;
-                                  return (
-                                    <Card key={`${company.id}-${cIdx}`} className="relative rounded-2xl border border-slate-150 shadow-md hover:shadow-xl p-4 bg-white transition-all flex flex-col gap-3 group">
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#006699] to-[#00bfff] text-white flex items-center justify-center font-black text-sm shadow-md shrink-0 uppercase">
-                                            {cName ? cName.substring(0, 2) : 'CP'}
+                                        <div className="border-t border-slate-100 pt-2 text-[10px] font-semibold text-slate-500 space-y-0.5">
+                                          <div className="flex justify-between">
+                                            <span className="text-slate-400">Business Entity:</span>
+                                            <span className="text-slate-900 font-medium hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</span>
                                           </div>
-                                          <div>
-                                            <h4 className="text-xs font-black text-slate-800 leading-tight">{cName}</h4>
-                                            <p className="text-[9px] font-bold text-slate-400 mt-0.5">{contact.designation || 'Representative'} ({contact.department || 'General'})</p>
+                                          <div className="flex justify-between">
+                                            <span className="text-slate-400">Phone:</span>
+                                            <span className="text-slate-700 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
+                                          </div>
+                                          <div className="flex justify-between">
+                                            <span className="text-slate-400">Email:</span>
+                                            <span className="text-slate-700 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
                                           </div>
                                         </div>
-                                        <span className={cn(
-                                          "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shrink-0",
-                                          (contact.status || 'Active') === 'Active'
-                                            ? "bg-emerald-100/60 text-emerald-700"
-                                            : "bg-slate-105 text-slate-500"
-                                        )}>
-                                          {contact.status || 'Active'}
+
+                                        <div className="pt-2 mt-auto flex items-center justify-between border-t border-slate-100">
+                                          <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleEditClick(company)}
+                                            className="h-7 rounded-lg text-slate-500 hover:text-[#006699] hover:bg-slate-100 text-[10px] font-medium flex items-center gap-1"
+                                          >
+                                            <Edit size={11} />
+                                            Edit
+                                          </Button>
+                                        </div>
+                                      </Card>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* ATTACHMENT-WISE GROUPED VIEW */
+                      <div className="space-y-6">
+                        {groupedCompanies.map((group) => {
+                          // Merge multiple rows that share the same business entity into one combined record
+                          const mergedMap = new Map<string, any>();
+                          group.items.forEach((c: any) => {
+                            const key = c.name || c.id;
+                            if (mergedMap.has(key)) {
+                              // Append attachments to the existing entry
+                              mergedMap.get(key).attachments.push(...(c.attachments || []));
+                            } else {
+                              mergedMap.set(key, { ...c, attachments: [...(c.attachments || [])] });
+                            }
+                          });
+                          // Sort merged entities alphabetically by name
+                          const mergedItems = Array.from(mergedMap.values()).sort((a, b) =>
+                            (a.name || '').localeCompare(b.name || '')
+                          );
+
+                          const hasAttachments = mergedItems.some(c => c.attachments && c.attachments.length > 0);
+                          if (!hasAttachments) return null;
+
+                          return (
+                            <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                              <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-medium text-[#006699] normal-case backdrop-blur-sm flex items-center justify-between shadow-sm">
+                                <span>Alphabet {group.letter}</span>
+                                <span className="text-[10px] opacity-70">{mergedItems.length} Entities</span>
+                              </div>
+                              <div className="space-y-4">
+                                {mergedItems.map((company: any) => {
+                                  if (!company.attachments || company.attachments.length === 0) return null;
+                                  return (
+                                    <div key={company.id} className="bg-slate-50/50 rounded-[22px] border border-slate-150 p-5">
+                                      <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/60 mb-4">
+                                        <div className="flex items-center gap-0.5">
+                                          <div className="w-8 h-8 rounded-lg bg-[#006699]/10 text-[#006699] flex items-center justify-center font-medium text-sm uppercase">
+                                            {company.name ? company.name.substring(0, 2) : 'BE'}
+                                          </div>
+                                          <div>
+                                            <h4 className="text-xs font-medium text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</h4>
+                                            <p className="text-[9px] font-medium text-slate-400 normal-case">{company.code} • {company.type}</p>
+                                          </div>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-100">
+                                          {company.attachments?.length || 0} Document(s)
                                         </span>
                                       </div>
 
-                                      <div className="border-t border-slate-100 pt-2 text-[10px] font-semibold text-slate-500 space-y-1.5">
-                                        <div className="flex justify-between">
-                                          <span className="text-slate-400">Business Entity:</span>
-                                          <span className="text-slate-900 font-extrabold hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-slate-400">Phone:</span>
-                                          <span className="text-slate-700 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                          <span className="text-slate-400">Email:</span>
-                                          <span className="text-slate-700 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
-                                        </div>
-                                      </div>
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        {company.attachments.map((att: any, idx: number) => {
+                                          const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
+                                          const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
+                                          const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
 
-                                      <div className="pt-2 mt-auto flex items-center justify-between border-t border-slate-100">
-                                        <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => handleEditClick(company)}
-                                          className="h-7 rounded-lg text-slate-500 hover:text-[#006699] hover:bg-slate-100 text-[10px] font-bold flex items-center gap-1"
-                                        >
-                                          <Edit size={11} />
-                                          Edit
-                                        </Button>
-                                      </div>
-                                    </Card>
-                                  );
-                                })
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    /* ATTACHMENT-WISE GROUPED VIEW */
-                    <div className="space-y-6">
-                      {groupedCompanies.map((group) => {
-                        // Merge multiple rows that share the same business entity into one combined record
-                        const mergedMap = new Map<string, any>();
-                        group.items.forEach((c: any) => {
-                          const key = c.name || c.id;
-                          if (mergedMap.has(key)) {
-                            // Append attachments to the existing entry
-                            mergedMap.get(key).attachments.push(...(c.attachments || []));
-                          } else {
-                            mergedMap.set(key, { ...c, attachments: [...(c.attachments || [])] });
-                          }
-                        });
-                        // Sort merged entities alphabetically by name
-                        const mergedItems = Array.from(mergedMap.values()).sort((a, b) =>
-                          (a.name || '').localeCompare(b.name || '')
-                        );
-
-                        const hasAttachments = mergedItems.some(c => c.attachments && c.attachments.length > 0);
-                        if (!hasAttachments) return null;
-
-                        return (
-                          <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                            <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#006699]/10 rounded-lg text-xs font-black text-[#006699] uppercase tracking-wider backdrop-blur-sm flex items-center justify-between shadow-sm">
-                              <span>Alphabet {group.letter}</span>
-                              <span className="text-[10px] opacity-70">{mergedItems.length} Entities</span>
-                            </div>
-                            <div className="space-y-4">
-                              {mergedItems.map((company: any) => {
-                                if (!company.attachments || company.attachments.length === 0) return null;
-                                return (
-                                  <div key={company.id} className="bg-slate-50/50 rounded-[22px] border border-slate-150 p-5">
-                                    <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/60 mb-4">
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-lg bg-[#006699]/10 text-[#006699] flex items-center justify-center font-black text-sm uppercase">
-                                          {company.name ? company.name.substring(0, 2) : 'BE'}
-                                        </div>
-                                        <div>
-                                          <h4 className="text-xs font-black text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</h4>
-                                          <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">{company.code} • {company.type}</p>
-                                        </div>
-                                      </div>
-                                      <span className="text-[10px] text-slate-400 font-extrabold bg-white px-2.5 py-1 rounded-lg border border-slate-100">
-                                        {company.attachments?.length || 0} Document(s)
-                                      </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                      {company.attachments.map((att: any, idx: number) => {
-                                        const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
-                                        const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
-                                        const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
-
-                                        return (
-                                          <Card key={idx} className="bg-white rounded-xl border border-slate-150 p-4 hover:shadow-md hover:border-[#006699]/30 transition-all flex flex-col justify-between gap-3 relative overflow-hidden group">
-                                            <div className="flex items-start gap-3">
-                                              <div className={cn(
-                                                "p-2.5 rounded-lg shrink-0 flex items-center justify-center",
-                                                isPdf ? "bg-red-50 text-red-500" :
-                                                  isSheet ? "bg-emerald-50 text-emerald-500" :
-                                                    isDoc ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-500"
-                                              )}>
-                                                <FileText size={20} />
-                                              </div>
-                                              <div className="min-w-0">
-                                                <h5 className="text-xs font-black text-slate-705 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
-                                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-mono">
-                                                    {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
-                                                  </p>
-                                                  {att.fileType && (
-                                                    <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200/50">
-                                                      {att.fileType}
-                                                    </span>
-                                                  )}
+                                          return (
+                                            <Card key={idx} className="bg-white rounded-xl border border-slate-150 p-4 hover:shadow-md hover:border-[#006699]/30 transition-all flex flex-col justify-between gap-3 relative overflow-hidden group">
+                                              <div className="flex items-start gap-3">
+                                                <div className={cn(
+                                                  "p-2.5 rounded-lg shrink-0 flex items-center justify-center",
+                                                  isPdf ? "bg-red-50 text-red-500" :
+                                                    isSheet ? "bg-emerald-50 text-emerald-500" :
+                                                      isDoc ? "bg-blue-50 text-blue-500" : "bg-slate-50 text-slate-500"
+                                                )}>
+                                                  <FileText size={20} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                  <h5 className="text-xs font-medium text-slate-705 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
+                                                  <div className="flex items-center gap-0.5 mt-0.5 flex-wrap">
+                                                    <p className="text-[9px] text-slate-400 font-medium normal-case font-mono">
+                                                      {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
+                                                    </p>
+                                                    {att.fileType && (
+                                                      <span className="text-[8px] font-medium   px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200/50">
+                                                        {att.fileType}
+                                                      </span>
+                                                    )}
+                                                  </div>
                                                 </div>
                                               </div>
-                                            </div>
 
-                                            {/* Visual Preview Badge / Mock Area */}
-                                            {/* <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
-                                              <div className="text-[9px] text-slate-400 font-bold leading-tight">
+                                              {/* Visual Preview Badge / Mock Area */}
+                                              {/* <div className="bg-slate-50 rounded-lg p-2.5 flex items-center justify-center border border-slate-100 min-h-[60px] text-center select-none">
+                                              <div className="text-[9px] text-slate-400 font-medium leading-tight">
                                                 {isPdf ? "📄 PDF Document Preview Ready" :
                                                   isSheet ? "📊 Excel Spreadsheet Data Sheet" :
                                                     "📝 Text Profile Document Data"}
                                               </div>
                                             </div> */}
 
-                                            {/* Action controls */}
-                                            <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 mt-auto">
-                                              {/* <Button
+                                              {/* Action controls */}
+                                              <div className="flex items-center justify-end gap-0.5 pt-2 border-t border-slate-100 mt-auto">
+                                                {/* <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => {
@@ -5939,58 +5848,62 @@ export function MasterManager({ type }: MasterManagerProps) {
                                                     isSheet: !!isSheet
                                                   });
                                                 }}
-                                                className="h-7 px-2.5 rounded-lg text-[9px] font-black text-[#006699] hover:bg-[#006699]/10 flex items-center justify-center gap-1 shadow-sm border border-[#006699]/10"
+                                                className="h-7 px-2.5 rounded-lg text-[9px] font-medium text-[#006699] hover:bg-[#006699]/10 flex items-center justify-center gap-1 shadow-sm border border-[#006699]/10"
                                               >
                                                 Preview
                                               </Button> */}
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
-                                                className="h-7 px-2.5 rounded-lg text-[9px] font-black text-emerald-600 hover:bg-emerald-50 flex items-center justify-center gap-1 border border-emerald-150"
-                                              >
-                                                Download
-                                              </Button>
-                                            </div>
-                                          </Card>
-                                        );
-                                      })}
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
+                                                  className="h-7 px-2.5 rounded-lg text-[9px] font-medium text-emerald-600 hover:bg-emerald-50 flex items-center justify-center gap-1 border border-emerald-150"
+                                                >
+                                                  Download
+                                                </Button>
+                                              </div>
+                                            </Card>
+                                          );
+                                        })}
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
-                {/* FLOATING INDEX ALPHABET SIDEBAR (Perfect containment) */}
-                <div className="absolute -right-1 top-0 bottom-12 w-11 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl flex flex-col items-center justify-between py-3 z-20 select-none">
-                  {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
-                    const hasItems = apiAlphabets.includes(char) || apiAlphabets.includes(char.toLowerCase());
-                    const isSelected = currentStartsWith === char;
-                    return (
-                      <button
-                        key={char}
-                        disabled={!hasItems}
-                        onClick={() => handleAlphabetClick(char)}
-                        style={{ height: '21px', width: '21px' }}
-                        className={cn(
-                          "text-[10px] font-black rounded-full flex items-center justify-center transition-all",
-                          isSelected
-                            ? "text-white bg-[#006699] font-black scale-110 shadow-md shadow-[#006699]/20"
-                            : hasItems
-                              ? "text-slate-800 hover:text-white hover:bg-[#006699] cursor-pointer hover:scale-120 active:scale-95 shadow-sm hover:shadow"
-                              : "text-slate-350 cursor-not-allowed opacity-30 text-[9px]"
-                        )}
-                      >
-                        {char}
-                      </button>
-                    );
-                  })}
+                  {/* FLOATING INDEX ALPHABET SIDEBAR (Perfect containment) */}
+                  <div className="absolute -right-1 top-0 bottom-12 w-11 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl flex flex-col items-center justify-between py-3 z-20 select-none">
+                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
+                      const hasItems = apiAlphabets.includes(char) || apiAlphabets.includes(char.toLowerCase());
+                      const isSelected = currentStartsWith === char;
+                      return (
+                        <button
+                          key={char}
+                          disabled={!hasItems}
+                          onClick={() => handleAlphabetClick(char)}
+                          style={{ height: '21px', width: '21px' }}
+                          className={cn(
+                            "text-[10px] font-medium rounded-full flex items-center justify-center transition-all",
+                            isSelected
+                              ? "text-white bg-[#006699] font-medium scale-110 shadow-md shadow-[#006699]/20"
+                              : hasItems
+                                ? "text-slate-800 hover:text-white hover:bg-[#006699] cursor-pointer hover:scale-120 active:scale-95 shadow-sm hover:shadow"
+                                : "text-slate-350 cursor-not-allowed opacity-30 text-[9px]"
+                          )}
+                        >
+                          {char}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="mt-3 bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-md overflow-hidden">
+                  {renderPaginationBar()}
                 </div>
               </div>
             )
@@ -6008,7 +5921,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 <div className="p-4 bg-slate-100 rounded-2xl text-slate-400 mb-3">
                   <Icon size={32} />
                 </div>
-                <h3 className="text-sm font-bold text-slate-700">No Records Found</h3>
+                <h3 className="text-sm font-medium text-slate-700">No Records Found</h3>
                 <p className="text-xs text-slate-400 font-semibold mt-1 max-w-sm">No master records match your search criteria. Try adjusting filters or click the Add button above to create a new one.</p>
               </div>
             ) : (
@@ -6017,68 +5930,68 @@ export function MasterManager({ type }: MasterManagerProps) {
                   <table className="w-full border-collapse text-left">
                     <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(241,245,249,1)]">
                       <tr className="border-b border-slate-100 bg-slate-50/50">
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest pl-4">Code</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">{type.replace(/-/g, ' ')} Name</th>
+                        <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600   pl-4">Code</th>
+                        <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">{type.replace(/-/g, ' ')} Name</th>
                         {type === 'category' && (
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Features</th>
+                          <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Features</th>
                         )}
                         {type === 'priority' && (
                           <>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Priority Duration</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Sequence</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Priority Duration</th>
                           </>
                         )}
                         {type === 'folder' && (
                           <>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sequence</th>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Parent Folder</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Sequence</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Parent Folder</th>
                           </>
                         )}
                         {type === 'user-group' && (
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+                          <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Description</th>
                         )}
                         {type === 'business-entity-type' && (
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+                          <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Description</th>
                         )}
                         {type === 'benefit-type' && (
-                          <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Valuation Mode</th>
+                          <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Valuation Mode</th>
                         )}
                         {type === 'port' && (
                           <>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Country</th>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">State</th>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">City</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Country</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">State</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">City</th>
                           </>
                         )}
                         {type === 'location' && (
                           <>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Incharge</th>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address</th>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Region</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Type</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Incharge</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Address</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Region</th>
                           </>
                         )}
                         {type === 'task-company' && (
                           <>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Alias</th>
-                            <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Address 1</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Alias</th>
+                            <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Address 1</th>
                           </>
                         )}
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created By</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Created Date</th>
-                        <th className="px-3.5 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right pr-4 w-[100px]">Actions</th>
+                        <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Created By</th>
+                        <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600  ">Created Date</th>
+                        <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600   text-right pr-4 w-[100px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/60 bg-white">
                       {paginatedList.map((item: any) => (
                         <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
-                          <td className="px-3.5 py-2 text-[11px] font-black text-slate-700 pl-4">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider bg-slate-100 text-slate-600 border border-slate-200/50">
+                          <td className="px-3.5 py-2 text-[11px] font-medium text-slate-700 pl-4">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium  bg-slate-100 text-slate-600 border border-slate-200/50">
                               {item.code || `SYS-${item.id}`}
                             </span>
                           </td>
-                          <td className="px-3.5 py-2 text-[11px] font-bold text-slate-800">
-                            <div className="flex items-center gap-2">
+                          <td className="px-3.5 py-2 text-[11px] font-medium text-slate-800">
+                            <div className="flex items-center gap-0.5">
                               {type === 'category' && item.color && (
                                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                               )}
@@ -6089,28 +6002,28 @@ export function MasterManager({ type }: MasterManagerProps) {
                             <td className="px-3.5 py-2">
                               <div className="flex flex-wrap gap-1">
                                 {item.isApprovalApplicable && (
-                                  <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Approval</span>
+                                  <span className="text-[9px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Approval</span>
                                 )}
                                 {item.isInReviewRequired && (
-                                  <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Review</span>
+                                  <span className="text-[9px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Review</span>
                                 )}
                                 {item.isBusinessBenefitApplicable && (
-                                  <span className="text-[9px] font-black text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">Benefit</span>
+                                  <span className="text-[9px] font-medium text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">Benefit</span>
                                 )}
                               </div>
                             </td>
                           )}
                           {type === 'priority' && (
                             <>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">{item.sequence}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">
                                 {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
                               </td>
                             </>
                           )}
                           {type === 'folder' && (
                             <>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.sequence}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">{item.sequence}</td>
                               <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold">{item.parentFolderNo || 'Root'}</td>
                             </>
                           )}
@@ -6125,40 +6038,40 @@ export function MasterManager({ type }: MasterManagerProps) {
                             </td>
                           )}
                           {type === 'benefit-type' && (
-                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                            <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">
                               {benefitFillValues?.valuationTypes?.find((v: any) => v.valuationTypeNo?.toString() === item.valuationtypeNo?.toString())?.valuationTypeName || item.valuationtypeNo}
                             </td>
                           )}
                           {type === 'port' && (
                             <>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">
                                 {item.countryName || <span className="italic text-slate-300 font-medium">Not set</span>}
                               </td>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">
                                 {item.stateName || <span className="italic text-slate-300 font-medium">Not set</span>}
                               </td>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">
                                 {item.cityName || <span className="italic text-slate-300 font-medium">Not set</span>}
                               </td>
                             </>
                           )}
                           {type === 'location' && (
                             <>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">
-                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider">
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">
+                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium text-[9px]  ">
                                   {item.type || ''}
                                 </span>
                               </td>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.inchargeNo || 'No Lead'}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">{item.inchargeNo || 'No Lead'}</td>
                               <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[150px] truncate">
                                 {item.address1} {item.cityNo ? `, ${item.cityNo}` : ''}
                               </td>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold">{item.locationRegion || 'Central'}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium">{item.locationRegion || 'Central'}</td>
                             </>
                           )}
                           {type === 'task-company' && (
                             <>
-                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-bold max-w-[150px] truncate">{item.aliasName || '-'}</td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-600 font-medium max-w-[150px] truncate">{item.aliasName || '-'}</td>
                               <td className="px-3.5 py-2 text-[11px] text-slate-500 font-semibold max-w-[200px] truncate" title={[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ')}>
                                 {[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ') || '-'}
                               </td>
@@ -6195,101 +6108,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                     </tbody>
                   </table>
                 </div>
-
-                {/* Pagination Control Bar */}
-                <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-4 select-none">
-                  {/* Left Side: Range Info */}
-                  <div className="text-[11px] text-slate-500 font-bold">
-                    Showing <span className="text-slate-800 font-black">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
-                    <span className="text-slate-800 font-black">{endIndex}</span> of{" "}
-                    <span className="text-slate-800 font-black">{totalItems}</span> records
-                  </div>
-
-                  {/* Center: Items Per Page Selector */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Per Page:</span>
-                    <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
-                      {[10, 25, 50].map((size) => (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => {
-                            setItemsPerPage(size);
-                            setCurrentPage(1);
-                          }}
-                          className={cn(
-                            "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
-                            itemsPerPage === size
-                              ? "bg-[#006699] text-white shadow-sm font-black"
-                              : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                          )}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Right Side: Page Controls */}
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={safeCurrentPage === 1}
-                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                      className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
-                    >
-                      <ChevronLeft size={14} strokeWidth={2.5} />
-                    </Button>
-
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter((page) => {
-                          return (
-                            page === 1 ||
-                            page === totalPages ||
-                            Math.abs(page - safeCurrentPage) <= 1
-                          );
-                        })
-                        .map((page, idx, arr) => {
-                          const isPageActive = safeCurrentPage === page;
-                          const hasGap = idx > 0 && page - arr[idx - 1] > 1;
-
-                          return (
-                            <React.Fragment key={page}>
-                              {hasGap && (
-                                <span className="text-[10px] font-bold text-slate-400 px-1 select-none">
-                                  ...
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => setCurrentPage(page)}
-                                className={cn(
-                                  "h-7 w-7 rounded-lg text-[10px] font-black transition-all flex items-center justify-center border shadow-sm",
-                                  isPageActive
-                                    ? "bg-[#006699] border-[#006699] text-white font-black shadow-md shadow-[#006699]/10"
-                                    : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:text-slate-900"
-                                )}
-                              >
-                                {page}
-                              </button>
-                            </React.Fragment>
-                          );
-                        })}
-                    </div>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={safeCurrentPage === totalPages}
-                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                      className="h-7 w-7 rounded-lg text-slate-505 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
-                    >
-                      <ChevronRight size={14} strokeWidth={2.5} />
-                    </Button>
-                  </div>
-                </div>
+                {renderPaginationBar()}
               </div>
             )
           )}
@@ -6301,7 +6120,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent className="rounded-2xl max-w-sm p-0 border-none shadow-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <DialogTitle className="text-lg font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
               <AlertCircle size={20} className="text-red-500" />
               Confirm Deletion
             </DialogTitle>
@@ -6309,7 +6128,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               Do you want to delete?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-2xl">
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-2xl">
             <Button
               type="button"
               variant="outline"
@@ -6317,13 +6136,13 @@ export function MasterManager({ type }: MasterManagerProps) {
                 setDeleteConfirmOpen(false);
                 setDeleteTargetId(null);
               }}
-              className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
             >
               No
             </Button>
             <Button
               onClick={confirmDelete}
-              className="h-10 px-5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-widest shadow-md shadow-red-500/20 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
+              className="h-10 px-5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium text-xs normal-case shadow-md shadow-red-500/20 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95"
             >
               Yes
             </Button>
@@ -6335,25 +6154,25 @@ export function MasterManager({ type }: MasterManagerProps) {
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
               Confirm {editingId ? "Update" : "Save"}
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
               Do you want to {editingId ? "update" : "save"}?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-2 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               variant="outline"
               onClick={() => setShowConfirm(false)}
-              className="h-10 px-4 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
             >
               No
             </Button>
             <Button
               onClick={handleConfirmSave}
-              className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 gap-2 transition-transform hover:scale-[1.02] active:scale-95"
+              className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs normal-case shadow-md shadow-[#006699]/10 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95"
             >
               Yes
             </Button>
@@ -6371,7 +6190,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
             </div>
 
-            <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">
+            <h3 className="text-lg font-medium text-slate-800 tracking-tight mb-1">
               Success
             </h3>
 
@@ -6384,7 +6203,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             <Button
               type="button"
               onClick={() => setShowSuccessAlert(false)}
-              className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-black text-xs uppercase tracking-widest shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
+              className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs normal-case shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
             >
               OK
             </Button>
@@ -6397,7 +6216,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl overflow-hidden bg-white [&>button]:hidden">
           <DialogHeader className="p-6 pb-4 bg-slate-50 border-b border-slate-100 flex flex-row items-center justify-between gap-4">
             <div>
-              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
                 <FileText size={18} className="text-[#006699]" />
                 <span>{previewAttachment?.fileName || 'Document Preview'}</span>
               </DialogTitle>
@@ -6417,11 +6236,11 @@ export function MasterManager({ type }: MasterManagerProps) {
             {previewAttachment?.isPdf ? (
               <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-md p-6 flex flex-col gap-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <span className="text-[10px] font-black text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded uppercase tracking-wider">PDF Document</span>
-                  <span className="text-[10px] text-slate-400 font-bold">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
+                  <span className="text-[10px] font-medium text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded  ">PDF Document</span>
+                  <span className="text-[10px] text-slate-400 font-medium">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
                 </div>
                 <div className="space-y-3 font-serif text-[11px] text-slate-600 leading-relaxed py-2 select-text">
-                  <h4 className="text-xs font-black text-slate-800 font-sans tracking-tight mb-2 text-center underline uppercase">Company Registration Profile</h4>
+                  <h4 className="text-xs font-medium text-slate-800 font-sans tracking-tight mb-2 text-center underline ">Company Registration Profile</h4>
                   <p>This document details the corporate structure, registration details, and tax identity configurations of <strong>{previewAttachment?.companyName}</strong>.</p>
                   <p>All active certifications, operational nodes, and financial insurance limits represented in this file are validated under the governing authority as of the active creation date.</p>
                   <p className="italic text-slate-400 text-[10px] mt-4 text-center font-sans">** End of Document Preview Stream **</p>
@@ -6430,31 +6249,31 @@ export function MasterManager({ type }: MasterManagerProps) {
             ) : previewAttachment?.isSheet ? (
               <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
                 <div className="px-4 py-3 bg-emerald-50/50 border-b border-slate-150 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded uppercase tracking-wider">Data Spreadsheet</span>
-                  <span className="text-[10px] text-slate-400 font-bold">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
+                  <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded  ">Data Spreadsheet</span>
+                  <span className="text-[10px] text-slate-400 font-medium">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-left text-[11px] font-bold text-slate-600">
+                  <table className="w-full border-collapse text-left text-[11px] font-medium text-slate-600">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-150">
-                        <th className="p-2.5 pl-4 font-extrabold text-[9px] uppercase tracking-wider text-slate-400">Parameter</th>
-                        <th className="p-2.5 font-extrabold text-[9px] uppercase tracking-wider text-slate-400">Value Field</th>
-                        <th className="p-2.5 pr-4 font-extrabold text-[9px] uppercase tracking-wider text-slate-400">Verification Status</th>
+                        <th className="p-2.5 pl-4 font-semibold text-[11px]   text-slate-600">Parameter</th>
+                        <th className="p-2.5 font-semibold text-[11px]   text-slate-600">Value Field</th>
+                        <th className="p-2.5 pr-4 font-semibold text-[11px]   text-slate-600">Verification Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       <tr>
-                        <td className="p-2.5 pl-4 font-extrabold text-slate-700">Company Name</td>
-                        <td className="p-2.5 text-[#006699] font-black">{previewAttachment?.companyName}</td>
+                        <td className="p-2.5 pl-4 font-medium text-slate-700">Company Name</td>
+                        <td className="p-2.5 text-[#006699] font-medium">{previewAttachment?.companyName}</td>
                         <td className="p-2.5 pr-4"><span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Verified</span></td>
                       </tr>
                       <tr>
-                        <td className="p-2.5 pl-4 font-extrabold text-slate-700">Audit Status</td>
+                        <td className="p-2.5 pl-4 font-medium text-slate-700">Audit Status</td>
                         <td className="p-2.5">Compliant</td>
                         <td className="p-2.5 pr-4"><span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Verified</span></td>
                       </tr>
                       <tr>
-                        <td className="p-2.5 pl-4 font-extrabold text-slate-700">Limit Valuation</td>
+                        <td className="p-2.5 pl-4 font-medium text-slate-700">Limit Valuation</td>
                         <td className="p-2.5">Standard Tier 1</td>
                         <td className="p-2.5 pr-4"><span className="text-[9px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Verified</span></td>
                       </tr>
@@ -6465,11 +6284,11 @@ export function MasterManager({ type }: MasterManagerProps) {
             ) : (
               <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-md p-6 flex flex-col gap-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <span className="text-[10px] font-black text-blue-500 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded uppercase tracking-wider">Information Log</span>
-                  <span className="text-[10px] text-slate-400 font-bold">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
+                  <span className="text-[10px] font-medium text-blue-500 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded  ">Information Log</span>
+                  <span className="text-[10px] text-slate-400 font-medium">{previewAttachment?.fileSize ? `${(previewAttachment.fileSize / 1024).toFixed(1)} KB` : ''}</span>
                 </div>
                 <div className="p-4 bg-slate-55 rounded-xl font-mono text-[10px] text-slate-600 leading-relaxed border border-slate-100 min-h-[120px] select-text">
-                  <p className="font-bold text-slate-800">// Company master log initialization stream</p>
+                  <p className="font-medium text-slate-800">// Company master log initialization stream</p>
                   <p className="mt-2">[INFO] Handshake verified with corporate directory.</p>
                   <p>[INFO] Primary locations successfully compiled.</p>
                   <p>[INFO] Credit rating evaluation complete.</p>
@@ -6479,11 +6298,11 @@ export function MasterManager({ type }: MasterManagerProps) {
             )}
           </div>
 
-          <div className="p-4 bg-slate-50 flex justify-end gap-2">
+          <div className="p-4 bg-slate-50 flex justify-end gap-0.5">
             <Button
               type="button"
               onClick={() => setPreviewAttachment(null)}
-              className="h-10 px-6 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs uppercase tracking-wider shadow-none border-none"
+              className="h-10 px-6 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-xs normal-case shadow-none border-none"
             >
               Close Preview
             </Button>

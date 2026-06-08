@@ -64,9 +64,9 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
             "border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl overflow-hidden active:scale-[0.98]",
             snapshot.isDragging ? "rotate-2 scale-105 shadow-xl border-primary/20" : ""
           )}>
-            <CardContent className="p-3 space-y-2">
+            <CardContent className="p-3 space-y-0">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">{displayCode}</span>
+                <span className="text-[10px] font-black text-slate-600  ">{displayCode}</span>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -82,14 +82,14 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                 </div>
               </div>
               
-              <div className="space-y-1.5">
+              <div className="space-y-0.5">
                 <h4 className="text-[13px] font-black text-slate-900 leading-tight group-hover:text-[#006699] transition-colors line-clamp-1">
                   {task.title}
                 </h4>
                 
                 <div className="flex flex-wrap gap-1 mt-1">
                   {task.typeName && (
-                    <span className="bg-slate-200 text-slate-800 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                    <span className="bg-slate-200 text-slate-800 text-[8px] font-black px-1.5 py-0.5 rounded-md  ">
                       {task.typeName}
                     </span>
                   )}
@@ -102,14 +102,14 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                     return (
                       <span 
                         style={{ backgroundColor: bgColor, color: textColor }}
-                        className="text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider border border-black/5"
+                        className="text-[8px] font-black px-1.5 py-0.5 rounded-md   border border-black/5"
                       >
                         {task.categoryName}
                       </span>
                     );
                   })()}
                   <span className={cn(
-                    "text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider",
+                    "text-[8px] font-black px-1.5 py-0.5 rounded-md  ",
                     task.priority_No >= 3 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-700"
                   )}>
                     {task.priority}

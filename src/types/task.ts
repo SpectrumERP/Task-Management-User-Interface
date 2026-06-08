@@ -15,9 +15,11 @@ export interface ReviewRequired {
 }
 
 export interface ActualEffort {
+  createdBy: any;
   date: string;
   hours: number;
   description: string;
+  operTaskEffortLogDetailNo?: number;
 }
 
 export interface CheckListItem {
@@ -59,6 +61,7 @@ export interface Task {
   parent_task_No?: number;
   location_No: number;
   company?: string;
+  companyName?: string;
   start_date?: string;
   end_date?: string;
   completionDate?: string;
@@ -94,10 +97,18 @@ export interface Task {
   priority: Priority;
   categoryName?: string;
   typeName?: string;
+  folderName?: string;
+  locationName?: string;
+  parentTask?: {
+    operTaskNo: number;
+    title: string;
+  };
   assignedDisplayName?: string;
   originatorDisplayName?: string;
   collaboratorUserGroupNo?: number;
   infromToUserGroupNo?: number;
   attachments?: DocumentAttachment[];
   customFields?: { customFieldNo: number | string; fieldValue: string }[];
+  createdDate?: string;
+  createdBy?: { displayName: string };
 }

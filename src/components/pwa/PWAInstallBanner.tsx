@@ -141,7 +141,7 @@ export function PWAInstallBanner() {
         {showiOSInstructions ? (
           /* iOS Safari Manual Install Callout */
           <div className="bg-slate-950/60 border border-slate-800/60 rounded-xl p-3 flex flex-col gap-2">
-            <span className="text-[9.5px] font-black text-[#00b4d8] uppercase tracking-widest block">iOS Safari Instructions</span>
+            <span className="text-[9.5px] font-black text-[#00b4d8]   block">iOS Safari Instructions</span>
             <div className="flex items-center gap-2.5 text-[11px] text-slate-300 font-bold leading-relaxed">
               <div className="h-6 w-6 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-200 shrink-0">
                 <Share size={11} strokeWidth={2.5} />
