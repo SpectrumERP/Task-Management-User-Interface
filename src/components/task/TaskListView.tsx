@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Task } from '@/types/task';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, Settings2, Edit2 } from 'lucide-react';
+import { ArrowRight, Settings2, Edit2, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -74,10 +75,12 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [pendingColumns, setPendingColumns] = useState<Set<ColumnKey>>(visibleColumns);
+  const [columnSearchQuery, setColumnSearchQuery] = useState('');
 
   useEffect(() => {
     if (dropdownOpen) {
       setPendingColumns(new Set(visibleColumns));
+      setColumnSearchQuery('');
     }
   }, [dropdownOpen, visibleColumns]);
 
@@ -182,18 +185,31 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48" onInteractOutside={() => setDropdownOpen(false)}>
                           <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
+                          <div className="px-2 pb-2">
+                            <div className="relative">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                              <Input
+                                placeholder="Search columns..."
+                                value={columnSearchQuery}
+                                onChange={(e) => setColumnSearchQuery(e.target.value)}
+                                className="h-8 w-full pl-8 text-xs bg-slate-50 border-slate-200"
+                              />
+                            </div>
+                          </div>
                           <DropdownMenuSeparator />
-                          {COLUMNS.map((c) => (
-                            <DropdownMenuCheckboxItem
-                              key={c.key}
-                              checked={pendingColumns.has(c.key)}
-                              onSelect={(e) => e.preventDefault()} // Prevent closing on click
-                              onCheckedChange={() => togglePendingColumn(c.key)}
-                              disabled={c.key === 'title' || c.key === 'actions'} // Prevent hiding subject and actions
-                            >
-                              {c.label || 'Actions'}
-                            </DropdownMenuCheckboxItem>
-                          ))}
+                          <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
+                            {COLUMNS.filter(c => (c.label || 'Actions').toLowerCase().includes(columnSearchQuery.toLowerCase())).map((c) => (
+                              <DropdownMenuCheckboxItem
+                                key={c.key}
+                                checked={pendingColumns.has(c.key)}
+                                onSelect={(e) => e.preventDefault()} // Prevent closing on click
+                                onCheckedChange={() => togglePendingColumn(c.key)}
+                                disabled={c.key === 'title' || c.key === 'actions'} // Prevent hiding subject and actions
+                              >
+                                {c.label || 'Actions'}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </div>
                           <DropdownMenuSeparator />
                           <div className="flex justify-end gap-0.5 p-2">
                             <Button
@@ -395,9 +411,9 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                 {visibleColumns.has('createdDate') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     {task.createdDate ? (
-                      <span className="text-xs font-medium text-slate-700">{format(new Date(task.createdDate), 'MMM dd, yyyy')}</span>
+                      <span className="text-xs font-medium text-slate-700">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
                     ) : task.start_date ? (
-                      <span className="text-xs font-medium text-slate-700">{format(new Date(task.start_date), 'MMM dd, yyyy')}</span>
+                      <span className="text-xs font-medium text-slate-700">{format(new Date(task.start_date), 'MMM dd, yyyy h:mm a')}</span>
                     ) : <span className="text-slate-300">-</span>}
                   </td>
                 )}

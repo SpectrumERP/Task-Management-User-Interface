@@ -6019,8 +6019,8 @@ export function MasterManager({ type }: MasterManagerProps) {
                           <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-600 truncate max-w-[120px]">
                             {item.createdBy || 'System'}
                           </td>
-                          <td className="px-3.5 py-2 text-[11px] font-semibold text-slate-500 whitespace-nowrap">
-                            {item.createdDate ? format(new Date(item.createdDate), 'MMM dd, yyyy') : 'N/A'}
+                          <td className="px-3.5 py-2.5 text-[11px] font-medium text-slate-600  ">
+                            {item.createdDate ? format(new Date(item.createdDate), 'MMM dd, yyyy h:mm a') : 'N/A'}
                           </td>
                           <td className="px-3.5 py-2 text-right pr-4 w-[100px]">
                             <div className="flex items-center justify-end gap-1">

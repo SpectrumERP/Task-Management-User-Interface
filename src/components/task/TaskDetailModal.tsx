@@ -289,9 +289,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                           </p>
                         )}
                         {task.createdDate && (
-                          <p className="text-[10px] font-medium text-slate-600">
-                            Created On: <span className="text-slate-900 font-medium">{format(new Date(task.createdDate), 'MMM dd, yyyy')}</span>
-                          </p>
+                          <div className="text-xs text-slate-500 whitespace-nowrap pt-1">
+                            Created On: <span className="text-slate-900 font-medium">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
+                          </div>
                         )}
                       </div>
                     </div>
