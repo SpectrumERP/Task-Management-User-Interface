@@ -94,7 +94,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-6 overflow-y-auto pr-1 scrollbar-thin">
+      <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hide">
         <div className="space-y-0">
           {navItems.map((item) => (
             <button

@@ -449,16 +449,6 @@ export function TaskFilter({
                         <Folder size={12} className="text-slate-400" />
                         Workspace Folder
                       </label>
-                      <Controller
-                        name="isAllFolder"
-                        control={control}
-                        render={({ field }) => (
-                          <label className="flex items-center gap-1.5 cursor-pointer mr-1">
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} className="h-3.5 w-3.5 rounded-[4px]" />
-                            <span className="text-[10px] text-slate-500 font-medium">Search All Folders</span>
-                          </label>
-                        )}
-                      />
                     </div>
                     <Controller
                       name="folderNo"
@@ -598,7 +588,21 @@ export function TaskFilter({
             </div>
 
             {/* Action buttons toolbar: distributed evenly on mobile, aligned on desktop */}
-            <div className="flex items-center justify-between sm:justify-start gap-0.5 w-full sm:w-auto shrink-0">
+            <div className="flex items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto shrink-0 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
+              <Controller
+                name="isAllFolder"
+                control={control}
+                render={({ field }) => (
+                  <label className="flex items-center gap-1.5 cursor-pointer px-2 py-1.5 sm:py-1 rounded-lg hover:bg-slate-50 border border-transparent transition-colors shrink-0">
+                    <Checkbox checked={field.value} onCheckedChange={(val) => {
+                       field.onChange(val);
+                       setTimeout(() => handleSubmit(onSubmit)(), 0);
+                    }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#006699] data-[state=checked]:border-[#006699]" />
+                    <span className="text-[11px] sm:text-xs text-slate-600 font-medium whitespace-nowrap">Search all folders</span>
+                  </label>
+                )}
+              />
+
               <Button
                 type="button"
                 onClick={() => toggleFilters()}
@@ -926,16 +930,6 @@ export function TaskFilter({
                       <Folder size={12} className="text-slate-400" />
                       Workspace Folder
                     </label>
-                    <Controller
-                      name="isAllFolder"
-                      control={control}
-                      render={({ field }) => (
-                        <label className="flex items-center gap-1.5 cursor-pointer mr-1">
-                          <Checkbox checked={field.value} onCheckedChange={field.onChange} className="h-3.5 w-3.5 rounded-[4px]" />
-                          <span className="text-[10px] text-slate-500 font-medium">Search All Folders</span>
-                        </label>
-                      )}
-                    />
                   </div>
                   <Controller
                     name="folderNo"
