@@ -140,8 +140,8 @@ export function DealForm() {
   };
 
   return (
-    <div className="flex-1 w-full flex flex-col bg-[#f1f5f9] overflow-hidden">
-      <div className="w-full px-2 sm:px-6 py-1.5 sm:py-2 bg-white border-b border-slate-200 shadow-sm z-20">
+    <div className="flex-1 w-full flex flex-col overflow-hidden">
+      <div className="w-full px-2 sm:px-4 py-1 z-20">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <button
@@ -181,8 +181,8 @@ export function DealForm() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 sm:p-8">
-        <div className="max-w-5xl mx-auto bg-white rounded-[16px] sm:rounded-[24px] p-4 sm:p-8 shadow-xl shadow-slate-200/40 border border-slate-100">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-8">
+        <div className=" mx-auto bg-white rounded-[16px] sm:rounded-[24px] p-4 sm:p-8 shadow-xl shadow-slate-200/40 border border-slate-100">
           {isFetching ? (
             <div className="flex flex-col items-center justify-center gap-4 py-20">
               <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
@@ -192,15 +192,15 @@ export function DealForm() {
             <form id="sales-deal-form" onSubmit={form.handleSubmit(submitForm)} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-0">
-                  <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Company <span className="text-red-500">*</span></label>
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Company <span className="text-red-500">*</span></label>
                   <Controller
                     name="companyNo"
                     control={form.control}
                     render={({ field }) => (
                       <Combobox options={companyOptions} value={field.value} onChange={(value) => {
-                          field.onChange(value);
-                          form.setValue('divisionNo', '', { shouldDirty: true, shouldValidate: true });
-                        }}
+                        field.onChange(value);
+                        form.setValue('divisionNo', '', { shouldDirty: true, shouldValidate: true });
+                      }}
                         placeholder="Select company"
                         searchPlaceholder="Search company..."
                         className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
@@ -211,7 +211,7 @@ export function DealForm() {
                 </div>
 
                 <div className="space-y-0">
-                  <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Division</label>
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Division</label>
                   <Controller
                     name="divisionNo"
                     control={form.control}
@@ -222,13 +222,13 @@ export function DealForm() {
                 </div>
 
                 <div className="space-y-0">
-                  <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document No Yearly <span className="text-red-500">*</span></label>
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document No Yearly <span className="text-red-500">*</span></label>
                   <Input {...form.register('documentNoYearly')} maxLength={30} className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm" placeholder="Enter document no" />
                   {form.formState.errors.documentNoYearly && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.documentNoYearly.message}</p>}
                 </div>
 
                 <div className="space-y-0">
-                  <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document Date <span className="text-red-500">*</span></label>
+                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document Date <span className="text-red-500">*</span></label>
                   <Controller
                     name="documentDate"
                     control={form.control}
@@ -241,7 +241,7 @@ export function DealForm() {
               </div>
 
               <div className="space-y-0">
-                <label  className="text-[11px] font-medium text-slate-700 normal-case ml-1">Description <span className="text-red-500">*</span></label>
+                <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Description <span className="text-red-500">*</span></label>
                 <Textarea {...form.register('description')} maxLength={1000} className="min-h-[140px] rounded-2xl border-slate-200 bg-white shadow-sm resize-none" placeholder="Enter description" />
                 {form.formState.errors.description && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.description.message}</p>}
               </div>

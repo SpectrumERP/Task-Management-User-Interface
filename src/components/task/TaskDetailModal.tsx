@@ -19,7 +19,10 @@ import {
   CheckSquare,
   FileText,
   Paperclip,
-  Image
+  Image,
+  User,
+  UserPlus,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -281,21 +284,6 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                       <h3 className="text-lg font-medium text-slate-900 tracking-tight leading-tight">
                         {task.title}
                       </h3>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
-                        <p className="text-[10px] font-medium text-slate-600">
-                          Originator: <span className="text-slate-900 font-medium">{task.originatorDisplayName || 'Unknown'}</span>
-                        </p>
-                        {task.createdBy?.displayName && (
-                          <p className="text-[10px] font-medium text-slate-600">
-                            Created By: <span className="text-slate-900 font-medium">{task.createdBy.displayName}</span>
-                          </p>
-                        )}
-                        {task.createdDate && (
-                          <p className="text-[10px] font-medium text-slate-600">
-                            Created Date: <span className="text-slate-900 font-medium">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
-                          </p>
-                        )}
-                      </div>
                     </div>
 
                     {task.description ? (
@@ -375,7 +363,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                     <h4 className="text-[10px] font-medium text-slate-700   mb-1">Task Specifications</h4>
 
                     {/* Owner Block */}
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
+                    <div className="flex items-center gap-2 p-1 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
                       <UserAvatar
                         loginNo={task.owner_user_No}
                         displayName={task.assignedDisplayName}
@@ -388,7 +376,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                     </div>
 
                     {/* Dynamic Info Key-Value Rows */}
-                    <div className="space-y-1 pt-1">
+                    <div className="space-y-2 pt-1">
                       {/* Priority */}
                       <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
                         <span className="font-medium text-slate-600 flex items-center gap-0.5"><AlertCircle size={13} className="text-slate-500" /> Priority</span>
@@ -457,6 +445,28 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <span className="font-medium text-slate-600 flex items-center gap-0.5"><Calendar size={13} className="text-slate-500" /> Due Date</span>
                         <span className="font-medium text-slate-900">{task.end_date ? format(new Date(task.end_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
                       </div>
+
+                      {/* Originator */}
+                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1 mt-1">
+                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><User size={13} className="text-slate-500" /> Originator</span>
+                        <span className="font-medium text-slate-900">{task.originatorDisplayName || 'Unknown'}</span>
+                      </div>
+
+                      {/* Created By */}
+                      {task.createdBy?.displayName && (
+                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><UserPlus size={13} className="text-slate-500" /> Created By</span>
+                          <span className="font-medium text-slate-900">{task.createdBy.displayName}</span>
+                        </div>
+                      )}
+
+                      {/* Created Date */}
+                      {task.createdDate && (
+                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
+                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><Clock size={13} className="text-slate-500" /> Created Date</span>
+                          <span className="font-medium text-slate-900">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
+                        </div>
+                      )}
 
                       {/* Business Benefit Details */}
                       {task.is_business_benefit_applicable && (

@@ -244,7 +244,7 @@ export default function TaskDetail() {
           <div className="flex flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <button
-                onClick={handleGoBack}
+                onClick={() => navigate('/')}
                 className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded"
               >
                 Tasks List
@@ -260,7 +260,7 @@ export default function TaskDetail() {
               <Button
                 variant="ghost"
                 type="button"
-                onClick={handleGoBack}
+                onClick={() => navigate(-1)}
                 disabled={isSaving}
                 className="rounded-xl px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
               >

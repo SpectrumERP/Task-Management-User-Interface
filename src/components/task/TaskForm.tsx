@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle } from 'lucide-react';
+import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
@@ -37,6 +37,7 @@ const formatFileSize = (bytes?: number | null) => {
 };
 
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
+import CameraComp from '@/components/ui/CameraComp';
 import {
   Dialog,
   DialogContent,
@@ -409,6 +410,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   }>>([]);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
   const [activeMasterType, setActiveMasterType] = useState<'category' | 'type' | 'priority' | 'folder' | 'location' | null>(null);
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
@@ -1261,6 +1263,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     });
   };
 
+  const handleCameraAttachmentUploaded = (attachment: any) => {
+    const currentAttachments = form.getValues('attachments') || [];
+    form.setValue('attachments', [...currentAttachments, {
+      id: attachment.docNo || attachment.id,
+      name: attachment.docName || attachment.name || attachment.fileName,
+      size: attachment.docSize || attachment.size
+    }], { shouldDirty: true });
+    setIsCameraModalOpen(false);
+    toast.success("Camera attachment uploaded successfully");
+  };
+
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -1734,11 +1747,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <TagInput
                     tags={field.value || []}
                     onChange={field.onChange}
-                    placeholder="Press enter or comma to add tags"
+                    placeholder="Add tags..."
                     className="min-h-[36px] py-1 border-slate-300 shadow-sm input-section"
                   />
                 )}
               />
+              <p className="text-[10px] text-slate-500 font-medium ml-1 mt-1">Note: Press Enter or type a comma to add a tag.</p>
             </div>
           </div>
         </FormSection>
@@ -2645,7 +2659,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             </td>
                             <td className="px-0.5 py-0 min-w-[400px] align-top">
                               <div className="flex items-start gap-0.5 py-1.5 pl-2.5">
-                                <span className="text-xs font-medium text-slate-500 mt-2">{localSubtasks.length + index + 1}.</span>
                                 <div className="flex-1">
                                   <Input {...form.register(`sub_tasks.${index}.title`)} placeholder="Enter task title" className={cn("border-slate-200 shadow-sm h-8 px-2 rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",)} maxLength={200} />
                                   {form.formState.errors.sub_tasks?.[index]?.title && (
@@ -2866,6 +2879,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <p className="mt-1 text-[10px] font-medium text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
               </div>
 
+              <div
+                onClick={() => setIsCameraModalOpen(true)}
+                className="flex flex-col items-center justify-center border border-slate-200 hover:border-[#006699] rounded-2xl py-3 bg-white hover:bg-slate-50 transition-all cursor-pointer group"
+              >
+                <Camera size={20} className="text-[#006699]" />
+              </div>
               {/* Active Uploading Files Queue */}
               {uploadingFiles.length > 0 && (
                 <div className="space-y-3">
@@ -3303,6 +3322,29 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               Leave Page
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
+        <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-white overflow-hidden">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-100">
+            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <Camera size={18} className="text-[#006699]" />
+              Capture Attachment
+            </DialogTitle>
+            <DialogDescription className="text-xs font-semibold text-slate-500">
+              Take a photo and upload it as a Task attachment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-5">
+            <CameraComp
+              companyNo={authCompanies?.[0]?.HeadOfficeNo || authCompanies?.[0]?.headOfficeNo || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
+              formNo={1547}
+              fileNamePrefix="task-capture"
+              className="border-slate-100 shadow-none"
+              onUploaded={handleCameraAttachmentUploaded}
+              onCancel={() => setIsCameraModalOpen(false)}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </Card>

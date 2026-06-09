@@ -16,7 +16,8 @@ import {
   Building,
   ChevronDown,
   Handshake,
-  Menu
+  Menu,
+  Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -94,7 +95,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-hide">
+      <nav className={cn("flex-1 space-y-6 scrollbar-hide", isCollapsed ? "overflow-visible" : "overflow-y-auto")}>
         <div className="space-y-0">
           {navItems.map((item) => (
             <button
@@ -123,7 +124,54 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
 
         {/* Master Data Section */}
         <div className="space-y-0">
-          {!isCollapsed && (
+          {isCollapsed ? (
+            <div className="relative group w-full flex justify-center">
+              <button
+                onClick={() => {
+                  if (onToggleCollapse) onToggleCollapse();
+                  setIsMasterExpanded(true);
+                }}
+                className="flex items-center justify-center px-0 py-3 rounded-xl transition-all font-bold text-sm relative text-slate-600 hover:bg-slate-200/50 w-full"
+              >
+                <Database size={20} className={isMasterActive ? "text-[#006699]" : "text-slate-400"} />
+              </button>
+              
+              {/* Interactive Hover Menu */}
+              <div className="absolute left-full top-0 ml-2 py-1.5 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all z-50 shadow-xl min-w-[200px]">
+                {/* Invisible bridge to maintain hover */}
+                <div className="absolute -left-3 top-0 bottom-0 w-4 bg-transparent" />
+                
+                <div className="px-3 py-2 flex items-center gap-2 text-xs font-bold text-slate-800 border-b border-slate-100 mb-1">
+                  <Database size={14} className="text-[#00b4d8]" />
+                  Master Data
+                </div>
+                
+                <div className="max-h-[300px] overflow-y-auto py-1">
+                  {masterItems.map(item => {
+                    const isActive = activeTab === item.id;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTabChange(item.id);
+                        }}
+                        className={cn(
+                          "flex items-center gap-2.5 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-colors",
+                          isActive
+                            ? "bg-[#e1ecf7] text-[#006699]"
+                            : "text-slate-600 hover:bg-slate-100"
+                        )}
+                      >
+                        <item.icon size={14} className={isActive ? "text-[#006699]" : "text-slate-400"} />
+                        <span className="text-xs">{item.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
             <button
               onClick={() => setIsMasterExpanded(!isMasterExpanded)}
               className="w-full flex items-center justify-between px-4 mb-2 group cursor-pointer hover:bg-slate-200/50 py-1.5 rounded-lg transition-colors"
@@ -143,7 +191,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
           )}
           <div className={cn(
             "space-y-1 overflow-hidden transition-all duration-300",
-            (isMasterExpanded || isCollapsed) ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+            (isMasterExpanded && !isCollapsed) ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0 hidden"
           )}>
             {masterItems.map((item) => {
               const isActive = activeTab === item.id;
