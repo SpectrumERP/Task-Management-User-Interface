@@ -144,7 +144,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           originator_user_No: d.originator?.id || null,
           owner_user_No: d.owner?.id || null,
           location_No: d.location?.operTaskLocationNo || null,
+          locationName: d.location?.locationName || '',
           company: d.taskCompany?.taskCompanyNo || '',
+          companyName: d.taskCompany?.taskCompanyAlias || '',
           createdDate: d.createdDate || d.created_date || null,
           createdBy: { displayName: d.createdBy?.displayName || d.createdBy?.printingName || d.createdBy?.loginId || '' },
           start_date: d.startDate,
@@ -269,10 +271,10 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
             </div>
           ) : task ? (
             <div className="p-3 space-y-2">
-              {/* TOP ROW: Title, desc, checklist vs specs sidebar */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-                {/* Left Column (2/3 width) - Title, Description, Checklist, Collaborators */}
-                <div className="lg:col-span-2 space-y-2">
+              {/* Layout Container */}
+              <div className="flex flex-col lg:grid lg:grid-cols-3 gap-2">
+                {/* 1. Main Info Block */}
+                <div className="order-1 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1 space-y-2">
                   {/* Title & Description Block */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
                     <div>
@@ -289,9 +291,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                           </p>
                         )}
                         {task.createdDate && (
-                          <div className="text-xs text-slate-500 whitespace-nowrap pt-1">
-                            Created On: <span className="text-slate-900 font-medium">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
-                          </div>
+                          <p className="text-[10px] font-medium text-slate-600">
+                            Created Date: <span className="text-slate-900 font-medium">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
+                          </p>
                         )}
                       </div>
                     </div>
@@ -349,8 +351,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                     </div>
                   )}
 
-                  {/* BOTTOM ROW: Full-width Task Activity & Audit Logs */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1 mt-2">
+                </div>
+
+                {/* 3. Task Activity Block */}
+                <div className="order-3 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-2">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
                     <div className="border-b border-slate-100 pb-3 mb-2">
                       <h4 className="text-xs font-medium text-slate-900  ">Activity & Effort Tracking</h4>
                       <p className="text-[10px] font-medium text-slate-600">Post dynamic updates, ask questions, and record task timeline audits.</p>
@@ -364,8 +369,8 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                   </div>
                 </div>
 
-                {/* Right Column (1/3 width) - Specifications Sidebar */}
-                <div className="space-y-2">
+                {/* 2. Specifications & Attachments Sidebar */}
+                <div className="order-2 lg:order-none lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 space-y-2">
                   <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
                     <h4 className="text-[10px] font-medium text-slate-700   mb-1">Task Specifications</h4>
 
@@ -429,15 +434,15 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <span className="font-medium text-slate-900">
                           {typeof task.company === 'object' && task.company
                             ? ((task.company as any).companyName || (task.company as any).CompanyName || (task.company as any).name || '')
-                            : (task.company || '')}
+                            : (task.companyName || '')}
                         </span>
                       </div>
 
                       {/* Location */}
                       {task.location_No > 0 && (
                         <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><MapPin size={13} className="text-slate-500" /> Location</span>
-                          <span className="font-medium text-slate-900">Ref ID: {task.location_No}</span>
+                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><MapPin size={13} className="text-slate-500" />Location</span>
+                          <span className="font-medium text-slate-900">{task.locationName}</span>
                         </div>
                       )}
 
