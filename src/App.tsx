@@ -23,6 +23,10 @@ import { TaskCalendarView } from '@/components/task/TaskCalendarView';
 import { cn } from '@/lib/utils';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { MasterManager } from '@/components/master/MasterManager';
+import { PrioritySearch } from '@/components/master/priority/PrioritySearch';
+import { PriorityForm } from '@/components/master/priority/PriorityForm';
+import { TypeSearch } from '@/components/master/type/TypeSearch';
+import { TypeForm } from '@/components/master/type/TypeForm';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { Toaster } from 'sonner';
 import { DealManager } from '@/components/sales/deals/DealManager';
@@ -118,9 +122,9 @@ function Dashboard() {
         if (
           activeElement &&
           (activeElement.tagName === 'INPUT' ||
-           activeElement.tagName === 'TEXTAREA' ||
-           activeElement.tagName === 'SELECT' ||
-           activeElement.isContentEditable)
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.tagName === 'SELECT' ||
+            activeElement.isContentEditable)
         ) {
           return;
         }
@@ -343,8 +347,9 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
 }
 
 function MasterPageRoute() {
-  const { form } = useParams<{ form: string }>();
+  const { form, id } = useParams<{ form: string, id?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'vessel', 'port', 'business-entity-type', 'company', "country", "state", "city", "task-company"];
   if (!form || !validForms.includes(form)) {
@@ -367,7 +372,21 @@ function MasterPageRoute() {
         }
       }}
     >
-      <MasterManager type={form as any} />
+      {form === 'priority' ? (
+        location.pathname.endsWith('/new') || id ? (
+          <PriorityForm />
+        ) : (
+          <PrioritySearch />
+        )
+      ) : form === 'type' ? (
+        location.pathname.endsWith('/new') || id ? (
+          <TypeForm />
+        ) : (
+          <TypeSearch />
+        )
+      ) : (
+        <MasterManager type={form as any} />
+      )}
     </MainLayout>
   );
 }
