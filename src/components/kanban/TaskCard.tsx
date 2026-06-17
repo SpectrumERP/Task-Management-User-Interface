@@ -54,7 +54,17 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          onClick={() => onTaskClick ? onTaskClick(task.taskNo) : navigate(`/task/${task.taskNo}`)}
+          onClick={() => {
+            if (onTaskClick) {
+              onTaskClick(task.taskNo);
+            } else {
+              if (task.categoryName?.toLowerCase() === 'deal monitor') {
+                navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
+              } else {
+                navigate(`/task/${task.taskNo}`);
+              }
+            }
+          }}
           className={cn(
             "group mb-3 cursor-pointer",
             snapshot.isDragging ? "z-50" : ""
@@ -72,7 +82,11 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/task/${task.taskNo}`);
+                      if (task.categoryName?.toLowerCase() === 'deal monitor') {
+                        navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
+                      } else {
+                        navigate(`/task/${task.taskNo}`);
+                      }
                     }}
                     className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center cursor-pointer shrink-0"
                   >

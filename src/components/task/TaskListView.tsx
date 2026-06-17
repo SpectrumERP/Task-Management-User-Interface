@@ -251,7 +251,17 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
             {tasks.map((task) => (
               <tr
                 key={task.taskNo}
-                onClick={() => onTaskClick ? onTaskClick(task.taskNo) : navigate(`/task/${task.taskNo}`)}
+                onClick={() => {
+                  if (onTaskClick) {
+                    onTaskClick(task.taskNo);
+                  } else {
+                    if (task.categoryName?.toLowerCase() === 'deal monitor') {
+                      navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
+                    } else {
+                      navigate(`/task/${task.taskNo}`);
+                    }
+                  }
+                }}
                 className="group hover:bg-slate-50/80 transition-colors cursor-pointer"
               >
                 {/* Code */}
@@ -426,7 +436,11 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/task/${task.taskNo}`);
+                        if (task.categoryName?.toLowerCase() === 'deal monitor') {
+                          navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
+                        } else {
+                          navigate(`/task/${task.taskNo}`);
+                        }
                       }}
                       className="h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center transition-all duration-200"
                     >

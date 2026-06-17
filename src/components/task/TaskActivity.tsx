@@ -214,12 +214,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
           )}
 
           {/* Effort Logs List */}
-          {efforts.length === 0 ? (
-            <div className="text-center py-8 bg-white border border-dashed border-slate-200 rounded-xl">
-              <Clock className="mx-auto text-slate-400 mb-1.5" size={18} />
-              <p className="text-[10px] text-slate-600 font-medium">No effort logged yet</p>
-            </div>
-          ) : (
+          {efforts.length === 0 ? null : (
             <div className="space-y-0 max-h-[220px] overflow-y-auto pr-1 scrollbar-hide">
               {efforts.map((e, idx) => (
                 <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-start gap-3 hover:border-slate-300 transition-colors shadow-sm">
@@ -276,12 +271,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
           )}
 
           {/* Comments list */}
-          {comments.length === 0 ? (
-            <div className="text-center py-10 bg-white border border-dashed border-slate-200 rounded-xl">
-              <MessageSquare className="mx-auto text-slate-400 mb-1.5" size={20} />
-              <p className="text-[10px] text-slate-600 font-medium">Start a discussion on this task</p>
-            </div>
-          ) : (
+          {comments.length === 0 ? null : (
             <div className="space-y-0.5 max-h-[220px] overflow-y-auto pr-1 scrollbar-hide">
               {comments.map((c) => (
                 <div key={c.id} className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-slate-300 transition-colors flex items-start gap-3">

@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Handshake,
   Menu,
-  Database
+  Database,
+  Monitor
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ import LogoImage from '@/assets/SteelMountLogo01.png';
 const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks' },
   { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
+  { icon: Monitor, label: 'Deal Monitor', id: 'deal-monitor' },
 ];
 
 const masterItems = [
