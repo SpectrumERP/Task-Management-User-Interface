@@ -135,6 +135,16 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           description: e.effortDescription || e.description || ''
         }));
 
+        // Map subtasks
+        const mappedSubTasks = (d.subTasks || d.subtasks || []).map((st: any) => ({
+          taskNo: st.operTaskNo || st.taskNo,
+          title: st.title || st.taskName || st.subTaskTitle || '',
+          status: st.status?.statusName || st.status || 'Draft',
+          ownerDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.ownerLoginNo || '',
+          endDate: st.endDate || st.end_date || '',
+          typeName: st.type?.typeName || st.typeName || ''
+        }));
+
         const mappedTask: Task = {
           taskNo: d.operTaskNo,
           code: d.code || '',
@@ -176,6 +186,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           check_list: mappedCheckList,
           task_comments: mappedComments,
           actual_efforts: mappedEfforts,
+          subTasks: mappedSubTasks,
           executionNotes: d.executionNotes || d.execution_notes || '',
           execution_notes: d.executionNotes || d.execution_notes || '',
           collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
@@ -253,7 +264,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
               <Button
                 type="button"
                 onClick={() => {
-                  navigate(`/task/${task.taskNo}`);
+                  if (task.categoryName?.toLowerCase() === 'deal monitor') {
+                    navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
+                  } else {
+                    navigate(`/task/${task.taskNo}`);
+                  }
                   onClose();
                 }}
                 className="h-8 text-xs font-medium normal-case gap-0.5 px-4 rounded-xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-md shadow-[#006699]/10 hover:scale-[1.02] active:scale-95 transition-all"
@@ -320,6 +335,40 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             )}>
                               {item.description}
                             </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sub-Tasks Block */}
+                  {task.subTasks && task.subTasks.length > 0 && (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                      <div className="flex items-center gap-0.5 mb-2">
+                        <div className="h-7 w-7 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 shadow-sm">
+                          <Layers size={15} />
+                        </div>
+                        <h4 className="text-xs font-medium text-slate-900  ">Sub-Tasks</h4>
+                        <span className="ml-1 bg-slate-100 text-slate-600 text-[9px] font-medium px-2 py-0.5 rounded-full">{task.subTasks.length}</span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {task.subTasks.map((st: any, idx: number) => (
+                          <div key={st.taskNo || idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors flex flex-col gap-1.5 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-semibold text-slate-900 truncate leading-tight">{st.title}</span>
+                                <span className="text-[10px] font-medium text-slate-500 truncate mt-0.5">{st.typeName || 'Task'} • Owner: {st.ownerDisplayName || 'Unassigned'}</span>
+                              </div>
+                              <span className={cn(
+                                "px-2 py-0.5 rounded-md text-[9px] font-medium shrink-0",
+                                st.status === 'Done' ? "bg-green-100 text-green-700" :
+                                  st.status === 'In Progress' ? "bg-blue-100 text-blue-700" :
+                                    "bg-slate-200 text-slate-700"
+                              )}>
+                                {st.status}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>

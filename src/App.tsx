@@ -151,6 +151,8 @@ function Dashboard() {
       navigate(`/master/${type}`);
     } else if (id === 'sales-deals') {
       navigate('/sales/deals');
+    } else if (id === 'deal-monitor') {
+      navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
     } else {
       setActiveTab(id);
       if (id === 'tasks') {
@@ -281,7 +283,7 @@ function Dashboard() {
           taskNo={selectedTaskId}
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
-          onRefreshTasks={fetchTasks}
+          onRefreshTasks={() => fetchTasks({ ...currentFilters, pageSize, pageNo })}
         />
       </main>
     </MainLayout>
@@ -362,6 +364,8 @@ function MasterPageRoute() {
           navigate(`/master/${type}`);
         } else if (id === 'sales-deals') {
           navigate('/sales/deals');
+        } else if (id === 'deal-monitor') {
+          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
         } else {
           navigate('/');
         }
@@ -385,6 +389,8 @@ function SalesDealsRoute() {
           navigate('/');
         } else if (id === 'sales-deals') {
           navigate('/sales/deals');
+        } else if (id === 'deal-monitor') {
+          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
         }
       }}
     >
