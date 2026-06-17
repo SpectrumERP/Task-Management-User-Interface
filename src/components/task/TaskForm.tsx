@@ -137,7 +137,7 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     id: z.string(),
     title: z.string().min(1, 'Title is required'),
     description: z.string().optional(),
-    ownerLoginNo: z.string().min(1, 'Owner is required'),
+    ownerLoginNo: z.string().min(1, 'Task Owner is required'),
     endDate: z.string().optional(),
     completionRemark: z.string().optional(),
     completionDate: z.string().optional(),
@@ -874,8 +874,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
 
     try {
-      const currentCompany = form.getValues('company');
-      const compNo = currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
+      const compNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
       let response: any = null;
       try {
         response = await apiService.get<any>(`/api/master/task-categories/load-data/${categoryNo}?companyNo=${compNo}`);
@@ -1070,6 +1069,35 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       if (initialData.infromToUserGroupNo) {
         setSelectedInformTeam(initialData.infromToUserGroupNo.toString());
       }
+
+      // Fetch category metadata to enrich custom fields with displayColumn and cascadedColumn
+      const fetchCategoryMetadata = async () => {
+        const categoryNo = initialData.category_No?.toString();
+        if (!categoryNo) return;
+        const compNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
+        try {
+          const response = await apiService.get<any>(`/api/master/task-categories/load-data/${categoryNo}?companyNo=${compNo}`);
+          if (response?.success && response?.data?.customFields) {
+            const metaFields = response.data.customFields;
+            const currentFields = form.getValues('custom_fields') || [];
+            if (currentFields.length > 0) {
+              const enrichedFields = currentFields.map((cf: any) => {
+                const meta = metaFields.find((m: any) => (m.customFieldNo || '').toString() === cf.customFieldNo);
+                return {
+                  ...cf,
+                  displayColumn: meta?.displayColumn || '',
+                  cascadedColumn: meta?.cascadedColumn || ''
+                };
+              });
+              form.setValue('custom_fields', enrichedFields, { shouldDirty: false, shouldValidate: true });
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch category metadata for custom fields", e);
+        }
+      };
+
+      fetchCategoryMetadata();
     }
   }, [initialData, form, authCompanies]);
 
@@ -2157,7 +2185,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <CustomFieldsSection
               customFields={(form.watch('custom_fields') as any) || []}
               onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
-              companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
+              companyNo={authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
               hideAddButton={true}
               viewMode="grid"
               hideLabel={true}
@@ -2471,7 +2499,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 w-[180px]">Type</th>
                         <th className="pl-2 pr-0.5 py-0.5 text-[10px] font-medium text-slate-500">Sub-Task Title <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Status</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Owner <span className="text-red-500">*</span></th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Task Owner <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 whitespace-nowrap">Due Date</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 whitespace-nowrap">Completion Date</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 max-w-[150px]">Completion Remark</th>

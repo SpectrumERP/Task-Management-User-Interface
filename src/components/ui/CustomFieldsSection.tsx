@@ -84,7 +84,8 @@ export function AsyncAutoCompleteList({
           {
             params: {
               customFieldNo,
-              keywordSearch: search
+              keywordSearch: search,
+              uniqueIds: customFieldNo
             }
           }
         );
@@ -125,7 +126,8 @@ export function AsyncAutoCompleteList({
               {
                 params: {
                   customFieldNo,
-                  keywordSearch: ""
+                  keywordSearch: "",
+                  uniqueIds: value
                 }
               }
             );
@@ -159,130 +161,131 @@ export function AsyncAutoCompleteList({
       <div className="flex-1 min-w-[150px]">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-medium text-slate-700 hover:bg-slate-50/50 rounded-lg h-7 px-2",
-            className
-          )}
-        >
-          <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium")}>
-            {selectedLabel || placeholder}
-          </span>
-          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
-            {value && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange("");
-                  setSelectedLabel("");
-                }}
-                className="p-0.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X className="h-3 w-3" />
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className={cn(
+                "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-medium text-slate-700 hover:bg-slate-50/50 rounded-lg h-7 px-2",
+                className
+              )}
+            >
+              <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium")}>
+                {selectedLabel || placeholder}
               </span>
-            )}
-            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-40 text-slate-400" />
-          </div>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className={cn("p-0 z-[9999] max-w-[95vw]", renderCols.length > 4 ? "w-[600px]" : renderCols.length > 2 ? "w-[450px]" : "w-[280px]")} align="start">
-        <Command className="rounded-xl border-slate-200" shouldFilter={false}>
-          <div className="border-b border-slate-100 bg-slate-50/50">
-            <CommandInput
-              placeholder="Search..."
-              className="h-8 border-none focus:ring-0 bg-transparent text-[11px]"
-              onValueChange={setSearch}
-            />
-          </div>
-          <CommandList className="max-h-52 scrollbar-thin">
-            {isLoading && (
-              <div className="flex items-center justify-center py-6 text-slate-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                <span className="text-[10px] font-medium  ">Searching...</span>
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
+                {value && (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onChange("");
+                      setSelectedLabel("");
+                    }}
+                    className="p-0.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                  >
+                    <X className="h-3 w-3" />
+                  </span>
+                )}
+                <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-40 text-slate-400" />
               </div>
-            )}
-            {!isLoading && options.length === 0 && (
-              <CommandEmpty className="py-6 text-center text-[10px] text-slate-400 font-medium normal-case">
-                No items found
-              </CommandEmpty>
-            )}
-            {!isLoading && (
-              <CommandGroup>
-                {renderCols.length > 0 && options.length > 0 && (
-                  <div className="flex w-full items-center justify-between px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-100/80 border-b border-slate-200 uppercase tracking-wider">
-                    <div className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${renderCols.length}, minmax(0, 1fr))` }}>
-                      {renderCols.map((col, idx) => (
-                        <span key={idx} className="truncate pr-1 border-r last:border-r-0 border-slate-300">
-                          {col}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="w-3 shrink-0" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className={cn("p-0 z-[9999] max-w-[95vw]", renderCols.length > 4 ? "w-[600px]" : renderCols.length > 2 ? "w-[450px]" : "w-[280px]")} align="start">
+            <Command className="rounded-xl border-slate-200" shouldFilter={false}>
+              <div className="border-b border-slate-100 bg-slate-50/50">
+                <CommandInput
+                  placeholder="Search..."
+                  className="h-8 border-none focus:ring-0 bg-transparent text-[11px]"
+                  onValueChange={setSearch}
+                />
+              </div>
+              <CommandList className="max-h-52 scrollbar-thin">
+                {isLoading && (
+                  <div className="flex items-center justify-center py-6 text-slate-400">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    <span className="text-[10px] font-medium  ">Searching...</span>
                   </div>
                 )}
-                {options.map((opt, i) => {
-                  const optLabel = getOptionLabel(opt);
-                  const optValue = getOptionValue(opt);
-                  const itemCols = getDynamicCols(opt);
-                  return (
-                  <CommandItem
-                    key={optValue || i}
-                    value={optLabel}
-                    onSelect={() => {
-                      onChange(optValue);
-                      setSelectedLabel(getTriggerLabel(opt));
-                      setSelectedObject(opt);
-                      setOpen(false);
-                    }}
-                    className="text-[11px] font-medium py-2 px-2.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col items-start gap-0.5 border-b border-slate-50 last:border-0"
-                  >
-                    <div className="flex w-full items-center justify-between gap-2">
-                      {itemCols.length > 0 ? (
-                        <div className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${itemCols.length}, minmax(0, 1fr))` }}>
-                          {itemCols.map((col, idx) => (
-                            <span key={idx} className="text-slate-800 font-medium truncate pr-1 border-r last:border-r-0 border-slate-200">
-                              {opt[col] || '-'}
+                {!isLoading && options.length === 0 && (
+                  <CommandEmpty className="py-6 text-center text-[10px] text-slate-400 font-medium normal-case">
+                    No items found
+                  </CommandEmpty>
+                )}
+                {!isLoading && (
+                  <CommandGroup>
+                    {renderCols.length > 0 && options.length > 0 && (
+                      <div className="flex w-full items-center justify-between px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-100/80 border-b border-slate-200 uppercase tracking-wider">
+                        <div className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${renderCols.length}, minmax(0, 1fr))` }}>
+                          {renderCols.map((col, idx) => (
+                            <span key={idx} className="truncate pr-1 border-r last:border-r-0 border-slate-300">
+                              {col}
                             </span>
                           ))}
                         </div>
-                      ) : (
-                        <span className="text-slate-800 font-medium">{optLabel}</span>
-                      )}
-                      
-                      {value?.toString() === optValue ? (
-                        <Check className="h-3 w-3 text-[#006699] shrink-0" />
-                      ) : (
                         <div className="w-3 shrink-0" />
-                      )}
-                    </div>
-                    {opt.secondaryValue && itemCols.length === 0 && (
-                      <span className="text-[9px] text-slate-400 font-normal">{opt.secondaryValue}</span>
+                      </div>
                     )}
-                  </CommandItem>
-                )})}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-    </div>
-    {cascadedColumn && selectedObject && (
-      <div className="flex items-center gap-2 shrink-0">
-        {cascadedColumn.split(',').map(c => c.trim()).filter(Boolean).map(col => {
-          if (selectedObject[col] === undefined || selectedObject[col] === null) return null;
-          return (
-            <div key={col} className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 flex items-center gap-1.5 shadow-sm whitespace-nowrap h-7">
-              <span className="font-semibold text-slate-800">{col}:</span>
-              <span className="text-slate-500">{selectedObject[col]}</span>
-            </div>
-          );
-        })}
+                    {options.map((opt, i) => {
+                      const optLabel = getOptionLabel(opt);
+                      const optValue = getOptionValue(opt);
+                      const itemCols = getDynamicCols(opt);
+                      return (
+                        <CommandItem
+                          key={optValue || i}
+                          value={optLabel}
+                          onSelect={() => {
+                            onChange(optValue);
+                            setSelectedLabel(getTriggerLabel(opt));
+                            setSelectedObject(opt);
+                            setOpen(false);
+                          }}
+                          className="text-[11px] font-medium py-2 px-2.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col items-start gap-0.5 border-b border-slate-50 last:border-0"
+                        >
+                          <div className="flex w-full items-center justify-between gap-2">
+                            {itemCols.length > 0 ? (
+                              <div className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${itemCols.length}, minmax(0, 1fr))` }}>
+                                {itemCols.map((col, idx) => (
+                                  <span key={idx} className="text-slate-800 font-medium truncate pr-1 border-r last:border-r-0 border-slate-200">
+                                    {opt[col] || '-'}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-800 font-medium">{optLabel}</span>
+                            )}
+
+                            {value?.toString() === optValue ? (
+                              <Check className="h-3 w-3 text-[#006699] shrink-0" />
+                            ) : (
+                              <div className="w-3 shrink-0" />
+                            )}
+                          </div>
+                          {opt.secondaryValue && itemCols.length === 0 && (
+                            <span className="text-[9px] text-slate-400 font-normal">{opt.secondaryValue}</span>
+                          )}
+                        </CommandItem>
+                      )
+                    })}
+                  </CommandGroup>
+                )}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
-    )}
+      {cascadedColumn && selectedObject && (
+        <div className="flex items-center gap-2 shrink-0">
+          {cascadedColumn.split(',').map(c => c.trim()).filter(Boolean).map(col => {
+            if (selectedObject[col] === undefined || selectedObject[col] === null) return null;
+            return (
+              <div key={col} className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 flex items-center gap-1.5 shadow-sm whitespace-nowrap h-7">
+                <span className="font-semibold text-slate-800">{col}:</span>
+                <span className="text-slate-500">{selectedObject[col]}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -393,7 +396,7 @@ export function CustomFieldsSection({
         );
       case 4: // Yes/No dropdown
         return (
-          <Combobox options={[ { label: "Yes", value: "Yes" }, { label: "No", value: "No" } ]} value={cf.fieldValue} onChange={(val) => updateField(index, 'fieldValue', val)}
+          <Combobox options={[{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }]} value={cf.fieldValue} onChange={(val) => updateField(index, 'fieldValue', val)}
             placeholder="Select..."
             className={baseClasses}
           />
@@ -498,9 +501,9 @@ export function CustomFieldsSection({
                     </label>
                   ) : (
                     <Combobox options={(fillValues?.customFields || []).map((field: any) => ({
-                        label: field.customFieldName || '',
-                        value: (field.customFieldNo || '').toString()
-                      }))}
+                      label: field.customFieldName || '',
+                      value: (field.customFieldNo || '').toString()
+                    }))}
                       value={cf.customFieldNo}
                       onChange={(val) => updateField(index, 'customFieldNo', val)}
                       placeholder="Select custom field..."
@@ -528,9 +531,9 @@ export function CustomFieldsSection({
                     <tr key={index} className="group hover:bg-white transition-colors">
                       <td className="px-2 py-1">
                         <Combobox options={(fillValues?.customFields || []).map((field: any) => ({
-                            label: field.customFieldName || '',
-                            value: (field.customFieldNo || '').toString()
-                          }))}
+                          label: field.customFieldName || '',
+                          value: (field.customFieldNo || '').toString()
+                        }))}
                           value={cf.customFieldNo}
                           onChange={(val) => updateField(index, 'customFieldNo', val)}
                           placeholder="Select custom field..."
