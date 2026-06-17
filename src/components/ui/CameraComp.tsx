@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Check, Loader2, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, useReducer } from 'react';
+import { Camera, Check, Loader2, RefreshCw, RotateCcw, X, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,84 @@ import { attachmentService } from '@/services/attachmentService';
 import { DocumentAttachment } from '@/types/task';
 import { cn } from '@/lib/utils';
 
-type CameraStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'captured' | 'uploading' | 'error';
+import { useBusinessCardDetection } from './camera/hooks/useBusinessCardDetection';
+import { useOCR } from './camera/hooks/useOCR';
+import { CardCropperService } from './camera/services/CardCropperService';
+import { BusinessCardParserService } from './camera/services/BusinessCardParserService';
+import { LogoDetectionService } from './camera/services/LogoDetectionService';
+import { BusinessCardOverlay } from './camera/overlays/BusinessCardOverlay';
+import { CardReviewForm } from './camera/components/CardReviewForm';
+import { BusinessCardData } from './camera/models/BusinessCardData';
+
+type CameraStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'capturing' | 'processing' | 'parsed' | 'uploading' | 'error';
+
+interface CameraState {
+  status: CameraStatus;
+  errorMessage: string;
+  capturedUrl: string | null;
+  capturedFile: File | null;
+  logoFile: File | null;
+  parsedData: BusinessCardData | null;
+}
+
+type CameraAction =
+  | { type: 'REQUEST_PERMISSION' }
+  | { type: 'PERMISSION_GRANTED' }
+  | { type: 'PERMISSION_DENIED'; error: string }
+  | { type: 'START_CAPTURE' }
+  | { type: 'START_PROCESSING' }
+  | { type: 'PARSED'; data: BusinessCardData; file: File; url: string; logoFile: File | null }
+  | { type: 'UPDATE_DATA'; data: BusinessCardData }
+  | { type: 'START_UPLOAD' }
+  | { type: 'UPLOAD_SUCCESS' }
+  | { type: 'ERROR'; error: string }
+  | { type: 'RESET' };
+
+const initialState: CameraState = {
+  status: 'idle',
+  errorMessage: '',
+  capturedUrl: null,
+  capturedFile: null,
+  logoFile: null,
+  parsedData: null,
+};
+
+function cameraReducer(state: CameraState, action: CameraAction): CameraState {
+  switch (action.type) {
+    case 'REQUEST_PERMISSION':
+      return { ...state, status: 'requesting', errorMessage: '' };
+    case 'PERMISSION_GRANTED':
+      return { ...state, status: 'ready', errorMessage: '' };
+    case 'PERMISSION_DENIED':
+      return { ...state, status: 'denied', errorMessage: action.error };
+    case 'START_CAPTURE':
+      return { ...state, status: 'capturing' };
+    case 'START_PROCESSING':
+      return { ...state, status: 'processing', errorMessage: '' };
+    case 'PARSED':
+      return { 
+        ...state, 
+        status: 'parsed', 
+        parsedData: action.data, 
+        capturedFile: action.file, 
+        capturedUrl: action.url,
+        logoFile: action.logoFile
+      };
+    case 'UPDATE_DATA':
+      return { ...state, parsedData: action.data };
+    case 'START_UPLOAD':
+      return { ...state, status: 'uploading' };
+    case 'UPLOAD_SUCCESS':
+      return { ...state, status: 'idle', capturedFile: null, capturedUrl: null, parsedData: null, logoFile: null };
+    case 'ERROR':
+      return { ...state, status: 'error', errorMessage: action.error };
+    case 'RESET':
+      if (state.capturedUrl) URL.revokeObjectURL(state.capturedUrl);
+      return { ...initialState };
+    default:
+      return state;
+  }
+}
 
 export interface CameraCompProps {
   companyNo: number;
@@ -16,25 +93,8 @@ export interface CameraCompProps {
   className?: string;
   onUploaded?: (attachment: DocumentAttachment) => void;
   onCancel?: () => void;
+  onCardScanned?: (data: BusinessCardData) => void;
 }
-
-const getCameraErrorMessage = (error: unknown) => {
-  if (error instanceof DOMException) {
-    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-      return 'Camera permission was denied. Allow camera access from the browser prompt or site settings, then try again.';
-    }
-
-    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-      return 'No camera was found on this device.';
-    }
-
-    if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-      return 'The camera is already in use by another app or browser tab.';
-    }
-  }
-
-  return 'Unable to open the camera. Please check camera access and try again.';
-};
 
 const buildCameraFileName = (prefix: string) => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -44,19 +104,35 @@ const buildCameraFileName = (prefix: string) => {
 export function CameraComp({
   companyNo,
   formNo,
-  fileNamePrefix = 'camera-capture',
+  fileNamePrefix = 'business-card',
   className,
   onUploaded,
-  onCancel
+  onCancel,
+  onCardScanned
 }: CameraCompProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const [status, setStatus] = useState<CameraStatus>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
-  const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const cropperService = useRef(new CardCropperService());
+  const parserService = useRef(new BusinessCardParserService());
+  const logoService = useRef(new LogoDetectionService());
+  const { processImage, isProcessing, progress } = useOCR();
+
+  const [state, dispatch] = useReducer(cameraReducer, initialState);
+  const { status, errorMessage, capturedUrl, capturedFile, parsedData, logoFile } = state;
+
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setContainerSize({
+        width: containerRef.current.clientWidth,
+        height: containerRef.current.clientHeight
+      });
+    }
+  }, [status]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(track => track.stop());
@@ -66,31 +142,16 @@ export function CameraComp({
     }
   }, []);
 
-  const clearCapture = useCallback(() => {
-    if (capturedUrl) {
-      URL.revokeObjectURL(capturedUrl);
-    }
-    setCapturedUrl(null);
-    setCapturedFile(null);
-  }, [capturedUrl]);
-
   const requestCameraPermission = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setErrorMessage('Camera is not supported in this browser.');
-      setStatus('error');
+      dispatch({ type: 'ERROR', error: 'Camera is not supported in this browser.' });
       return;
     }
 
     try {
-      clearCapture();
-      stopCamera();
-      setErrorMessage('');
-      setStatus('requesting');
-
+      dispatch({ type: 'REQUEST_PERMISSION' });
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' }
-        },
+        video: { facingMode: { ideal: 'environment' } },
         audio: false
       });
 
@@ -100,73 +161,82 @@ export function CameraComp({
         await videoRef.current.play();
       }
 
-      setStatus('ready');
-    } catch (error) {
+      dispatch({ type: 'PERMISSION_GRANTED' });
+    } catch (error: any) {
       console.error('Camera permission failed:', error);
-      setErrorMessage(getCameraErrorMessage(error));
-      setStatus('denied');
+      dispatch({ type: 'PERMISSION_DENIED', error: error.message || 'Permission denied' });
       stopCamera();
     }
-  }, [clearCapture, stopCamera]);
+  }, [stopCamera]);
 
-  const captureImage = useCallback(() => {
+  const handleAutoCapture = useCallback(async (result: any) => {
+    if (status !== 'ready') return;
+    dispatch({ type: 'START_CAPTURE' });
+
     const video = videoRef.current;
-    const canvas = canvasRef.current;
+    if (!video) return;
 
-    if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
-      setErrorMessage('Camera preview is not ready yet. Please try again.');
-      return;
+    dispatch({ type: 'START_PROCESSING' });
+
+    try {
+      // 1. Crop Card
+      const croppedBlob = await cropperService.current.crop(video, result.rectangle, result.corners);
+      if (!croppedBlob) throw new Error('Failed to crop image');
+
+      // 2. Extract Logo
+      const extractedLogoBlob = await logoService.current.detect(croppedBlob);
+      let extractedLogoFile = null;
+      if (extractedLogoBlob) {
+        extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
+      }
+
+      // 3. Extract Text via OCR
+      const rawText = await processImage(croppedBlob);
+
+      // 4. Parse Data
+      const data = parserService.current.parse(rawText);
+
+      // 5. Create File from Cropped Blob
+      const file = new File([croppedBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+      const url = URL.createObjectURL(file);
+
+      stopCamera();
+      dispatch({ type: 'PARSED', data, file, url, logoFile: extractedLogoFile });
+    } catch (err: any) {
+      console.error(err);
+      dispatch({ type: 'ERROR', error: 'Processing failed. Please try again.' });
     }
+  }, [status, fileNamePrefix, processImage, stopCamera]);
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const context = canvas.getContext('2d');
-    if (!context) {
-      setErrorMessage('Unable to capture image from the camera.');
-      return;
-    }
-
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(
-      blob => {
-        if (!blob) {
-          setErrorMessage('Unable to prepare the captured image.');
-          return;
-        }
-
-        clearCapture();
-        const file = new File([blob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
-        setCapturedFile(file);
-        setCapturedUrl(URL.createObjectURL(file));
-        setStatus('captured');
-        stopCamera();
-      },
-      'image/jpeg',
-      0.92
-    );
-  }, [clearCapture, fileNamePrefix, stopCamera]);
+  const { isCvReady, detectionResult, isStable } = useBusinessCardDetection(
+    videoRef,
+    canvasRef,
+    status === 'ready',
+    handleAutoCapture
+  );
 
   const retake = useCallback(() => {
+    dispatch({ type: 'RESET' });
     void requestCameraPermission();
   }, [requestCameraPermission]);
 
   const uploadCapture = useCallback(async () => {
-    if (!capturedFile) {
-      setErrorMessage('Capture an image before uploading.');
-      return;
-    }
+    if (!capturedFile) return;
 
     try {
-      setStatus('uploading');
-      setErrorMessage('');
+      dispatch({ type: 'START_UPLOAD' });
 
+      // Upload Card
       const entry = await attachmentService.createEntry(capturedFile.name, companyNo, formNo);
       await attachmentService.uploadFile(entry.id, capturedFile);
 
       const isVerified = await attachmentService.checkStatus(entry.id);
-      if (!isVerified) {
-        throw new Error('Upload status could not be verified by the backend.');
+      if (!isVerified) throw new Error('Card upload status could not be verified by the backend.');
+
+      // Upload Logo
+      if (logoFile) {
+        const logoEntry = await attachmentService.createEntry(logoFile.name, companyNo, formNo);
+        await attachmentService.uploadFile(logoEntry.id, logoFile);
       }
 
       const uploadedAttachment: DocumentAttachment = {
@@ -179,58 +249,62 @@ export function CameraComp({
       };
 
       onUploaded?.(uploadedAttachment);
-      toast.success(`"${uploadedAttachment.name}" uploaded successfully!`);
-      clearCapture();
-      setStatus('idle');
+      if (parsedData && onCardScanned) {
+        onCardScanned(parsedData);
+      }
+      
+      toast.success(`Business card scanned successfully!`);
+      dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error: any) {
       console.error('Camera image upload failed:', error);
-      const message = error?.message || 'Image upload failed. Please try again.';
-      setErrorMessage(message);
-      setStatus('captured');
+      const message = error?.message || 'Upload failed. Please try again.';
+      dispatch({ type: 'ERROR', error: message });
       toast.error(message);
     }
-  }, [capturedFile, clearCapture, companyNo, formNo, onUploaded]);
+  }, [capturedFile, logoFile, companyNo, formNo, onUploaded, onCardScanned, parsedData]);
 
   const cancel = useCallback(() => {
     stopCamera();
-    clearCapture();
-    setErrorMessage('');
-    setStatus('idle');
+    dispatch({ type: 'RESET' });
     onCancel?.();
-  }, [clearCapture, onCancel, stopCamera]);
+  }, [onCancel, stopCamera]);
 
   useEffect(() => {
     return () => {
       stopCamera();
-      if (capturedUrl) {
-        URL.revokeObjectURL(capturedUrl);
-      }
+      if (capturedUrl) URL.revokeObjectURL(capturedUrl);
     };
   }, [capturedUrl, stopCamera]);
 
-  const showVideo = status === 'requesting' || status === 'ready';
+  const showVideo = status === 'requesting' || status === 'ready' || status === 'capturing' || status === 'processing';
   const showPermissionHelp = status === 'denied' || status === 'error';
-  const isBusy = status === 'requesting' || status === 'uploading';
 
   return (
     <div className={cn('w-full space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm', className)}>
-      <div className="relative overflow-hidden rounded-md bg-slate-950">
+      <div ref={containerRef} className="relative overflow-hidden rounded-md bg-slate-950">
         {showVideo && (
           <video
             ref={videoRef}
             autoPlay
             muted
             playsInline
-            className="aspect-video w-full bg-slate-950 object-cover"
+            className={cn("aspect-video w-full bg-slate-950 object-cover", status === 'processing' && 'opacity-50 blur-sm')}
           />
         )}
+        
+        {status === 'ready' && isCvReady && videoRef.current && (
+           <BusinessCardOverlay
+             detectionResult={detectionResult}
+             isStable={isStable}
+             videoWidth={videoRef.current.videoWidth}
+             videoHeight={videoRef.current.videoHeight}
+             containerWidth={containerSize.width}
+             containerHeight={containerSize.height}
+           />
+        )}
 
-        {capturedUrl && status !== 'uploading' && (
-          <img
-            src={capturedUrl}
-            alt="Captured preview"
-            className="aspect-video w-full bg-slate-950 object-contain"
-          />
+        {capturedUrl && status !== 'uploading' && status !== 'processing' && (
+          <img src={capturedUrl} alt="Captured preview" className="aspect-video w-full bg-slate-950 object-contain" />
         )}
 
         {(status === 'idle' || showPermissionHelp) && (
@@ -241,22 +315,19 @@ export function CameraComp({
             <div>
               <p className="text-sm font-semibold text-slate-900">Camera access is required</p>
               <p className="mt-1 max-w-md text-xs text-slate-600">
-                Allow camera permission to take a photo and upload it as an attachment.
+                Allow camera permission to scan a business card.
               </p>
             </div>
           </div>
         )}
 
-        {status === 'uploading' && capturedUrl && (
-          <div className="relative">
-            <img
-              src={capturedUrl}
-              alt="Uploading captured preview"
-              className="aspect-video w-full bg-slate-950 object-contain opacity-60"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-white">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              <span className="text-sm font-medium">Uploading image...</span>
+        {(status === 'processing' || status === 'uploading') && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-white">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-white" />
+              <span className="text-sm font-medium">
+                {status === 'uploading' ? 'Uploading...' : `Analyzing Card... ${Math.round(progress * 100)}%`}
+              </span>
             </div>
           </div>
         )}
@@ -268,52 +339,49 @@ export function CameraComp({
         </div>
       )}
 
+      {status === 'parsed' && parsedData && (
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+          <h3 className="mb-2 font-semibold text-slate-800">Review Scanned Details</h3>
+          <CardReviewForm 
+            data={parsedData} 
+            onChange={(data) => dispatch({ type: 'UPDATE_DATA', data })} 
+          />
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-end gap-2">
         {(status === 'idle' || showPermissionHelp) && (
-          <Button type="button" onClick={requestCameraPermission} disabled={isBusy}>
-            <Camera className="h-4 w-4" />
-            {showPermissionHelp ? 'Try Camera Again' : 'Open Camera'}
+          <Button type="button" onClick={requestCameraPermission} disabled={!isCvReady}>
+            {!isCvReady ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+            {!isCvReady ? 'Loading Scanner...' : showPermissionHelp ? 'Try Camera Again' : 'Open Camera'}
           </Button>
         )}
 
         {status === 'requesting' && (
           <Button type="button" disabled>
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Requesting Permission
           </Button>
         )}
 
-        {status === 'ready' && (
-          <>
-            <Button type="button" variant="outline" onClick={cancel}>
-              <X className="h-4 w-4" />
-              Cancel
-            </Button>
-            <Button type="button" onClick={captureImage}>
-              <Camera className="h-4 w-4" />
-              Capture
-            </Button>
-          </>
+        {(status === 'ready' || status === 'processing') && (
+          <Button type="button" variant="outline" onClick={cancel} disabled={status === 'processing'}>
+            <X className="mr-2 h-4 w-4" />
+            Cancel
+          </Button>
         )}
 
-        {(status === 'captured' || status === 'uploading') && (
+        {(status === 'parsed' || status === 'uploading') && (
           <>
             <Button type="button" variant="outline" onClick={retake} disabled={status === 'uploading'}>
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="mr-2 h-4 w-4" />
               Retake
             </Button>
             <Button type="button" onClick={uploadCapture} disabled={status === 'uploading'}>
-              {status === 'uploading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              OK
+              {status === 'uploading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+              Confirm & Upload
             </Button>
           </>
-        )}
-
-        {showPermissionHelp && (
-          <Button type="button" variant="outline" onClick={requestCameraPermission}>
-            <RefreshCw className="h-4 w-4" />
-            Request Permission
-          </Button>
         )}
       </div>
 
