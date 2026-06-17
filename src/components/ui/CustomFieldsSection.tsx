@@ -84,8 +84,7 @@ export function AsyncAutoCompleteList({
           {
             params: {
               customFieldNo,
-              keywordSearch: search,
-              uniqueIds: customFieldNo
+              keywordSearch: search
             }
           }
         );
@@ -127,7 +126,7 @@ export function AsyncAutoCompleteList({
                 params: {
                   customFieldNo,
                   keywordSearch: "",
-                  uniqueIds: value
+                  uniqueIds: value || ""
                 }
               }
             );
