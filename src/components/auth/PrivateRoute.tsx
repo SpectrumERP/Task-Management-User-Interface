@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useEffect } from 'react';
 
@@ -8,6 +8,7 @@ interface PrivateRouteProps {
 
 export function PrivateRoute({ children }: PrivateRouteProps) {
   const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const location = useLocation();
 
   useEffect(() => {
     checkAuth();
@@ -25,7 +26,7 @@ export function PrivateRoute({ children }: PrivateRouteProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

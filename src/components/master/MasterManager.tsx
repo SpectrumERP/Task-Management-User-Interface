@@ -1609,6 +1609,7 @@ export function MasterManager({ type }: MasterManagerProps) {
             const dl = body.data || body;
             if (dl) {
               const parentVal = dl.parentLocationNo || dl.parentLocation || 'none';
+              setName(dl.operLocationName || "");
               setParentLocationNo(parentVal.toString());
               const inchargeVal = dl.operLocationIncharge?.loginNo || dl.locationIncharge || dl.inchargeNo || 'none';
               setInchargeNo(inchargeVal.toString());
@@ -3584,7 +3585,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 </div>
               </div>
 
-              </div>
+            </div>
 
             <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
               <Button type="button" variant="ghost" onClick={() => setLocationModalOpen(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">

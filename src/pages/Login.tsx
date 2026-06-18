@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,9 @@ export default function Login() {
 
   const { login, isAuthenticated, checkAuth, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from?.pathname || '/';
 
   const {
     register,
@@ -43,9 +46,9 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, from]);
 
   // Session monitor interval
   useEffect(() => {
@@ -69,7 +72,7 @@ export default function Login() {
     try {
       const success = await login(data.loginId, data.password);
       if (success) {
-        navigate('/');
+        navigate(from, { replace: true });
       } else {
         setServerError('Invalid username or password');
       }
