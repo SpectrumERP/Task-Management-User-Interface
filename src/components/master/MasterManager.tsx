@@ -3403,7 +3403,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         </div>
 
         <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
-          <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-white overflow-hidden">
+          <DialogContent className="rounded-3xl max-w-6xl p-0 border-none shadow-2xl bg-white overflow-hidden">
             <DialogHeader className="p-5 pb-3 border-b border-slate-100">
               <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
                 <CameraIcon size={18} className="text-[#006699]" />
@@ -3584,7 +3584,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 </div>
               </div>
 
-              </div>
+            </div>
 
             <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
               <Button type="button" variant="ghost" onClick={() => setLocationModalOpen(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">

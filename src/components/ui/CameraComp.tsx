@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useReducer } from 'react';
-import { Camera, Check, Loader2, RefreshCw, RotateCcw, X, Edit } from 'lucide-react';
+import { Camera, Check, Loader2, RefreshCw, RotateCcw, X, Edit, ImagePlus, ScanText } from 'lucide-react';
+import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -14,9 +16,10 @@ import { BusinessCardParserService } from './camera/services/BusinessCardParserS
 import { LogoDetectionService } from './camera/services/LogoDetectionService';
 import { BusinessCardOverlay } from './camera/overlays/BusinessCardOverlay';
 import { CardReviewForm } from './camera/components/CardReviewForm';
+import { LogoCropperModal } from './camera/components/LogoCropperModal';
 import { BusinessCardData } from './camera/models/BusinessCardData';
 
-type CameraStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'capturing' | 'processing' | 'parsed' | 'uploading' | 'error';
+type CameraStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'capturing' | 'preview' | 'processing' | 'parsed' | 'uploading' | 'error';
 
 interface CameraState {
   status: CameraStatus;
@@ -25,6 +28,7 @@ interface CameraState {
   capturedFile: File | null;
   logoFile: File | null;
   parsedData: BusinessCardData | null;
+  isBusinessCard?: boolean;
 }
 
 type CameraAction =
@@ -32,6 +36,7 @@ type CameraAction =
   | { type: 'PERMISSION_GRANTED' }
   | { type: 'PERMISSION_DENIED'; error: string }
   | { type: 'START_CAPTURE' }
+  | { type: 'PREVIEW'; file: File; url: string; isBusinessCard: boolean }
   | { type: 'START_PROCESSING' }
   | { type: 'PARSED'; data: BusinessCardData; file: File; url: string; logoFile: File | null }
   | { type: 'UPDATE_DATA'; data: BusinessCardData }
@@ -59,6 +64,14 @@ function cameraReducer(state: CameraState, action: CameraAction): CameraState {
       return { ...state, status: 'denied', errorMessage: action.error };
     case 'START_CAPTURE':
       return { ...state, status: 'capturing' };
+    case 'PREVIEW':
+      return { 
+        ...state, 
+        status: 'preview', 
+        capturedFile: action.file, 
+        capturedUrl: action.url, 
+        isBusinessCard: action.isBusinessCard 
+      };
     case 'START_PROCESSING':
       return { ...state, status: 'processing', errorMessage: '' };
     case 'PARSED':
@@ -121,6 +134,10 @@ export function CameraComp({
   const { processImage, isProcessing, progress } = useOCR();
 
   const [state, dispatch] = useReducer(cameraReducer, initialState);
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
+  const [previewCrop, setPreviewCrop] = useState<Crop>();
+  const [previewCompletedCrop, setPreviewCompletedCrop] = useState<PixelCrop>();
+
   const { status, errorMessage, capturedUrl, capturedFile, parsedData, logoFile } = state;
 
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -151,7 +168,11 @@ export function CameraComp({
     try {
       dispatch({ type: 'REQUEST_PERMISSION' });
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: { 
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 }
+        },
         audio: false
       });
 
@@ -169,6 +190,69 @@ export function CameraComp({
     }
   }, [stopCamera]);
 
+  const analyzeImage = useCallback(async () => {
+    if (!capturedFile || !capturedUrl) return;
+    dispatch({ type: 'START_PROCESSING' });
+    try {
+      let finalBlob: Blob = capturedFile;
+
+      // Apply manual crop if provided
+      if (previewCompletedCrop && previewCompletedCrop.width > 0 && previewCompletedCrop.height > 0) {
+        const image = new Image();
+        image.src = capturedUrl;
+        await new Promise((resolve) => { image.onload = resolve; });
+
+        const canvas = document.createElement('canvas');
+        
+        // Find the actual rendered image dimensions in the DOM to calculate scale
+        const imgElement = document.getElementById('preview-image') as HTMLImageElement;
+        const scaleX = image.naturalWidth / (imgElement ? imgElement.width : image.naturalWidth);
+        const scaleY = image.naturalHeight / (imgElement ? imgElement.height : image.naturalHeight);
+
+        canvas.width = previewCompletedCrop.width * scaleX;
+        canvas.height = previewCompletedCrop.height * scaleY;
+        const ctx = canvas.getContext('2d');
+        
+        if (ctx) {
+          ctx.drawImage(
+            image,
+            previewCompletedCrop.x * scaleX,
+            previewCompletedCrop.y * scaleY,
+            previewCompletedCrop.width * scaleX,
+            previewCompletedCrop.height * scaleY,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+          
+          finalBlob = await new Promise<Blob>((resolve, reject) => {
+             canvas.toBlob((blob) => {
+               if (blob) resolve(blob);
+               else reject(new Error('Canvas to blob failed'));
+             }, 'image/jpeg', 0.95);
+          });
+        }
+      }
+
+      const rawText = await processImage(finalBlob);
+      const data = parserService.current.parse(rawText);
+      const extractedLogoBlob = await logoService.current.detect(finalBlob);
+      let extractedLogoFile = null;
+      if (extractedLogoBlob) {
+        extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
+      }
+      
+      const finalFile = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+      const finalUrl = URL.createObjectURL(finalFile);
+
+      dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
+    } catch (e) {
+      console.error(e);
+      dispatch({ type: 'ERROR', error: 'Analysis failed. Please try again.' });
+    }
+  }, [capturedFile, capturedUrl, processImage, previewCompletedCrop, fileNamePrefix]);
+
   const handleAutoCapture = useCallback(async (result: any) => {
     if (status !== 'ready') return;
     dispatch({ type: 'START_CAPTURE' });
@@ -176,36 +260,54 @@ export function CameraComp({
     const video = videoRef.current;
     if (!video) return;
 
-    dispatch({ type: 'START_PROCESSING' });
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    try {
-      // 1. Crop Card
-      const croppedBlob = await cropperService.current.crop(video, result.rectangle, result.corners);
-      if (!croppedBlob) throw new Error('Failed to crop image');
-
-      // 2. Extract Logo
-      const extractedLogoBlob = await logoService.current.detect(croppedBlob);
-      let extractedLogoFile = null;
-      if (extractedLogoBlob) {
-        extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+         dispatch({ type: 'ERROR', error: 'Failed to capture image' });
+         return;
       }
-
-      // 3. Extract Text via OCR
-      const rawText = await processImage(croppedBlob);
-
-      // 4. Parse Data
-      const data = parserService.current.parse(rawText);
-
-      // 5. Create File from Cropped Blob
-      const file = new File([croppedBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+      
+      const file = new File([blob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
       const url = URL.createObjectURL(file);
-
+      
       stopCamera();
-      dispatch({ type: 'PARSED', data, file, url, logoFile: extractedLogoFile });
-    } catch (err: any) {
-      console.error(err);
-      dispatch({ type: 'ERROR', error: 'Processing failed. Please try again.' });
-    }
+
+      if (result?.detected) {
+         dispatch({ type: 'START_PROCESSING' });
+         try {
+           const croppedBlob = await cropperService.current.crop(video, result.rectangle, result.corners);
+           if (!croppedBlob) throw new Error('Failed to crop image');
+
+           const extractedLogoBlob = await logoService.current.detect(croppedBlob);
+           let extractedLogoFile = null;
+           if (extractedLogoBlob) {
+             extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
+           }
+
+           const rawText = await processImage(croppedBlob);
+           const data = parserService.current.parse(rawText);
+
+           const finalFile = new File([croppedBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+           const finalUrl = URL.createObjectURL(finalFile);
+
+           dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
+         } catch (err: any) {
+           console.error(err);
+           dispatch({ type: 'ERROR', error: 'Processing failed. Please try again.' });
+         }
+      } else {
+         // Initialize a centered crop box
+         setPreviewCrop({ unit: '%', x: 10, y: 20, width: 80, height: 60 });
+         dispatch({ type: 'PREVIEW', file, url, isBusinessCard: false });
+      }
+    }, 'image/jpeg', 0.9);
+
   }, [status, fileNamePrefix, processImage, stopCamera]);
 
   const { isCvReady, detectionResult, isStable } = useBusinessCardDetection(
@@ -281,54 +383,100 @@ export function CameraComp({
 
   return (
     <div className={cn('w-full space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm', className)}>
-      <div ref={containerRef} className="relative overflow-hidden rounded-md bg-slate-950">
-        {showVideo && (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className={cn("aspect-video w-full bg-slate-950 object-cover", status === 'processing' && 'opacity-50 blur-sm')}
-          />
-        )}
-        
-        {status === 'ready' && isCvReady && videoRef.current && (
-           <BusinessCardOverlay
-             detectionResult={detectionResult}
-             isStable={isStable}
-             videoWidth={videoRef.current.videoWidth}
-             videoHeight={videoRef.current.videoHeight}
-             containerWidth={containerSize.width}
-             containerHeight={containerSize.height}
-           />
-        )}
+      <div className={cn("flex flex-col gap-4", status === 'parsed' && "md:flex-row")}>
+        <div ref={containerRef} className={cn("relative overflow-hidden rounded-md bg-slate-950", status === 'parsed' ? "md:w-1/2" : "w-full")}>
+          {showVideo && (
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className={cn("aspect-video w-full bg-slate-950 object-cover", status === 'processing' && 'opacity-50 blur-sm')}
+            />
+          )}
+          
+          {status === 'ready' && isCvReady && videoRef.current && (
+             <BusinessCardOverlay
+               detectionResult={detectionResult}
+               isStable={isStable}
+               videoWidth={videoRef.current.videoWidth}
+               videoHeight={videoRef.current.videoHeight}
+               containerWidth={containerSize.width}
+               containerHeight={containerSize.height}
+             />
+          )}
 
-        {capturedUrl && status !== 'uploading' && status !== 'processing' && (
-          <img src={capturedUrl} alt="Captured preview" className="aspect-video w-full bg-slate-950 object-contain" />
-        )}
+          {capturedUrl && status !== 'uploading' && status !== 'processing' && (
+            <div className="relative">
+              {status === 'preview' ? (
+                 <>
+                   <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
+                     <div className="bg-slate-900/90 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md border border-slate-700">
+                       Crop the business card, then click Analyze
+                     </div>
+                   </div>
+                   <ReactCrop 
+                     crop={previewCrop} 
+                     onChange={(c) => setPreviewCrop(c)} 
+                     onComplete={(c) => setPreviewCompletedCrop(c)}
+                     className="w-full bg-slate-950 flex justify-center"
+                   >
+                     <img id="preview-image" src={capturedUrl} alt="Captured preview" className="max-h-[60vh] object-contain" />
+                   </ReactCrop>
+                 </>
+              ) : (
+                <img src={capturedUrl} alt="Captured preview" className="max-h-[60vh] w-full bg-slate-950 object-contain" />
+              )}
+              
+              {status === 'parsed' && (
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    className="shadow-md bg-white/90 hover:bg-white text-slate-800"
+                    onClick={() => setIsLogoModalOpen(true)}
+                  >
+                    <ImagePlus className="w-4 h-4 mr-2" />
+                    Extract Logo
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
-        {(status === 'idle' || showPermissionHelp) && (
-          <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-slate-100 p-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm">
-              <Camera className="h-6 w-6" />
+          {(status === 'idle' || showPermissionHelp) && (
+            <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-slate-100 p-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm">
+                <Camera className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Camera access is required</p>
+                <p className="mt-1 max-w-md text-xs text-slate-600">
+                  Allow camera permission to scan a business card.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Camera access is required</p>
-              <p className="mt-1 max-w-md text-xs text-slate-600">
-                Allow camera permission to scan a business card.
-              </p>
-            </div>
-          </div>
-        )}
+          )}
 
-        {(status === 'processing' || status === 'uploading') && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-white">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-white" />
-              <span className="text-sm font-medium">
-                {status === 'uploading' ? 'Uploading...' : `Analyzing Card... ${Math.round(progress * 100)}%`}
-              </span>
+          {(status === 'processing' || status === 'uploading') && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-white">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-white" />
+                <span className="text-sm font-medium">
+                  {status === 'uploading' ? 'Uploading...' : `Analyzing Card... ${Math.round(progress * 100)}%`}
+                </span>
+              </div>
             </div>
+          )}
+        </div>
+
+        {status === 'parsed' && parsedData && (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4 md:w-1/2 flex flex-col justify-center">
+            <h3 className="mb-2 font-semibold text-slate-800">Review Scanned Details</h3>
+            <CardReviewForm 
+              data={parsedData} 
+              onChange={(data) => dispatch({ type: 'UPDATE_DATA', data })} 
+            />
           </div>
         )}
       </div>
@@ -338,17 +486,6 @@ export function CameraComp({
           {errorMessage}
         </div>
       )}
-
-      {status === 'parsed' && parsedData && (
-        <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-          <h3 className="mb-2 font-semibold text-slate-800">Review Scanned Details</h3>
-          <CardReviewForm 
-            data={parsedData} 
-            onChange={(data) => dispatch({ type: 'UPDATE_DATA', data })} 
-          />
-        </div>
-      )}
-
       <div className="flex flex-wrap items-center justify-end gap-2">
         {(status === 'idle' || showPermissionHelp) && (
           <Button type="button" onClick={requestCameraPermission} disabled={!isCvReady}>
@@ -365,10 +502,35 @@ export function CameraComp({
         )}
 
         {(status === 'ready' || status === 'processing') && (
-          <Button type="button" variant="outline" onClick={cancel} disabled={status === 'processing'}>
-            <X className="mr-2 h-4 w-4" />
-            Cancel
-          </Button>
+          <>
+            <Button type="button" variant="outline" onClick={cancel} disabled={status === 'processing'}>
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            {status === 'ready' && (
+              <Button type="button" onClick={() => handleAutoCapture(detectionResult.detected ? detectionResult : undefined)} disabled={status === 'processing'}>
+                <Camera className="mr-2 h-4 w-4" />
+                Capture Manually
+              </Button>
+            )}
+          </>
+        )}
+
+        {(status === 'preview') && (
+          <>
+            <Button type="button" variant="outline" onClick={retake}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Retake
+            </Button>
+            <Button type="button" variant="secondary" onClick={analyzeImage}>
+              <ScanText className="mr-2 h-4 w-4" />
+              Analyze Details
+            </Button>
+            <Button type="button" onClick={uploadCapture}>
+              <Check className="mr-2 h-4 w-4" />
+              Upload Image
+            </Button>
+          </>
         )}
 
         {(status === 'parsed' || status === 'uploading') && (
@@ -386,6 +548,19 @@ export function CameraComp({
       </div>
 
       <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
+      
+      {capturedUrl && (
+        <LogoCropperModal 
+          open={isLogoModalOpen} 
+          onOpenChange={setIsLogoModalOpen} 
+          imageUrl={capturedUrl} 
+          onSave={(logo) => {
+             if (parsedData) {
+               dispatch({ type: 'UPDATE_DATA', data: { ...parsedData, logo } });
+             }
+          }}
+        />
+      )}
     </div>
   );
 }

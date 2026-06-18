@@ -50,7 +50,43 @@ export class CardCropperService {
         }
       }
 
-      // Fallback
+      // Fallback: Center crop (80% width, 60% height)
+      const fallbackRect = {
+        x: canvas.width * 0.1,
+        y: canvas.height * 0.2,
+        width: canvas.width * 0.8,
+        height: canvas.height * 0.6,
+      };
+
+      try {
+        const croppedCanvas = document.createElement('canvas');
+        croppedCanvas.width = fallbackRect.width;
+        croppedCanvas.height = fallbackRect.height;
+        const croppedCtx = croppedCanvas.getContext('2d');
+        
+        if (croppedCtx) {
+          croppedCtx.drawImage(
+            canvas,
+            fallbackRect.x,
+            fallbackRect.y,
+            fallbackRect.width,
+            fallbackRect.height,
+            0,
+            0,
+            fallbackRect.width,
+            fallbackRect.height
+          );
+          
+          croppedCanvas.toBlob(blob => {
+            resolve(blob);
+          }, 'image/jpeg', 0.95);
+          return;
+        }
+      } catch (e) {
+        console.error('Fallback crop failed', e);
+      }
+
+      // Final fallback
       canvas.toBlob(blob => {
         resolve(blob);
       }, 'image/jpeg', 0.95);

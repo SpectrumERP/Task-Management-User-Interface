@@ -15,6 +15,14 @@ export function CardReviewForm({ data, onChange }: CardReviewFormProps) {
 
   return (
     <div className="grid gap-4 py-4">
+      {data.logo && (
+        <div className="flex flex-col items-center justify-center mb-2">
+          <p className="text-xs text-slate-500 font-medium mb-1 self-start">Extracted Logo</p>
+          <div className="p-2 border rounded-md bg-white shadow-sm flex items-center justify-center h-24 w-auto min-w-[100px]">
+            <img src={data.logo} alt="Logo" className="max-h-full max-w-full object-contain" />
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Name</Label>
@@ -66,6 +74,14 @@ export function CardReviewForm({ data, onChange }: CardReviewFormProps) {
           id="website" 
           value={data.website || ''} 
           onChange={(e) => handleChange('website', e.target.value)} 
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="address">Address</Label>
+        <Input 
+          id="address" 
+          value={data.address || ''} 
+          onChange={(e) => handleChange('address', e.target.value)} 
         />
       </div>
     </div>
