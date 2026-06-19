@@ -3363,7 +3363,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         </DialogContent>
       </Dialog>
       <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
-        <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-white overflow-hidden">
+        <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-white overflow-hidden flex flex-col max-h-[90vh]">
           <DialogHeader className="p-5 pb-3 border-b border-slate-100">
             <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
               <Camera size={18} className="text-[#006699]" />
@@ -3373,7 +3373,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               Take a photo and upload it as a Task attachment.
             </DialogDescription>
           </DialogHeader>
-          <div className="p-5">
+          <div className="p-5 overflow-y-auto flex-1">
             <CameraComp
               companyNo={authCompanies?.[0]?.HeadOfficeNo || authCompanies?.[0]?.headOfficeNo || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
               formNo={1547}

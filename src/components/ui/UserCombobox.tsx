@@ -2,6 +2,7 @@ import * as React from "react"
 import { Check, ChevronsUpDown, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import * as PopoverPrimitive from "@radix-ui/react-popover"
 import {
   Command,
   CommandEmpty,
@@ -12,7 +13,6 @@ import {
 } from "@/components/ui/command"
 import {
   Popover,
-  PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { userService, UserResponse } from "@/services/userService"
@@ -161,7 +161,7 @@ export function UserCombobox({
   }, [search, open, loginNo])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -195,10 +195,14 @@ export function UserCombobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 z-[9999]" align="start">
+      <PopoverPrimitive.Content 
+        className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
+        align="start"
+      >
         <Command className="rounded-xl border-slate-200" shouldFilter={false}>
           <div className="border-b border-slate-100 bg-slate-50/50">
             <CommandInput
+              autoFocus
               placeholder="Type to search..."
               className="h-10 border-none focus:ring-0 bg-transparent"
               onValueChange={setSearch}
@@ -250,7 +254,7 @@ export function UserCombobox({
             )}
           </CommandList>
         </Command>
-      </PopoverContent>
+      </PopoverPrimitive.Content>
     </Popover>
   )
 }

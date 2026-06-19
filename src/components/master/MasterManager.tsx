@@ -1172,6 +1172,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [companyLocations, setCompanyLocations] = useState<any[]>([]);
   const [companyPorts, setCompanyPorts] = useState<any[]>([]);
   const [companyAttachments, setCompanyAttachments] = useState<any[]>([]);
+  const [companyNotes, setCompanyNotes] = useState('');
 
   // Sub-section modal form states
   const [locationModalOpen, setLocationModalOpen] = useState(false);
@@ -1397,6 +1398,7 @@ export function MasterManager({ type }: MasterManagerProps) {
       setCompanyLocations([]);
       setCompanyPorts([]);
       setCompanyAttachments([]);
+      setCompanyNotes('');
       setLocType('');
       setLocAddress('');
       setLocCountry('');
@@ -1649,6 +1651,7 @@ export function MasterManager({ type }: MasterManagerProps) {
               setCreditLimit(dl.creditInsuranceLimit || null);
               setCompanyStatus(dl.status || 'Active');
               setCompanyTimeZoneNo(dl.timeZone?.timeZoneNo?.toString() || '');
+              setCompanyNotes(dl.notes || '');
 
               // Map locations properly
               const mappedLocations = (dl.locations || []).map((l: any) => ({
@@ -2281,7 +2284,8 @@ export function MasterManager({ type }: MasterManagerProps) {
             contactPersons: computedContacts,
             locations: computedLocations,
             ports: computedPorts,
-            attachment: computedAttachments
+            attachment: computedAttachments,
+            notes: companyNotes || null
           };
           await apiService.post('/api/master/business-entities/save', payload);
 
@@ -2468,7 +2472,8 @@ export function MasterManager({ type }: MasterManagerProps) {
             contactPersons: computedContacts,
             locations: computedLocations,
             ports: computedPorts,
-            attachment: computedAttachments
+            attachment: computedAttachments,
+            notes: companyNotes || null
           };
           await apiService.post('/api/master/business-entities/save', payload);
 
@@ -2672,6 +2677,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   // =========================================================================
   const addCompanyLocation = () => {
     const errs: Record<string, string> = {};
+    if (!locType || locType === 'none') errs.type = 'Location type is required';
     if (!locAddress.trim()) errs.address = 'Location address is required';
     // if (!locCountry || locCountry === 'none') errs.country = 'Country is required';
     // if (!locState || locState === 'none') errs.state = 'State is required';
@@ -2788,9 +2794,6 @@ export function MasterManager({ type }: MasterManagerProps) {
         errs.email = 'Please enter a valid email address';
       }
     }
-
-    if (!contactDesignation.trim()) errs.designation = 'Designation is required';
-    if (!contactDepartment.trim()) errs.department = 'Department is required';
 
 
     if (Object.keys(errs).length > 0) {
@@ -2974,13 +2977,23 @@ export function MasterManager({ type }: MasterManagerProps) {
             HEADER SECTION (General Information)
            ========================================================================= */}
         <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
-          <div className="flex items-center gap-0.5 pb-2 border-b border-slate-200/80">
-            <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
-              <Building size={18} />
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+            <div className="flex items-center gap-0.5">
+              <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
+                <Building size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-slate-800 tracking-tight">General Business Entity Information</h3>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-slate-800 tracking-tight">General Business Entity Information</h3>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsCameraModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-[#006699]/10 text-[#006699] rounded-lg hover:bg-[#006699]/20 transition-colors"
+            >
+              <CameraIcon size={16} />
+              <span>Capture Attachment</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -3403,9 +3416,35 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
         </div>
 
+        {/* =========================================================================
+            NOTES SECTION
+           ========================================================================= */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-0.5 pb-2 border-b border-slate-200/80">
+            <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
+              <FileText size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-slate-800 tracking-tight">Notes</h3>
+            </div>
+          </div>
+          <div className="space-y-0">
+            <Textarea
+              placeholder="Enter notes..."
+              maxLength={1000}
+              className="bg-white border border-slate-200 hover:border-slate-300 transition-colors rounded-xl px-3 w-full resize-y min-h-[100px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+              value={companyNotes}
+              onChange={(e) => setCompanyNotes(e.target.value)}
+            />
+            <div className="text-right text-[10px] text-slate-400 mt-1 font-medium">
+              {companyNotes.length}/1000
+            </div>
+          </div>
+        </div>
+
         <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
-          <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-white overflow-hidden">
-            <DialogHeader className="p-5 pb-3 border-b border-slate-100">
+          <DialogContent className="rounded-3xl max-w-6xl p-0 border-none shadow-2xl bg-white overflow-hidden flex flex-col max-h-[90vh]">
+            <DialogHeader className="px-5 py-2 border-b border-slate-100">
               <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
                 <CameraIcon size={18} className="text-[#006699]" />
                 Capture Attachment
@@ -3414,7 +3453,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                 Take a photo and upload it as a Business Entity attachment.
               </DialogDescription>
             </DialogHeader>
-            <div className="p-5">
+            <div className="px-5 overflow-y-auto flex-1">
               <CameraComp
                 companyNo={parseInt(companyNo as any) || 1}
                 formNo={1550}
@@ -3422,6 +3461,28 @@ export function MasterManager({ type }: MasterManagerProps) {
                 className="border-slate-100 shadow-none"
                 onUploaded={handleCameraAttachmentUploaded}
                 onCancel={() => setIsCameraModalOpen(false)}
+                onCardScanned={(data) => {
+                  if (data.company) {
+                    setName(data.company);
+                  }
+                  if (data.name || data.email || data.phone || data.mobile || data.designation) {
+                    setCompanyContacts(prev => [
+                      ...prev,
+                      {
+                        contactName: data.name || '',
+                        name: data.name || '',
+                        contactPersonName: data.name || '',
+                        designation: data.designation || '',
+                        department: '',
+                        phone: data.phone || data.mobile || '',
+                        phoneNo: data.phone || data.mobile || '',
+                        email: data.email || '',
+                        address: data.address || '',
+                        status: 'Active'
+                      }
+                    ]);
+                  }
+                }}
               />
             </div>
           </DialogContent>
@@ -3443,19 +3504,26 @@ export function MasterManager({ type }: MasterManagerProps) {
             <div className="space-y-4 py-2 pr-2">
               {/* Type */}
               <div className="space-y-0">
-                <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Location Type</label>
+                <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Location Type <span className="text-red-500">*</span></label>
                 <Combobox
                   options={(businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []).map((lt: any) => ({ label: lt.locationTypeName, value: lt.locationTypeNo.toString() }))}
                   value={locType}
-                  onChange={(val) => setLocType(val)}
+                  onChange={(val) => {
+                    setLocType(val);
+                    if (locErrors.type) setLocErrors(prev => ({ ...prev, type: '' }));
+                  }}
                   placeholder="Select Location Type"
-                  className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                  className={cn(
+                    "bg-white border hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                    locErrors.type ? "border-red-500" : "border-slate-200"
+                  )}
                 />
+                {locErrors.type && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.type}</p>}
               </div>
 
               {/* Address */}
               <div className="space-y-0">
-                <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Address</label>
+                <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Address <span className="text-red-500">*</span></label>
                 <textarea
                   rows={2}
                   placeholder="Enter address"

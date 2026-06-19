@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Check, Loader2, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, useReducer } from 'react';
+import { Camera, Check, Loader2, RefreshCw, RotateCcw, X, Edit, ImagePlus, ScanText, FlipHorizontal } from 'lucide-react';
+import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -7,7 +9,97 @@ import { attachmentService } from '@/services/attachmentService';
 import { DocumentAttachment } from '@/types/task';
 import { cn } from '@/lib/utils';
 
-type CameraStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'captured' | 'uploading' | 'error';
+import { useBusinessCardDetection } from './camera/hooks/useBusinessCardDetection';
+import { useOCR } from './camera/hooks/useOCR';
+import { CardCropperService } from './camera/services/CardCropperService';
+import { BusinessCardParserService } from './camera/services/BusinessCardParserService';
+import { LogoDetectionService } from './camera/services/LogoDetectionService';
+import { BusinessCardOverlay } from './camera/overlays/BusinessCardOverlay';
+import { CardReviewForm } from './camera/components/CardReviewForm';
+import { CameraControls } from './camera/components/CameraControls';
+import { useClipboardStore } from '@/store/useClipboardStore';
+import { LogoCropperModal } from './camera/components/LogoCropperModal';
+import { BusinessCardData } from './camera/models/BusinessCardData';
+
+type CameraStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'capturing' | 'preview' | 'processing' | 'parsed' | 'uploading' | 'error';
+
+interface CameraState {
+  status: CameraStatus;
+  errorMessage: string;
+  capturedUrl: string | null;
+  capturedFile: File | null;
+  logoFile: File | null;
+  parsedData: BusinessCardData | null;
+  isBusinessCard?: boolean;
+}
+
+type CameraAction =
+  | { type: 'REQUEST_PERMISSION' }
+  | { type: 'PERMISSION_GRANTED' }
+  | { type: 'PERMISSION_DENIED'; error: string }
+  | { type: 'START_CAPTURE' }
+  | { type: 'PREVIEW'; file: File; url: string; isBusinessCard: boolean }
+  | { type: 'START_PROCESSING' }
+  | { type: 'PARSED'; data: BusinessCardData; file: File; url: string; logoFile: File | null }
+  | { type: 'UPDATE_DATA'; data: BusinessCardData; logoFile?: File | null }
+  | { type: 'START_UPLOAD' }
+  | { type: 'UPLOAD_SUCCESS' }
+  | { type: 'ERROR'; error: string }
+  | { type: 'RESET' };
+
+const initialState: CameraState = {
+  status: 'idle',
+  errorMessage: '',
+  capturedUrl: null,
+  capturedFile: null,
+  logoFile: null,
+  parsedData: null,
+};
+
+function cameraReducer(state: CameraState, action: CameraAction): CameraState {
+  switch (action.type) {
+    case 'REQUEST_PERMISSION':
+      return { ...state, status: 'requesting', errorMessage: '' };
+    case 'PERMISSION_GRANTED':
+      return { ...state, status: 'ready', errorMessage: '' };
+    case 'PERMISSION_DENIED':
+      return { ...state, status: 'denied', errorMessage: action.error };
+    case 'START_CAPTURE':
+      return { ...state, status: 'capturing' };
+    case 'PREVIEW':
+      return {
+        ...state,
+        status: 'preview',
+        capturedFile: action.file,
+        capturedUrl: action.url,
+        isBusinessCard: action.isBusinessCard
+      };
+    case 'START_PROCESSING':
+      return { ...state, status: 'processing', errorMessage: '' };
+    case 'PARSED':
+      return {
+        ...state,
+        status: 'parsed',
+        parsedData: action.data,
+        capturedFile: action.file,
+        capturedUrl: action.url,
+        logoFile: action.logoFile
+      };
+    case 'UPDATE_DATA':
+      return { ...state, parsedData: action.data, logoFile: action.logoFile !== undefined ? action.logoFile : state.logoFile };
+    case 'START_UPLOAD':
+      return { ...state, status: 'uploading' };
+    case 'UPLOAD_SUCCESS':
+      return { ...state, status: 'idle', capturedFile: null, capturedUrl: null, parsedData: null, logoFile: null };
+    case 'ERROR':
+      return { ...state, status: 'error', errorMessage: action.error };
+    case 'RESET':
+      if (state.capturedUrl) URL.revokeObjectURL(state.capturedUrl);
+      return { ...initialState };
+    default:
+      return state;
+  }
+}
 
 export interface CameraCompProps {
   companyNo: number;
@@ -16,47 +108,67 @@ export interface CameraCompProps {
   className?: string;
   onUploaded?: (attachment: DocumentAttachment) => void;
   onCancel?: () => void;
+  onCardScanned?: (data: BusinessCardData) => void;
 }
-
-const getCameraErrorMessage = (error: unknown) => {
-  if (error instanceof DOMException) {
-    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-      return 'Camera permission was denied. Allow camera access from the browser prompt or site settings, then try again.';
-    }
-
-    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-      return 'No camera was found on this device.';
-    }
-
-    if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-      return 'The camera is already in use by another app or browser tab.';
-    }
-  }
-
-  return 'Unable to open the camera. Please check camera access and try again.';
-};
 
 const buildCameraFileName = (prefix: string) => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   return `${prefix}-${timestamp}.jpg`;
 };
 
+const dataUrlToFile = (dataUrl: string, filename: string): File => {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
 export function CameraComp({
   companyNo,
   formNo,
-  fileNamePrefix = 'camera-capture',
+  fileNamePrefix = 'business-card',
   className,
   onUploaded,
-  onCancel
+  onCancel,
+  onCardScanned
 }: CameraCompProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const [status, setStatus] = useState<CameraStatus>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
-  const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const cropperService = useRef(new CardCropperService());
+  const parserService = useRef(new BusinessCardParserService());
+  const logoService = useRef(new LogoDetectionService());
+  const { processImage, isProcessing, progress } = useOCR();
+
+  const [state, dispatch] = useReducer(cameraReducer, initialState);
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
+  const [previewCrop, setPreviewCrop] = useState<Crop>();
+  const [previewCompletedCrop, setPreviewCompletedCrop] = useState<PixelCrop>();
+  const [isMirrored, setIsMirrored] = useState(false);
+
+
+  const [rawTesseractText, setRawTesseractText] = useState('');
+  const [rawGoogleText, setRawGoogleText] = useState<string | null>(null);
+
+  const { status, errorMessage, capturedUrl, capturedFile, parsedData, logoFile } = state;
+
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setContainerSize({
+        width: containerRef.current.clientWidth,
+        height: containerRef.current.clientHeight
+      });
+    }
+  }, [status]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(track => track.stop());
@@ -66,30 +178,19 @@ export function CameraComp({
     }
   }, []);
 
-  const clearCapture = useCallback(() => {
-    if (capturedUrl) {
-      URL.revokeObjectURL(capturedUrl);
-    }
-    setCapturedUrl(null);
-    setCapturedFile(null);
-  }, [capturedUrl]);
-
   const requestCameraPermission = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setErrorMessage('Camera is not supported in this browser.');
-      setStatus('error');
+      dispatch({ type: 'ERROR', error: 'Camera is not supported in this browser.' });
       return;
     }
 
     try {
-      clearCapture();
-      stopCamera();
-      setErrorMessage('');
-      setStatus('requesting');
-
+      dispatch({ type: 'REQUEST_PERMISSION' });
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: 'environment' }
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920, min: 1280 },
+          height: { ideal: 1080, min: 720 }
         },
         audio: false
       });
@@ -100,73 +201,195 @@ export function CameraComp({
         await videoRef.current.play();
       }
 
-      setStatus('ready');
-    } catch (error) {
+      dispatch({ type: 'PERMISSION_GRANTED' });
+    } catch (error: any) {
       console.error('Camera permission failed:', error);
-      setErrorMessage(getCameraErrorMessage(error));
-      setStatus('denied');
+      dispatch({ type: 'PERMISSION_DENIED', error: error.message || 'Permission denied' });
       stopCamera();
     }
-  }, [clearCapture, stopCamera]);
+  }, [stopCamera]);
 
-  const captureImage = useCallback(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
+  const analyzeImage = useCallback(async () => {
+    if (!capturedFile || !capturedUrl) return;
+    dispatch({ type: 'START_PROCESSING' });
+    try {
+      let finalBlob: Blob = capturedFile;
 
-    if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
-      setErrorMessage('Camera preview is not ready yet. Please try again.');
-      return;
+      // Apply manual crop if provided
+      if (previewCompletedCrop && previewCompletedCrop.width > 0 && previewCompletedCrop.height > 0) {
+        const image = new Image();
+        image.src = capturedUrl;
+        await new Promise((resolve) => { image.onload = resolve; });
+
+        const canvas = document.createElement('canvas');
+
+        // Find the actual rendered image dimensions in the DOM to calculate scale
+        const imgElement = document.getElementById('preview-image') as HTMLImageElement;
+        const scaleX = image.naturalWidth / (imgElement ? imgElement.width : image.naturalWidth);
+        const scaleY = image.naturalHeight / (imgElement ? imgElement.height : image.naturalHeight);
+
+        canvas.width = previewCompletedCrop.width * scaleX;
+        canvas.height = previewCompletedCrop.height * scaleY;
+        const ctx = canvas.getContext('2d');
+
+        if (ctx) {
+          ctx.drawImage(
+            image,
+            previewCompletedCrop.x * scaleX,
+            previewCompletedCrop.y * scaleY,
+            previewCompletedCrop.width * scaleX,
+            previewCompletedCrop.height * scaleY,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+
+          finalBlob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error('Canvas to blob failed'));
+            }, 'image/jpeg', 0.95);
+          });
+        }
+      }
+
+      const result = await processImage(finalBlob);
+      setRawTesseractText(result.tesseractText);
+      setRawGoogleText(result.googleText);
+
+      const rawTextToParse = result.googleText || result.tesseractText;
+      const data = parserService.current.parse(rawTextToParse);
+
+      // Auto-store in clipboard
+      useClipboardStore.getState().addEntry({
+        source: 'BusinessCard',
+        data,
+        formattedText: rawTextToParse
+      });
+
+      const extractedLogoBlob = await logoService.current.detect(finalBlob);
+      let extractedLogoFile = null;
+      if (extractedLogoBlob) {
+        extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
+      }
+
+      const finalFile = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+      const finalUrl = URL.createObjectURL(finalFile);
+
+      dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
+    } catch (e) {
+      console.error(e);
+      dispatch({ type: 'ERROR', error: 'Analysis failed. Please try again.' });
     }
+  }, [capturedFile, capturedUrl, processImage, previewCompletedCrop, fileNamePrefix]);
 
+  const handleAutoCapture = useCallback(async (result: any) => {
+    if (status !== 'ready') return;
+    dispatch({ type: 'START_CAPTURE' });
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const context = canvas.getContext('2d');
-    if (!context) {
-      setErrorMessage('Unable to capture image from the camera.');
-      return;
-    }
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        dispatch({ type: 'ERROR', error: 'Failed to capture image' });
+        return;
+      }
 
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(
-      blob => {
-        if (!blob) {
-          setErrorMessage('Unable to prepare the captured image.');
-          return;
+      const file = new File([blob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+      const url = URL.createObjectURL(file);
+
+      stopCamera();
+
+      if (result?.detected) {
+        dispatch({ type: 'START_PROCESSING' });
+        try {
+          const croppedBlob = await cropperService.current.crop(video, result.rectangle, result.corners);
+          if (!croppedBlob) throw new Error('Failed to crop image');
+
+          const extractedLogoBlob = await logoService.current.detect(croppedBlob);
+          let extractedLogoFile = null;
+          if (extractedLogoBlob) {
+            extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
+          }
+
+          const result = await processImage(croppedBlob);
+          setRawTesseractText(result.tesseractText);
+          setRawGoogleText(result.googleText);
+
+          const rawText = result.googleText || result.tesseractText;
+          const data = parserService.current.parse(rawText);
+
+          // Auto-store in clipboard
+          useClipboardStore.getState().addEntry({
+            source: 'BusinessCard',
+            data,
+            formattedText: rawText
+          });
+
+          const finalFile = new File([croppedBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+          const finalUrl = URL.createObjectURL(finalFile);
+
+          dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
+        } catch (err: any) {
+          console.error(err);
+          dispatch({ type: 'ERROR', error: 'Processing failed. Please try again.' });
         }
+      } else {
+        // Initialize a centered crop box
+        setPreviewCrop({ unit: '%', x: 10, y: 20, width: 80, height: 60 });
+        dispatch({ type: 'PREVIEW', file, url, isBusinessCard: false });
+      }
+    }, 'image/jpeg', 0.9);
 
-        clearCapture();
-        const file = new File([blob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
-        setCapturedFile(file);
-        setCapturedUrl(URL.createObjectURL(file));
-        setStatus('captured');
-        stopCamera();
-      },
-      'image/jpeg',
-      0.92
-    );
-  }, [clearCapture, fileNamePrefix, stopCamera]);
+  }, [status, fileNamePrefix, processImage, stopCamera]);
+
+  const { isCvReady, detectionResult, isStable } = useBusinessCardDetection(
+    videoRef,
+    canvasRef,
+    status === 'ready',
+    handleAutoCapture
+  );
 
   const retake = useCallback(() => {
+    dispatch({ type: 'RESET' });
     void requestCameraPermission();
   }, [requestCameraPermission]);
 
   const uploadCapture = useCallback(async () => {
-    if (!capturedFile) {
-      setErrorMessage('Capture an image before uploading.');
-      return;
-    }
+    if (!capturedFile) return;
 
     try {
-      setStatus('uploading');
-      setErrorMessage('');
+      dispatch({ type: 'START_UPLOAD' });
 
+      // Upload Card
       const entry = await attachmentService.createEntry(capturedFile.name, companyNo, formNo);
       await attachmentService.uploadFile(entry.id, capturedFile);
 
       const isVerified = await attachmentService.checkStatus(entry.id);
-      if (!isVerified) {
-        throw new Error('Upload status could not be verified by the backend.');
+      if (!isVerified) throw new Error('Card upload status could not be verified by the backend.');
+
+      // Upload Logo
+      if (logoFile) {
+        const logoEntry = await attachmentService.createEntry(logoFile.name, companyNo, formNo);
+        await attachmentService.uploadFile(logoEntry.id, logoFile);
+
+        onUploaded?.({
+          id: logoEntry.id,
+          name: (logoEntry as any).docName || logoEntry.name || logoFile.name,
+          size: (logoEntry as any).docSize || logoEntry.size || logoFile.size,
+          storedFileName: logoEntry.storedFileName,
+          storedFilePath: logoEntry.storedFilePath,
+          relativePath: logoEntry.relativePath
+        });
       }
 
       const uploadedAttachment: DocumentAttachment = {
@@ -179,88 +402,202 @@ export function CameraComp({
       };
 
       onUploaded?.(uploadedAttachment);
-      toast.success(`"${uploadedAttachment.name}" uploaded successfully!`);
-      clearCapture();
-      setStatus('idle');
+      if (parsedData && onCardScanned) {
+        onCardScanned(parsedData);
+      }
+
+      toast.success(`Business card scanned successfully!`);
+      dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error: any) {
       console.error('Camera image upload failed:', error);
-      const message = error?.message || 'Image upload failed. Please try again.';
-      setErrorMessage(message);
-      setStatus('captured');
+      const message = error?.message || 'Upload failed. Please try again.';
+      dispatch({ type: 'ERROR', error: message });
       toast.error(message);
     }
-  }, [capturedFile, clearCapture, companyNo, formNo, onUploaded]);
+  }, [capturedFile, logoFile, companyNo, formNo, onUploaded, onCardScanned, parsedData]);
 
   const cancel = useCallback(() => {
     stopCamera();
-    clearCapture();
-    setErrorMessage('');
-    setStatus('idle');
+    dispatch({ type: 'RESET' });
     onCancel?.();
-  }, [clearCapture, onCancel, stopCamera]);
+  }, [onCancel, stopCamera]);
 
   useEffect(() => {
     return () => {
       stopCamera();
-      if (capturedUrl) {
-        URL.revokeObjectURL(capturedUrl);
-      }
+      if (capturedUrl) URL.revokeObjectURL(capturedUrl);
     };
   }, [capturedUrl, stopCamera]);
 
-  const showVideo = status === 'requesting' || status === 'ready';
+  const showVideo = status === 'requesting' || status === 'ready' || status === 'capturing' || status === 'processing';
   const showPermissionHelp = status === 'denied' || status === 'error';
-  const isBusy = status === 'requesting' || status === 'uploading';
 
   return (
-    <div className={cn('w-full space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm', className)}>
-      <div className="relative overflow-hidden rounded-md bg-slate-950">
-        {showVideo && (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="aspect-video w-full bg-slate-950 object-cover"
-          />
-        )}
+    <div className={cn('w-full space-y-2 rounded-lg border border-slate-200 bg-white px-4 py-1 shadow-sm', className)}>
+      <div className={cn("flex flex-col gap-2", status === 'parsed' && "md:flex-row")}>
+        <div ref={containerRef} className={cn("relative overflow-hidden rounded-md bg-slate-950", status === 'parsed' ? "md:w-1/2" : "w-full")}>
+          {showVideo && (
+            <>
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className={cn(
+                  "aspect-video w-full bg-slate-950 object-cover transition-transform duration-300",
+                  status === 'processing' && 'opacity-50 blur-sm',
+                  isMirrored && 'scale-x-[-1]'
+                )}
+              />
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-2 right-2 bg-black/40 hover:bg-black/60 text-white rounded-full z-10 w-8 h-8 backdrop-blur-sm transition-all"
+                onClick={() => setIsMirrored(prev => !prev)}
+                title="Toggle Mirror View"
+              >
+                <FlipHorizontal size={14} className={cn("transition-transform duration-300", isMirrored && "scale-x-[-1]")} />
+              </Button>
+            </>
+          )}
 
-        {capturedUrl && status !== 'uploading' && (
-          <img
-            src={capturedUrl}
-            alt="Captured preview"
-            className="aspect-video w-full bg-slate-950 object-contain"
-          />
-        )}
-
-        {(status === 'idle' || showPermissionHelp) && (
-          <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-slate-100 p-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm">
-              <Camera className="h-6 w-6" />
+          {status === 'ready' && isCvReady && videoRef.current && (
+            <div className={cn("absolute inset-0 pointer-events-none transition-transform duration-300", isMirrored && "scale-x-[-1]")}>
+              <BusinessCardOverlay
+                detectionResult={detectionResult}
+                isStable={isStable}
+                videoWidth={videoRef.current.videoWidth}
+                videoHeight={videoRef.current.videoHeight}
+                containerWidth={containerSize.width}
+                containerHeight={containerSize.height}
+              />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Camera access is required</p>
-              <p className="mt-1 max-w-md text-xs text-slate-600">
-                Allow camera permission to take a photo and upload it as an attachment.
-              </p>
-            </div>
-          </div>
-        )}
+          )}
 
-        {status === 'uploading' && capturedUrl && (
-          <div className="relative">
-            <img
-              src={capturedUrl}
-              alt="Uploading captured preview"
-              className="aspect-video w-full bg-slate-950 object-contain opacity-60"
-            />
+          {capturedUrl && status !== 'uploading' && status !== 'processing' && (
+            <div className="relative">
+              {status === 'preview' ? (
+                <>
+                  <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
+                    <div className="bg-slate-900/90 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md border border-slate-700">
+                      Crop the business card, then click Analyze
+                    </div>
+                  </div>
+                  <div className="w-full bg-slate-950 flex justify-center overflow-hidden">
+                    <ReactCrop
+                      crop={previewCrop}
+                      onChange={(c) => setPreviewCrop(c)}
+                      onComplete={(c) => setPreviewCompletedCrop(c)}
+                    >
+                      <img id="preview-image" src={capturedUrl} alt="Captured preview" className="max-h-[60vh] max-w-full block" />
+                    </ReactCrop>
+                  </div>
+                </>
+              ) : (
+                <img src={capturedUrl} alt="Captured preview" className="max-h-[60vh] w-full bg-slate-950 object-contain" />
+              )}
+
+              {status === 'parsed' && (
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="shadow-md bg-white/90 hover:bg-white text-slate-800"
+                    onClick={() => setIsLogoModalOpen(true)}
+                  >
+                    <ImagePlus className="w-4 h-4 mr-2" />
+                    Extract Logo
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(status === 'idle' || showPermissionHelp) && (
+            <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-slate-100 p-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm">
+                <Camera className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Camera access is required</p>
+                <p className="mt-1 max-w-md text-xs text-slate-600">
+                  Allow camera permission to scan a business card.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {(status === 'processing' || status === 'uploading') && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-white">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              <span className="text-sm font-medium">Uploading image...</span>
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-white" />
+                <span className="text-sm font-medium">
+                  {status === 'uploading' ? 'Uploading...' : `Analyzing Card... ${Math.round(progress * 100)}%`}
+                </span>
+              </div>
             </div>
+          )}
+
+
+          {status === 'parsed' && logoFile && (
+            <div className="mx-4 mt-auto px-4 border border-slate-700/50 rounded-xl bg-slate-800/80 backdrop-blur-sm shadow-inner">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Extracted Logo</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                  onClick={() => dispatch({ type: 'UPDATE_DATA', data: parsedData!, logoFile: null })}
+                >
+                  Remove Logo
+                </Button>
+              </div>
+              <div className="flex justify-center bg-slate-900/80 rounded-lg p-3 border border-slate-700/50 shadow-sm">
+                <img
+                  src={URL.createObjectURL(logoFile)}
+                  alt="Extracted Logo"
+                  className="max-h-24 object-contain rounded drop-shadow-md"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {status === 'parsed' && parsedData && (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4 md:w-1/2 flex flex-col justify-start overflow-y-auto">
+            <h3 className="mb-1 font-semibold text-slate-800">Review Scanned Details</h3>
+            <CardReviewForm
+              data={parsedData}
+              onChange={(data) => dispatch({ type: 'UPDATE_DATA', data })}
+            />
+
           </div>
         )}
       </div>
+
+      {/* {status === 'parsed' && (
+        <div className="w-full flex flex-col gap-4 mt-4">
+          <h3 className="text-sm font-semibold text-slate-800">Raw Text Comparison</h3>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 space-y-2">
+              <label className="text-xs font-medium text-slate-600">Tesseract Output</label>
+              <textarea
+                readOnly
+                className="w-full h-40 text-xs p-2 rounded border border-slate-200 bg-slate-50 font-mono"
+                value={rawTesseractText}
+              />
+            </div>
+            <div className="flex-1 space-y-2">
+              <label className="text-xs font-medium text-slate-600">Google Vision API Output</label>
+              <textarea
+                readOnly
+                className="w-full h-40 text-xs p-2 rounded border border-slate-200 bg-slate-50 font-mono"
+                value={rawGoogleText || "API Key not provided or request failed."}
+              />
+            </div>
+          </div>
+        </div>
+      )} */}
 
       {errorMessage && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -268,56 +605,88 @@ export function CameraComp({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {(status === 'idle' || showPermissionHelp) && (
-          <Button type="button" onClick={requestCameraPermission} disabled={isBusy}>
-            <Camera className="h-4 w-4" />
-            {showPermissionHelp ? 'Try Camera Again' : 'Open Camera'}
-          </Button>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-4 mt-4">
+        <div className="flex-1 min-w-[200px] max-w-sm">
+          {/* Input removed as backend API handles authentication */}
+        </div>
 
-        {status === 'requesting' && (
-          <Button type="button" disabled>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Requesting Permission
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {(status === 'idle' || showPermissionHelp) && (
+            <Button type="button" onClick={requestCameraPermission} disabled={!isCvReady}>
+              {!isCvReady ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+              {!isCvReady ? 'Loading Scanner...' : showPermissionHelp ? 'Try Camera Again' : 'Open Camera'}
+            </Button>
+          )}
 
-        {status === 'ready' && (
-          <>
-            <Button type="button" variant="outline" onClick={cancel}>
-              <X className="h-4 w-4" />
-              Cancel
+          {status === 'requesting' && (
+            <Button type="button" disabled>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Requesting Permission
             </Button>
-            <Button type="button" onClick={captureImage}>
-              <Camera className="h-4 w-4" />
-              Capture
-            </Button>
-          </>
-        )}
+          )}
 
-        {(status === 'captured' || status === 'uploading') && (
-          <>
-            <Button type="button" variant="outline" onClick={retake} disabled={status === 'uploading'}>
-              <RotateCcw className="h-4 w-4" />
-              Retake
-            </Button>
-            <Button type="button" onClick={uploadCapture} disabled={status === 'uploading'}>
-              {status === 'uploading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              OK
-            </Button>
-          </>
-        )}
+          {(status === 'ready' || status === 'processing') && (
+            <>
+              <Button type="button" variant="outline" onClick={cancel} disabled={status === 'processing'}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              {status === 'ready' && (
+                <Button type="button" onClick={() => handleAutoCapture(detectionResult.detected ? detectionResult : undefined)} disabled={status === 'processing'}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Capture Manually
+                </Button>
+              )}
+            </>
+          )}
 
-        {showPermissionHelp && (
-          <Button type="button" variant="outline" onClick={requestCameraPermission}>
-            <RefreshCw className="h-4 w-4" />
-            Request Permission
-          </Button>
-        )}
+          {(status === 'preview') && (
+            <>
+              <Button type="button" variant="outline" onClick={retake}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Retake
+              </Button>
+              <Button type="button" variant="secondary" onClick={analyzeImage}>
+                <ScanText className="mr-2 h-4 w-4" />
+                Analyze Details
+              </Button>
+              <Button type="button" onClick={uploadCapture}>
+                <Check className="mr-2 h-4 w-4" />
+                Upload Image
+              </Button>
+            </>
+          )}
+
+          {(status === 'parsed' || status === 'uploading') && (
+            <>
+              <Button type="button" variant="outline" onClick={retake} disabled={status === 'uploading'}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Retake
+              </Button>
+              <Button type="button" onClick={uploadCapture} disabled={status === 'uploading'}>
+                {status === 'uploading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                Confirm & Upload
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
+
+      {capturedUrl && (
+        <LogoCropperModal
+          open={isLogoModalOpen}
+          onOpenChange={setIsLogoModalOpen}
+          imageUrl={capturedUrl}
+          onSave={(logo) => {
+            if (parsedData) {
+              const newLogoFile = dataUrlToFile(logo, buildCameraFileName('logo'));
+              dispatch({ type: 'UPDATE_DATA', data: { ...parsedData, logo }, logoFile: newLogoFile });
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
