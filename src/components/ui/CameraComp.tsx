@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useReducer } from 'react';
-import { Camera, Check, Loader2, RefreshCw, RotateCcw, X, Edit, ImagePlus, ScanText } from 'lucide-react';
+import { Camera, Check, Loader2, RefreshCw, RotateCcw, X, Edit, ImagePlus, ScanText, FlipHorizontal } from 'lucide-react';
 import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { toast } from 'sonner';
@@ -16,6 +16,8 @@ import { BusinessCardParserService } from './camera/services/BusinessCardParserS
 import { LogoDetectionService } from './camera/services/LogoDetectionService';
 import { BusinessCardOverlay } from './camera/overlays/BusinessCardOverlay';
 import { CardReviewForm } from './camera/components/CardReviewForm';
+import { CameraControls } from './camera/components/CameraControls';
+import { useClipboardStore } from '@/store/useClipboardStore';
 import { LogoCropperModal } from './camera/components/LogoCropperModal';
 import { BusinessCardData } from './camera/models/BusinessCardData';
 
@@ -39,7 +41,7 @@ type CameraAction =
   | { type: 'PREVIEW'; file: File; url: string; isBusinessCard: boolean }
   | { type: 'START_PROCESSING' }
   | { type: 'PARSED'; data: BusinessCardData; file: File; url: string; logoFile: File | null }
-  | { type: 'UPDATE_DATA'; data: BusinessCardData }
+  | { type: 'UPDATE_DATA'; data: BusinessCardData; logoFile?: File | null }
   | { type: 'START_UPLOAD' }
   | { type: 'UPLOAD_SUCCESS' }
   | { type: 'ERROR'; error: string }
@@ -65,26 +67,26 @@ function cameraReducer(state: CameraState, action: CameraAction): CameraState {
     case 'START_CAPTURE':
       return { ...state, status: 'capturing' };
     case 'PREVIEW':
-      return { 
-        ...state, 
-        status: 'preview', 
-        capturedFile: action.file, 
-        capturedUrl: action.url, 
-        isBusinessCard: action.isBusinessCard 
+      return {
+        ...state,
+        status: 'preview',
+        capturedFile: action.file,
+        capturedUrl: action.url,
+        isBusinessCard: action.isBusinessCard
       };
     case 'START_PROCESSING':
       return { ...state, status: 'processing', errorMessage: '' };
     case 'PARSED':
-      return { 
-        ...state, 
-        status: 'parsed', 
-        parsedData: action.data, 
-        capturedFile: action.file, 
+      return {
+        ...state,
+        status: 'parsed',
+        parsedData: action.data,
+        capturedFile: action.file,
         capturedUrl: action.url,
         logoFile: action.logoFile
       };
     case 'UPDATE_DATA':
-      return { ...state, parsedData: action.data };
+      return { ...state, parsedData: action.data, logoFile: action.logoFile !== undefined ? action.logoFile : state.logoFile };
     case 'START_UPLOAD':
       return { ...state, status: 'uploading' };
     case 'UPLOAD_SUCCESS':
@@ -114,6 +116,18 @@ const buildCameraFileName = (prefix: string) => {
   return `${prefix}-${timestamp}.jpg`;
 };
 
+const dataUrlToFile = (dataUrl: string, filename: string): File => {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
 export function CameraComp({
   companyNo,
   formNo,
@@ -137,6 +151,11 @@ export function CameraComp({
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   const [previewCrop, setPreviewCrop] = useState<Crop>();
   const [previewCompletedCrop, setPreviewCompletedCrop] = useState<PixelCrop>();
+  const [isMirrored, setIsMirrored] = useState(false);
+
+
+  const [rawTesseractText, setRawTesseractText] = useState('');
+  const [rawGoogleText, setRawGoogleText] = useState<string | null>(null);
 
   const { status, errorMessage, capturedUrl, capturedFile, parsedData, logoFile } = state;
 
@@ -168,7 +187,7 @@ export function CameraComp({
     try {
       dispatch({ type: 'REQUEST_PERMISSION' });
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           facingMode: { ideal: 'environment' },
           width: { ideal: 1920, min: 1280 },
           height: { ideal: 1080, min: 720 }
@@ -203,7 +222,7 @@ export function CameraComp({
         await new Promise((resolve) => { image.onload = resolve; });
 
         const canvas = document.createElement('canvas');
-        
+
         // Find the actual rendered image dimensions in the DOM to calculate scale
         const imgElement = document.getElementById('preview-image') as HTMLImageElement;
         const scaleX = image.naturalWidth / (imgElement ? imgElement.width : image.naturalWidth);
@@ -212,7 +231,7 @@ export function CameraComp({
         canvas.width = previewCompletedCrop.width * scaleX;
         canvas.height = previewCompletedCrop.height * scaleY;
         const ctx = canvas.getContext('2d');
-        
+
         if (ctx) {
           ctx.drawImage(
             image,
@@ -225,24 +244,36 @@ export function CameraComp({
             canvas.width,
             canvas.height
           );
-          
+
           finalBlob = await new Promise<Blob>((resolve, reject) => {
-             canvas.toBlob((blob) => {
-               if (blob) resolve(blob);
-               else reject(new Error('Canvas to blob failed'));
-             }, 'image/jpeg', 0.95);
+            canvas.toBlob((blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error('Canvas to blob failed'));
+            }, 'image/jpeg', 0.95);
           });
         }
       }
 
-      const rawText = await processImage(finalBlob);
-      const data = parserService.current.parse(rawText);
+      const result = await processImage(finalBlob);
+      setRawTesseractText(result.tesseractText);
+      setRawGoogleText(result.googleText);
+
+      const rawTextToParse = result.googleText || result.tesseractText;
+      const data = parserService.current.parse(rawTextToParse);
+
+      // Auto-store in clipboard
+      useClipboardStore.getState().addEntry({
+        source: 'BusinessCard',
+        data,
+        formattedText: rawTextToParse
+      });
+
       const extractedLogoBlob = await logoService.current.detect(finalBlob);
       let extractedLogoFile = null;
       if (extractedLogoBlob) {
         extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
       }
-      
+
       const finalFile = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
       const finalUrl = URL.createObjectURL(finalFile);
 
@@ -269,42 +300,53 @@ export function CameraComp({
 
     canvas.toBlob(async (blob) => {
       if (!blob) {
-         dispatch({ type: 'ERROR', error: 'Failed to capture image' });
-         return;
+        dispatch({ type: 'ERROR', error: 'Failed to capture image' });
+        return;
       }
-      
+
       const file = new File([blob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
       const url = URL.createObjectURL(file);
-      
+
       stopCamera();
 
       if (result?.detected) {
-         dispatch({ type: 'START_PROCESSING' });
-         try {
-           const croppedBlob = await cropperService.current.crop(video, result.rectangle, result.corners);
-           if (!croppedBlob) throw new Error('Failed to crop image');
+        dispatch({ type: 'START_PROCESSING' });
+        try {
+          const croppedBlob = await cropperService.current.crop(video, result.rectangle, result.corners);
+          if (!croppedBlob) throw new Error('Failed to crop image');
 
-           const extractedLogoBlob = await logoService.current.detect(croppedBlob);
-           let extractedLogoFile = null;
-           if (extractedLogoBlob) {
-             extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
-           }
+          const extractedLogoBlob = await logoService.current.detect(croppedBlob);
+          let extractedLogoFile = null;
+          if (extractedLogoBlob) {
+            extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
+          }
 
-           const rawText = await processImage(croppedBlob);
-           const data = parserService.current.parse(rawText);
+          const result = await processImage(croppedBlob);
+          setRawTesseractText(result.tesseractText);
+          setRawGoogleText(result.googleText);
 
-           const finalFile = new File([croppedBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
-           const finalUrl = URL.createObjectURL(finalFile);
+          const rawText = result.googleText || result.tesseractText;
+          const data = parserService.current.parse(rawText);
 
-           dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
-         } catch (err: any) {
-           console.error(err);
-           dispatch({ type: 'ERROR', error: 'Processing failed. Please try again.' });
-         }
+          // Auto-store in clipboard
+          useClipboardStore.getState().addEntry({
+            source: 'BusinessCard',
+            data,
+            formattedText: rawText
+          });
+
+          const finalFile = new File([croppedBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+          const finalUrl = URL.createObjectURL(finalFile);
+
+          dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
+        } catch (err: any) {
+          console.error(err);
+          dispatch({ type: 'ERROR', error: 'Processing failed. Please try again.' });
+        }
       } else {
-         // Initialize a centered crop box
-         setPreviewCrop({ unit: '%', x: 10, y: 20, width: 80, height: 60 });
-         dispatch({ type: 'PREVIEW', file, url, isBusinessCard: false });
+        // Initialize a centered crop box
+        setPreviewCrop({ unit: '%', x: 10, y: 20, width: 80, height: 60 });
+        dispatch({ type: 'PREVIEW', file, url, isBusinessCard: false });
       }
     }, 'image/jpeg', 0.9);
 
@@ -339,6 +381,15 @@ export function CameraComp({
       if (logoFile) {
         const logoEntry = await attachmentService.createEntry(logoFile.name, companyNo, formNo);
         await attachmentService.uploadFile(logoEntry.id, logoFile);
+
+        onUploaded?.({
+          id: logoEntry.id,
+          name: (logoEntry as any).docName || logoEntry.name || logoFile.name,
+          size: (logoEntry as any).docSize || logoEntry.size || logoFile.size,
+          storedFileName: logoEntry.storedFileName,
+          storedFilePath: logoEntry.storedFilePath,
+          relativePath: logoEntry.relativePath
+        });
       }
 
       const uploadedAttachment: DocumentAttachment = {
@@ -354,7 +405,7 @@ export function CameraComp({
       if (parsedData && onCardScanned) {
         onCardScanned(parsedData);
       }
-      
+
       toast.success(`Business card scanned successfully!`);
       dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error: any) {
@@ -382,57 +433,75 @@ export function CameraComp({
   const showPermissionHelp = status === 'denied' || status === 'error';
 
   return (
-    <div className={cn('w-full space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm', className)}>
-      <div className={cn("flex flex-col gap-4", status === 'parsed' && "md:flex-row")}>
+    <div className={cn('w-full space-y-2 rounded-lg border border-slate-200 bg-white px-4 py-1 shadow-sm', className)}>
+      <div className={cn("flex flex-col gap-2", status === 'parsed' && "md:flex-row")}>
         <div ref={containerRef} className={cn("relative overflow-hidden rounded-md bg-slate-950", status === 'parsed' ? "md:w-1/2" : "w-full")}>
           {showVideo && (
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className={cn("aspect-video w-full bg-slate-950 object-cover", status === 'processing' && 'opacity-50 blur-sm')}
-            />
+            <>
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className={cn(
+                  "aspect-video w-full bg-slate-950 object-cover transition-transform duration-300",
+                  status === 'processing' && 'opacity-50 blur-sm',
+                  isMirrored && 'scale-x-[-1]'
+                )}
+              />
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-2 right-2 bg-black/40 hover:bg-black/60 text-white rounded-full z-10 w-8 h-8 backdrop-blur-sm transition-all"
+                onClick={() => setIsMirrored(prev => !prev)}
+                title="Toggle Mirror View"
+              >
+                <FlipHorizontal size={14} className={cn("transition-transform duration-300", isMirrored && "scale-x-[-1]")} />
+              </Button>
+            </>
           )}
-          
+
           {status === 'ready' && isCvReady && videoRef.current && (
-             <BusinessCardOverlay
-               detectionResult={detectionResult}
-               isStable={isStable}
-               videoWidth={videoRef.current.videoWidth}
-               videoHeight={videoRef.current.videoHeight}
-               containerWidth={containerSize.width}
-               containerHeight={containerSize.height}
-             />
+            <div className={cn("absolute inset-0 pointer-events-none transition-transform duration-300", isMirrored && "scale-x-[-1]")}>
+              <BusinessCardOverlay
+                detectionResult={detectionResult}
+                isStable={isStable}
+                videoWidth={videoRef.current.videoWidth}
+                videoHeight={videoRef.current.videoHeight}
+                containerWidth={containerSize.width}
+                containerHeight={containerSize.height}
+              />
+            </div>
           )}
 
           {capturedUrl && status !== 'uploading' && status !== 'processing' && (
             <div className="relative">
               {status === 'preview' ? (
-                 <>
-                   <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
-                     <div className="bg-slate-900/90 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md border border-slate-700">
-                       Crop the business card, then click Analyze
-                     </div>
-                   </div>
-                   <ReactCrop 
-                     crop={previewCrop} 
-                     onChange={(c) => setPreviewCrop(c)} 
-                     onComplete={(c) => setPreviewCompletedCrop(c)}
-                     className="w-full bg-slate-950 flex justify-center"
-                   >
-                     <img id="preview-image" src={capturedUrl} alt="Captured preview" className="max-h-[60vh] object-contain" />
-                   </ReactCrop>
-                 </>
+                <>
+                  <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
+                    <div className="bg-slate-900/90 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md border border-slate-700">
+                      Crop the business card, then click Analyze
+                    </div>
+                  </div>
+                  <div className="w-full bg-slate-950 flex justify-center overflow-hidden">
+                    <ReactCrop
+                      crop={previewCrop}
+                      onChange={(c) => setPreviewCrop(c)}
+                      onComplete={(c) => setPreviewCompletedCrop(c)}
+                    >
+                      <img id="preview-image" src={capturedUrl} alt="Captured preview" className="max-h-[60vh] max-w-full block" />
+                    </ReactCrop>
+                  </div>
+                </>
               ) : (
                 <img src={capturedUrl} alt="Captured preview" className="max-h-[60vh] w-full bg-slate-950 object-contain" />
               )}
-              
+
               {status === 'parsed' && (
                 <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                  <Button 
-                    type="button" 
-                    variant="secondary" 
+                  <Button
+                    type="button"
+                    variant="secondary"
                     className="shadow-md bg-white/90 hover:bg-white text-slate-800"
                     onClick={() => setIsLogoModalOpen(true)}
                   >
@@ -468,96 +537,153 @@ export function CameraComp({
               </div>
             </div>
           )}
+
+
+          {status === 'parsed' && logoFile && (
+            <div className="mx-4 mt-auto px-4 border border-slate-700/50 rounded-xl bg-slate-800/80 backdrop-blur-sm shadow-inner">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Extracted Logo</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                  onClick={() => dispatch({ type: 'UPDATE_DATA', data: parsedData!, logoFile: null })}
+                >
+                  Remove Logo
+                </Button>
+              </div>
+              <div className="flex justify-center bg-slate-900/80 rounded-lg p-3 border border-slate-700/50 shadow-sm">
+                <img
+                  src={URL.createObjectURL(logoFile)}
+                  alt="Extracted Logo"
+                  className="max-h-24 object-contain rounded drop-shadow-md"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {status === 'parsed' && parsedData && (
-          <div className="rounded-md border border-slate-200 bg-slate-50 p-4 md:w-1/2 flex flex-col justify-center">
-            <h3 className="mb-2 font-semibold text-slate-800">Review Scanned Details</h3>
-            <CardReviewForm 
-              data={parsedData} 
-              onChange={(data) => dispatch({ type: 'UPDATE_DATA', data })} 
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-4 md:w-1/2 flex flex-col justify-start overflow-y-auto">
+            <h3 className="mb-1 font-semibold text-slate-800">Review Scanned Details</h3>
+            <CardReviewForm
+              data={parsedData}
+              onChange={(data) => dispatch({ type: 'UPDATE_DATA', data })}
             />
+
           </div>
         )}
       </div>
+
+      {/* {status === 'parsed' && (
+        <div className="w-full flex flex-col gap-4 mt-4">
+          <h3 className="text-sm font-semibold text-slate-800">Raw Text Comparison</h3>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 space-y-2">
+              <label className="text-xs font-medium text-slate-600">Tesseract Output</label>
+              <textarea
+                readOnly
+                className="w-full h-40 text-xs p-2 rounded border border-slate-200 bg-slate-50 font-mono"
+                value={rawTesseractText}
+              />
+            </div>
+            <div className="flex-1 space-y-2">
+              <label className="text-xs font-medium text-slate-600">Google Vision API Output</label>
+              <textarea
+                readOnly
+                className="w-full h-40 text-xs p-2 rounded border border-slate-200 bg-slate-50 font-mono"
+                value={rawGoogleText || "API Key not provided or request failed."}
+              />
+            </div>
+          </div>
+        </div>
+      )} */}
 
       {errorMessage && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {errorMessage}
         </div>
       )}
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {(status === 'idle' || showPermissionHelp) && (
-          <Button type="button" onClick={requestCameraPermission} disabled={!isCvReady}>
-            {!isCvReady ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-            {!isCvReady ? 'Loading Scanner...' : showPermissionHelp ? 'Try Camera Again' : 'Open Camera'}
-          </Button>
-        )}
 
-        {status === 'requesting' && (
-          <Button type="button" disabled>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Requesting Permission
-          </Button>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-4 mt-4">
+        <div className="flex-1 min-w-[200px] max-w-sm">
+          {/* Input removed as backend API handles authentication */}
+        </div>
 
-        {(status === 'ready' || status === 'processing') && (
-          <>
-            <Button type="button" variant="outline" onClick={cancel} disabled={status === 'processing'}>
-              <X className="mr-2 h-4 w-4" />
-              Cancel
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {(status === 'idle' || showPermissionHelp) && (
+            <Button type="button" onClick={requestCameraPermission} disabled={!isCvReady}>
+              {!isCvReady ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+              {!isCvReady ? 'Loading Scanner...' : showPermissionHelp ? 'Try Camera Again' : 'Open Camera'}
             </Button>
-            {status === 'ready' && (
-              <Button type="button" onClick={() => handleAutoCapture(detectionResult.detected ? detectionResult : undefined)} disabled={status === 'processing'}>
-                <Camera className="mr-2 h-4 w-4" />
-                Capture Manually
+          )}
+
+          {status === 'requesting' && (
+            <Button type="button" disabled>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Requesting Permission
+            </Button>
+          )}
+
+          {(status === 'ready' || status === 'processing') && (
+            <>
+              <Button type="button" variant="outline" onClick={cancel} disabled={status === 'processing'}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
               </Button>
-            )}
-          </>
-        )}
+              {status === 'ready' && (
+                <Button type="button" onClick={() => handleAutoCapture(detectionResult.detected ? detectionResult : undefined)} disabled={status === 'processing'}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Capture Manually
+                </Button>
+              )}
+            </>
+          )}
 
-        {(status === 'preview') && (
-          <>
-            <Button type="button" variant="outline" onClick={retake}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Retake
-            </Button>
-            <Button type="button" variant="secondary" onClick={analyzeImage}>
-              <ScanText className="mr-2 h-4 w-4" />
-              Analyze Details
-            </Button>
-            <Button type="button" onClick={uploadCapture}>
-              <Check className="mr-2 h-4 w-4" />
-              Upload Image
-            </Button>
-          </>
-        )}
+          {(status === 'preview') && (
+            <>
+              <Button type="button" variant="outline" onClick={retake}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Retake
+              </Button>
+              <Button type="button" variant="secondary" onClick={analyzeImage}>
+                <ScanText className="mr-2 h-4 w-4" />
+                Analyze Details
+              </Button>
+              <Button type="button" onClick={uploadCapture}>
+                <Check className="mr-2 h-4 w-4" />
+                Upload Image
+              </Button>
+            </>
+          )}
 
-        {(status === 'parsed' || status === 'uploading') && (
-          <>
-            <Button type="button" variant="outline" onClick={retake} disabled={status === 'uploading'}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Retake
-            </Button>
-            <Button type="button" onClick={uploadCapture} disabled={status === 'uploading'}>
-              {status === 'uploading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-              Confirm & Upload
-            </Button>
-          </>
-        )}
+          {(status === 'parsed' || status === 'uploading') && (
+            <>
+              <Button type="button" variant="outline" onClick={retake} disabled={status === 'uploading'}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Retake
+              </Button>
+              <Button type="button" onClick={uploadCapture} disabled={status === 'uploading'}>
+                {status === 'uploading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                Confirm & Upload
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
-      
+
       {capturedUrl && (
-        <LogoCropperModal 
-          open={isLogoModalOpen} 
-          onOpenChange={setIsLogoModalOpen} 
-          imageUrl={capturedUrl} 
+        <LogoCropperModal
+          open={isLogoModalOpen}
+          onOpenChange={setIsLogoModalOpen}
+          imageUrl={capturedUrl}
           onSave={(logo) => {
-             if (parsedData) {
-               dispatch({ type: 'UPDATE_DATA', data: { ...parsedData, logo } });
-             }
+            if (parsedData) {
+              const newLogoFile = dataUrlToFile(logo, buildCameraFileName('logo'));
+              dispatch({ type: 'UPDATE_DATA', data: { ...parsedData, logo }, logoFile: newLogoFile });
+            }
           }}
         />
       )}

@@ -340,8 +340,8 @@ export function MasterCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-3xl border-none shadow-2xl max-w-lg p-0 bg-white overflow-hidden max-h-[85vh] flex flex-col">
-        <DialogHeader className="p-5 pb-4 border-b border-slate-100 flex flex-row items-center gap-3 shrink-0">
+      <DialogContent className="rounded-3xl border-none shadow-2xl max-w-lg p-0 bg-white max-h-[85vh] flex flex-col">
+        <DialogHeader className="rounded-t-3xl p-5 pb-4 border-b border-slate-100 flex flex-row items-center gap-3 shrink-0">
           <div className="h-9 w-9 rounded-2xl bg-[#006699]/10 flex items-center justify-center text-[#006699]">
             <Icon size={18} className="stroke-[2.5]" />
           </div>
@@ -848,7 +848,7 @@ export function MasterCreateDialog({
           )}
         </div>
 
-        <DialogFooter className="p-4 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-0.5 shrink-0">
+        <DialogFooter className="p-4 rounded-b-3xl bg-slate-50/50 border-t border-slate-100 flex justify-end gap-0.5 shrink-0">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}

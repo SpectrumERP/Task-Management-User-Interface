@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ClipboardDrawer } from '@/components/ui/ClipboardDrawer';
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -24,7 +25,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
   const { fillValues, selectedFolder, setSelectedFolder, fetchFillValues } = useTaskStore();
-  
+
   const [folderSearch, setFolderSearch] = useState('');
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const email = user?.Email || user?.email || '';
   const initial = printingName.charAt(0).toUpperCase();
 
-  const filteredFolders = fillValues?.folder?.filter((f: any) => 
+  const filteredFolders = fillValues?.folder?.filter((f: any) =>
     f["Folder Name"]?.toLowerCase().includes(folderSearch.toLowerCase())
   ) || [];
 
@@ -90,12 +91,12 @@ export function Navbar({ onMenuClick }: NavbarProps) {
             <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2 shrink-0">
               Select Workspace Folder
             </DropdownMenuLabel>
-            
+
             <div className="px-2 pb-2 shrink-0">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                <Input 
-                  placeholder="Search folders..." 
+                <Input
+                  placeholder="Search folders..."
                   value={folderSearch}
                   onChange={(e) => setFolderSearch(e.target.value)}
                   className="h-8 pl-8 text-xs bg-slate-50 border-slate-200 focus-visible:ring-1 focus-visible:ring-[#006699]/30"
@@ -105,7 +106,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
             </div>
 
             <DropdownMenuSeparator className="my-0 bg-slate-100 shrink-0" />
-            
+
             <div className="overflow-y-auto overflow-x-hidden p-1 flex-1">
               {filteredFolders.length > 0 ? (
                 filteredFolders.map((folder: any) => {
@@ -139,6 +140,8 @@ export function Navbar({ onMenuClick }: NavbarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <ClipboardDrawer />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="ml-2 p-0 w-10 rounded-full overflow-hidden border-2 border-slate-100 hover:border-[#006699]/20 transition-all">
@@ -166,9 +169,6 @@ export function Navbar({ onMenuClick }: NavbarProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
-            <DropdownMenuSeparator /> */}
             <DropdownMenuItem className="text-red-500 font-bold cursor-pointer hover:bg-red-50 focus:bg-red-50 transition-colors" onClick={logout}>
               Log out
             </DropdownMenuItem>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BusinessCardData } from '../models/BusinessCardData';
 import { Input } from '@/components/ui/input';
+import { ClipboardInput } from '@/components/ui/ClipboardInput';
 import { Label } from '@/components/ui/label';
 
 interface CardReviewFormProps {
@@ -15,73 +16,81 @@ export function CardReviewForm({ data, onChange }: CardReviewFormProps) {
 
   return (
     <div className="grid gap-4 py-4">
-      {data.logo && (
-        <div className="flex flex-col items-center justify-center mb-2">
-          <p className="text-xs text-slate-500 font-medium mb-1 self-start">Extracted Logo</p>
-          <div className="p-2 border rounded-md bg-white shadow-sm flex items-center justify-center h-24 w-auto min-w-[100px]">
-            <img src={data.logo} alt="Logo" className="max-h-full max-w-full object-contain" />
-          </div>
-        </div>
-      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name">Name</Label>
-          <Input 
-            id="name" 
-            value={data.name || ''} 
-            onChange={(e) => handleChange('name', e.target.value)} 
+          <ClipboardInput
+            id="name"
+            fieldLabel="Name"
+            value={data.name || ''}
+            onValueChange={(val) => handleChange('name', val)}
+            className='rounded-md'
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="designation">Designation</Label>
-          <Input 
-            id="designation" 
-            value={data.designation || ''} 
-            onChange={(e) => handleChange('designation', e.target.value)} 
+          <ClipboardInput
+            id="designation"
+            fieldLabel="Designation"
+            value={data.designation || ''}
+            onValueChange={(val) => handleChange('designation', val)}
+            className='rounded-md'
           />
         </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="company">Company</Label>
-        <Input 
-          id="company" 
-          value={data.company || ''} 
-          onChange={(e) => handleChange('company', e.target.value)} 
+        <ClipboardInput
+          id="company"
+          fieldLabel="Company"
+          value={data.company || ''}
+          onValueChange={(val) => handleChange('company', val)}
+          className='rounded-md'
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input 
-            id="email" 
+          <ClipboardInput
+            id="email"
             type="email"
-            value={data.email || ''} 
-            onChange={(e) => handleChange('email', e.target.value)} 
+            fieldLabel="Email"
+            value={data.email || ''}
+            onValueChange={(val) => handleChange('email', val)}
+            className='rounded-md'
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Phone</Label>
-          <Input 
-            id="phone" 
-            value={data.phone || ''} 
-            onChange={(e) => handleChange('phone', e.target.value)} 
+          <ClipboardInput
+            id="phone"
+            fieldLabel="Phone"
+            value={data.phone || ''}
+            onValueChange={(val) => handleChange('phone', val)}
+            className='rounded-md'
           />
         </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="website">Website</Label>
-        <Input 
-          id="website" 
-          value={data.website || ''} 
-          onChange={(e) => handleChange('website', e.target.value)} 
+        <ClipboardInput
+          id="website"
+          fieldLabel="Website"
+          value={data.website || ''}
+          onValueChange={(val) => handleChange('website', val)}
+          className='rounded-md'
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor="address">Address</Label>
-        <Input 
-          id="address" 
-          value={data.address || ''} 
-          onChange={(e) => handleChange('address', e.target.value)} 
+        <ClipboardInput
+          id="address"
+          fieldLabel="Address"
+          value={data.address || ''}
+          onValueChange={(val) => handleChange('address', val)}
+          className='rounded-md'
+
         />
       </div>
     </div>

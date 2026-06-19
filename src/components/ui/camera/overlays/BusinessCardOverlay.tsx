@@ -29,8 +29,11 @@ export function BusinessCardOverlay({
 
   const rect = detectionResult.rectangle;
 
+  // Invert X coordinate because the video is mirrored (-scale-x-100)
+  const mirroredX = videoWidth - (rect.x + rect.width);
+
   const style = {
-    left: `${rect.x * scaleX}px`,
+    left: `${mirroredX * scaleX}px`,
     top: `${rect.y * scaleY}px`,
     width: `${rect.width * scaleX}px`,
     height: `${rect.height * scaleY}px`,
@@ -59,7 +62,7 @@ export function BusinessCardOverlay({
         className={cn('absolute -top-8 left-1/2 -translate-x-1/2 rounded px-2 py-1 text-sm font-semibold text-white shadow', 
           isStable ? 'bg-green-500' : 'bg-yellow-500')}
         style={{
-          left: `${(rect.x + rect.width / 2) * scaleX}px`,
+          left: `${(mirroredX + rect.width / 2) * scaleX}px`,
           top: `${rect.y * scaleY - 32}px`,
         }}
       >
