@@ -1,4 +1,3 @@
-import React from 'react';
 import { DetectionResult } from '../models/DetectionResult';
 import { cn } from '@/lib/utils';
 

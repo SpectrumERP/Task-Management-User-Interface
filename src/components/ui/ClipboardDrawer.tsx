@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useClipboardStore } from '@/store/useClipboardStore';
 import {
   Sheet,
@@ -6,7 +6,6 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from '@/components/ui/button';
 import { Clipboard, Search, Trash2, Clock } from 'lucide-react';

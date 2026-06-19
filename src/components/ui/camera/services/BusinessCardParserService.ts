@@ -21,14 +21,14 @@ export class BusinessCardParserService {
 
       const atCount = (line.match(/@/g) || []).length;
       if (atCount > 1) {
-        line = line.replace(/@/g, (match, offset, str) => offset === str.lastIndexOf('@') ? '@' : 'a');
+        line = line.replace(/@/g, (_match, offset, str) => offset === str.lastIndexOf('@') ? '@' : 'a');
       }
 
       if (!data.email && emailRegex.test(line)) {
         const emailMatch = line.match(emailRegex)?.[1];
         if (emailMatch) {
           let parsedEmail = emailMatch.replace(/\b(?:at)\b|\[at\]/gi, '@').replace(/\s+/g, '').replace(/,/g, '.');
-          parsedEmail = parsedEmail.replace(/@/g, (match, offset, str) => offset === str.indexOf('@') ? '@' : 'a');
+          parsedEmail = parsedEmail.replace(/@/g, (_match, offset, str) => offset === str.indexOf('@') ? '@' : 'a');
           data.email = parsedEmail;
           try {
             emailDomain = data.email.split('@')[1].split('.')[0].toLowerCase();

@@ -54,6 +54,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
+          style={provided.draggableProps.style as React.CSSProperties}
           onClick={() => {
             if (onTaskClick) {
               onTaskClick(task.taskNo);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useReducer } from 'react';
-import { Camera, Check, Loader2, RefreshCw, RotateCcw, X, Edit, ImagePlus, ScanText, FlipHorizontal } from 'lucide-react';
+import { Camera, Check, Loader2, RotateCcw, X, ImagePlus, ScanText, FlipHorizontal } from 'lucide-react';
 import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ import { BusinessCardParserService } from './camera/services/BusinessCardParserS
 import { LogoDetectionService } from './camera/services/LogoDetectionService';
 import { BusinessCardOverlay } from './camera/overlays/BusinessCardOverlay';
 import { CardReviewForm } from './camera/components/CardReviewForm';
-import { CameraControls } from './camera/components/CameraControls';
+
 import { useClipboardStore } from '@/store/useClipboardStore';
 import { LogoCropperModal } from './camera/components/LogoCropperModal';
 import { BusinessCardData } from './camera/models/BusinessCardData';
@@ -145,17 +145,13 @@ export function CameraComp({
   const cropperService = useRef(new CardCropperService());
   const parserService = useRef(new BusinessCardParserService());
   const logoService = useRef(new LogoDetectionService());
-  const { processImage, isProcessing, progress } = useOCR();
+  const { processImage, progress } = useOCR();
 
   const [state, dispatch] = useReducer(cameraReducer, initialState);
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   const [previewCrop, setPreviewCrop] = useState<Crop>();
   const [previewCompletedCrop, setPreviewCompletedCrop] = useState<PixelCrop>();
   const [isMirrored, setIsMirrored] = useState(false);
-
-
-  const [rawTesseractText, setRawTesseractText] = useState('');
-  const [rawGoogleText, setRawGoogleText] = useState<string | null>(null);
 
   const { status, errorMessage, capturedUrl, capturedFile, parsedData, logoFile } = state;
 
@@ -255,8 +251,7 @@ export function CameraComp({
       }
 
       const result = await processImage(finalBlob);
-      setRawTesseractText(result.tesseractText);
-      setRawGoogleText(result.googleText);
+
 
       const rawTextToParse = result.googleText || result.tesseractText;
       const data = parserService.current.parse(rawTextToParse);
@@ -321,11 +316,9 @@ export function CameraComp({
             extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
           }
 
-          const result = await processImage(croppedBlob);
-          setRawTesseractText(result.tesseractText);
-          setRawGoogleText(result.googleText);
+          const ocrResult = await processImage(croppedBlob);
 
-          const rawText = result.googleText || result.tesseractText;
+          const rawText = ocrResult.googleText || ocrResult.tesseractText;
           const data = parserService.current.parse(rawText);
 
           // Auto-store in clipboard
@@ -632,7 +625,7 @@ export function CameraComp({
                 Cancel
               </Button>
               {status === 'ready' && (
-                <Button type="button" onClick={() => handleAutoCapture(detectionResult.detected ? detectionResult : undefined)} disabled={status === 'processing'}>
+                <Button type="button" onClick={() => handleAutoCapture(detectionResult.detected ? detectionResult : undefined)}>
                   <Camera className="mr-2 h-4 w-4" />
                   Capture Manually
                 </Button>

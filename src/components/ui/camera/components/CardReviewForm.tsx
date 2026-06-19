@@ -1,6 +1,4 @@
-import React from 'react';
 import { BusinessCardData } from '../models/BusinessCardData';
-import { Input } from '@/components/ui/input';
 import { ClipboardInput } from '@/components/ui/ClipboardInput';
 import { Label } from '@/components/ui/label';
 

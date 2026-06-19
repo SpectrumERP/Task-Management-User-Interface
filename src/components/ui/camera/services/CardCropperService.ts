@@ -1,8 +1,7 @@
-import cv from '@techstark/opencv-js';
 import { Rectangle } from '../models/DetectionResult';
 
 export class CardCropperService {
-  public crop(videoElement: HTMLVideoElement, rect?: Rectangle, cornersMat?: any): Promise<Blob | null> {
+  public crop(videoElement: HTMLVideoElement, rect?: Rectangle, _cornersMat?: any): Promise<Blob | null> {
     return new Promise((resolve) => {
       if (!videoElement.videoWidth || !videoElement.videoHeight) {
         resolve(null);
