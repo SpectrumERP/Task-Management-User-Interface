@@ -2917,12 +2917,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <p className="mt-1 text-[10px] font-medium text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
               </div>
 
-              <div
+              {/* <div
                 onClick={() => setIsCameraModalOpen(true)}
                 className="flex flex-col items-center justify-center border border-slate-200 hover:border-[#006699] rounded-2xl py-3 bg-white hover:bg-slate-50 transition-all cursor-pointer group"
               >
                 <Camera size={20} className="text-[#006699]" />
-              </div>
+              </div> */}
               {/* Active Uploading Files Queue */}
               {uploadingFiles.length > 0 && (
                 <div className="space-y-3">
