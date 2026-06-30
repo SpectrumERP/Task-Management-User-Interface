@@ -235,6 +235,8 @@ export default function TaskDetail() {
           navigate('/sales/deals');
         } else if (tabId === 'deal-monitor') {
           navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+        } else if (tabId === 'meeting-notes') {
+          navigate('/meetings');
         } else {
           navigate(`/?tab=${tabId}`);
         }

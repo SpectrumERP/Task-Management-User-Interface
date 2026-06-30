@@ -20,7 +20,7 @@ import { Label } from '@radix-ui/react-label';
 interface MasterCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  type: 'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'benefit-type' | 'country' | 'state' | 'city' | 'task-company' | null;
+  type: 'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'benefit-type' | 'country' | 'state' | 'city' | 'task-company' | 'meeting-category' | 'meeting-type' | null;
   companyNo: string | number;
   fillValues: any; // TaskFillValues from parent
   onSuccess: (id: string, label: string) => void;

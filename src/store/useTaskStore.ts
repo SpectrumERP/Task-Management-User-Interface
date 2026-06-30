@@ -28,6 +28,7 @@ interface FilterParams {
 }
 
 export interface TaskFillValues {
+  taskCompany?: any[];
   priority: { OperTaskPriorityNo: number; Priority: string; Code?: string }[];
   type: { OperTaskTypeNo: number; "Task Type": string; Code?: string }[];
   category: { OperTaskCategoryNo: number; Category: string; Code?: string; colorCoding?: string; ColorCoding?: string }[];

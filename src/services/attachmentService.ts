@@ -199,7 +199,7 @@ export const attachmentService = {
       }
 
       // Cleanup local URL allocation after some time
-      setTimeout(() => window.URL.revokeObjectURL(url), 30000);
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
     } catch (error) {
       console.error('Failed to download document:', error);
       if (newTab) {
@@ -208,6 +208,38 @@ export const attachmentService = {
       toast.error('Failed to download or view the document. Please try again.');
       throw error;
     }
+  },
+
+  /**
+   * Fetches the attachment as a File object (useful for direct analysis/OCR).
+   */
+  async getAttachmentFile(id: number, name: string): Promise<File> {
+    const token = await dbService.getItem<string>('auth_token');
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/document-attachments/${id}/download`, {
+      method: 'GET',
+      headers
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP Error ${response.status}`);
+    }
+
+    let mimeType = '';
+    const lowercaseName = name.toLowerCase();
+    if (lowercaseName.endsWith('.pdf')) mimeType = 'application/pdf';
+    else if (lowercaseName.endsWith('.png')) mimeType = 'image/png';
+    else if (lowercaseName.endsWith('.jpg') || lowercaseName.endsWith('.jpeg')) mimeType = 'image/jpeg';
+    else if (lowercaseName.endsWith('.gif')) mimeType = 'image/gif';
+    else if (lowercaseName.endsWith('.webp')) mimeType = 'image/webp';
+
+    const rawBlob = await response.blob();
+    const blob = mimeType ? new Blob([rawBlob], { type: mimeType }) : rawBlob;
+    return new File([blob], name, { type: blob.type || 'application/octet-stream' });
   },
 
   /**

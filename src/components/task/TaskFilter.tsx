@@ -834,7 +834,7 @@ export function TaskFilter({
                     name="operTaskLocationNo"
                     control={control}
                     render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.location || []).map(l => ({ value: l.OperLocationNo.toString(), label: l.Location }))}
+                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.location || []).filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location }))}
                         placeholder="All Locations"
                         className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
                       />

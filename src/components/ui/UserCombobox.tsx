@@ -27,6 +27,7 @@ interface UserComboboxProps {
   initialLabel?: string
   isClearable?: boolean
   error?: boolean
+  onResolve?: (user: UserResponse) => void
 }
 
 export function UserCombobox({
@@ -38,6 +39,7 @@ export function UserCombobox({
   initialLabel,
   isClearable = true,
   error = false,
+  onResolve,
 }: UserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -91,6 +93,7 @@ export function UserCombobox({
       const matchedInOptions = optionsRef.current.find(u => u.loginNo.toString() === value);
       if (matchedInOptions) {
         setSelectedLabel(matchedInOptions.printingName);
+        if (onResolve) onResolve(matchedInOptions);
         isInitialized.current = true;
         return;
       }
@@ -109,6 +112,7 @@ export function UserCombobox({
 
           if (matched) {
             setSelectedLabel(matched.printingName);
+            if (onResolve) onResolve(matched);
           } else {
             if (authUser && (authUser.loginNo?.toString() === value || authUser.LoginNo?.toString() === value)) {
               setSelectedLabel(authUser.PrintingName || authUser.printingName || authUser.name || authUser.loginId || '');

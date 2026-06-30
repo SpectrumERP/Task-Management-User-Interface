@@ -109,6 +109,7 @@ export interface CameraCompProps {
   onUploaded?: (attachment: DocumentAttachment) => void;
   onCancel?: () => void;
   onCardScanned?: (data: BusinessCardData) => void;
+  initialAnalyzeFile?: File;
 }
 
 const buildCameraFileName = (prefix: string) => {
@@ -135,7 +136,8 @@ export function CameraComp({
   className,
   onUploaded,
   onCancel,
-  onCardScanned
+  onCardScanned,
+  initialAnalyzeFile
 }: CameraCompProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -145,6 +147,7 @@ export function CameraComp({
   const cropperService = useRef(new CardCropperService());
   const parserService = useRef(new BusinessCardParserService());
   const logoService = useRef(new LogoDetectionService());
+  const analysisCache = useRef(new Map<string, any>());
   const { processImage, progress } = useOCR();
 
   const [state, dispatch] = useReducer(cameraReducer, initialState);
@@ -205,16 +208,18 @@ export function CameraComp({
     }
   }, [stopCamera]);
 
-  const analyzeImage = useCallback(async () => {
-    if (!capturedFile || !capturedUrl) return;
+  const analyzeImage = useCallback(async (fileToProcess?: File, urlToProcess?: string) => {
+    const targetFile = fileToProcess || capturedFile;
+    const targetUrl = urlToProcess || capturedUrl;
+    if (!targetFile || !targetUrl) return;
     dispatch({ type: 'START_PROCESSING' });
     try {
-      let finalBlob: Blob = capturedFile;
+      let finalBlob: Blob = targetFile;
 
       // Apply manual crop if provided
       if (previewCompletedCrop && previewCompletedCrop.width > 0 && previewCompletedCrop.height > 0) {
         const image = new Image();
-        image.src = capturedUrl;
+        image.src = targetUrl;
         await new Promise((resolve) => { image.onload = resolve; });
 
         const canvas = document.createElement('canvas');
@@ -250,9 +255,14 @@ export function CameraComp({
         }
       }
 
-      const result = await processImage(finalBlob);
-
-
+      const cacheKey = `${finalBlob.size}_${finalBlob.type}`;
+      let result;
+      if (analysisCache.current.has(cacheKey)) {
+        result = analysisCache.current.get(cacheKey);
+      } else {
+        result = await processImage(finalBlob);
+        analysisCache.current.set(cacheKey, result);
+      }
       const rawTextToParse = result.googleText || result.tesseractText;
       const data = parserService.current.parse(rawTextToParse);
 
@@ -263,21 +273,26 @@ export function CameraComp({
         formattedText: rawTextToParse
       });
 
-      const extractedLogoBlob = await logoService.current.detect(finalBlob);
-      let extractedLogoFile = null;
-      if (extractedLogoBlob) {
-        extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
-      }
-
       const finalFile = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
       const finalUrl = URL.createObjectURL(finalFile);
 
-      dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
+      dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: null });
     } catch (e) {
       console.error(e);
       dispatch({ type: 'ERROR', error: 'Analysis failed. Please try again.' });
     }
   }, [capturedFile, capturedUrl, processImage, previewCompletedCrop, fileNamePrefix]);
+
+  const analyzedFileRef = useRef<File | null>(null);
+
+  useEffect(() => {
+    if (initialAnalyzeFile && initialAnalyzeFile !== analyzedFileRef.current) {
+      analyzedFileRef.current = initialAnalyzeFile;
+      const url = URL.createObjectURL(initialAnalyzeFile);
+      dispatch({ type: 'PREVIEW', file: initialAnalyzeFile, url, isBusinessCard: true });
+      analyzeImage(initialAnalyzeFile, url);
+    }
+  }, [initialAnalyzeFile, analyzeImage]);
 
   const handleAutoCapture = useCallback(async (result: any) => {
     if (status !== 'ready') return;
@@ -363,14 +378,27 @@ export function CameraComp({
     try {
       dispatch({ type: 'START_UPLOAD' });
 
-      // Upload Card
-      const entry = await attachmentService.createEntry(capturedFile.name, companyNo, formNo);
-      await attachmentService.uploadFile(entry.id, capturedFile);
+      let uploadedAttachment: any = null;
 
-      const isVerified = await attachmentService.checkStatus(entry.id);
-      if (!isVerified) throw new Error('Card upload status could not be verified by the backend.');
+      // Upload Card only if it's a newly captured image
+      if (!initialAnalyzeFile) {
+        const entry = await attachmentService.createEntry(capturedFile.name, companyNo, formNo);
+        await attachmentService.uploadFile(entry.id, capturedFile);
 
-      // Upload Logo
+        const isVerified = await attachmentService.checkStatus(entry.id);
+        if (!isVerified) throw new Error('Card upload status could not be verified by the backend.');
+
+        uploadedAttachment = {
+          id: entry.id,
+          name: (entry as any).docName || entry.name || capturedFile.name,
+          size: (entry as any).docSize || entry.size || capturedFile.size,
+          storedFileName: entry.storedFileName,
+          storedFilePath: entry.storedFilePath,
+          relativePath: entry.relativePath
+        };
+      }
+
+      // Upload Logo if extracted
       if (logoFile) {
         const logoEntry = await attachmentService.createEntry(logoFile.name, companyNo, formNo);
         await attachmentService.uploadFile(logoEntry.id, logoFile);
@@ -385,21 +413,18 @@ export function CameraComp({
         });
       }
 
-      const uploadedAttachment: DocumentAttachment = {
-        id: entry.id,
-        name: (entry as any).docName || entry.name || capturedFile.name,
-        size: (entry as any).docSize || entry.size || capturedFile.size,
-        storedFileName: entry.storedFileName,
-        storedFilePath: entry.storedFilePath,
-        relativePath: entry.relativePath
-      };
-
-      onUploaded?.(uploadedAttachment);
+      if (uploadedAttachment) {
+        onUploaded?.(uploadedAttachment);
+      } else if (initialAnalyzeFile && !logoFile) {
+        onUploaded?.(null);
+      }
+      
       if (parsedData && onCardScanned) {
         onCardScanned(parsedData);
       }
 
-      toast.success(`Business card scanned successfully!`);
+      // In analyze mode we just confirm details, otherwise we actually scanned it
+      toast.success(initialAnalyzeFile ? `Details confirmed!` : `Business card scanned successfully!`);
       dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error: any) {
       console.error('Camera image upload failed:', error);
@@ -652,13 +677,15 @@ export function CameraComp({
 
           {(status === 'parsed' || status === 'uploading') && (
             <>
-              <Button type="button" variant="outline" onClick={retake} disabled={status === 'uploading'}>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Retake
-              </Button>
+              {!initialAnalyzeFile && (
+                <Button type="button" variant="outline" onClick={retake} disabled={status === 'uploading'}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Retake
+                </Button>
+              )}
               <Button type="button" onClick={uploadCapture} disabled={status === 'uploading'}>
                 {status === 'uploading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                Confirm & Upload
+                {initialAnalyzeFile ? 'Confirm' : 'Confirm & Upload'}
               </Button>
             </>
           )}

@@ -66,9 +66,10 @@ import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
 
 interface MasterManagerProps {
-  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company' | 'task-company' | 'country' | 'state' | 'city';
+  type: 'category' | 'type' | 'priority' | 'folder' | 'user-group' | 'benefit-type' | 'location' | 'vessel' | 'port' | 'business-entity-type' | 'company' | 'task-company' | 'country' | 'state' | 'city' | 'meeting-category' | 'meeting-type';
 }
 import { Textarea } from '../ui/textarea';
+import { toast } from 'sonner';
 
 export function MasterManager({ type }: MasterManagerProps) {
   const navigate = useNavigate();
@@ -86,10 +87,13 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [analyzeFile, setAnalyzeFile] = useState<File | undefined>();
+  const [analyzedAttachmentIds, setAnalyzedAttachmentIds] = useState<number[]>([]);
+  const [analyzingAttachmentId, setAnalyzingAttachmentId] = useState<number | null>(null);
 
   // Master Create Dialog State
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
-  const [activeMasterType, setActiveMasterType] = useState<'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'task-company' | 'benefit-type' | 'country' | 'state' | 'city' | null>(null);
+  const [activeMasterType, setActiveMasterType] = useState<'category' | 'type' | 'priority' | 'folder' | 'location' | 'company' | 'task-company' | 'benefit-type' | 'country' | 'state' | 'city' | 'meeting-category' | 'meeting-type' | null>(null);
 
   // Real API State
   const [apiLocations, setApiLocations] = useState<LocationMaster[]>([]);
@@ -117,6 +121,8 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [apiCities, setApiCities] = useState<any[]>([]);
   const [_isLoadingCities, setIsLoadingCities] = useState(false);
   const [apiTaskCompanies, setApiTaskCompanies] = useState<any[]>([]);
+  const [apiMeetingCategories, setApiMeetingCategories] = useState<any[]>([]);
+  const [apiMeetingTypes, setApiMeetingTypes] = useState<any[]>([]);
   const [, setIsLoading] = useState(false);
 
   // Task Company specific states
@@ -857,14 +863,54 @@ export function MasterManager({ type }: MasterManagerProps) {
           cityNo: tc.cityNo || '',
           pinCode: tc.pinCode || '',
           createdBy: tc.createdBy?.printingName || tc.createdBy?.displayName || tc.createdBy?.loginId || tc.createdByName || 'System',
-          createdDate: tc.createdDate || ''
+          createdDate: tc.createdDate || tc.createdDateTime || tc.createdOn || ''
         }));
         setApiTaskCompanies(mapped);
       }
     } catch (error) {
-      console.error("Failed to fetch task companies:", error);
+      console.error("Failed to fetch API task companies:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchMeetingCategories = async () => {
+    try {
+      const response = await apiService.get<any>(`/api/master/meeting-categories/search-data?CompanyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((c: any) => ({
+          id: (c.meetingCategoryNo ?? '').toString(),
+          code: c.code || '',
+          name: c.meetingCategoryName || '',
+          inactive: c.inactive,
+          createdBy: c.createdBy || 'System',
+          createdDate: c.createdDate || ''
+        }));
+        setApiMeetingCategories(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API meeting categories:", error);
+    }
+  };
+
+  const fetchMeetingTypes = async () => {
+    try {
+      const response = await apiService.get<any>(`/api/master/meeting-types/search-data?CompanyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((c: any) => ({
+          id: (c.meetingTypeNo ?? '').toString(),
+          code: c.code || '',
+          name: c.meetingTypeName || '',
+          inactive: c.inactive,
+          createdBy: c.createdBy || 'System',
+          createdDate: c.createdDate || ''
+        }));
+        setApiMeetingTypes(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to fetch API meeting types:", error);
     }
   };
 
@@ -1070,8 +1116,12 @@ export function MasterManager({ type }: MasterManagerProps) {
     } else if (type === 'task-company') {
       fetchTaskCompanies();
       fetchTaskCompanyCountries();
+    } else if (type === 'meeting-category') {
+      fetchMeetingCategories();
+    } else if (type === 'meeting-type') {
+      fetchMeetingTypes();
     }
-  }, [type]);
+  }, [type, companyNo, companyViewMode]);
 
   // Local UI State
   const [searchQuery, setSearchQuery] = useState('');
@@ -1138,12 +1188,19 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [_availableCountries, setAvailableCountries] = useState<any[]>([]);
 
   // City Master extra fields
+  // City Master extra fields
   const [_cityCode, setCityCode] = useState('');
   const [_cityName, setCityName] = useState('');
   const [cityCityCountryNo, setCityCityCountryNo] = useState('');
   const [cityCityStateNo, setCityCityStateNo] = useState('');
   const [_availableCityCountries, setAvailableCityCountries] = useState<any[]>([]);
   const [availableCityStates, setAvailableCityStates] = useState<any[]>([]);
+
+  // Meeting Category extra fields
+  const [meetingCategoryName, setMeetingCategoryName] = useState('');
+
+  // Meeting Type extra fields
+  const [meetingTypeName, setMeetingTypeName] = useState('');
 
   // Location extra fields
   const [parentLocationNo, setParentLocationNo] = useState('');
@@ -1461,6 +1518,10 @@ export function MasterManager({ type }: MasterManagerProps) {
       setTcCountryNo('');
       setTcStateNo('');
       setTcCityNo('');
+
+      // Meeting Masters resets
+      setMeetingCategoryName('');
+      setMeetingTypeName('');
     } else if (isEdit && id) {
       setErrors({});
       setEditingId(id);
@@ -1786,6 +1847,24 @@ export function MasterManager({ type }: MasterManagerProps) {
             }
           }
         }).catch(err => console.error("Failed to load task company details:", err));
+      } else if (type === 'meeting-category') {
+        apiService.get<any>(`/api/master/meeting-categories/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const dl = response.data || response;
+            if (dl) {
+              setMeetingCategoryName(dl.meetingCategoryName || '');
+            }
+          }
+        }).catch(err => console.error("Failed to load meeting category details:", err));
+      } else if (type === 'meeting-type') {
+        apiService.get<any>(`/api/master/meeting-types/load-data/${id}?companyNo=${companyNoVal}`).then((response) => {
+          if (response) {
+            const dl = response.data || response;
+            if (dl) {
+              setMeetingTypeName(dl.meetingTypeName || '');
+            }
+          }
+        }).catch(err => console.error("Failed to load meeting type details:", err));
       }
     }
   }, [isNew, isEdit, id, type, companyNo]);
@@ -1831,11 +1910,15 @@ export function MasterManager({ type }: MasterManagerProps) {
         return { title: 'City Master', desc: 'Manage cities with country and state references', icon: Building, list: apiCities };
       case 'task-company':
         return { title: 'Task Company Master', desc: 'Manage Task Companies and their locations', icon: Building2, list: apiTaskCompanies };
+      case 'meeting-category':
+        return { title: 'Meeting Category Master', desc: 'Manage meeting categories', icon: Layers, list: apiMeetingCategories };
+      case 'meeting-type':
+        return { title: 'Meeting Type Master', desc: 'Manage meeting types', icon: Sliders, list: apiMeetingTypes };
     }
   };
 
   const { title, icon: Icon, list: rawList } = getMasterInfo();
-  const list = type === 'location' ? apiLocations : type === 'vessel' ? apiVessels : type === 'port' ? apiPorts : type === 'business-entity-type' ? apiBusinessEntityTypes : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : type === 'task-company' ? apiTaskCompanies : type === 'country' ? apiCountries : type === 'state' ? apiStates : type === 'city' ? apiCities : rawList;
+  const list = type === 'location' ? apiLocations : type === 'vessel' ? apiVessels : type === 'port' ? apiPorts : type === 'business-entity-type' ? apiBusinessEntityTypes : type === 'type' ? apiTypes : type === 'priority' ? apiPriorities : type === 'folder' ? apiFolders : type === 'category' ? apiCategories : type === 'user-group' ? apiUserGroups : type === 'benefit-type' ? apiBusinessBenefitTypes : type === 'company' ? apiCompanies : type === 'task-company' ? apiTaskCompanies : type === 'country' ? apiCountries : type === 'state' ? apiStates : type === 'city' ? apiCities : type === 'meeting-category' ? apiMeetingCategories : type === 'meeting-type' ? apiMeetingTypes : rawList;
 
   // Filtered List
   const filteredList = list.filter((item: any) => {
@@ -2009,6 +2092,16 @@ export function MasterManager({ type }: MasterManagerProps) {
           params: { operTaskCompanyNo: id }
         }).then(() => fetchTaskCompanies()).catch(err => console.error("Failed to delete task company:", err));
         break;
+      case 'meeting-category':
+        apiService.delete(`/api/master/meeting-categories/delete`, {
+          params: { meetingCategoryNo: id }
+        }).then(() => fetchMeetingCategories()).catch(err => console.error("Failed to delete meeting category:", err));
+        break;
+      case 'meeting-type':
+        apiService.delete(`/api/master/meeting-types/delete`, {
+          params: { meetingTypeNo: id }
+        }).then(() => fetchMeetingTypes()).catch(err => console.error("Failed to delete meeting type:", err));
+        break;
     }
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
@@ -2016,8 +2109,20 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (type !== 'task-company' && !name.trim()) {
+    if (type !== 'task-company' && type !== 'meeting-category' && type !== 'meeting-type' && !name.trim()) {
       newErrors.name = type === 'company' ? 'Business Entity name is required' : `${type.replace(/-/g, ' ')} Name is required`;
+    }
+
+    if (type === 'meeting-category') {
+      if (!meetingCategoryName.trim()) {
+        newErrors.name = 'Meeting Category Name is required';
+      }
+    }
+
+    if (type === 'meeting-type') {
+      if (!meetingTypeName.trim()) {
+        newErrors.name = 'Meeting Type Name is required';
+      }
     }
 
     if (type === 'priority') {
@@ -2306,6 +2411,22 @@ export function MasterManager({ type }: MasterManagerProps) {
           };
           await apiService.post('/api/crm/task-companies/save', payload);
           await fetchTaskCompanies();
+        } else if (type === 'meeting-category') {
+          const payload = {
+            meetingCategoryNo: parseInt(id) || null,
+            meetingCategoryName: meetingCategoryName,
+            companyNo: companyNo,
+          };
+          await apiService.post('/api/master/meeting-categories/save', payload);
+          await fetchMeetingCategories();
+        } else if (type === 'meeting-type') {
+          const payload = {
+            meetingTypeNo: parseInt(id) || null,
+            meetingTypeName: meetingTypeName,
+            companyNo: companyNo,
+          };
+          await apiService.post('/api/master/meeting-types/save', payload);
+          await fetchMeetingTypes();
         }
       } else {
         // Add
@@ -2494,6 +2615,22 @@ export function MasterManager({ type }: MasterManagerProps) {
           };
           await apiService.post('/api/crm/task-companies/save', payload);
           await fetchTaskCompanies();
+        } else if (type === 'meeting-category') {
+          const payload = {
+            meetingCategoryNo: null,
+            meetingCategoryName: meetingCategoryName,
+            companyNo: companyNo,
+          };
+          await apiService.post('/api/master/meeting-categories/save', payload);
+          await fetchMeetingCategories();
+        } else if (type === 'meeting-type') {
+          const payload = {
+            meetingTypeNo: null,
+            meetingTypeName: meetingTypeName,
+            companyNo: companyNo,
+          };
+          await apiService.post('/api/master/meeting-types/save', payload);
+          await fetchMeetingTypes();
         }
       }
 
@@ -2896,6 +3033,29 @@ export function MasterManager({ type }: MasterManagerProps) {
     setCompanyPorts(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleAnalyzeAttachment = async (att: any) => {
+    try {
+      const toastId = toast.loading('Fetching document for analysis...');
+      let fileToAnalyze: File;
+
+      if (att.id || att.docNo) {
+        fileToAnalyze = await attachmentService.getAttachmentFile(att.id || att.docNo, att.fileName || 'document.jpg');
+      } else {
+        toast.error('Cannot analyze this file yet.');
+        toast.dismiss(toastId);
+        return;
+      }
+      toast.dismiss(toastId);
+      setAnalyzeFile(fileToAnalyze);
+      setAnalyzingAttachmentId(att.id || att.docNo);
+      setIsCameraModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      toast.dismiss();
+      toast.error('Failed to load file for analysis');
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -2938,15 +3098,22 @@ export function MasterManager({ type }: MasterManagerProps) {
   };
 
   const handleCameraAttachmentUploaded = (attachment: any) => {
-    setCompanyAttachments(prev => [...prev, {
-      id: attachment.id,
-      docNo: attachment.id,
-      fileName: attachment.name || attachment.fileName || 'camera-capture.jpg',
-      filePath: attachment.storedFilePath || attachment.relativePath || '',
-      fileSize: attachment.size || attachment.fileSize || 0
-    }]);
+    if (attachment) {
+      setCompanyAttachments(prev => [...prev, {
+        id: attachment.id,
+        docNo: attachment.id,
+        fileName: attachment.name || attachment.fileName || 'camera-capture.jpg',
+        filePath: attachment.storedFilePath || attachment.relativePath || '',
+        fileSize: attachment.size || attachment.fileSize || 0
+      }]);
+    }
     if (errors.attachments) setErrors(prev => ({ ...prev, attachments: '' }));
     setIsCameraModalOpen(false);
+    if (analyzingAttachmentId) {
+      setAnalyzedAttachmentIds(prev => [...prev, analyzingAttachmentId]);
+    }
+    setAnalyzeFile(undefined);
+    setAnalyzingAttachmentId(null);
   };
 
   const removeCompanyAttachment = async (index: number) => {
@@ -3389,13 +3556,30 @@ export function MasterManager({ type }: MasterManagerProps) {
                             </span>
                           </div>
                           {(att.id || att.docNo) && (
-                            <button
-                              type="button"
-                              onClick={() => attachmentService.downloadAttachment(att.id || att.docNo, att.fileName || 'document')}
-                              className="text-[9px] font-medium text-[#006699] hover:underline block text-left mt-0.5"
-                            >
-                              View document
-                            </button>
+                            <div className="flex items-center gap-3 mt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => attachmentService.downloadAttachment(att.id || att.docNo, att.fileName || 'document')}
+                                className="text-[9px] font-medium text-[#006699] hover:underline block text-left"
+                              >
+                                View document
+                              </button>
+                              {['.jpg', '.jpeg', '.png'].some(ext => (att.fileName || '').toLowerCase().endsWith(ext)) && (
+                                analyzedAttachmentIds.includes(att.id || att.docNo) ? (
+                                  <span className="text-[9px] font-bold text-slate-400 block text-left">
+                                    Analyzed
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAnalyzeAttachment(att)}
+                                    className="text-[9px] font-bold text-emerald-600 hover:underline block text-left"
+                                  >
+                                    Analyze Image
+                                  </button>
+                                )
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -3442,15 +3626,21 @@ export function MasterManager({ type }: MasterManagerProps) {
           </div>
         </div>
 
-        <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
+        <Dialog
+          open={isCameraModalOpen}
+          onOpenChange={(open) => {
+            setIsCameraModalOpen(open);
+            if (!open) setAnalyzeFile(undefined);
+          }}
+        >
           <DialogContent className="rounded-3xl max-w-6xl p-0 border-none shadow-2xl bg-white overflow-hidden flex flex-col max-h-[90vh]">
             <DialogHeader className="px-5 py-2 border-b border-slate-100">
               <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
                 <CameraIcon size={18} className="text-[#006699]" />
-                Capture Attachment
+                {analyzeFile ? 'Analyze Attachment' : 'Capture Attachment'}
               </DialogTitle>
               <DialogDescription className="text-xs font-semibold text-slate-500">
-                Take a photo and upload it as a Business Entity attachment.
+                {analyzeFile ? 'Review and extract data from the selected document.' : 'Take a photo and upload it as a Business Entity attachment.'}
               </DialogDescription>
             </DialogHeader>
             <div className="px-5 overflow-y-auto flex-1">
@@ -3459,8 +3649,12 @@ export function MasterManager({ type }: MasterManagerProps) {
                 formNo={1550}
                 fileNamePrefix="business-entity-capture"
                 className="border-slate-100 shadow-none"
+                initialAnalyzeFile={analyzeFile}
                 onUploaded={handleCameraAttachmentUploaded}
-                onCancel={() => setIsCameraModalOpen(false)}
+                onCancel={() => {
+                  setIsCameraModalOpen(false);
+                  setAnalyzeFile(undefined);
+                }}
                 onCardScanned={(data) => {
                   if (data.company) {
                     setName(data.company);
@@ -3899,7 +4093,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         </div>
 
         {/* Standard Name Input */}
-        {type !== 'task-company' && (
+        {type !== 'task-company' && type !== 'meeting-category' && type !== 'meeting-type' && (
           <div className="space-y-0">
             <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">{type.replace(/-/g, ' ')} Name</label>
             <Input placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name`} value={name} maxLength={50} onChange={(e) => {
@@ -5057,6 +5251,40 @@ export function MasterManager({ type }: MasterManagerProps) {
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ----------------- MEETING CATEGORY EXTRA FIELDS ----------------- */}
+        {type === 'meeting-category' && (
+          <div className="space-y-0">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Meeting Category Name</label>
+            <Input placeholder="Enter Meeting Category Name" value={meetingCategoryName} maxLength={100} onChange={(e) => {
+              setMeetingCategoryName(e.target.value);
+              if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+            }}
+              className={cn(
+                "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500"
+              )}
+            />
+            {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1 mt-1">{errors.name}</p>}
+          </div>
+        )}
+
+        {/* ----------------- MEETING TYPE EXTRA FIELDS ----------------- */}
+        {type === 'meeting-type' && (
+          <div className="space-y-0">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Meeting Type Name</label>
+            <Input placeholder="Enter Meeting Type Name" value={meetingTypeName} maxLength={100} onChange={(e) => {
+              setMeetingTypeName(e.target.value);
+              if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+            }}
+              className={cn(
+                "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
+                errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500"
+              )}
+            />
+            {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1 mt-1">{errors.name}</p>}
           </div>
         )}
       </>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import Login from '@/pages/Login';
 import TaskDetail from '@/pages/TaskDetail';
+import MeetingNotesPage from '@/pages/MeetingNotesPage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
@@ -153,6 +154,8 @@ function Dashboard() {
       navigate('/sales/deals');
     } else if (id === 'deal-monitor') {
       navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+    } else if (id === 'meeting-notes') {
+      navigate('/meetings');
     } else {
       setActiveTab(id);
       if (id === 'tasks') {
@@ -348,7 +351,7 @@ function MasterPageRoute() {
   const { form } = useParams<{ form: string }>();
   const navigate = useNavigate();
 
-  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'vessel', 'port', 'business-entity-type', 'company', "country", "state", "city", "task-company"];
+  const validForms = ['category', 'type', 'priority', 'folder', 'user-group', 'benefit-type', 'location', 'vessel', 'port', 'business-entity-type', 'company', "country", "state", "city", "task-company", "meeting-category", "meeting-type"];
   if (!form || !validForms.includes(form)) {
     return <Navigate to="/" replace />;
   }
@@ -366,6 +369,8 @@ function MasterPageRoute() {
           navigate('/sales/deals');
         } else if (id === 'deal-monitor') {
           navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+        } else if (id === 'meeting-notes') {
+          navigate('/meetings');
         } else {
           navigate('/');
         }
@@ -391,10 +396,36 @@ function SalesDealsRoute() {
           navigate('/sales/deals');
         } else if (id === 'deal-monitor') {
           navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+        } else if (id === 'meeting-notes') {
+          navigate('/meetings');
         }
       }}
     >
       <DealManager />
+    </MainLayout>
+  );
+}
+
+function MeetingNotesRoute() {
+  const navigate = useNavigate();
+  return (
+    <MainLayout
+      activeTab="meeting-notes"
+      onTabChange={(id) => {
+        if (id.startsWith('master-')) {
+          navigate(`/master/${id.replace('master-', '')}`);
+        } else if (id === 'tasks') {
+          navigate('/');
+        } else if (id === 'sales-deals') {
+          navigate('/sales/deals');
+        } else if (id === 'deal-monitor') {
+          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+        } else if (id === 'meeting-notes') {
+          navigate('/meetings');
+        }
+      }}
+    >
+      <Outlet />
     </MainLayout>
   );
 }
@@ -479,6 +510,19 @@ const router = createBrowserRouter([
             <TaskDetail />
           </PrivateRoute>
         ),
+      },
+      {
+        path: "/meetings",
+        element: (
+          <PrivateRoute>
+            <MeetingNotesRoute />
+          </PrivateRoute>
+        ),
+        children: [
+          { path: "", element: <MeetingNotesPage isListView /> },
+          { path: "new", element: <MeetingNotesPage /> },
+          { path: ":id", element: <MeetingNotesPage /> },
+        ]
       },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
