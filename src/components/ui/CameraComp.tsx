@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useReducer } from 'react';
 import { Camera, Check, Loader2, RotateCcw, X, ImagePlus, ScanText, FlipHorizontal } from 'lucide-react';
-import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
+import ReactCrop, { Crop, PixelCrop, PercentCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { toast } from 'sonner';
 
@@ -153,7 +153,7 @@ export function CameraComp({
   const [state, dispatch] = useReducer(cameraReducer, initialState);
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   const [previewCrop, setPreviewCrop] = useState<Crop>();
-  const [previewCompletedCrop, setPreviewCompletedCrop] = useState<PixelCrop>();
+  const [previewCompletedCrop, setPreviewCompletedCrop] = useState<PercentCrop>();
   const [isMirrored, setIsMirrored] = useState(false);
 
   const { status, errorMessage, capturedUrl, capturedFile, parsedData, logoFile } = state;
@@ -224,22 +224,23 @@ export function CameraComp({
 
         const canvas = document.createElement('canvas');
 
-        // Find the actual rendered image dimensions in the DOM to calculate scale
-        const imgElement = document.getElementById('preview-image') as HTMLImageElement;
-        const scaleX = image.naturalWidth / (imgElement ? imgElement.width : image.naturalWidth);
-        const scaleY = image.naturalHeight / (imgElement ? imgElement.height : image.naturalHeight);
+        // Use percentages against natural image size to avoid DOM scaling mismatches
+        const sx = (previewCompletedCrop.x / 100) * image.naturalWidth;
+        const sy = (previewCompletedCrop.y / 100) * image.naturalHeight;
+        const sWidth = (previewCompletedCrop.width / 100) * image.naturalWidth;
+        const sHeight = (previewCompletedCrop.height / 100) * image.naturalHeight;
 
-        canvas.width = previewCompletedCrop.width * scaleX;
-        canvas.height = previewCompletedCrop.height * scaleY;
+        canvas.width = sWidth;
+        canvas.height = sHeight;
         const ctx = canvas.getContext('2d');
 
         if (ctx) {
           ctx.drawImage(
             image,
-            previewCompletedCrop.x * scaleX,
-            previewCompletedCrop.y * scaleY,
-            previewCompletedCrop.width * scaleX,
-            previewCompletedCrop.height * scaleY,
+            sx,
+            sy,
+            sWidth,
+            sHeight,
             0,
             0,
             canvas.width,
@@ -451,9 +452,19 @@ export function CameraComp({
   const showPermissionHelp = status === 'denied' || status === 'error';
 
   return (
-    <div className={cn('w-full space-y-2 rounded-lg border border-slate-200 bg-white px-4 py-1 shadow-sm', className)}>
-      <div className={cn("flex flex-col gap-2", status === 'parsed' && "md:flex-row")}>
-        <div ref={containerRef} className={cn("relative overflow-hidden rounded-md bg-slate-950", status === 'parsed' ? "md:w-1/2" : "w-full")}>
+    <div className={cn('w-full flex flex-col min-h-full space-y-2 rounded-lg border border-slate-200 bg-white px-4 py-1 shadow-sm', className)}>
+      <div className={cn("flex flex-col gap-2 flex-1", status === 'parsed' && "md:flex-row")}>
+        <div 
+          ref={containerRef} 
+          className={cn(
+            "relative overflow-hidden rounded-md bg-slate-950 mx-auto flex items-center justify-center", 
+            status === 'parsed' ? "md:w-1/2" : "w-full"
+          )}
+          style={{ 
+            maxHeight: '60vh',
+            maxWidth: status === 'parsed' ? undefined : 'calc(60vh * 16 / 9)'
+          }}
+        >
           {showVideo && (
             <>
               <video
@@ -462,7 +473,7 @@ export function CameraComp({
                 muted
                 playsInline
                 className={cn(
-                  "aspect-video w-full bg-slate-950 object-cover transition-transform duration-300",
+                  "aspect-video w-full h-full bg-slate-950 object-cover transition-transform duration-300",
                   status === 'processing' && 'opacity-50 blur-sm',
                   isMirrored && 'scale-x-[-1]'
                 )}
@@ -505,7 +516,7 @@ export function CameraComp({
                     <ReactCrop
                       crop={previewCrop}
                       onChange={(c) => setPreviewCrop(c)}
-                      onComplete={(c) => setPreviewCompletedCrop(c)}
+                      onComplete={(c, percentCrop) => setPreviewCompletedCrop(percentCrop)}
                     >
                       <img id="preview-image" src={capturedUrl} alt="Captured preview" className="max-h-[60vh] max-w-full block" />
                     </ReactCrop>
@@ -623,7 +634,7 @@ export function CameraComp({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-4 mt-4">
+      <div className="sticky bottom-0 bg-white border-t border-slate-100 py-3 flex flex-wrap items-center justify-between gap-4 mt-auto z-20 -mx-4 px-4 rounded-b-lg shadow-[0_-10px_30px_rgba(255,255,255,1)]">
         <div className="flex-1 min-w-[200px] max-w-sm">
           {/* Input removed as backend API handles authentication */}
         </div>

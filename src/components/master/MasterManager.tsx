@@ -3565,7 +3565,9 @@ export function MasterManager({ type }: MasterManagerProps) {
                                 View document
                               </button>
                               {['.jpg', '.jpeg', '.png'].some(ext => (att.fileName || '').toLowerCase().endsWith(ext)) && (
-                                analyzedAttachmentIds.includes(att.id || att.docNo) ? (
+                                analyzedAttachmentIds.includes(att.id || att.docNo) || 
+                                (att.fileName || '').toLowerCase().includes('capture') || 
+                                (att.fileName || '').toLowerCase().startsWith('logo') ? (
                                   <span className="text-[9px] font-bold text-slate-400 block text-left">
                                     Analyzed
                                   </span>
@@ -3656,7 +3658,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                   setAnalyzeFile(undefined);
                 }}
                 onCardScanned={(data) => {
-                  if (data.company) {
+                  if (data.company && !name?.trim()) {
                     setName(data.company);
                   }
                   if (data.name || data.email || data.phone || data.mobile || data.designation) {

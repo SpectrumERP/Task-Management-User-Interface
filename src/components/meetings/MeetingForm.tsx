@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Info, Users, Plus, Trash2, Edit2, Paperclip, MessageSquare, FileText, Check, X } from 'lucide-react';
+import { Info, Users, Plus, Trash2, Edit2, Paperclip, MessageSquare, FileText, Check, X, Loader2 } from 'lucide-react';
 import { Combobox } from '@/components/ui/Combobox';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { EmployeeCombobox } from '@/components/meetings/EmployeeCombobox';
@@ -161,7 +161,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const [invalidFiles, setInvalidFiles] = useState<Array<{ name: string; size: number; reason: string }>>([]);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
 
-
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [typeModalOpen, setTypeModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newTypeName, setNewTypeName] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [isSavingType, setIsSavingType] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
 
@@ -424,15 +429,26 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         })),
         participants: data.participants.map((p: any) => {
           const type = parseInt(p.participantType.toString());
-          const cleanedP = { ...p, participantType: type };
 
-          if (type === 4) {
-            delete cleanedP.participantName;
-            delete cleanedP.companyName;
-            delete cleanedP.email;
+          if (type === 1) {
+            return {
+              participantType: 1,
+              userNo: p.userNo
+            };
+          } else if (type === 2) {
+            return {
+              participantType: 1,
+              empNo: p.empNo
+            };
+          } else if (type === 4) {
+            return {
+              participantType: 4,
+              businessEntityNo: p.businessEntityNo,
+              businessEntityContactPersonDetailNo: p.businessEntityContactPersonDetailNo
+            };
           }
 
-          return cleanedP;
+          return { ...p, participantType: type };
         })
       };
 
@@ -529,14 +545,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       control={form.control}
                       name="meetingCategoryNo"
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="Select Category" /></SelectTrigger>
-                          <SelectContent>
-                            {meetingCategories.map(c => (
-                              <SelectItem key={c.id || c.meetingCategoryNo} value={(c.id || c.meetingCategoryNo).toString()}>{c.name || c.meetingCategoryName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Combobox className="rounded-lg h-9 w-full"
+                          options={meetingCategories.map(c => ({ value: (c.id || c.meetingCategoryNo).toString(), label: c.name || c.meetingCategoryName }))}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select Category"
+                          onAddNew={() => setCategoryModalOpen(true)}
+                          addNewLabel="Add Category"
+                        />
                       )}
                     />
                     {form.formState.errors.meetingCategoryNo && <span className="text-xs text-red-500">{form.formState.errors.meetingCategoryNo.message}</span>}
@@ -548,14 +564,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       control={form.control}
                       name="meetingTypeNo"
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="Select Type" /></SelectTrigger>
-                          <SelectContent>
-                            {meetingTypes.map(t => (
-                              <SelectItem key={t.id || t.meetingTypeNo} value={(t.id || t.meetingTypeNo).toString()}>{t.name || t.meetingTypeName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Combobox className="rounded-lg h-9 w-full"
+                          options={meetingTypes.map(t => ({ value: (t.id || t.meetingTypeNo).toString(), label: t.name || t.meetingTypeName }))}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select Type"
+                          onAddNew={() => setTypeModalOpen(true)}
+                          addNewLabel="Add Type"
+                        />
                       )}
                     />
                     {form.formState.errors.meetingTypeNo && <span className="text-xs text-red-500">{form.formState.errors.meetingTypeNo.message}</span>}
@@ -1371,6 +1387,92 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
           <DialogFooter className="p-4 pt-2 mt-4 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button type="button" onClick={() => setShowWarningDialog(false)} className="h-10 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium">Got it</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Modal */}
+      <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
+        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-white select-none">
+          <DialogHeader className="pb-3 border-b border-slate-150">
+            <DialogTitle className="text-base font-medium text-slate-800">Add Meeting Category</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Category Name <span className="text-red-500">*</span></label>
+              <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Enter category name" className="h-9 rounded-lg" />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="button" variant="outline" onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
+              <Button type="button" disabled={isSavingCategory || !newCategoryName.trim()} onClick={async () => {
+                setIsSavingCategory(true);
+                try {
+                  const payload = {
+                    meetingCategoryName: newCategoryName.trim(),
+                    companyNo: parseInt(companyNoStr),
+                    isActive: true
+                  };
+                  const res = await apiService.post<any>('/api/master/meeting-categories/save', payload);
+                  const newId = res?.data?.id || res?.data?.meetingCategoryNo || res?.id || res?.meetingCategoryNo;
+                  if (newId) {
+                    setMeetingCategories(prev => [...prev, { meetingCategoryNo: newId, meetingCategoryName: newCategoryName.trim() }]);
+                    form.setValue('meetingCategoryNo', newId.toString(), { shouldValidate: true });
+                    setCategoryModalOpen(false);
+                    setNewCategoryName('');
+                    toast.success("Category saved");
+                  }
+                } catch (err) {
+                  toast.error("Failed to save category");
+                } finally {
+                  setIsSavingCategory(false);
+                }
+              }}>
+                {isSavingCategory ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Type Modal */}
+      <Dialog open={typeModalOpen} onOpenChange={setTypeModalOpen}>
+        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-white select-none">
+          <DialogHeader className="pb-3 border-b border-slate-150">
+            <DialogTitle className="text-base font-medium text-slate-800">Add Meeting Type</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Type Name <span className="text-red-500">*</span></label>
+              <Input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Enter type name" className="h-9 rounded-lg" />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="button" variant="outline" onClick={() => setTypeModalOpen(false)}>Cancel</Button>
+              <Button type="button" disabled={isSavingType || !newTypeName.trim()} onClick={async () => {
+                setIsSavingType(true);
+                try {
+                  const payload = {
+                    meetingTypeName: newTypeName.trim(),
+                    companyNo: parseInt(companyNoStr),
+                    isActive: true
+                  };
+                  const res = await apiService.post<any>('/api/master/meeting-types/save', payload);
+                  const newId = res?.data?.id || res?.data?.meetingTypeNo || res?.id || res?.meetingTypeNo;
+                  if (newId) {
+                    setMeetingTypes(prev => [...prev, { meetingTypeNo: newId, meetingTypeName: newTypeName.trim() }]);
+                    form.setValue('meetingTypeNo', newId.toString(), { shouldValidate: true });
+                    setTypeModalOpen(false);
+                    setNewTypeName('');
+                    toast.success("Type saved");
+                  }
+                } catch (err) {
+                  toast.error("Failed to save type");
+                } finally {
+                  setIsSavingType(false);
+                }
+              }}>
+                {isSavingType ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Save
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
