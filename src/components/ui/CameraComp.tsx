@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useReducer } from 'react';
 import { Camera, Check, Loader2, RotateCcw, X, ImagePlus, ScanText, FlipHorizontal } from 'lucide-react';
-import ReactCrop, { Crop, PixelCrop, PercentCrop } from 'react-image-crop';
+import ReactCrop, { Crop, PercentCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { toast } from 'sonner';
 
@@ -417,7 +417,7 @@ export function CameraComp({
       if (uploadedAttachment) {
         onUploaded?.(uploadedAttachment);
       } else if (initialAnalyzeFile && !logoFile) {
-        onUploaded?.(null);
+        onUploaded?.(null as unknown as DocumentAttachment);
       }
       
       if (parsedData && onCardScanned) {
@@ -457,7 +457,7 @@ export function CameraComp({
         <div 
           ref={containerRef} 
           className={cn(
-            "relative overflow-hidden rounded-md bg-slate-950 mx-auto flex items-center justify-center", 
+            "relative overflow-hidden rounded-md bg-slate-950 mx-auto flex flex-col items-center justify-center", 
             status === 'parsed' ? "md:w-1/2" : "w-full"
           )}
           style={{ 
@@ -504,7 +504,7 @@ export function CameraComp({
           )}
 
           {capturedUrl && status !== 'uploading' && status !== 'processing' && (
-            <div className="relative">
+            <div className="relative flex flex-col flex-1 w-full justify-center items-center min-h-0">
               {status === 'preview' ? (
                 <>
                   <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
@@ -516,18 +516,18 @@ export function CameraComp({
                     <ReactCrop
                       crop={previewCrop}
                       onChange={(c) => setPreviewCrop(c)}
-                      onComplete={(c, percentCrop) => setPreviewCompletedCrop(percentCrop)}
+                      onComplete={(_, percentCrop) => setPreviewCompletedCrop(percentCrop)}
                     >
-                      <img id="preview-image" src={capturedUrl} alt="Captured preview" className="max-h-[60vh] max-w-full block" />
+                      <img id="preview-image" src={capturedUrl} alt="Captured preview" className="max-h-[60vh] max-w-full block object-contain" />
                     </ReactCrop>
                   </div>
                 </>
               ) : (
-                <img src={capturedUrl} alt="Captured preview" className="max-h-[60vh] w-full bg-slate-950 object-contain" />
+                <img src={capturedUrl} alt="Captured preview" className="max-h-full max-w-full object-contain" />
               )}
 
               {status === 'parsed' && (
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center z-20">
                   <Button
                     type="button"
                     variant="secondary"
@@ -569,9 +569,10 @@ export function CameraComp({
 
 
           {status === 'parsed' && logoFile && (
-            <div className="mx-4 mt-auto px-4 border border-slate-700/50 rounded-xl bg-slate-800/80 backdrop-blur-sm shadow-inner">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Extracted Logo</span>
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 to-transparent z-30 pointer-events-none">
+              <div className="border border-slate-700/50 rounded-xl bg-slate-800/90 backdrop-blur-md shadow-lg p-3 pointer-events-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Extracted Logo</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -587,6 +588,7 @@ export function CameraComp({
                   alt="Extracted Logo"
                   className="max-h-24 object-contain rounded drop-shadow-md"
                 />
+              </div>
               </div>
             </div>
           )}
@@ -634,11 +636,7 @@ export function CameraComp({
         </div>
       )}
 
-      <div className="sticky bottom-0 bg-white border-t border-slate-100 py-3 flex flex-wrap items-center justify-between gap-4 mt-auto z-20 -mx-4 px-4 rounded-b-lg shadow-[0_-10px_30px_rgba(255,255,255,1)]">
-        <div className="flex-1 min-w-[200px] max-w-sm">
-          {/* Input removed as backend API handles authentication */}
-        </div>
-
+      <div className="sticky bottom-0 bg-white border-t border-slate-100 py-3 flex flex-wrap items-center justify-end gap-2 mt-auto z-20 -mx-4 px-4 rounded-b-lg shadow-[0_-10px_30px_rgba(255,255,255,1)]">
         <div className="flex flex-wrap items-center justify-end gap-2">
           {(status === 'idle' || showPermissionHelp) && (
             <Button type="button" onClick={requestCameraPermission} disabled={!isCvReady}>
@@ -675,7 +673,7 @@ export function CameraComp({
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Retake
               </Button>
-              <Button type="button" variant="secondary" onClick={analyzeImage}>
+              <Button type="button" variant="secondary" onClick={() => analyzeImage()}>
                 <ScanText className="mr-2 h-4 w-4" />
                 Analyze Details
               </Button>
