@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { MasterManager } from '@/components/master/MasterManager';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
-import { Toaster } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { DealManager } from '@/components/sales/deals/DealManager';
 import { cleanupExpiredDrafts } from '@/utils/draftCleanup';
 
@@ -119,9 +119,9 @@ function Dashboard() {
         if (
           activeElement &&
           (activeElement.tagName === 'INPUT' ||
-           activeElement.tagName === 'TEXTAREA' ||
-           activeElement.tagName === 'SELECT' ||
-           activeElement.isContentEditable)
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.tagName === 'SELECT' ||
+            activeElement.isContentEditable)
         ) {
           return;
         }
@@ -553,8 +553,19 @@ function App() {
           if (!currentVersion) {
             localStorage.setItem('app_version', data.version.toString());
           } else if (currentVersion !== data.version.toString()) {
-            localStorage.setItem('app_version', data.version.toString());
-            window.location.reload();
+            // Show a toast instead of forcing an abrupt reload
+            toast.info('A new version is available!', {
+              description: 'Please update to get the latest features and bug fixes.',
+              duration: Infinity, // Keep it open until clicked
+              action: {
+                label: 'Update Now',
+                onClick: () => {
+                  localStorage.setItem('app_version', data.version.toString());
+                  // Force a hard refresh
+                  window.location.href = window.location.pathname + '?v=' + new Date().getTime() + window.location.hash;
+                },
+              },
+            });
           }
         }
       } catch (err) {
@@ -563,9 +574,24 @@ function App() {
     };
 
     checkVersion();
-    // Optional: check version every 30 minutes if user leaves app open
-    const interval = setInterval(checkVersion, 30 * 60 * 1000);
-    return () => clearInterval(interval);
+    // Check version every 5 minutes
+    const interval = setInterval(checkVersion, 5 * 60 * 1000);
+
+    // Also check when user returns to the tab
+    window.addEventListener('focus', checkVersion);
+
+    // Handle chunk load errors (when old files are deleted from the server)
+    const handlePreloadError = (e: Event) => {
+      e.preventDefault();
+      window.location.reload();
+    };
+    window.addEventListener('vite:preloadError', handlePreloadError);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkVersion);
+      window.removeEventListener('vite:preloadError', handlePreloadError);
+    };
   }, []);
 
   return (
