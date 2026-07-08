@@ -82,10 +82,11 @@ export function Combobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverPrimitive.Content 
-        className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
-        align="start"
-      >
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content 
+          className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
+          align="start"
+        >
         <Command className="rounded-xl border-slate-200">
           <CommandInput autoFocus placeholder={searchPlaceholder} className="h-9 border-none focus:ring-0" />
           <CommandList className="max-h-60 overflow-y-auto">
@@ -131,6 +132,7 @@ export function Combobox({
           )}
         </Command>
       </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
     </Popover>
   )
 }

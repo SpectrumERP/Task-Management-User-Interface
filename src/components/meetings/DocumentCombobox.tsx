@@ -173,7 +173,8 @@ export function DocumentCombobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverPrimitive.Content
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
         className="z-[100] w-[300px] sm:w-[400px] md:w-[600px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         align="start"
       >
@@ -241,6 +242,7 @@ export function DocumentCombobox({
           </CommandList>
         </Command>
       </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
     </Popover>
   )
 }

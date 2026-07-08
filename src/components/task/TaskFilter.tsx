@@ -12,6 +12,7 @@ import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { Combobox } from '@/components/ui/Combobox';
 import { useAuthStore } from '@/store/useAuthStore';
+import { UserType } from '@/types/enums';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -62,7 +63,9 @@ export function TaskFilter({
   onToggleFilters
 }: TaskFilterProps) {
   const authCompanies = useAuthStore((state) => state.company);
+  const authUser = useAuthStore((state) => state.user);
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1).toString();
+  const isGeneralUser = Number(authUser?.UserType || authUser?.userType) === UserType.General;
 
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const { fetchFillValues, setSearchKeyword } = useTaskStore();
@@ -86,7 +89,7 @@ export function TaskFilter({
       sortingType: '',
       folderNo: selectedFolder?.TaskFolderNo.toString(),
       isAllFolder: false,
-      loginNo: '',
+      loginNo: isGeneralUser ? (authUser?.loginNo || authUser?.LoginNo || '').toString() : '',
       fromCreatedDate: undefined,
       toCreatedDate: undefined,
     }
@@ -97,6 +100,7 @@ export function TaskFilter({
   const [appliedFilters, setAppliedFilters] = useState<FilterFormValues>({
     companyNo,
     filterType: 'All',
+    loginNo: isGeneralUser ? (authUser?.loginNo || authUser?.LoginNo || '').toString() : '',
   });
 
   const [showFiltersOnMobile, setShowFiltersOnMobile] = useState(false);
@@ -361,69 +365,70 @@ export function TaskFilter({
                     />
                   </div>
 
-                  {/* User */}
-                  <div className="space-y-0.5" id="dialog-form-group-loginNo">
-                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
-                      <SlidersHorizontal size={12} className="text-slate-400" />
-                      User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-medium">*</span>}
-                    </label>
-                    <Controller
-                      name="loginNo"
-                      control={control}
-                      rules={{
-                        validate: (val) => {
-                          const filterType = watch('filterType');
-                          if (filterType && filterType !== 'All' && (!val || val === '')) {
-                            return 'User is required when filter type is selected';
-                          }
-                          return true;
-                        }
-                      }}
-                      render={({ field }) => (
-                        <UserCombobox value={field.value} onChange={(user) => {
-                          field.onChange(user.loginNo.toString());
-                          trigger('filterType');
-                        }}
-                          placeholder="Search user..."
-                          className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-500")}
+                  {
+                    !isGeneralUser && <>
+                      <div className="space-y-0.5" id="dialog-form-group-loginNo">
+                        <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
+                          <SlidersHorizontal size={12} className="text-slate-400" />
+                          User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-medium">*</span>}
+                        </label>
+                        <Controller
+                          name="loginNo"
+                          control={control}
+                          rules={{
+                            validate: (val) => {
+                              const filterType = watch('filterType');
+                              if (filterType && filterType !== 'All' && (!val || val === '')) {
+                                return 'User is required when filter type is selected';
+                              }
+                              return true;
+                            }
+                          }}
+                          render={({ field }) => (
+                            <UserCombobox value={field.value} onChange={(user) => {
+                              field.onChange(user.loginNo.toString());
+                              trigger('filterType');
+                            }}
+                              placeholder="Search user..."
+                              className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-500")}
+                            />
+                          )}
                         />
-                      )}
-                    />
-                    {errors.loginNo && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.loginNo.message}</p>}
-                  </div>
+                        {errors.loginNo && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.loginNo.message}</p>}
+                      </div>
 
-                  {/* Filter Type */}
-                  <div className="space-y-0.5">
-                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
-                      <SlidersHorizontal size={12} className="text-slate-400" />
-                      Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-medium">*</span>}
-                    </label>
-                    <Controller
-                      name="filterType"
-                      control={control}
-                      rules={{
-                        validate: (val) => {
-                          const userVal = watch('loginNo');
-                          if (userVal && userVal !== '' && (!val || val === 'All')) {
-                            return 'Filter Type is required when User is selected';
-                          }
-                          return true;
-                        }
-                      }}
-                      render={({ field }) => (
-                        <Combobox value={field.value} onChange={(val) => {
-                          field.onChange(val);
-                          trigger('loginNo');
-                        }}
-                          options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
-                          placeholder="Select Filter Type"
-                          className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE, errors.filterType && "border-red-500")}
+                      <div className="space-y-0.5">
+                        <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
+                          <SlidersHorizontal size={12} className="text-slate-400" />
+                          Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-medium">*</span>}
+                        </label>
+                        <Controller
+                          name="filterType"
+                          control={control}
+                          rules={{
+                            validate: (val) => {
+                              const userVal = watch('loginNo');
+                              if (userVal && userVal !== '' && (!val || val === 'All')) {
+                                return 'Filter Type is required when User is selected';
+                              }
+                              return true;
+                            }
+                          }}
+                          render={({ field }) => (
+                            <Combobox value={field.value} onChange={(val) => {
+                              field.onChange(val);
+                              trigger('loginNo');
+                            }}
+                              options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
+                              placeholder="Select Filter Type"
+                              className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE, errors.filterType && "border-red-500")}
+                            />
+                          )}
                         />
-                      )}
-                    />
-                    {errors.filterType && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.filterType.message}</p>}
-                  </div>
-
+                        {errors.filterType && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.filterType.message}</p>}
+                      </div>
+                    </>
+                  }
                   {/* Owner */}
                   <div className="space-y-0.5">
                     <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
@@ -574,10 +579,10 @@ export function TaskFilter({
                 name="title"
                 control={control}
                 render={({ field }) => (
-                  <Input 
-                    {...field} 
-                    placeholder="Search task" 
-                    className="pl-10 h-10 sm:h-11 rounded-xl sm:rounded-2xl border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/15 bg-white shadow-sm text-slate-700 w-full" 
+                  <Input
+                    {...field}
+                    placeholder="Search task"
+                    className="pl-10 h-10 sm:h-11 rounded-xl sm:rounded-2xl border-slate-200 focus-visible:ring-2 focus-visible:ring-[#006699]/15 bg-white shadow-sm text-slate-700 w-full"
                     onChange={(e) => {
                       field.onChange(e);
                       setSearchKeyword(e.target.value);
@@ -595,8 +600,8 @@ export function TaskFilter({
                 render={({ field }) => (
                   <label className="flex items-center gap-1.5 cursor-pointer px-2 py-1.5 sm:py-1 rounded-lg hover:bg-slate-50 border border-transparent transition-colors shrink-0">
                     <Checkbox checked={field.value} onCheckedChange={(val) => {
-                       field.onChange(val);
-                       setTimeout(() => handleSubmit(onSubmit)(), 0);
+                      field.onChange(val);
+                      setTimeout(() => handleSubmit(onSubmit)(), 0);
                     }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#006699] data-[state=checked]:border-[#006699]" />
                     <span className="text-[11px] sm:text-xs text-slate-600 font-medium whitespace-nowrap">Search all folders</span>
                   </label>
@@ -613,11 +618,6 @@ export function TaskFilter({
               >
                 <SlidersHorizontal size={14} className={cn("transition-transform duration-300", isFiltersOpen && "rotate-180")} />
                 <span className="hidden sm:inline">Filters & Sorting</span>
-                {activeCount > 0 && (
-                  <span className="bg-[#006699] text-white text-[9px] h-4.5 min-w-[18px] px-1 rounded-full flex items-center justify-center font-medium">
-                    {activeCount}
-                  </span>
-                )}
               </Button>
 
               <Button
@@ -843,67 +843,71 @@ export function TaskFilter({
                 </div>
 
                 {/* User */}
-                <div className="space-y-0.5" id="form-group-loginNo">
-                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
-                    <SlidersHorizontal size={12} className="text-slate-400" />
-                    User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-medium">*</span>}
-                  </label>
-                  <Controller
-                    name="loginNo"
-                    control={control}
-                    rules={{
-                      validate: (val) => {
-                        const filterType = watch('filterType');
-                        if (filterType && filterType !== 'All' && (!val || val === '')) {
-                          return 'User is required when filter type is selected';
-                        }
-                        return true;
-                      }
-                    }}
-                    render={({ field }) => (
-                      <UserCombobox value={field.value} onChange={(user) => {
-                        field.onChange(user.loginNo.toString());
-                        trigger('filterType');
-                      }}
-                        placeholder="Search user..."
-                        className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-500")}
+                {!isGeneralUser && (
+                  <>
+                    <div className="space-y-0.5" id="form-group-loginNo">
+                      <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
+                        <SlidersHorizontal size={12} className="text-slate-400" />
+                        User {watch('filterType') && watch('filterType') !== 'All' && <span className="text-red-500 font-medium">*</span>}
+                      </label>
+                      <Controller
+                        name="loginNo"
+                        control={control}
+                        rules={{
+                          validate: (val) => {
+                            const filterType = watch('filterType');
+                            if (filterType && filterType !== 'All' && (!val || val === '')) {
+                              return 'User is required when filter type is selected';
+                            }
+                            return true;
+                          }
+                        }}
+                        render={({ field }) => (
+                          <UserCombobox value={field.value} onChange={(user) => {
+                            field.onChange(user.loginNo.toString());
+                            trigger('filterType');
+                          }}
+                            placeholder="Search user..."
+                            className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-500")}
+                          />
+                        )}
                       />
-                    )}
-                  />
-                  {errors.loginNo && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.loginNo.message}</p>}
-                </div>
+                      {errors.loginNo && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.loginNo.message}</p>}
+                    </div>
 
-                {/* Filter Type */}
-                <div className="space-y-0.5">
-                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
-                    <SlidersHorizontal size={12} className="text-slate-400" />
-                    Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-medium">*</span>}
-                  </label>
-                  <Controller
-                    name="filterType"
-                    control={control}
-                    rules={{
-                      validate: (val) => {
-                        const userVal = watch('loginNo');
-                        if (userVal && userVal !== '' && (!val || val === 'All')) {
-                          return 'Filter Type is required when User is selected';
-                        }
-                        return true;
-                      }
-                    }}
-                    render={({ field }) => (
-                      <Combobox value={field.value} onChange={(val) => {
-                        field.onChange(val);
-                        trigger('loginNo');
-                      }}
-                        options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
-                        placeholder="Select Filter Type"
-                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE, errors.filterType && "border-red-500")}
+                    {/* Filter Type */}
+                    <div className="space-y-0.5">
+                      <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
+                        <SlidersHorizontal size={12} className="text-slate-400" />
+                        Filter Type {watch('loginNo') && watch('loginNo') !== '' && <span className="text-red-500 font-medium">*</span>}
+                      </label>
+                      <Controller
+                        name="filterType"
+                        control={control}
+                        rules={{
+                          validate: (val) => {
+                            const userVal = watch('loginNo');
+                            if (userVal && userVal !== '' && (!val || val === 'All')) {
+                              return 'Filter Type is required when User is selected';
+                            }
+                            return true;
+                          }
+                        }}
+                        render={({ field }) => (
+                          <Combobox value={field.value} onChange={(val) => {
+                            field.onChange(val);
+                            trigger('loginNo');
+                          }}
+                            options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
+                            placeholder="Select Filter Type"
+                            className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE, errors.filterType && "border-red-500")}
+                          />
+                        )}
                       />
-                    )}
-                  />
-                  {errors.filterType && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.filterType.message}</p>}
-                </div>
+                      {errors.filterType && <p className="text-[10px] text-red-500 font-medium ml-1">{errors.filterType.message}</p>}
+                    </div>
+                  </>
+                )}
 
                 {/* Owner */}
                 <div className="space-y-0.5">
