@@ -128,6 +128,13 @@ export function DateRangePicker({
           from: startOfMonth(subMonths(today, 1)),
           to: endOfMonth(subMonths(today, 1))
         }
+      },
+      {
+        label: "Last 6 Months",
+        value: {
+          from: subMonths(today, 6),
+          to: today
+        }
       }
     ];
   }, []);
@@ -166,18 +173,18 @@ export function DateRangePicker({
             variant={"outline"}
             disabled={disabled}
             className={cn(
-              "w-full justify-start text-left font-bold rounded-2xl h-11 border-slate-200 bg-white shadow-sm text-xs transition-all text-slate-700 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15",
+              "w-full justify-start text-left mt-2 h-9 rounded-2xl border-slate-400 bg-white text-xs transition-all text-slate-900 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15",
               !range && "text-slate-400 font-medium"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 shrink-0" />
             {range?.from ? (
               range.to ? (
-                <span className="text-slate-700 font-bold text-xs">
+                <span className="text-slate-700 text-[13px]">
                   {format(range.from, "LLL dd, yyyy")} - {format(range.to, "LLL dd, yyyy")}
                 </span>
               ) : (
-                <span className="text-slate-700 font-bold text-xs">
+                <span className="text-slate-700 text-[13px]">
                   {format(range.from, "LLL dd, yyyy")}
                 </span>
               )
@@ -186,75 +193,75 @@ export function DateRangePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent 
-        className={cn(
-          "flex p-0 rounded-[24px] border-slate-100 shadow-2xl z-[150]",
-          isMobile ? "flex-col w-[92vw] max-w-[340px]" : "flex-row w-auto"
-        )} 
-        align="start"
-      >
-        {/* Preset Shortcuts Sidebar / Mobile Header Strip */}
-        <div 
+        <PopoverContent
           className={cn(
-            "shrink-0 bg-slate-50/60 flex",
-            isMobile 
-              ? "w-full border-b border-slate-100 p-2 flex-row gap-1.5 rounded-t-[24px] overflow-x-auto scrollbar-none"
-              : "w-[140px] border-r border-slate-100 p-2 flex-col gap-0.5 rounded-l-[24px] justify-center"
+            "flex p-0 rounded-[24px] border-slate-100 shadow-2xl z-[150]",
+            isMobile ? "flex-col w-[92vw] max-w-[340px]" : "flex-row w-auto"
           )}
+          align="start"
         >
-          {presets.map((preset) => {
-            const isActive = checkPresetActive(preset.value);
-            return (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => selectPreset(preset.value)}
-                className={cn(
-                  "text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center justify-between shrink-0",
-                  isMobile ? "h-8 px-3" : "w-full py-1.5 text-left",
-                  isActive
-                    ? "bg-[#006699] text-white shadow-md shadow-[#006699]/10"
-                    : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
-                )}
-              >
-                <span>{preset.label}</span>
-                {!isMobile && isActive && <Check size={11} className="text-white shrink-0" />}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-col">
-          <Calendar
-            mode="range"
-            defaultMonth={tempRange?.from}
-            selected={tempRange}
-            onSelect={handleSelect}
-            numberOfMonths={isMobile ? 1 : 2}
+          {/* Preset Shortcuts Sidebar / Mobile Header Strip */}
+          <div
             className={cn(
-              "border-none p-3",
-              isMobile ? "" : "rounded-tr-[24px]"
+              "shrink-0 bg-slate-50/60 flex",
+              isMobile
+                ? "w-full border-b border-slate-100 p-2 flex-row gap-1.5 rounded-t-[24px] overflow-x-auto scrollbar-none"
+                : "w-[140px] border-r border-slate-100 p-2 flex-col gap-0.5 rounded-l-[24px] justify-center"
             )}
-          />
-          <div className="flex items-center justify-end gap-2 p-3 border-t border-slate-100 mt-auto">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleCancel}
-              className="h-8 px-4 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleOk}
-              className="h-8 px-5 text-xs font-bold rounded-xl bg-[#006699] text-white hover:bg-[#005580] shadow-sm"
-            >
-              OK
-            </Button>
+          >
+            {presets.map((preset) => {
+              const isActive = checkPresetActive(preset.value);
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => selectPreset(preset.value)}
+                  className={cn(
+                    "text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center justify-between shrink-0",
+                    isMobile ? "h-8 px-3" : "w-full py-1.5 text-left",
+                    isActive
+                      ? "bg-[#006699] text-white shadow-md shadow-[#006699]/10"
+                      : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+                  )}
+                >
+                  <span>{preset.label}</span>
+                  {!isMobile && isActive && <Check size={11} className="text-white shrink-0" />}
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </PopoverContent>
+
+          <div className="flex flex-col">
+            <Calendar
+              mode="range"
+              defaultMonth={tempRange?.from}
+              selected={tempRange}
+              onSelect={handleSelect}
+              numberOfMonths={isMobile ? 1 : 2}
+              className={cn(
+                "border-none p-3",
+                isMobile ? "" : "rounded-tr-[24px]"
+              )}
+            />
+            <div className="flex items-center justify-end gap-2 p-3 border-t border-slate-100 mt-auto">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCancel}
+                className="h-8 px-4 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleOk}
+                className="h-8 px-5 text-xs font-bold rounded-xl bg-[#006699] text-white hover:bg-[#005580] shadow-sm"
+              >
+                OK
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
       </Popover>
     </div>
   )

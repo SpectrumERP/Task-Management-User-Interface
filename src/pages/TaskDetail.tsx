@@ -195,7 +195,8 @@ export default function TaskDetail() {
           subTasks: d.subTasks || [],
           collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
           infromToUserGroupNo: d.infromToUserGroupNo || null,
-          customFields: d.customFields || []
+          customFields: d.customFields || [],
+          roadBlock: d.roadBlock || '',
         };
 
         // Call attachments list API after successful task load-data

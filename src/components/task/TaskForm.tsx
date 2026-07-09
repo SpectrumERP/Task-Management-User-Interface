@@ -70,6 +70,7 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
   end_date: isSubTask ? z.string().min(1, 'Due Date is required for sub-tasks') : z.string().optional(),
   completionDate: z.string().optional(),
   completionRemark: z.string().max(500, 'Remark cannot exceed 500 characters').optional(),
+  roadBlock: z.string().max(1000, 'Road Block cannot exceed 1000 characters').optional(),
   isAllDay: z.boolean().optional().default(false),
   calendarColor: z.string().optional().default(''),
   recurrence: z.object({
@@ -301,6 +302,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const parentTaskNoQuery = searchParams.get('parentTaskNo');
   const parentTaskNo = parentTaskNoQuery ? parseInt(parentTaskNoQuery) : (initialData?.parent_task_No || null);
   const isSubTask = parentTaskNo !== null && parentTaskNo > 0;
+  
+  const accessibleForms = useAuthStore(state => state.accessibleForms) || [];
 
   const { addTask, updateTask, fetchFillValues, selectedFolder, tasks } = useTaskStore();
   const [localParentTask, setLocalParentTask] = useState<Task | null>(null);
@@ -527,6 +530,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : (searchParams.get('end_date') ? new Date(searchParams.get('end_date') as string).toISOString() : ''),
       completionDate: initialData?.completionDate ? new Date(initialData.completionDate).toISOString() : '',
       completionRemark: initialData?.completionRemark || '',
+      roadBlock: initialData?.roadBlock || '',
       estimated_effort_value: initialData?.estimated_effort_value?.toString() || searchParams.get('estimated_effort_value') || '',
       estimated_effort_unit: resolveFrequencyValue(initialData?.estimated_effort_unit || searchParams.get('estimated_effort_unit') || 'hours'),
       is_business_benefit_applicable: initialData?.is_business_benefit_applicable || false,
@@ -1034,6 +1038,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         end_date: initialData.end_date || '',
         completionDate: initialData.completionDate || '',
         completionRemark: initialData.completionRemark || '',
+        roadBlock: initialData.roadBlock || '',
         isAllDay: (initialData as any).isAllday || (initialData as any).isAllDay || false,
         calendarColor: (initialData as any).colorCoding || (initialData as any).calendarColor || '',
         estimated_effort_value: initialData.estimated_effort_value?.toString() || '',
@@ -1450,6 +1455,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       endDate: data.end_date ? new Date(data.end_date).toISOString() : null,
       completionDate: data.completionDate ? new Date(data.completionDate).toISOString() : null,
       completionRemark: data.completionRemark || null,
+      roadBlock: data.roadBlock || null,
       estimatedEfforts: parseFloat(data.estimated_effort_value) || null,
       estimatedEffortsFequencyNo: data.estimated_effort_unit ? parseInt(data.estimated_effort_unit) : null,
       isBusinessBenefitApplicable: data.is_business_benefit_applicable,
@@ -1809,10 +1815,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       }}
                       placeholder="Select category"
                       className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={() => {
+                      onAddNew={accessibleForms.includes(1561) ? () => {
                         setActiveMasterType('category');
                         setIsMasterCreateOpen(true);
-                      }}
+                      } : undefined}
                       addNewLabel="Add New Category"
                     />
                   )}
@@ -1831,10 +1837,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={field.onChange}
                       placeholder="Select type"
                       className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={() => {
+                      onAddNew={accessibleForms.includes(1560) ? () => {
                         setActiveMasterType('type');
                         setIsMasterCreateOpen(true);
-                      }}
+                      } : undefined}
                       addNewLabel="Add New Type"
                     />
                   )}
@@ -1853,10 +1859,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       placeholder="Select folder"
                       className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                       isClearable={false}
-                      onAddNew={() => {
+                      onAddNew={accessibleForms.includes(1542) ? () => {
                         setActiveMasterType('folder');
                         setIsMasterCreateOpen(true);
-                      }}
+                      } : undefined}
                       addNewLabel="Add New Folder"
                     />
                   )}
@@ -1875,10 +1881,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={field.onChange}
                       placeholder="Select priority"
                       className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={() => {
+                      onAddNew={accessibleForms.includes(1543) ? () => {
                         setActiveMasterType('priority');
                         setIsMasterCreateOpen(true);
-                      }}
+                      } : undefined}
                       addNewLabel="Add New Priority"
                     />
                   )}
@@ -1901,10 +1907,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     name="company"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox disabled={isSubTask} options={companyOptions} value={field.value} onChange={field.onChange} placeholder="Select company" className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""} onAddNew={() => {
+                      <Combobox disabled={isSubTask} options={companyOptions} value={field.value} onChange={field.onChange} placeholder="Select company" className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""} onAddNew={accessibleForms.includes(1565) ? () => {
                         setActiveMasterType('task-company' as any);
                         setIsMasterCreateOpen(true);
-                      }}
+                      } : undefined}
                       />
                     )}
                   />
@@ -1922,10 +1928,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         onChange={field.onChange}
                         placeholder="Select location"
                         className={form.formState.errors.location_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        onAddNew={() => {
+                        onAddNew={accessibleForms.includes(1541) ? () => {
                           setActiveMasterType('location');
                           setIsMasterCreateOpen(true);
-                        }}
+                        } : undefined}
                         addNewLabel="Add New Location"
                       />
                     )}
@@ -2410,10 +2416,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           onChange={field.onChange}
                           placeholder="Select benefit type"
                           className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          onAddNew={() => {
+                          onAddNew={accessibleForms.includes(1545) ? () => {
                             setActiveMasterType('benefit-type' as any);
                             setIsMasterCreateOpen(true);
-                          }}
+                          } : undefined}
                         />
                       )}
                     />
@@ -2889,6 +2895,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <Label className="text-slate-700 font-medium text-[11px] ml-1">Completion Remark</Label>
                   <Textarea placeholder="Enter completion remark" {...form.register('completionRemark')} maxLength={500} className={cn("min-h-[80px] resize-none rounded-xl transition-all text-slate-900 ", form.formState.errors.completionRemark ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:border-[#006699] focus:ring-[#006699]/15")} />
                   {form.formState.errors.completionRemark && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.completionRemark.message}</p>}
+                </div>
+              </div>
+              {/* Row 4: Road Block Remark */}
+              <div className="grid grid-cols-1 gap-4 items-start pt-2">
+                <div className="space-y-0.5" id="form-group-roadBlock">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Road Block Remark</Label>
+                  <Textarea placeholder="Enter road block remark" {...form.register('roadBlock')} maxLength={1000} className={cn("min-h-[80px] resize-none rounded-xl transition-all text-slate-900 ", form.formState.errors.roadBlock ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:border-[#006699] focus:ring-[#006699]/15")} />
+                  {form.formState.errors.roadBlock && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.roadBlock.message}</p>}
                 </div>
               </div>
             </div>

@@ -97,7 +97,7 @@ export function TaskFilter({
 
 
   // State to track the actually applied filters (only updated on Submit/Reset/Badge Clear)
-  const [appliedFilters, setAppliedFilters] = useState<FilterFormValues>({
+  const [, setAppliedFilters] = useState<FilterFormValues>({
     companyNo,
     filterType: 'All',
     loginNo: isGeneralUser ? (authUser?.loginNo || authUser?.LoginNo || '').toString() : '',
@@ -107,13 +107,6 @@ export function TaskFilter({
 
   const isFiltersOpen = showFilters !== undefined ? showFilters : showFiltersOnMobile;
   const toggleFilters = onToggleFilters || (() => setShowFiltersOnMobile(!showFiltersOnMobile));
-
-  // Dynamic count of active applied filters (ignoring default companyNo and filterType: 'All')
-  const activeCount = Object.entries(appliedFilters || {}).filter(([key, val]) => {
-    if (key === 'companyNo') return false;
-    if (key === 'filterType' && val === 'All') return false;
-    return val !== undefined && val !== '' && val !== null;
-  }).length;
 
   useEffect(() => {
     const fetchOptions = async () => {

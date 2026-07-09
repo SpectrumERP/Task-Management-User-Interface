@@ -7,6 +7,7 @@ import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import Login from '@/pages/Login';
 import TaskDetail from '@/pages/TaskDetail';
 import MeetingNotesPage from '@/pages/MeetingNotesPage';
+import ReportPage from '@/pages/ReportPage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
@@ -156,6 +157,8 @@ function Dashboard() {
       navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
     } else if (id === 'meeting-notes') {
       navigate('/meetings');
+    } else if (id === 'reports') {
+      navigate('/reports');
     } else {
       setActiveTab(id);
       if (id === 'tasks') {
@@ -163,6 +166,7 @@ function Dashboard() {
       }
     }
   };
+
 
   return (
     <MainLayout activeTab={activeTab} onTabChange={handleTabChange}>
@@ -371,6 +375,8 @@ function MasterPageRoute() {
           navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
         } else if (id === 'meeting-notes') {
           navigate('/meetings');
+        } else if (id === 'reports') {
+          navigate('/reports');
         } else {
           navigate('/');
         }
@@ -398,6 +404,8 @@ function SalesDealsRoute() {
           navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
         } else if (id === 'meeting-notes') {
           navigate('/meetings');
+        } else if (id === 'reports') {
+          navigate('/reports');
         }
       }}
     >
@@ -422,10 +430,38 @@ function MeetingNotesRoute() {
           navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
         } else if (id === 'meeting-notes') {
           navigate('/meetings');
+        } else if (id === 'reports') {
+          navigate('/reports');
         }
       }}
     >
       <Outlet />
+    </MainLayout>
+  );
+}
+
+function ReportRoute() {
+  const navigate = useNavigate();
+  return (
+    <MainLayout
+      activeTab="reports"
+      onTabChange={(id) => {
+        if (id.startsWith('master-')) {
+          navigate(`/master/${id.replace('master-', '')}`);
+        } else if (id === 'tasks') {
+          navigate('/');
+        } else if (id === 'sales-deals') {
+          navigate('/sales/deals');
+        } else if (id === 'deal-monitor') {
+          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+        } else if (id === 'meeting-notes') {
+          navigate('/meetings');
+        } else if (id === 'reports') {
+          navigate('/reports');
+        }
+      }}
+    >
+      <ReportPage />
     </MainLayout>
   );
 }
@@ -523,6 +559,14 @@ const router = createBrowserRouter([
           { path: "new", element: <MeetingNotesPage /> },
           { path: ":id", element: <MeetingNotesPage /> },
         ]
+      },
+      {
+        path: "/reports",
+        element: (
+          <PrivateRoute>
+            <ReportRoute />
+          </PrivateRoute>
+        ),
       },
       { path: "*", element: <Navigate to="/" replace /> },
     ],

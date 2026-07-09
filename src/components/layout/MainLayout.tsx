@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { useState, useEffect } from 'react';
+import { Sidebar, navItems, masterItems, menuMasterItems } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
+import { useAuthStore } from '@/store/useAuthStore';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, LogOut } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
@@ -22,6 +25,56 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
     }
     setIsMobileSidebarOpen(false);
   };
+
+  const accessibleForms = useAuthStore(state => state.accessibleForms);
+  const fetchAccessibleForms = useAuthStore(state => state.fetchAccessibleForms);
+  const logout = useAuthStore(state => state.logout);
+
+  useEffect(() => {
+    if (accessibleForms === null) {
+      fetchAccessibleForms();
+    }
+  }, [accessibleForms, fetchAccessibleForms]);
+
+  useEffect(() => {
+    if (accessibleForms && accessibleForms.length > 0 && onTabChange) {
+      const allItems = [...navItems, ...masterItems, ...menuMasterItems];
+      const currentItem = allItems.find(item => item.id === activeTab);
+      
+      // If the current tab has a formNo and the user doesn't have access to it
+      if (currentItem && currentItem.formNo && !accessibleForms.includes(currentItem.formNo)) {
+        // Find the first accessible item
+        const firstAccessible = allItems.find(item => item.formNo && accessibleForms.includes(item.formNo));
+        if (firstAccessible) {
+          onTabChange(firstAccessible.id);
+        }
+      }
+    }
+  }, [accessibleForms, activeTab, onTabChange]);
+
+  if (accessibleForms === null) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#f8fafc] fixed inset-0 z-[100]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#006699]"></div>
+      </div>
+    );
+  }
+
+  if (accessibleForms !== null && accessibleForms.length === 0) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-[#f8fafc] fixed inset-0 z-[100]">
+        <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+        <h1 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h1>
+        <p className="text-slate-600 mb-8 max-w-md text-center">
+          You do not have access to any modules in the Task Management system. Please contact your system administrator for assistance.
+        </p>
+        <Button onClick={logout} className="gap-2 bg-[#006699] hover:bg-[#005580]">
+          <LogOut size={16} />
+          Logout
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full fixed inset-0 bg-white overflow-hidden">

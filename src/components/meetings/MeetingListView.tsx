@@ -119,13 +119,13 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           <DateRangePicker
             value={dateRange}
             onChange={setDateRange}
-            className="w-full bg-white rounded-2xl border"
+            className="-mt-2"
           />
         </div>
         <div className="flex items-center">
           {(filterTitle || filterStatus !== 'all' || dateRange) && (
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-9"
               onClick={() => {
                 setFilterTitle('');

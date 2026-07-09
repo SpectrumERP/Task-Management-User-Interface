@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { authService } from '@/services/authService';
+import { apiService } from '@/services/apiService';
 
 interface User {
   id: string;
@@ -19,6 +20,8 @@ interface AuthState {
   login: (loginId: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  accessibleForms: number[] | null;
+  fetchAccessibleForms: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -28,6 +31,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true,
   isSessionTimeoutOpen: false,
+  accessibleForms: null,
+
+  fetchAccessibleForms: async () => {
+    try {
+      const res = await apiService.get<{ success: boolean; data: { formNo: number }[] }>('/api/globaldata/forms/task-management-menu');
+      if (res?.success && Array.isArray(res.data)) {
+        set({ accessibleForms: res.data.map(item => item.formNo) });
+      } else {
+        set({ accessibleForms: [] });
+      }
+    } catch (error) {
+      console.error("Failed to fetch menu access data", error);
+      set({ accessibleForms: [] });
+    }
+  },
 
   login: async (loginId, password) => {
     try {
@@ -62,7 +80,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (session) {
         if (authService.isTokenExpired(session.token)) {
           await authService.clearSession();
-          set({ user: null, company: null, token: null, isAuthenticated: false });
+          set({ user: null, company: null, token: null, isAuthenticated: false, accessibleForms: null });
         } else {
           set({
             user: session.user,
@@ -72,7 +90,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           });
         }
       } else {
-        set({ user: null, company: null, token: null, isAuthenticated: false });
+        set({ user: null, company: null, token: null, isAuthenticated: false, accessibleForms: null });
       }
     } catch (error) {
       console.error('Auth check failed:', error);

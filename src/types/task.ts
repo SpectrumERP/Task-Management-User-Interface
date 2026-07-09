@@ -111,4 +111,5 @@ export interface Task {
   customFields?: { customFieldNo: number | string; fieldValue: string }[];
   createdDate?: string;
   createdBy?: { displayName: string };
+  roadBlock?: string;
 }
