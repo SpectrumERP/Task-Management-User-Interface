@@ -302,7 +302,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const parentTaskNoQuery = searchParams.get('parentTaskNo');
   const parentTaskNo = parentTaskNoQuery ? parseInt(parentTaskNoQuery) : (initialData?.parent_task_No || null);
   const isSubTask = parentTaskNo !== null && parentTaskNo > 0;
-  
+
   const accessibleForms = useAuthStore(state => state.accessibleForms) || [];
 
   const { addTask, updateTask, fetchFillValues, selectedFolder, tasks } = useTaskStore();
@@ -918,6 +918,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               id: Date.now().toString() + index,
               operTaskNo: null,
               title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
+              type_No: item.operTaskTypeNo?.toString() || item.typeNo?.toString() || '',
               description: '',
               ownerLoginNo: '',
               endDate: '',
@@ -932,6 +933,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               taskNo: -(Date.now() + index),
               code: '',
               title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
+              type_No: item.operTaskTypeNo?.toString() || item.typeNo?.toString() || '',
               status: 'Draft',
               ownerLoginNo: '',
               assignedDisplayName: '-',
