@@ -128,8 +128,7 @@ export function MultiUserCombobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content 
+      <PopoverPrimitive.Content 
           className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto" 
           align="start"
         >
@@ -193,7 +192,6 @@ export function MultiUserCombobox({
           </CommandList>
         </Command>
         </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
     </Popover>
   )
 }
