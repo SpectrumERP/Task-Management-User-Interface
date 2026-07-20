@@ -29,6 +29,7 @@ interface DocumentComboboxProps {
   initialLabel?: string
   isClearable?: boolean
   error?: boolean
+  modal?: boolean
 }
 
 export function DocumentCombobox({
@@ -43,6 +44,7 @@ export function DocumentCombobox({
   initialLabel,
   isClearable = true,
   error = false,
+  modal = false,
 }: DocumentComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -138,7 +140,7 @@ export function DocumentCombobox({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -175,7 +177,7 @@ export function DocumentCombobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-        className="z-[100] w-[300px] sm:w-[400px] md:w-[600px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+        className="z-[100] w-[300px] sm:w-[400px] md:w-[600px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         align="start"
       >
         <Command className="rounded-xl border-slate-200" shouldFilter={false}>

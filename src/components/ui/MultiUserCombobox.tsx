@@ -22,6 +22,7 @@ interface MultiUserComboboxProps {
   placeholder?: string
   className?: string
   disabled?: boolean
+  modal?: boolean
 }
 
 export function MultiUserCombobox({
@@ -29,6 +30,7 @@ export function MultiUserCombobox({
   onChange,
   className,
   disabled = false,
+  modal = false,
 }: MultiUserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -92,7 +94,7 @@ export function MultiUserCombobox({
   const isAllSelected = value.includes('All') || value.length === 0;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -128,7 +130,7 @@ export function MultiUserCombobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content 
-          className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none" 
+          className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto" 
           align="start"
         >
         <Command className="rounded-xl border-slate-200">

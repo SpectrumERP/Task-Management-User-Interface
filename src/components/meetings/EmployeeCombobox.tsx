@@ -33,6 +33,7 @@ interface EmployeeComboboxProps {
   isClearable?: boolean
   error?: boolean
   onResolve?: (employee: any) => void
+  modal?: boolean
 }
 
 export function EmployeeCombobox({
@@ -45,6 +46,7 @@ export function EmployeeCombobox({
   isClearable = true,
   error = false,
   onResolve,
+  modal = false,
 }: EmployeeComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [options, setOptions] = React.useState<EmployeeResponse[]>([])
@@ -145,7 +147,7 @@ export function EmployeeCombobox({
   }, [search, open])
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -181,7 +183,7 @@ export function EmployeeCombobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content 
-        className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
+        className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
         align="start"
       >
         <Command className="rounded-xl border-slate-200" shouldFilter={false}>

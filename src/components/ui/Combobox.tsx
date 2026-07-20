@@ -30,6 +30,7 @@ interface ComboboxProps {
   isClearable?: boolean
   onAddNew?: () => void
   addNewLabel?: string
+  modal?: boolean
 }
 
 export function Combobox({
@@ -44,13 +45,14 @@ export function Combobox({
   isClearable = true,
   onAddNew,
   addNewLabel = "Add New",
+  modal = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
   const selectedOption = options.find((option) => option.value === value)
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -84,7 +86,7 @@ export function Combobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content 
-          className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
+          className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
           align="start"
         >
         <Command className="rounded-xl border-slate-200">
