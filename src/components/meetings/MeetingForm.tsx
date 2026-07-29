@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
+import { useFormRights } from '@/hooks/useFormRights';
 import { getMeetingSchema, MeetingNotesFormData } from '@/types/meeting';
 import { attachmentService } from '@/services/attachmentService';
 import { UploadCloud, Image as ImageIcon, Trash, RefreshCw, AlertCircle, } from 'lucide-react';
@@ -133,9 +134,10 @@ function TextareaWithPopover({
 }
 
 export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initialData?: any, onComplete?: () => void, meetingNotesNo?: number }) {
+  const navigate = useNavigate();
+  const { isSave, isUpdate } = useFormRights(1559);
   const { company: authCompanies } = useAuthStore();
   const companyNoStr = authCompanies?.[0]?.CompanyNo?.toString() || authCompanies?.[0]?.companyNo?.toString() || '1';
-  const navigate = useNavigate();
 
   // Task Masters for Action Items
   const { fillValues: taskFillValues, fetchFillValues: fetchTaskFillValues } = useTaskStore();
@@ -493,9 +495,11 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
         <div className="flex items-center gap-2 self-end sm:self-auto">
           <Button type="button" variant="outline" size="sm" className="h-8 rounded-lg font-semibold shadow-sm text-xs" onClick={() => navigate('/meetings')}>Cancel</Button>
-          <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-8 rounded-lg bg-[#006699] hover:bg-[#005580] text-white font-bold shadow-md shadow-[#006699]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
-            {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
-          </Button>
+          {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
+            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-8 rounded-lg bg-[#006699] hover:bg-[#005580] text-white font-bold shadow-md shadow-[#006699]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
+              {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
+            </Button>
+          )}
         </div>
       </div>
 

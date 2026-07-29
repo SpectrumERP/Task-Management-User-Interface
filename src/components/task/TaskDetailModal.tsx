@@ -5,6 +5,7 @@ import { attachmentService } from '@/services/attachmentService';
 import { Task } from '@/types/task';
 import { TaskActivity } from './TaskActivity';
 import { Button } from '@/components/ui/button';
+import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   Edit,
@@ -60,6 +61,7 @@ const reverseBenefitFrequencyMap: Record<number, string> = {
 
 export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: TaskDetailModalProps) {
   const navigate = useNavigate();
+  const { isUpdate } = useFormRights(1547);
   const { fillValues } = useTaskStore();
   const [task, setTask] = useState<Task | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
@@ -261,21 +263,32 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
           <div className="flex items-center gap-0.5 pr-8">
             {task && (
-              <Button
-                type="button"
-                onClick={() => {
-                  if (task.categoryName?.toLowerCase() === 'deal monitor') {
-                    navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
-                  } else {
-                    navigate(`/task/${task.taskNo}`);
-                  }
-                  onClose();
-                }}
-                className="h-8 text-xs font-medium normal-case gap-0.5 px-4 rounded-xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-md shadow-[#006699]/10 hover:scale-[1.02] active:scale-95 transition-all"
-              >
-                <Edit size={13} strokeWidth={2.5} />
-                Edit Task
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                  className="h-8 text-xs font-medium normal-case text-slate-500 hover:text-slate-700 hover:bg-slate-100/50 rounded-xl px-4 transition-colors"
+                >
+                  Close
+                </Button>
+                {isUpdate && (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (task.categoryName?.toLowerCase() === 'deal monitor') {
+                        navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
+                      } else {
+                        navigate(`/task/${task.taskNo}`);
+                      }
+                      onClose();
+                    }}
+                    className="h-8 text-xs font-medium normal-case gap-0.5 px-4 rounded-xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-md shadow-[#006699]/10 hover:scale-[1.02] active:scale-95 transition-all"
+                  >
+                    <Edit size={13} strokeWidth={2.5} />
+                    Edit Task
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>

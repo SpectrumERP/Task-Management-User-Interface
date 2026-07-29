@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronRight, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
 import { useState, useEffect, useCallback } from 'react';
+import { useFormRights } from '@/hooks/useFormRights';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import {
@@ -50,6 +51,8 @@ export default function TaskDetail() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isNotFoundDialogOpen, setIsNotFoundDialogOpen] = useState(false);
   const [notFoundMessage, setNotFoundMessage] = useState("Task not found.");
+
+  const { isSave, isUpdate, isDelete } = useFormRights(1547);
 
   // Get status from query params if new task
   const queryParams = new URLSearchParams(location.search);
@@ -272,25 +275,28 @@ export default function TaskDetail() {
                 <X size={16} />
                 <span className="hidden sm:inline">Cancel</span>
               </Button>
-              <Button
-                type="submit"
-                form="task-form"
-                disabled={isSaving}
-                className="rounded-xl px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
-                  </>
-                )}
-              </Button>
-              {isEdit && (
+              
+              {(isEdit ? isUpdate : isSave) && (
+                <Button
+                  type="submit"
+                  form="task-form"
+                  disabled={isSaving}
+                  className="rounded-xl px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
+                    </>
+                  )}
+                </Button>
+              )}
+              {isEdit && isDelete && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button

@@ -303,7 +303,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const parentTaskNo = parentTaskNoQuery ? parseInt(parentTaskNoQuery) : (initialData?.parent_task_No || null);
   const isSubTask = parentTaskNo !== null && parentTaskNo > 0;
 
-  const accessibleForms = useAuthStore(state => state.accessibleForms) || [];
+  const formRights = useAuthStore(state => state.formRights) || {};
+  const [activeMasterType, setActiveMasterType] = useState<string | null>(null);
 
   const { addTask, updateTask, fetchFillValues, selectedFolder, tasks } = useTaskStore();
   const [localParentTask, setLocalParentTask] = useState<Task | null>(null);
@@ -353,8 +354,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         type_No: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
         operTaskTypeNo: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
         category_No: st.category?.operTaskCategoryNo || st.operTaskCategoryNo || '',
-        priority_No: st.priority?.operTaskPriorityNo || st.operTaskPriorityNo || '',
-        status_No: st.status?.operTaskStatusNo || st.operTaskStatusNo || ''
+        priority_No: st.priority?.operTaskPriorityNo || st.priority_No || '',
+        status_No: st.status?.operTaskStatusNo || st.status_No || ''
       })));
     } else {
       setLocalSubtasks(initialData?.taskNo ? tasks.filter(t => t.parent_task_No === initialData.taskNo) : []);
@@ -415,7 +416,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
-  const [activeMasterType, setActiveMasterType] = useState<'category' | 'type' | 'priority' | 'folder' | 'location' | null>(null);
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
 
   const handleMasterCreateSuccess = async (createdId: string, label: string) => {
@@ -1817,7 +1817,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       }}
                       placeholder="Select category"
                       className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={accessibleForms.includes(1561) ? () => {
+                      isClearable={false}
+                      onAddNew={formRights[1561]?.isSave ? () => {
                         setActiveMasterType('category');
                         setIsMasterCreateOpen(true);
                       } : undefined}
@@ -1839,7 +1840,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={field.onChange}
                       placeholder="Select type"
                       className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={accessibleForms.includes(1560) ? () => {
+                      onAddNew={formRights[1560]?.isSave ? () => {
                         setActiveMasterType('type');
                         setIsMasterCreateOpen(true);
                       } : undefined}
@@ -1861,7 +1862,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       placeholder="Select folder"
                       className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                       isClearable={false}
-                      onAddNew={accessibleForms.includes(1542) ? () => {
+                      onAddNew={formRights[1542]?.isSave ? () => {
                         setActiveMasterType('folder');
                         setIsMasterCreateOpen(true);
                       } : undefined}
@@ -1883,7 +1884,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onChange={field.onChange}
                       placeholder="Select priority"
                       className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={accessibleForms.includes(1543) ? () => {
+                      onAddNew={formRights[1543]?.isSave ? () => {
                         setActiveMasterType('priority');
                         setIsMasterCreateOpen(true);
                       } : undefined}
@@ -1909,10 +1910,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     name="company"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox disabled={isSubTask} options={companyOptions} value={field.value} onChange={field.onChange} placeholder="Select company" className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""} onAddNew={accessibleForms.includes(1565) ? () => {
-                        setActiveMasterType('task-company' as any);
+                      <Combobox disabled={isSubTask} options={companyOptions} value={field.value} onChange={field.onChange} placeholder="Select company" className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""} onAddNew={formRights[1565]?.isSave ? () => {
+                        setActiveMasterType('task-company');
                         setIsMasterCreateOpen(true);
                       } : undefined}
+                        addNewLabel="Add New Company"
                       />
                     )}
                   />
@@ -1930,7 +1932,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         onChange={field.onChange}
                         placeholder="Select location"
                         className={form.formState.errors.location_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        onAddNew={accessibleForms.includes(1541) ? () => {
+                        onAddNew={formRights[1541]?.isSave ? () => {
                           setActiveMasterType('location');
                           setIsMasterCreateOpen(true);
                         } : undefined}
@@ -2416,10 +2418,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         }
                           value={field.value}
                           onChange={field.onChange}
-                          placeholder="Select benefit type"
+                          placeholder="Select business benefit type"
                           className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          onAddNew={accessibleForms.includes(1545) ? () => {
-                            setActiveMasterType('benefit-type' as any);
+                          onAddNew={formRights[1545]?.isSave ? () => {
+                            setActiveMasterType('benefit-type');
                             setIsMasterCreateOpen(true);
                           } : undefined}
                         />
