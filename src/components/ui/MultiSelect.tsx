@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, X, Plus } from "lucide-react"
+import { Check, ChevronsUpDown, X } from "lucide-react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/lib/utils"

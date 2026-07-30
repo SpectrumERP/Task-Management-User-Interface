@@ -66,10 +66,6 @@ export function TaskFilter({
   const authCompanies = useAuthStore((state) => state.company);
   const authUser = useAuthStore((state) => state.user);
   const allTasks = useTaskStore(state => state.allTasks);
-  const tasks = useTaskStore(state => state.tasks);
-  const fetchTasks = useTaskStore(state => state.fetchTasks);
-  const setFilterState = useTaskStore(state => state.setFilterState);
-
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     if (allTasks) {

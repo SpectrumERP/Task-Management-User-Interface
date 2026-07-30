@@ -1178,7 +1178,7 @@ export function MasterManager({ type }: MasterManagerProps) {
   const [beSuggestions, setBeSuggestions] = useState<any[]>([]);
   const [showBeSuggestions, setShowBeSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const beSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const beSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (type !== 'company' || !name || name.trim().length < 2) {
@@ -5792,7 +5792,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                       {company.code}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-xs font-medium text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                  <td className={cn("px-4 py-3 text-xs font-medium text-slate-900", isUpdate && "hover:text-[#006699] hover:underline cursor-pointer")} onClick={() => isUpdate && handleEditClick(company)}>
                                     {company.name}
                                   </td>
                                   <td className="px-4 py-3 text-xs font-semibold text-slate-600">
@@ -5816,22 +5816,26 @@ export function MasterManager({ type }: MasterManagerProps) {
                                   </td>
                                   <td className="px-4 py-3 text-xs text-center pr-5">
                                     <div className="flex items-center justify-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleEditClick(company)}
-                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
-                                      >
-                                        <Edit size={13} />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleDeleteClick(company.id)}
-                                        className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
-                                      >
-                                        <Trash2 size={13} />
-                                      </Button>
+                                      {isUpdate && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleEditClick(company)}
+                                          className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center"
+                                        >
+                                          <Edit size={13} />
+                                        </Button>
+                                      )}
+                                      {isDelete && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleDeleteClick(company.id)}
+                                          className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center"
+                                        >
+                                          <Trash2 size={13} />
+                                        </Button>
+                                      )}
                                     </div>
                                   </td>
                                 </tr>
@@ -5879,22 +5883,26 @@ export function MasterManager({ type }: MasterManagerProps) {
 
                                     {/* Actions Button */}
                                     <div className="flex items-center gap-0.5 shrink-0">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleEditClick(company)}
-                                        className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
-                                      >
-                                        <Edit size={11} />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleDeleteClick(company.id)}
-                                        className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
-                                      >
-                                        <Trash2 size={11} />
-                                      </Button>
+                                      {isUpdate && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleEditClick(company)}
+                                          className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-105 transition-colors flex items-center justify-center"
+                                        >
+                                          <Edit size={11} />
+                                        </Button>
+                                      )}
+                                      {isDelete && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleDeleteClick(company.id)}
+                                          className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center"
+                                        >
+                                          <Trash2 size={11} />
+                                        </Button>
+                                      )}
                                     </div>
                                   </div>
 
@@ -5978,7 +5986,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                           <td className="px-4 py-3 text-xs font-medium text-slate-700 pl-5">
                                             {contact.contactPersonName || contact.contactName || contact.name}
                                           </td>
-                                          <td className="px-4 py-3 text-xs font-medium text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>
+                                          <td className={cn("px-4 py-3 text-xs font-medium text-slate-900", isUpdate && "hover:text-[#006699] hover:underline cursor-pointer")} onClick={() => isUpdate && handleEditClick(company)}>
                                             {company.name}
                                           </td>
                                           <td className="px-4 py-3 text-xs font-semibold text-slate-600">
@@ -6004,14 +6012,16 @@ export function MasterManager({ type }: MasterManagerProps) {
                                             </span>
                                           </td>
                                           <td className="px-4 py-3 text-xs text-center pr-5">
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => handleEditClick(company)}
-                                              className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
-                                            >
-                                              <Edit size={13} />
-                                            </Button>
+                                            {isUpdate && (
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleEditClick(company)}
+                                                className="h-8 w-8 rounded-xl text-slate-400 hover:text-[#006699] hover:bg-slate-100 mx-auto flex items-center justify-center"
+                                              >
+                                                <Edit size={13} />
+                                              </Button>
+                                            )}
                                           </td>
                                         </tr>
                                       ))
@@ -6065,8 +6075,7 @@ export function MasterManager({ type }: MasterManagerProps) {
 
                                         <div className="border-t border-slate-100 pt-2 text-[10px] font-semibold text-slate-500 space-y-0.5">
                                           <div className="flex justify-between">
-                                            <span className="text-slate-400">Business Entity:</span>
-                                            <span className="text-slate-900 font-medium hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</span>
+                                            <span className={cn("text-slate-900 font-medium", isUpdate && "hover:text-[#006699] hover:underline cursor-pointer")} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</span>
                                           </div>
                                           <div className="flex justify-between">
                                             <span className="text-slate-400">Phone:</span>
@@ -6080,15 +6089,17 @@ export function MasterManager({ type }: MasterManagerProps) {
 
                                         <div className="pt-2 mt-auto flex items-center justify-between border-t border-slate-100">
                                           <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleEditClick(company)}
-                                            className="h-7 rounded-lg text-slate-500 hover:text-[#006699] hover:bg-slate-100 text-[10px] font-medium flex items-center gap-1"
-                                          >
-                                            <Edit size={11} />
-                                            Edit
-                                          </Button>
+                                          {isUpdate && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => handleEditClick(company)}
+                                              className="h-7 rounded-lg text-slate-500 hover:text-[#006699] hover:bg-slate-100 text-[10px] font-medium flex items-center gap-1"
+                                            >
+                                              <Edit size={11} />
+                                              Edit
+                                            </Button>
+                                          )}
                                         </div>
                                       </Card>
                                     );
@@ -6139,7 +6150,7 @@ export function MasterManager({ type }: MasterManagerProps) {
                                             {company.name ? company.name.substring(0, 2) : 'BE'}
                                           </div>
                                           <div>
-                                            <h4 className="text-xs font-medium text-slate-900 hover:text-[#006699] hover:underline cursor-pointer" onClick={() => handleEditClick(company)}>{company.name}</h4>
+                                            <h4 className={cn("text-xs font-medium text-slate-900", isUpdate && "hover:text-[#006699] hover:underline cursor-pointer")} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</h4>
                                             <p className="text-[9px] font-medium text-slate-400 normal-case">{company.code} • {company.type}</p>
                                           </div>
                                         </div>

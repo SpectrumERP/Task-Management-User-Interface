@@ -3330,7 +3330,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       <MasterCreateDialog
         open={isMasterCreateOpen}
         onOpenChange={setIsMasterCreateOpen}
-        type={activeMasterType}
+        type={activeMasterType as any}
         companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
         fillValues={fillValues}
         onSuccess={handleMasterCreateSuccess}
