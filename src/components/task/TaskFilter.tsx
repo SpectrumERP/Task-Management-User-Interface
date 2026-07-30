@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { FIELD_TEXT_STYLE } from '@/lib/fieldStyles';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { Combobox } from '@/components/ui/Combobox';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserType } from '@/types/enums';
 import {
@@ -64,6 +65,22 @@ export function TaskFilter({
 }: TaskFilterProps) {
   const authCompanies = useAuthStore((state) => state.company);
   const authUser = useAuthStore((state) => state.user);
+  const allTasks = useTaskStore(state => state.allTasks);
+  const tasks = useTaskStore(state => state.tasks);
+  const fetchTasks = useTaskStore(state => state.fetchTasks);
+  const setFilterState = useTaskStore(state => state.setFilterState);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (allTasks) {
+      allTasks.forEach(task => {
+        if (task.status) {
+          counts[task.status] = (counts[task.status] || 0) + 1;
+        }
+      });
+    }
+    return counts;
+  }, [allTasks]);
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1).toString();
   const isGeneralUser = Number(authUser?.UserType || authUser?.userType) === UserType.General;
 
@@ -704,12 +721,80 @@ export function TaskFilter({
           </div>
         </Card>
 
+        {/* Status Filter Buttons */}
+        <div className="flex flex-wrap items-center gap-2 mt-3 px-1">
+          {['Pending', 'Open', 'Draft', 'In-Progress', 'In-Review', 'Reopen', 'Completed', 'Closed'].map(statusName => {
+            const s = fillValues?.status?.find(st =>
+              st.Status === statusName ||
+              st.Status.toLowerCase() === statusName.toLowerCase() ||
+              (statusName === 'In-Progress' && st.Status === 'In-Progess') ||
+              (statusName === 'In-Progress' && st.Status === 'In Progress')
+            );
+
+            let count = 0;
+            if (statusName === 'Pending') {
+              const pendingStatuses = ['Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
+              count = Object.keys(statusCounts).reduce((sum, key) => {
+                if (pendingStatuses.includes(key)) return sum + statusCounts[key];
+                return sum;
+              }, 0);
+            } else {
+              count = statusCounts[s ? s.Status : statusName] || statusCounts[statusName] || 0;
+            }
+
+            const statusNoStr = statusName === 'Pending' ? 'PendingGroup' : (s ? s.StatusNo.toString() : statusName);
+            const currentStatusStr = String(watch('operTaskStatusNo') || '');
+            const activeStatuses = currentStatusStr ? currentStatusStr.split(',') : [];
+            const isActive = activeStatuses.includes(statusNoStr);
+            const anyActive = activeStatuses.length > 0;
+
+            // If a status is selected, ONLY show the active ones
+            if (anyActive && !isActive) return null;
+
+            const baseClass = "rounded-full h-7 px-3 text-[11px] font-medium transition-colors border";
+            let colorClass = "";
+
+            if (statusName === 'Completed' || statusName === 'Closed') {
+              colorClass = isActive ? "border-green-500 bg-green-550 text-white shadow-sm" : "border-green-400 text-green-700 hover:bg-green-50";
+            } else if (statusName === 'In-Progress' || statusName === 'In-Review') {
+              colorClass = isActive ? "border-blue-500 bg-blue-500 text-white shadow-sm" : "border-blue-400 text-blue-700 hover:bg-blue-50";
+            } else if (statusName === 'Pending' || statusName === 'Open' || statusName === 'Draft' || statusName === 'Reopen') {
+              colorClass = isActive ? "border-orange-500 bg-orange-500 text-white shadow-sm" : "border-orange-400 text-orange-700 hover:bg-orange-50";
+            } else {
+              colorClass = isActive ? "border-[#006699] bg-[#e1ecf7] text-[#006699] shadow-sm" : "border-slate-200 text-slate-600 hover:bg-slate-50";
+            }
+
+            return (
+              <Button
+                key={statusName}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  let newActive = [...activeStatuses];
+                  if (isActive) {
+                    newActive = newActive.filter(x => x !== statusNoStr);
+                  } else {
+                    newActive = [statusNoStr]; // Buttons are quick-select, so they replace if not active
+                  }
+                  setValue('operTaskStatusNo', newActive.join(','));
+                  handleSubmit(onSubmit)();
+                }}
+                className={cn(baseClass, colorClass)}
+              >
+                {statusName} <span className="ml-1.5 opacity-70 text-[10px]">({count})</span>
+                {isActive && <X size={12} className="ml-1 -mr-1 opacity-80 shrink-0" />}
+              </Button>
+            );
+          })}
+        </div>
+
         {/* Collapsible Unified Filters Grid (Floating Popup Card Overlay) */}
         <div className={cn(
           "absolute left-0 right-0 top-full mt-2 transition-all duration-300 ease-out origin-top z-[100] transform scale-100 opacity-100 translate-y-0",
           !isFiltersOpen && "scale-95 opacity-0 pointer-events-none -translate-y-2 hidden"
         )}>
-          <Card className="border border-slate-200/80 shadow-2xl bg-white/95 backdrop-blur-md rounded-[24px] p-6 w-full max-h-[80vh] flex flex-col overflow-hidden">
+          <Card className="border border-slate-200/80 shadow-2xl bg-white/95 backdrop-blur-md rounded-[24px] p-6 w-full max-h-[calc(100vh-220px)] flex flex-col overflow-hidden">
             {/* Header of the popup filter */}
             <div className="pb-3 border-b border-slate-100 flex items-center justify-between shrink-0 mb-4">
               <span className="text-xs font-medium text-slate-800 normal-case flex items-center gap-0.5">
@@ -727,7 +812,7 @@ export function TaskFilter({
             </div>
 
             {/* Scrollable Fields Wrapper */}
-            <div className="overflow-y-auto pr-1.5 scrollbar-thin flex-1 max-h-[50vh] space-y-4 pb-2">
+            <div className="overflow-y-auto pr-1.5 scrollbar-thin flex-1 space-y-4 pb-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
                 {/* Status */}
@@ -740,7 +825,12 @@ export function TaskFilter({
                     name="operTaskStatusNo"
                     control={control}
                     render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.status || []).map(s => ({ value: s.StatusNo.toString(), label: s.Status }))}
+                      <MultiSelect 
+                        value={field.value ? field.value.split(',') : []} 
+                        onChange={(vals) => {
+                          field.onChange(vals.length > 0 ? vals.join(',') : '');
+                        }} 
+                        options={(fillValues?.status || []).map(s => ({ value: s.StatusNo.toString(), label: s.Status }))}
                         placeholder="All Status"
                         className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
                       />

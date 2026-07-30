@@ -179,7 +179,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       // if (searchParamsCamel.title !== undefined) searchParamsPascal.Title = searchParamsCamel.title;
       if (searchParamsCamel.operTaskCategoryNo !== undefined) searchParamsPascal.OperTaskCategoryNo = Number(searchParamsCamel.operTaskCategoryNo);
       if (searchParamsCamel.operTaskPriorityNo !== undefined) searchParamsPascal.OperTaskPriorityNo = Number(searchParamsCamel.operTaskPriorityNo);
-      if (searchParamsCamel.operTaskStatusNo !== undefined) searchParamsPascal.OperTaskStatusNo = Number(searchParamsCamel.operTaskStatusNo);
+      
+      const rawStatusNo = searchParamsCamel.operTaskStatusNo;
+      const statusNoStr = typeof rawStatusNo === 'string' ? rawStatusNo : (rawStatusNo !== undefined && rawStatusNo !== null ? String(rawStatusNo) : undefined);
+      const isPendingGroup = statusNoStr === 'PendingGroup';
+      const isMultiStatus = statusNoStr !== undefined && statusNoStr.includes(',');
+
+      if (!isPendingGroup && !isMultiStatus && statusNoStr !== undefined && statusNoStr !== '') {
+          searchParamsPascal.OperTaskStatusNo = Number(statusNoStr);
+      }
+      
       if (searchParamsCamel.operTaskLocationNo !== undefined) searchParamsPascal.OperTaskLocationNo = Number(searchParamsCamel.operTaskLocationNo);
       if (searchParamsCamel.operTaskTypeNo !== undefined) searchParamsPascal.OperTaskTypeNo = Number(searchParamsCamel.operTaskTypeNo);
       if (searchParamsCamel.ownerLoginNo !== undefined) searchParamsPascal.OwnerLoginNo = Number(searchParamsCamel.ownerLoginNo);
@@ -275,6 +284,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           check_list: [],
           task_comments: []
         }));
+        
+        // Apply PendingGroup filter locally if requested
+        if (isPendingGroup) {
+          const pendingStatuses = ['Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
+          mappedTasks = mappedTasks.filter(task => pendingStatuses.includes(task.status));
+        } else if (isMultiStatus) {
+          const selectedStatusIds = statusNoStr!.split(',').map(Number);
+          mappedTasks = mappedTasks.filter(task => task.status_No !== null && selectedStatusIds.includes(task.status_No));
+        }
+
         // Apply current search keyword if any
         let filteredTasks = mappedTasks;
         const kw = get().searchKeyword.toLowerCase();
