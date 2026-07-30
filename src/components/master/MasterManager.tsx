@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useFormRights } from '@/hooks/useFormRights';
 import {
   LocationMaster
 } from '@/store/useMasterStore';
@@ -78,6 +79,39 @@ export function MasterManager({ type }: MasterManagerProps) {
   const isNew = location.pathname.endsWith('/new');
   const isEdit = !!id;
   const isFormPage = isNew || isEdit;
+
+  const typeToFormNoMap: Record<string, number> = {
+    'category': 1561,
+    'type': 1560,
+    'priority': 1543,
+    'folder': 1542,
+    'user-group': 1546,
+    'benefit-type': 1545,
+    'location': 1541,
+    'vessel': 1549,
+    'port': 1563,
+    'business-entity-type': 1564,
+    'company': 1550,
+    'task-company': 1565,
+    'country': 14,
+    'state': 13,
+    'city': 12,
+    'meeting-category': 1561,
+    'meeting-type': 1560,
+  };
+  const formNo = typeToFormNoMap[type];
+  const { isSave, isUpdate, isDelete } = useFormRights(formNo);
+
+  useEffect(() => {
+    if (isNew && !isSave) {
+      toast.error('You do not have permission to create records.', { id: 'no-create-permission' });
+      navigate(`/master/${type}`, { replace: true });
+    }
+    if (isEdit && !isUpdate) {
+      toast.error('You do not have permission to update records.', { id: 'no-update-permission' });
+      navigate(`/master/${type}`, { replace: true });
+    }
+  }, [isNew, isEdit, isSave, isUpdate, navigate, type]);
 
   const { fillValues } = useTaskStore();
   const { company: authCompanies } = useAuthStore();
@@ -1141,6 +1175,40 @@ export function MasterManager({ type }: MasterManagerProps) {
 
   // Form states matching schemas
   const [name, setName] = useState('');
+  const [beSuggestions, setBeSuggestions] = useState<any[]>([]);
+  const [showBeSuggestions, setShowBeSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const beSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (type !== 'company' || !name || name.trim().length < 2) {
+      setBeSuggestions([]);
+      return;
+    }
+    
+    if (beSearchTimeout.current) {
+      clearTimeout(beSearchTimeout.current);
+    }
+    
+    beSearchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await apiService.get<any>(`/api/master/business-entities?BusinessEntityName=${encodeURIComponent(name)}`);
+        if (res && res.data) {
+           setBeSuggestions(res.data);
+           setHighlightedIndex(-1);
+        } else if (Array.isArray(res)) {
+           setBeSuggestions(res);
+           setHighlightedIndex(-1);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 300);
+    
+    return () => {
+      if (beSearchTimeout.current) clearTimeout(beSearchTimeout.current);
+    };
+  }, [name, type]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Category extra fields
@@ -3173,17 +3241,64 @@ export function MasterManager({ type }: MasterManagerProps) {
             </div>
 
             {/* Business Entity Name */}
-            <div className="space-y-0 md:col-span-2">
+            <div className="space-y-0 md:col-span-2 relative">
               <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Business Entity Name <span className="text-red-500">*</span></label>
-              <Input placeholder="Enter Business Entity Name" value={name} maxLength={100} onChange={(e) => {
-                setName(e.target.value);
-                if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-              }}
-                className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                  errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+              <div className="relative">
+                <Input placeholder="Enter Business Entity Name" value={name} maxLength={100} onChange={(e) => {
+                  setName(e.target.value);
+                  setShowBeSuggestions(true);
+                  if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                }}
+                  onFocus={() => {
+                    if (name.length >= 2) setShowBeSuggestions(true);
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowBeSuggestions(false), 200);
+                  }}
+                  onKeyDown={(e) => {
+                    if (!showBeSuggestions || beSuggestions.length === 0) return;
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setHighlightedIndex(prev => (prev < beSuggestions.length - 1 ? prev + 1 : prev));
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setHighlightedIndex(prev => (prev > 0 ? prev - 1 : prev));
+                    } else if (e.key === 'Enter') {
+                      if (highlightedIndex >= 0 && highlightedIndex < beSuggestions.length) {
+                        e.preventDefault();
+                        const be = beSuggestions[highlightedIndex];
+                        setName(be.businessEntityName || be.BusinessEntityName || be.name || '');
+                        setShowBeSuggestions(false);
+                      }
+                    }
+                  }}
+                  className={cn(
+                    "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                    errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                  )}
+                />
+                {showBeSuggestions && beSuggestions.length > 0 && (
+                  <div className="absolute z-[100] w-full mt-1 bg-white rounded-md border border-slate-200 shadow-lg max-h-48 overflow-auto">
+                    {beSuggestions.map((be: any, idx) => (
+                      <div 
+                        key={idx} 
+                        className={cn(
+                          "px-3 py-2 text-sm cursor-pointer text-slate-700",
+                          idx === highlightedIndex ? "bg-slate-100" : "hover:bg-slate-100"
+                        )}
+                        onMouseEnter={() => setHighlightedIndex(idx)}
+                        onMouseDown={(e) => {
+                          e.preventDefault(); 
+                          setName(be.businessEntityName || be.BusinessEntityName || be.name || '');
+                          setShowBeSuggestions(false);
+                        }}
+                      >
+                        {be.businessEntityName || be.BusinessEntityName || be.name}
+                      </div>
+                    ))}
+                  </div>
                 )}
-              />
+              </div>
               {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
             </div>
 
@@ -4097,7 +4212,7 @@ export function MasterManager({ type }: MasterManagerProps) {
         {/* Standard Name Input */}
         {type !== 'task-company' && type !== 'meeting-category' && type !== 'meeting-type' && (
           <div className="space-y-0">
-            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">{type.replace(/-/g, ' ')} Name</label>
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">{title.replace(' Master', '')} Name</label>
             <Input placeholder={`Enter ${title.replace(' Master', '').toLowerCase()} name`} value={name} maxLength={50} onChange={(e) => {
               setName(e.target.value);
               if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
@@ -5599,13 +5714,15 @@ export function MasterManager({ type }: MasterManagerProps) {
         )}
 
         {/* Add Record Button */}
-        <Button
-          onClick={handleAddClick}
-          className="h-10 sm:h-11 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] text-white shadow-lg shadow-[#006699]/15 font-medium text-xs normal-case gap-0.5 shrink-0 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center"
-        >
-          <Plus size={14} strokeWidth={3.5} />
-          Add Record
-        </Button>
+        {isSave && (
+          <Button
+            onClick={handleAddClick}
+            className="h-10 sm:h-11 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-[#006699] hover:bg-[#005580] text-white shadow-lg shadow-[#006699]/15 font-medium text-xs normal-case gap-0.5 shrink-0 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center"
+          >
+            <Plus size={14} strokeWidth={3.5} />
+            Add Record
+          </Button>
+        )}
       </div>
 
       {/* Tabular Search Grid Display List */}
@@ -6323,22 +6440,26 @@ export function MasterManager({ type }: MasterManagerProps) {
                           </td>
                           <td className="px-3.5 py-2 text-right pr-4 w-[100px]">
                             <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditClick(item)}
-                                className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-100/60 transition-colors flex items-center justify-center"
-                              >
-                                <Edit size={13} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteClick(item.id)}
-                                className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-650 hover:bg-red-50/50 transition-colors flex items-center justify-center"
-                              >
-                                <Trash2 size={13} />
-                              </Button>
+                              {isUpdate && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditClick(item)}
+                                  className="h-7 w-7 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-100/60 transition-colors flex items-center justify-center"
+                                >
+                                  <Edit size={13} />
+                                </Button>
+                              )}
+                              {isDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteClick(item.id)}
+                                  className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-650 hover:bg-red-50/50 transition-colors flex items-center justify-center"
+                                >
+                                  <Trash2 size={13} />
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>

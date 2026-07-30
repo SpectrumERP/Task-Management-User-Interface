@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useFormRights } from '@/hooks/useFormRights';
 
 import {
   DropdownMenu,
@@ -53,6 +54,7 @@ const COLUMNS: ColumnDef[] = [
 
 export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProps) {
   const navigate = useNavigate();
+  const { isUpdate } = useFormRights(1547);
   const { fillValues } = useTaskStore();
 
   // Initialize visible columns from localStorage or defaults
@@ -431,21 +433,23 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                 {/* Actions */}
                 {visibleColumns.has('actions') && (
                   <td className="px-1.5 py-1 align-middle text-right sticky right-0 z-10 bg-white/90 backdrop-blur-md border-l border-slate-200 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)] group-hover:bg-slate-50/90">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (task.categoryName?.toLowerCase() === 'deal monitor') {
-                          navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
-                        } else {
-                          navigate(`/task/${task.taskNo}`);
-                        }
-                      }}
-                      className="h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center transition-all duration-200"
-                    >
-                      <Edit2 size={14} strokeWidth={2.5} />
-                    </Button>
+                    {isUpdate && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (task.categoryName?.toLowerCase() === 'deal monitor') {
+                            navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
+                          } else {
+                            navigate(`/task/${task.taskNo}`);
+                          }
+                        }}
+                        className="h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center transition-all duration-200"
+                      >
+                        <Edit2 size={14} strokeWidth={2.5} />
+                      </Button>
+                    )}
                   </td>
                 )}
 

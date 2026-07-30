@@ -358,8 +358,8 @@ export function MasterCreateDialog({
         <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin">
           {/* Name / Label */}
           <div className="space-y-0">
-            <Label  className="text-[10px] font-medium text-slate-700 ml-1">{`${type || ''} Name`}</Label>
-            <Input placeholder={`Enter new ${type || ''} name...`} value={name} onChange={(e) => {
+            <Label  className="text-[10px] font-medium text-slate-700 ml-1">{`${getMasterTitle().replace(' Master', '')} Name`}</Label>
+            <Input placeholder={`Enter new ${getMasterTitle().replace(' Master', '').toLowerCase()} name...`} value={name} onChange={(e) => {
                 setName(e.target.value);
                 if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
               }}

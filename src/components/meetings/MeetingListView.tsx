@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useFormRights } from '@/hooks/useFormRights';
 import { toast } from 'sonner';
 
 interface MeetingListViewProps {
@@ -22,6 +23,8 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
 
   const [meetings, setMeetings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { isSave, isUpdate } = useFormRights(1559);
 
   // Filter states
   const [filterTitle, setFilterTitle] = useState('');
@@ -81,9 +84,11 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
         </div>
         <h3 className="text-lg font-medium text-slate-800">No meeting notes found</h3>
         <p className="text-slate-500 text-sm font-medium mb-6">Create a new meeting note to get started.</p>
-        <Button onClick={() => navigate('/meetings/new')} className="bg-[#006699] hover:bg-[#005580]">
-          <Plus className="w-4 h-4 mr-2" /> New Meeting Note
-        </Button>
+        {isSave && (
+          <Button onClick={() => navigate('/meetings/new')} className="bg-[#006699] hover:bg-[#005580]">
+            <Plus className="w-4 h-4 mr-2" /> New Meeting Note
+          </Button>
+        )}
       </Card>
     );
   }
@@ -92,9 +97,11 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
     <div className="h-full flex flex-col min-h-0">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold text-slate-800">Meeting Notes</h1>
-        <Button onClick={() => navigate('/meetings/new')} className="bg-[#006699] hover:bg-[#005580] shadow-md shadow-[#006699]/20">
-          <Plus className="w-4 h-4 mr-2" /> New Meeting
-        </Button>
+        {isSave && (
+          <Button onClick={() => navigate('/meetings/new')} className="bg-[#006699] hover:bg-[#005580] shadow-md shadow-[#006699]/20">
+            <Plus className="w-4 h-4 mr-2" /> New Meeting
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -208,17 +215,19 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                   </span>
                 </td>
                 <td title={meeting.meetingTitle} className="px-3 py-2 align-middle text-right sticky right-0 z-10 bg-white/90 backdrop-blur-md border-l border-slate-200 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)] group-hover:bg-slate-50/90">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/meetings/${meeting.meetingNotesNo || meeting.id}`);
-                    }}
-                    className="h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center transition-all duration-200"
-                  >
-                    <Edit2 size={14} strokeWidth={2.5} />
-                  </Button>
+                  {isUpdate && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/meetings/${meeting.meetingNotesNo || meeting.id}`);
+                      }}
+                      className="h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center transition-all duration-200"
+                    >
+                      <Edit2 size={14} strokeWidth={2.5} />
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}

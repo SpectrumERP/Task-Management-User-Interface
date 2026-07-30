@@ -29,8 +29,10 @@ import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { toast, Toaster } from 'sonner';
 import { DealManager } from '@/components/sales/deals/DealManager';
 import { cleanupExpiredDrafts } from '@/utils/draftCleanup';
+import { useFormRights } from '@/hooks/useFormRights';
 
 function Dashboard() {
+  const { isSave } = useFormRights(1547);
   const [activeTab, setActiveTab] = useState('tasks');
   const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>(() => {
     const saved = localStorage.getItem('glacier_task_view_mode');
@@ -177,7 +179,7 @@ function Dashboard() {
             onFilter={handleFilter}
             viewMode={viewMode}
             onViewModeChange={setViewModeAndStore}
-            onCreateTask={handleCreateTask}
+            onCreateTask={isSave ? handleCreateTask : undefined}
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters(!showFilters)}
           />

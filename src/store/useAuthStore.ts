@@ -10,6 +10,18 @@ interface User {
   [key: string]: any;
 }
 
+interface FormRight {
+  formNo: number;
+  formName: string;
+  formCode: string;
+  formCaption: string;
+  isDelete: boolean;
+  isOpen: boolean;
+  isReport: boolean;
+  isSave: boolean;
+  isUpdate: boolean;
+}
+
 interface AuthState {
   user: User | null;
   company: any[] | null;
@@ -21,6 +33,7 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   accessibleForms: number[] | null;
+  formRights: Record<number, FormRight> | null;
   fetchAccessibleForms: () => Promise<void>;
 }
 
@@ -32,18 +45,32 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   isSessionTimeoutOpen: false,
   accessibleForms: null,
+  formRights: null,
 
   fetchAccessibleForms: async () => {
     try {
-      const res = await apiService.get<{ success: boolean; data: { formNo: number }[] }>('/api/globaldata/forms/task-management-menu');
+      const res = await apiService.get<{ success: boolean; data: FormRight[] }>('/api/globaldata/forms/task-management-menu');
       if (res?.success && Array.isArray(res.data)) {
-        set({ accessibleForms: res.data.map(item => item.formNo) });
+        const rightsRecord: Record<number, FormRight> = {};
+        const accessibleList: number[] = [];
+        
+        res.data.forEach(item => {
+          rightsRecord[item.formNo] = item;
+          if (item.isOpen || item.isReport) {
+            accessibleList.push(item.formNo);
+          }
+        });
+        
+        set({ 
+          accessibleForms: accessibleList,
+          formRights: rightsRecord
+        });
       } else {
-        set({ accessibleForms: [] });
+        set({ accessibleForms: [], formRights: {} });
       }
     } catch (error) {
       console.error("Failed to fetch menu access data", error);
-      set({ accessibleForms: [] });
+      set({ accessibleForms: [], formRights: {} });
     }
   },
 
