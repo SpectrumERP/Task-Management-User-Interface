@@ -747,11 +747,11 @@ export function TaskFilter({
             // If a status is selected, ONLY show the active ones
             if (anyActive && !isActive) return null;
 
-            const baseClass = "rounded-full h-7 px-3 text-[11px] font-medium transition-colors border";
+            const baseClass = "rounded-full h-7 px-3 text-[11px] font-bold transition-colors border";
             let colorClass = "";
 
             if (statusName === 'Completed' || statusName === 'Closed') {
-              colorClass = isActive ? "border-green-500 bg-green-550 text-white shadow-sm" : "border-green-400 text-green-700 hover:bg-green-50";
+              colorClass = isActive ? "border-green-500 bg-green-500 text-white shadow-sm" : "border-green-400 text-green-700 hover:bg-green-50";
             } else if (statusName === 'In-Progress' || statusName === 'In-Review') {
               colorClass = isActive ? "border-blue-500 bg-blue-500 text-white shadow-sm" : "border-blue-400 text-blue-700 hover:bg-blue-50";
             } else if (statusName === 'Pending' || statusName === 'Open' || statusName === 'Draft' || statusName === 'Reopen') {
@@ -821,11 +821,11 @@ export function TaskFilter({
                     name="operTaskStatusNo"
                     control={control}
                     render={({ field }) => (
-                      <MultiSelect 
-                        value={field.value ? field.value.split(',') : []} 
+                      <MultiSelect
+                        value={field.value ? field.value.split(',') : []}
                         onChange={(vals) => {
                           field.onChange(vals.length > 0 ? vals.join(',') : '');
-                        }} 
+                        }}
                         options={(fillValues?.status || []).map(s => ({ value: s.StatusNo.toString(), label: s.Status }))}
                         placeholder="All Status"
                         className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
