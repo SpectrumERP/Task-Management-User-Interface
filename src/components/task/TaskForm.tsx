@@ -55,7 +55,7 @@ const standaloneSubtaskSchema = z.object({
   id: z.string(),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  ownerLoginNo: z.string().min(1, 'Task Owner is required'),
+  ownerLoginNo: z.string().min(1, 'Task Assign To is required'),
   endDate: z.string().optional(),
   completionRemark: z.string().optional(),
   completionDate: z.string().optional(),
@@ -75,8 +75,8 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
   tags: z.array(z.string()).optional().default([]),
   company: z.string().min(1, 'Company is required'),
   location_No: z.string().min(1, 'Location is required'),
-  owner_user_No: z.string().min(1, 'Assigned to is required'),
-  originator_user_No: z.string().min(1, 'Task Owner is required'),
+  owner_user_No: z.string().min(1, 'Task Assigned To is required'),
+  originator_user_No: z.string().min(1, 'Task Assign By is required'),
   status: z.string().min(1, 'Status is required'),
   isPrivate: z.boolean().optional().default(false),
   start_date: z.string().optional(),
@@ -151,7 +151,7 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     id: z.string(),
     title: z.string().min(1, 'Title is required'),
     description: z.string().optional(),
-    ownerLoginNo: z.string().min(1, 'Task Owner is required'),
+    ownerLoginNo: z.string().min(1, 'Task Assign To is required'),
     endDate: z.string().optional(),
     completionRemark: z.string().optional(),
     completionDate: z.string().optional(),
@@ -789,7 +789,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
 
     if (!st.ownerLoginNo || parseInt(st.ownerLoginNo) <= 0) {
-      form.setError(`sub_tasks.${index}.ownerLoginNo`, { type: 'manual', message: 'Owner is required' });
+      form.setError(`sub_tasks.${index}.ownerLoginNo`, { type: 'manual', message: 'Assign To is required' });
       hasError = true;
     } else {
       form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
@@ -1975,14 +1975,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 </div>
                 <div className="space-y-0" id="form-group-owner_user_No">
                   <Label className="text-slate-700 font-medium text-[11px] ml-1">
-                    Task Owner <span className="text-red-500 font-medium">*</span>
+                    Task Assign To <span className="text-red-500 font-medium">*</span>
                   </Label>
                   <Controller
                     name="owner_user_No"
                     control={form.control}
                     render={({ field }) => (
                       <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
-                        placeholder="Select member"
+                        placeholder="Select Assign To"
                         initialLabel={initialData?.assignedDisplayName || undefined}
                         className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                         disabled={isPrivateTask}
@@ -1992,13 +1992,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   {form.formState.errors.owner_user_No && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.owner_user_No.message}</p>}
                 </div>
                 <div className="space-y-0" id="form-group-originator_user_No">
-                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Task Originator <span className="text-red-500 font-medium">*</span></Label>
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Task Assign By <span className="text-red-500 font-medium">*</span></Label>
                   <Controller
                     name="originator_user_No"
                     control={form.control}
                     render={({ field }) => (
                       <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
-                        placeholder="Select member"
+                        placeholder="Select Assign By"
                         initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
                         className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                         isClearable={false}
@@ -2022,7 +2022,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <div className="space-y-0" id="form-group-collaborators">
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-1">
-                        <h4 className="text-[11px] font-medium text-slate-700">Collaborators</h4>
+                        <h4 className="text-[11px] font-medium text-slate-700">Collaborators / Supporters</h4>
                         <div className="flex items-center gap-0.5 mb-2">
                           <Label className="text-slate-700 font-medium text-[11px] font-medium">Team:</Label>
                           <div className="relative flex items-center">
@@ -2107,7 +2107,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             ))}
                             {collabFields.length === 0 && (
                               <tr>
-                                <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators.</td>
+                                <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators / supporters.</td>
                               </tr>
                             )}
                           </tbody>
@@ -2121,7 +2121,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <div className="space-y-0" id="form-group-informed_to">
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-1">
-                        <h4 className="text-[11px] font-medium text-slate-700">Inform To</h4>
+                        <h4 className="text-[11px] font-medium text-slate-700">Report To</h4>
                         <div className="flex items-center gap-0.5 mb-2">
                           <Label className="text-slate-700 font-medium text-[11px] font-medium">Team:</Label>
                           <div className="relative flex items-center">
@@ -2158,7 +2158,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     </div>
                     <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasInformError && "border-red-500 ring-2 ring-red-500/10")}>
                       <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
-                        <table className="w-full text-left text-sm border-collapse">
+                        <table className="w-full text-left text-[11px] border-collapse">
                           <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
                             <tr>
                               <th className="px-3 py-1.5 font-medium text-slate-700">User Name</th>
@@ -2206,7 +2206,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             ))}
                             {informFields.length === 0 && (
                               <tr>
-                                <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No informed users.</td>
+                                <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No report to.</td>
                               </tr>
                             )}
                           </tbody>
@@ -2540,7 +2540,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 w-[180px]">Type</th>
                         <th className="pl-2 pr-0.5 py-0.5 text-[10px] font-medium text-slate-500">Sub-Task Title <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Status</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Task Owner <span className="text-red-500">*</span></th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Task Assign To <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 whitespace-nowrap">Due Date</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 whitespace-nowrap">Completion Date</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 min-w-[180px] max-w-[250px]">Completion Remark</th>
@@ -3417,7 +3417,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 w-[180px]">Type</th>
                         <th className="pl-2 pr-0.5 py-0.5 text-[10px] font-medium text-slate-500">Sub-Task Title <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Status</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Task Owner <span className="text-red-500">*</span></th>
+                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Task Assign To <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 whitespace-nowrap">Due Date</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 whitespace-nowrap">Completion Date</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 min-w-[180px] max-w-[250px]">Completion Remark</th>
@@ -3833,7 +3833,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       completionDate: data.completionDate || null
                     };
                     const response = await apiService.post<{ success: boolean; data: any; message?: string }>('/api/crm/tasks/subtasks/save', payload);
-                    
+
                     if (response.success) {
                       toast.success(response.message || 'Sub-task saved successfully');
                       fetchSubtasksSilent();
@@ -3879,9 +3879,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     />
                   </div>
 
-                  {/* Task Owner */}
+                  {/* Task Assign To */}
                   <div className="space-y-1.5">
-                    <Label className="text-slate-700 font-medium text-xs">Task Owner <span className="text-red-500">*</span></Label>
+                    <Label className="text-slate-700 font-medium text-xs">Task Assign To <span className="text-red-500">*</span></Label>
                     <Controller
                       control={standaloneSubtaskForm.control}
                       name="ownerLoginNo"
@@ -3892,7 +3892,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             field.onChange(user.loginNo.toString());
                             standaloneSubtaskForm.setValue("assignedDisplayName", user.printingName || "");
                           }}
-                          placeholder="Select Owner"
+                          placeholder="Select Assign To"
                           modal={true}
                           className="w-full text-sm rounded-xl h-10 border-slate-300"
                         />

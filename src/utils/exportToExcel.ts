@@ -17,8 +17,8 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
     'Type',
     'Folder',
     'Priority',
-    ...(groupedByUser ? [] : ['Owner']),
-    'Originator',
+    ...(groupedByUser ? [] : ['Assign To']),
+    'Assign By',
     'Sub Task Count',
     'Road Block',
     'Task Progress Review',
@@ -60,7 +60,7 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
     });
 
     Object.entries(groupedData).forEach(([owner, tasks]) => {
-      rows.push([`Task Owner - ${owner}`]);
+      rows.push([`Task Assign To - ${owner}`]);
       rows.push(headerRow);
 
       tasks.forEach((task, idx) => {
@@ -144,10 +144,10 @@ export const exportMeetingReportToExcel = (data: any[], filename: string = 'Meet
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
   const colWidths = headerRow.map(() => ({ wch: 20 }));
-  colWidths[1] = { wch: 30 }; 
-  colWidths[9] = { wch: 40 }; 
-  colWidths[10] = { wch: 40 }; 
-  colWidths[11] = { wch: 40 }; 
+  colWidths[1] = { wch: 30 };
+  colWidths[9] = { wch: 40 };
+  colWidths[10] = { wch: 40 };
+  colWidths[11] = { wch: 40 };
   ws['!cols'] = colWidths;
 
   XLSX.utils.book_append_sheet(wb, ws, 'Report');

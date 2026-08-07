@@ -65,7 +65,7 @@ export const meetingDiscussionSchema = z.object({
   decisionRemarks: z.string().max(300, 'Decision cannot exceed 300 characters').optional().nullable(),
   isActionRequired: z.boolean().default(false),
   remarks: z.string().max(500, 'Remarks cannot exceed 500 characters').optional().nullable(),
-  
+
   // Required only if isActionRequired is true
   actionTaskOwnerNo: z.number().optional().nullable(),
   actionDueDate: z.string().optional().nullable(),
@@ -78,7 +78,7 @@ export const meetingDiscussionSchema = z.object({
 }).superRefine((data, ctx) => {
   if (data.isActionRequired) {
     if (!data.actionTaskOwnerNo) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Owner is required', path: ['actionTaskOwnerNo'] });
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Assign To is required', path: ['actionTaskOwnerNo'] });
     }
     if (!data.actionDueDate) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Due Date is required', path: ['actionDueDate'] });

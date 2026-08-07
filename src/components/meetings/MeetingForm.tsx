@@ -934,7 +934,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                           <th className="px-2 py-2 min-w-[150px]">Task Type</th>
                           <th className="px-2 py-2 min-w-[120px]">Priority</th>
                           <th className="px-2 py-2 min-w-[120px]">Folder</th>
-                          <th className="px-2 py-2 min-w-[180px]">Task Originator</th>
+                          <th className="px-2 py-2 min-w-[180px]">Task Assign By</th>
                           <th className="px-2 py-2 min-w-[180px]">Assign Task To</th>
                           <th className="px-2 py-2 min-w-[180px]">Due Date</th>
                           <th className="px-2 py-2"></th>

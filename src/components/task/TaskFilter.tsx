@@ -439,14 +439,14 @@ export function TaskFilter({
                   <div className="space-y-0.5">
                     <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <SlidersHorizontal size={12} className="text-slate-400" />
-                      Owner
+                      Assign To
                     </label>
                     <Controller
                       name="ownerLoginNo"
                       control={control}
                       render={({ field }) => (
                         <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
-                          placeholder="Search owner..."
+                          placeholder="Search assign to..."
                           className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE)}
                         />
                       )}
@@ -992,14 +992,14 @@ export function TaskFilter({
                 <div className="space-y-0.5">
                   <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                     <SlidersHorizontal size={12} className="text-slate-400" />
-                    Owner
+                    Assign To
                   </label>
                   <Controller
                     name="ownerLoginNo"
                     control={control}
                     render={({ field }) => (
                       <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
-                        placeholder="Search owner..."
+                        placeholder="Search assign to..."
                         className={cn("border-slate-200 bg-white shadow-sm h-11 rounded-2xl w-full", FIELD_TEXT_STYLE)}
                       />
                     )}

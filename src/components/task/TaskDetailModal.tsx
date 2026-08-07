@@ -432,7 +432,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         size="lg"
                       />
                       <div>
-                        <span className="text-[8px] font-medium text-slate-600   block">Owner</span>
+                        <span className="text-[8px] font-medium text-slate-600   block">Assign To</span>
                         <h4 className="text-xs font-medium text-slate-900 leading-tight">{task.assignedDisplayName || 'Unassigned'}</h4>
                       </div>
                     </div>
@@ -510,7 +510,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
                       {/* Originator */}
                       <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1 mt-1">
-                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><User size={13} className="text-slate-500" /> Originator</span>
+                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><User size={13} className="text-slate-500" /> Assign By</span>
                         <span className="font-medium text-slate-900">{task.originatorDisplayName || 'Unknown'}</span>
                       </div>
 
@@ -557,7 +557,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                       {/* Collaborators */}
                       {task.collaborators && task.collaborators.length > 0 && (
                         <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                          <h5 className="text-[10px] font-medium text-slate-700   mb-2">Collaborators</h5>
+                          <h5 className="text-[10px] font-medium text-slate-700   mb-2">Collaborators / Supporters</h5>
                           <div className="space-y-0">
                             {task.collaborators.map((c, i) => (
                               <div key={i} className="flex items-center gap-0.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
@@ -579,7 +579,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                       {/* Informed To */}
                       {task.informed_to && task.informed_to.length > 0 && (
                         <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                          <h5 className="text-[10px] font-medium text-slate-700   mb-2">Informed To</h5>
+                          <h5 className="text-[10px] font-medium text-slate-700   mb-2">Report To</h5>
                           <div className="space-y-0">
                             {task.informed_to.map((inf, i) => (
                               <div key={i} className="flex items-center gap-0.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
