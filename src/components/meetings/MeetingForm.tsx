@@ -746,8 +746,8 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   )}
                                 </div>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Username</label>
-                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Username" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Display Name</label>
+                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Display Name" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
                                 </div>
                                 {/* <div className="space-y-1 md:col-span-1 lg:col-span-1">
                                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email</label>

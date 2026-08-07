@@ -84,6 +84,7 @@ export function Combobox({
           </div>
         </Button>
       </PopoverTrigger>
+      <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content 
           className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
           align="start"
@@ -133,6 +134,7 @@ export function Combobox({
           )}
         </Command>
       </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
     </Popover>
   )
 }

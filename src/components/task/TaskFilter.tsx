@@ -599,7 +599,7 @@ export function TaskFilter({
             </div>
 
             {/* Action buttons toolbar: distributed evenly on mobile, aligned on desktop */}
-            <div className="flex items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto shrink-0 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
+            <div className="flex items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
               <Controller
                 name="isAllFolder"
                 control={control}

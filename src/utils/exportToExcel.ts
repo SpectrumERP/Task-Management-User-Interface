@@ -87,3 +87,69 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
   XLSX.utils.book_append_sheet(wb, ws, 'Report');
   XLSX.writeFile(wb, filename);
 };
+
+export const exportMeetingReportToExcel = (data: any[], filename: string = 'Meeting_Notes_Report.xlsx') => {
+  const wb = XLSX.utils.book_new();
+
+  if (data.length === 0) return;
+
+  const headerRow = [
+    'Sr. No.',
+    'Meeting Note Title',
+    'Category',
+    'Type',
+    'Company',
+    'Location',
+    'Meeting Mode',
+    'Start Date and Time',
+    'End Date and Time',
+    'Participants',
+    'Discussions Made',
+    'Discussion Remarks',
+    'Status'
+  ];
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    try {
+      const d = new Date(dateString);
+      return `${d.getDate().toString().padStart(2, '0')}-${d.toLocaleString('default', { month: 'short' })}-${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    } catch {
+      return dateString;
+    }
+  };
+
+  const mapMeetingToRow = (meeting: any, idx: number) => [
+    idx + 1,
+    meeting.meetingTitle || meeting.title || '',
+    meeting.meetingCategoryName || meeting.category?.categoryName || '',
+    meeting.meetingTypeName || meeting.type?.typeName || '',
+    meeting.companyName || meeting.taskCompany?.companyName || meeting.company?.companyName || '',
+    meeting.locationName || meeting.location?.locationName || '',
+    meeting.mode || meeting.meetingMode?.meetingModeName || '',
+    formatDate(meeting.meetingStartDateTime || meeting.startDateTime || meeting.startDate),
+    formatDate(meeting.meetingEndDateTime || meeting.endDateTime || meeting.endDate),
+    Array.isArray(meeting.participants) ? meeting.participants.map((p: any) => typeof p === 'string' ? p : (p.printingName || p.loginId || p.participantName)).filter(Boolean).join(', ') : meeting.participants || meeting.internalUsers || '-',
+    Array.isArray(meeting.discussionDetail) ? meeting.discussionDetail.map((d: any) => d.topic || d.discussionSummary).filter(Boolean).map((t: any) => `• ${t}`).join('\n') : meeting.discussionsMade || meeting.agenda || '-',
+    Array.isArray(meeting.discussionDetail) ? meeting.discussionDetail.map((d: any) => d.decisionRemarks).filter(Boolean).map((t: any) => `• ${t}`).join('\n') : meeting.discussionRemarks || meeting.remarks || '-',
+    meeting.statusName || meeting.status?.statusName || meeting.status || ''
+  ];
+
+  const rows: any[][] = [];
+  rows.push(headerRow);
+  data.forEach((meeting, idx) => {
+    rows.push(mapMeetingToRow(meeting, idx));
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  const colWidths = headerRow.map(() => ({ wch: 20 }));
+  colWidths[1] = { wch: 30 }; 
+  colWidths[9] = { wch: 40 }; 
+  colWidths[10] = { wch: 40 }; 
+  colWidths[11] = { wch: 40 }; 
+  ws['!cols'] = colWidths;
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+  XLSX.writeFile(wb, filename);
+};

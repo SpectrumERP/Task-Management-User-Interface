@@ -32,6 +32,7 @@ export const navItems = [
   { icon: Monitor, label: 'Deal Monitor', id: 'deal-monitor', formNo: 1548 },
   { icon: Calendar, label: 'Meeting Notes', id: 'meeting-notes', formNo: 1559 },
   { icon: FileText, label: 'MIS Task Report', id: 'reports', formNo: 930 },
+  { icon: FileText, label: 'MIS Meeting Report', id: 'meeting-reports', formNo: 934 },
 ];
 
 export const masterItems = [
