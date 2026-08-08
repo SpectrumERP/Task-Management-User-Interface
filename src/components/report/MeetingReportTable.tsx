@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Eye, FileDown } from 'lucide-react';
-import { exportReportToExcel, exportMeetingReportToExcel } from '@/utils/exportToExcel';
+import { exportMeetingReportToExcel } from '@/utils/exportToExcel';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
