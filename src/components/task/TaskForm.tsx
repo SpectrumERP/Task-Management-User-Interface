@@ -2739,7 +2739,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             <td className="px-0.5 py-0 min-w-[400px] align-top">
                               <div className="flex items-start gap-0.5 py-1.5 pl-2.5">
                                 <div className="flex-1">
-                                  <Input {...form.register(`sub_tasks.${index}.title`)} placeholder="Enter task title" className={cn("border-slate-200 shadow-sm h-8 px-2 rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20",)} maxLength={200} />
+                                  <Input {...form.register(`sub_tasks.${index}.title`)} placeholder="Enter sub-task title" className={cn("border-slate-200 shadow-sm h-8 px-2 rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300",)} maxLength={200} />
                                   {form.formState.errors.sub_tasks?.[index]?.title && (
                                     <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.sub_tasks[index]?.title?.message}</span>
                                   )}
@@ -2797,7 +2797,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               />
                             </td>
                             <td className="px-0.5 py-0 align-top">
-                              <Textarea {...form.register(`sub_tasks.${index}.completionRemark`)} placeholder="Enter remark" rows={1} className="border-slate-200 shadow-sm min-h-[20px] h-auto py-2 px-3 rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300 focus-visible:ring-[#006699]/20" maxLength={500} />
+                              <Textarea {...form.register(`sub_tasks.${index}.completionRemark`)} placeholder="Enter remark" rows={1} className="border-slate-200 shadow-sm min-h-[20px] h-auto py-2 px-3 rounded-md font-normal text-slate-700 placeholder:text-slate-400 transition-all duration-300" maxLength={500} />
                             </td>
                             <td className="px-0.5 py-0 text-right align-top">
                               <div className="h-9 flex items-center justify-end gap-0.5">
@@ -2904,7 +2904,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   name="executionNotes"
                   control={form.control}
                   render={({ field }) => (
-                    <Textarea {...field} placeholder="Enter execution note" className="min-h-[100px] input-section bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0 text-slate-800" maxLength={1000} />
+                    <Textarea {...field} placeholder="Enter execution note" className="min-h-[100px] input-section bg-white shadow-sm " maxLength={1000} />
                   )}
                 />
               </div>
@@ -3385,7 +3385,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       {/* Sub-Tasks Modal */}
       <Dialog open={isSubtasksModalOpen} onOpenChange={setIsSubtasksModalOpen}>
-        <DialogContent className="rounded-3xl w-[95vw] max-w-[1400px] p-0 border-none shadow-2xl bg-white/95 backdrop-blur-xl overflow-hidden flex flex-col h-[45vh] max-h-[95vh] !gap-0">
+        <DialogContent className="rounded-3xl w-[95vw] max-w-[1400px] p-0 border-none shadow-2xl bg-white/95 backdrop-blur-xl overflow-hidden flex flex-col min-h-[45vh] max-h-[95vh] !gap-0">
           <DialogHeader className="px-4 pt-4 pb-0 border-b border-slate-100/50 bg-slate-50/50 flex flex-row items-center justify-between shrink-0">
             <div>
               <DialogTitle className="text-lg font-medium text-slate-800 tracking-tight flex items-center gap-2">

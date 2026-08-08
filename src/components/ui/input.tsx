@@ -83,8 +83,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
         // Allow standard control keys: Backspace, Tab, Enter, Escape, ArrowLeft, ArrowRight, Delete, etc.
         const isControlKey = [
-          'Backspace', 'Tab', 'Enter', 'Escape', 
-          'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 
+          'Backspace', 'Tab', 'Enter', 'Escape',
+          'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
           'Delete', 'Home', 'End'
         ].includes(e.key) || (e.ctrlKey || e.metaKey || e.altKey);
 
@@ -122,7 +122,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           const selectionStart = e.currentTarget.selectionStart;
           const selectionEnd = e.currentTarget.selectionEnd;
           const hasSelection = selectionStart !== null && selectionEnd !== null && selectionStart !== selectionEnd;
-          
+
           if (!hasSelection) {
             if (!hasDot) {
               // No dot exists yet, they are typing in the integer part
@@ -164,7 +164,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         pattern={type === "number" ? (isDecimal ? "[0-9]*[.,]?[0-9]*" : "[0-9]*") : undefined}
         maxLength={type !== "number" ? maxLength : undefined}
         className={cn(
-          "flex h-10 w-full border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          "flex h-10 w-full border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
           type === "number" && "text-right",
           className,
           FIELD_TEXT_STYLE

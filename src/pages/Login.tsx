@@ -128,9 +128,10 @@ export default function Login() {
                   <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                   <Input
                     id="loginId"
-                    placeholder="Enter your username"
+                    placeholder="Enter username"
                     className={`pl-10 bg-white border-slate-300 focus:border-[#006699] focus:ring-[#006699]/10 transition-all rounded-xl h-11 ${errors.loginId ? 'border-red-500' : ''}`}
                     {...register('loginId')}
+                    maxLength={50}
                   />
                 </div>
                 {errors.loginId && (
@@ -146,9 +147,10 @@ export default function Login() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
+                    placeholder="Enter password"
                     className={`pl-10 pr-10 bg-white border-slate-300 focus:border-[#006699] focus:ring-[#006699]/10 transition-all rounded-xl h-11 ${errors.password ? 'border-red-500' : ''}`}
                     {...register('password')}
+                    maxLength={50}
                   />
                   <button
                     type="button"
