@@ -303,9 +303,9 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(fillValues?.data?.statuses || fillValues?.statuses || []).map((s: any) => (
-                      <SelectItem key={s.statusNo} value={s.statusNo.toString()}>
-                        {s.statusName}
+                    {(fillValues?.data?.documentStatuses || fillValues?.documentStatuses || []).map((s: any) => (
+                      <SelectItem key={s.documentStatusNo} value={s.documentStatusNo.toString()}>
+                        {s.documentStatusName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -334,7 +334,7 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
                 Is Action Taken
               </label>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Controller
                 name="isAttachedDocument"

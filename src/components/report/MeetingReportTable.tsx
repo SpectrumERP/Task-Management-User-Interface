@@ -114,16 +114,6 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
         <h3 className="text-lg font-semibold text-slate-800">Report Results ({data.length})</h3>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 mr-4">
-            <Checkbox
-              id="export-grouped"
-              checked={exportGrouped}
-              onCheckedChange={(c) => setExportGrouped(!!c)}
-            />
-            <label htmlFor="export-grouped" className="text-sm font-medium text-slate-600 cursor-pointer">
-              Group by User for Export
-            </label>
-          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -252,11 +242,10 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('status') && (
                     <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['status'] ? { maxWidth: colWidths['status'] } : {}}>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        (meeting.status?.statusName || meeting.status) === 'Completed' || (meeting.status?.statusName || meeting.status) === 'Closed' ? 'bg-emerald-100 text-emerald-800' :
-                        (meeting.status?.statusName || meeting.status) === 'In Progress' ? 'bg-amber-100 text-amber-800' :
-                        'bg-slate-100 text-slate-800'
-                      }`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${(meeting.status?.statusName || meeting.status) === 'Completed' || (meeting.status?.statusName || meeting.status) === 'Closed' ? 'bg-emerald-100 text-emerald-800' :
+                          (meeting.status?.statusName || meeting.status) === 'In Progress' ? 'bg-amber-100 text-amber-800' :
+                            'bg-slate-100 text-slate-800'
+                        }`}>
                         {meeting.status?.statusName || meeting.status || 'Draft'}
                       </span>
                     </td>
