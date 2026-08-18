@@ -30,12 +30,19 @@ export function MultiUserCombobox({
   onChange,
   className,
   disabled = false,
-  modal = false,
+  modal = true,
 }: MultiUserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
   const [options, setOptions] = React.useState<UserResponse[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
+  const [container, setContainer] = React.useState<HTMLElement | null>(null)
+
+  React.useEffect(() => {
+    if (open) {
+      setContainer(document.querySelector('[role="dialog"]') as HTMLElement)
+    }
+  }, [open])
 
   // Fetch users when combobox is opened
   React.useEffect(() => {
@@ -128,6 +135,7 @@ export function MultiUserCombobox({
           </div>
         </Button>
       </PopoverTrigger>
+      <PopoverPrimitive.Portal container={container || document.body}>
       <PopoverPrimitive.Content 
           className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto" 
           align="start"
@@ -135,7 +143,6 @@ export function MultiUserCombobox({
         <Command className="rounded-xl border-slate-200">
           <div className="border-b border-slate-100 bg-slate-50/50">
             <CommandInput
-              autoFocus
               placeholder="Search user..."
               className="h-10 border-none focus:ring-0 bg-transparent"
               onValueChange={setSearch}
@@ -192,6 +199,7 @@ export function MultiUserCombobox({
           </CommandList>
         </Command>
         </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
     </Popover>
   )
 }

@@ -41,13 +41,21 @@ export function UserCombobox({
   isClearable = true,
   error = false,
   onResolve,
-  modal = false,
+  companyNo,
+  modal = true,
 }: UserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
   const [options, setOptions] = React.useState<UserResponse[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedLabel, setSelectedLabel] = React.useState(initialLabel || "")
+  const [container, setContainer] = React.useState<HTMLElement | null>(null)
+
+  React.useEffect(() => {
+    if (open) {
+      setContainer(document.querySelector('[role="dialog"]') as HTMLElement)
+    }
+  }, [open])
 
   const authUser = useAuthStore(state => state.user)
   const loginNo = authUser?.loginNo || 0
@@ -201,7 +209,7 @@ export function UserCombobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Portal container={container || document.body}>
         <PopoverPrimitive.Content
           className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           align="start"
@@ -209,7 +217,6 @@ export function UserCombobox({
           <Command className="rounded-xl border-slate-200" shouldFilter={false}>
             <div className="border-b border-slate-100 bg-slate-50/50">
               <CommandInput
-                autoFocus
                 placeholder="Type to search..."
                 className="h-10 border-none focus:ring-0 bg-transparent"
                 onValueChange={setSearch}

@@ -6680,16 +6680,14 @@ export function MasterManager({ type }: MasterManagerProps) {
         </DialogContent>
       </Dialog>
 
-      {isMasterCreateOpen && (
-        <MasterCreateDialog
-          open={isMasterCreateOpen}
-          onOpenChange={setIsMasterCreateOpen}
-          type={activeMasterType}
-          companyNo={companyNo}
-          fillValues={fillValues}
-          onSuccess={() => { }}
-        />
-      )}
+      <MasterCreateDialog
+        open={isMasterCreateOpen}
+        onOpenChange={setIsMasterCreateOpen}
+        type={activeMasterType}
+        companyNo={companyNo}
+        fillValues={fillValues}
+        onSuccess={() => { }}
+      />
     </div>
   );
 }

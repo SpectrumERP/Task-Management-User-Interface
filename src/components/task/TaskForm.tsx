@@ -3786,8 +3786,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       </Dialog>
       {/* Standalone Sub-Task Form Modal */}
       <Dialog open={isStandaloneSubtaskModalOpen} onOpenChange={setIsStandaloneSubtaskModalOpen}>
-        <DialogContent className="rounded-3xl w-[95vw] max-w-2xl p-0 border-none shadow-2xl bg-white overflow-hidden flex flex-col max-h-[90vh]">
-          <DialogHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-row items-center justify-between shrink-0">
+        <DialogContent className="rounded-3xl w-[95vw] max-w-2xl p-0 border-none shadow-2xl bg-white flex flex-col max-h-[90vh]">
+          <DialogHeader className="rounded-t-3xl px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-row items-center justify-between shrink-0">
             <div>
               <DialogTitle className="text-lg font-medium text-slate-800 tracking-tight flex items-center gap-2">
                 <FileText size={20} className="text-[#006699]" />
@@ -3949,7 +3949,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               </form>
             </FormProvider>
           </div>
-          <DialogFooter className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 shrink-0">
+          <DialogFooter className="rounded-b-3xl px-6 py-4 bg-slate-50/50 border-t border-slate-100 shrink-0">
             <Button type="button" variant="ghost" onClick={() => setIsStandaloneSubtaskModalOpen(false)} className="rounded-xl text-slate-600 hover:text-slate-800">
               Close
             </Button>

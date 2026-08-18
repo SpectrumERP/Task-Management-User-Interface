@@ -45,9 +45,17 @@ export function Combobox({
   isClearable = true,
   onAddNew,
   addNewLabel = "Add New",
-  modal = false,
+  modal = true,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [search, setSearch] = React.useState("")
+  const [container, setContainer] = React.useState<HTMLElement | null>(null)
+
+  React.useEffect(() => {
+    if (open) {
+      setContainer(document.querySelector('[role="dialog"]') as HTMLElement)
+    }
+  }, [open])
 
   const selectedOption = options.find((option) => option.value === value)
 
@@ -84,13 +92,13 @@ export function Combobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Portal container={container || document.body}>
       <PopoverPrimitive.Content 
           className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
           align="start"
         >
         <Command className="rounded-xl border-slate-200">
-          <CommandInput autoFocus placeholder={searchPlaceholder} className="h-9 border-none focus:ring-0" />
+          <CommandInput value={search} onValueChange={setSearch} placeholder={searchPlaceholder} className="h-9 border-none focus:ring-0" />
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
             <CommandGroup>
