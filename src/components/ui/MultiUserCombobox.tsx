@@ -30,7 +30,7 @@ export function MultiUserCombobox({
   onChange,
   className,
   disabled = false,
-  modal = true,
+  modal = false,
 }: MultiUserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")

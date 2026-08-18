@@ -45,7 +45,7 @@ export function Combobox({
   isClearable = true,
   onAddNew,
   addNewLabel = "Add New",
-  modal = true,
+  modal = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -130,8 +130,10 @@ export function Combobox({
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddNew();
                   setOpen(false);
+                  setTimeout(() => {
+                    if (onAddNew) onAddNew();
+                  }, 0);
                 }}
                 className="w-full justify-start text-[#006699] hover:text-[#005580] hover:bg-slate-100/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-lg transition-all active:scale-[0.98] select-none"
               >
