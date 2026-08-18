@@ -41,7 +41,6 @@ export function UserCombobox({
   isClearable = true,
   error = false,
   onResolve,
-  companyNo,
   modal = true,
 }: UserComboboxProps) {
   const [open, setOpen] = React.useState(false)
