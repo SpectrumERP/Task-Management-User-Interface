@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useSettings } from '@/hooks/useSettings';
 
 function TruncatedCell({ text, minWidth = 'min-w-[200px]' }: { text: string, minWidth?: string }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -68,8 +69,11 @@ const DEFAULT_COLUMNS = [
 ];
 
 export function ReportTable({ data }: ReportTableProps) {
+  const { isHideType, isHideFolder } = useSettings();
+  const isColumnAllowed = (id: string) => !((id === 'type' && isHideType) || (id === 'folder' && isHideFolder));
+
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
-    DEFAULT_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)
+    DEFAULT_COLUMNS.filter(c => c.defaultVisible && isColumnAllowed(c.id)).map(c => c.id)
   );
 
   const [exportGrouped, setExportGrouped] = useState(true);
@@ -129,7 +133,7 @@ export function ReportTable({ data }: ReportTableProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {DEFAULT_COLUMNS.map((col) => (
+              {DEFAULT_COLUMNS.filter(col => isColumnAllowed(col.id)).map((col) => (
                 <DropdownMenuCheckboxItem
                   key={col.id}
                   checked={visibleColumns.includes(col.id)}
@@ -159,7 +163,7 @@ export function ReportTable({ data }: ReportTableProps) {
           <thead className="bg-slate-50 border-b border-slate-200 text-xs text-slate-700 font-semibold uppercase sticky top-0 z-10">
             <tr>
               {DEFAULT_COLUMNS.map((col) => {
-                if (!visibleColumns.includes(col.id)) return null;
+                if (!visibleColumns.includes(col.id) || !isColumnAllowed(col.id)) return null;
                 const widthStyle = colWidths[col.id] ? { width: colWidths[col.id], minWidth: colWidths[col.id], maxWidth: colWidths[col.id] } : {};
 
                 return (
@@ -226,12 +230,12 @@ export function ReportTable({ data }: ReportTableProps) {
                       <TruncatedCell text={task.category?.categoryName || '-'} />
                     </td>
                   )}
-                  {visibleColumns.includes('type') && (
+                  {visibleColumns.includes('type') && isColumnAllowed('type') && (
                     <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['type'] ? { maxWidth: colWidths['type'] } : {}}>
                       <TruncatedCell text={task.type?.typeName || '-'} />
                     </td>
                   )}
-                  {visibleColumns.includes('folder') && (
+                  {visibleColumns.includes('folder') && isColumnAllowed('folder') && (
                     <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['folder'] ? { maxWidth: colWidths['folder'] } : {}}>
                       <TruncatedCell text={task.folder?.folderName || '-'} />
                     </td>

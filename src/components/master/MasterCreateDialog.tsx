@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/Combobox';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 import {
@@ -54,6 +55,7 @@ export function MasterCreateDialog({
   const [newSubtaskItem, setNewSubtaskItem] = useState('');
   const [categoryFillValues, setCategoryFillValues] = useState<any>(null);
   const [categoryCustomFields, setCategoryCustomFields] = useState<{ customFieldNo: string; fieldValue: string }[]>([]);
+  const [selectedTypeNos, setSelectedTypeNos] = useState<string[]>([]);
 
   // Priority State
   const [priorityDuration, setPriorityDuration] = useState<number | null>(null);
@@ -101,6 +103,7 @@ export function MasterCreateDialog({
     setSubtasks([]);
     setNewSubtaskItem('');
     setCategoryCustomFields([]);
+    setSelectedTypeNos([]);
 
     // Reset Priority
     setPriorityDuration(null);
@@ -214,6 +217,7 @@ export function MasterCreateDialog({
             customFieldNo: parseInt(cf.customFieldNo) || null,
             fieldValue: cf.fieldValue
           })),
+          types: selectedTypeNos.map(t => ({ operTaskTypeNo: parseInt(t) })),
           colorCoding: color || null
         };
         response = await apiService.post('/api/master/task-categories/save', payload);
@@ -338,6 +342,11 @@ export function MasterCreateDialog({
 
   const Icon = getMasterIcon();
 
+  const taskTypeOptions = ((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]).map((t: any) => ({
+    label: t.operTaskTypeName || t.taskTypeName || t.TaskTypeName || t.name || '',
+    value: (t.operTaskTypeNo || t.taskTypeNo || t.TaskTypeNo || t.id || '').toString()
+  }));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-3xl border-none shadow-2xl max-w-lg p-0 bg-white max-h-[85vh] flex flex-col">
@@ -358,7 +367,7 @@ export function MasterCreateDialog({
         <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin">
           {/* Name / Label */}
           <div className="space-y-0">
-            <Label  className="text-[10px] font-medium text-slate-700 ml-1">{`${getMasterTitle().replace(' Master', '')} Name`}</Label>
+            <Label  className="text-[10px] font-medium text-slate-700 ml-1">{`${getMasterTitle().replace(' Master', '')} Name`} <span className="text-red-500">*</span></Label>
             <Input placeholder={`Enter new ${getMasterTitle().replace(' Master', '').toLowerCase()} name...`} value={name} onChange={(e) => {
                 setName(e.target.value);
                 if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
@@ -385,6 +394,18 @@ export function MasterCreateDialog({
                     Business Benefit
                   </Label>
                 </div>
+              </div>
+
+              {/* Type (optional, multiple) */}
+              <div className="space-y-0">
+                <Label className="text-[10px] font-medium text-slate-700 ml-1 block">Type</Label>
+                <MultiSelect
+                  options={taskTypeOptions}
+                  value={selectedTypeNos}
+                  onChange={setSelectedTypeNos}
+                  placeholder="Select type(s) (optional)"
+                  className="bg-white border-slate-200 hover:border-slate-300 rounded-xl"
+                />
               </div>
 
               {/* Color Coding Option */}
@@ -578,7 +599,7 @@ export function MasterCreateDialog({
           {type === 'folder' && (
             <div className="space-y-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Folder Description</Label>
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Folder Description <span className="text-red-500">*</span></Label>
                 <Input placeholder="Enter short folder purpose..." value={description} onChange={(e) => {
                     setDescription(e.target.value);
                     if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
@@ -622,7 +643,7 @@ export function MasterCreateDialog({
                 </div>
 
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Incharge Lead</Label>
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Incharge Lead <span className="text-red-500">*</span></Label>
                   <UserCombobox value={inchargeNo} onChange={(user) => {
                       setInchargeNo(user.loginNo.toString());
                       setInchargeLabel(user.printingName);
@@ -650,7 +671,7 @@ export function MasterCreateDialog({
               </div>
 
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Address</Label>
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Address <span className="text-red-500">*</span></Label>
                 <div className="space-y-0">
                   <Input placeholder="Address Line 1" value={address1} onChange={(e) => {
                       setAddress1(e.target.value);
@@ -670,7 +691,7 @@ export function MasterCreateDialog({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country</Label>
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country <span className="text-red-500">*</span></Label>
                   <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
                       label: c.countryName || '',
                       value: (c.countryNo || '').toString()
@@ -690,7 +711,7 @@ export function MasterCreateDialog({
                   {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
                 </div>
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">State / Province</Label>
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">State / Province <span className="text-red-500">*</span></Label>
                   <Combobox options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
                       label: s.stateName || '',
                       value: (s.stateNo || '').toString()
@@ -713,7 +734,7 @@ export function MasterCreateDialog({
 
               <div className="grid grid-cols-3 gap-0.5.5">
                 <div className="space-y-0 col-span-2">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">City</Label>
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">City <span className="text-red-500">*</span></Label>
                   <Combobox options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
                       label: c.cityName || '',
                       value: (c.cityNo || '').toString()
@@ -733,7 +754,7 @@ export function MasterCreateDialog({
                   {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
                 </div>
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">PIN / ZIP Code</Label>
+                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">PIN / ZIP Code <span className="text-red-500">*</span></Label>
                   <Input placeholder="ZIP" value={pinCode} onChange={(e) => {
                       setPinCode(e.target.value);
                       if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));

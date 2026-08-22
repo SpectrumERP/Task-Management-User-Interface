@@ -165,6 +165,7 @@ export default function TaskDetail() {
           originator_user_No: d.originator?.id || 1,
           owner_user_No: d.owner?.id || null,
           location_No: d.location?.operTaskLocationNo || null,
+          locationName: d.location?.locationName || '',
           company: d?.taskCompany?.taskCompanyNo || '',
           companyName: d?.taskCompany?.taskCompanyAlias || '',
           start_date: d.startDate,
@@ -195,6 +196,7 @@ export default function TaskDetail() {
           actual_efforts: mappedEfforts,
           executionNotes: d.executionNotes || d.execution_notes || '',
           execution_notes: d.executionNotes || d.execution_notes || '',
+          executionChallenges: d.executionChallenges || [],
           subTasks: d.subTasks || [],
           collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
           infromToUserGroupNo: d.infromToUserGroupNo || null,
@@ -238,7 +240,7 @@ export default function TaskDetail() {
         } else if (tabId === 'sales-deals') {
           navigate('/sales/deals');
         } else if (tabId === 'deal-monitor') {
-          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+          navigate('/deal-monitor');
         } else if (tabId === 'meeting-notes') {
           navigate('/meetings');
         } else {

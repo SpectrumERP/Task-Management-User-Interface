@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
+import { useSettings } from '@/hooks/useSettings';
+import { taskUrl } from '@/lib/dealMonitor';
 
 import {
   DropdownMenu,
@@ -24,6 +26,7 @@ interface TaskListViewProps {
   tasks: Task[];
   isLoading?: boolean;
   onTaskClick?: (taskId: number) => void;
+  hideCategoryColumn?: boolean;
 }
 type ColumnKey = 'code' | 'status' | 'title' | 'category' | 'type' | 'priority' | 'dueDate' | 'completionDate' | 'folder' | 'createdBy' | 'createdDate' | 'owner' | 'originator' | 'companyName' | 'location' | 'actions';
 interface ColumnDef {
@@ -52,10 +55,16 @@ const COLUMNS: ColumnDef[] = [
   { key: 'actions', label: '', defaultVisible: true }, // Actions shouldn't typically be hidden but we can allow it
 ];
 
-export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProps) {
+export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn = false }: TaskListViewProps) {
   const navigate = useNavigate();
   const { isUpdate } = useFormRights(1547);
   const { fillValues } = useTaskStore();
+  const { isHideType, isHideFolder } = useSettings();
+  const isColumnAllowed = (key: ColumnKey) => !(
+    (key === 'type' && isHideType) ||
+    (key === 'folder' && isHideFolder) ||
+    (key === 'category' && hideCategoryColumn)
+  );
 
   // Initialize visible columns from localStorage or defaults
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(() => {
@@ -168,7 +177,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
         <table className="w-full text-sm text-left">
           <thead className="sticky top-0 z-30 bg-slate-50/90 backdrop-blur-md border-b border-slate-200 text-slate-600 font-semibold text-xs tracking-wider">
             <tr>
-              {COLUMNS.map(col => visibleColumns.has(col.key) && (
+              {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
                 <th
                   key={col.key}
                   className={cn(
@@ -200,7 +209,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                           </div>
                           <DropdownMenuSeparator />
                           <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
-                            {COLUMNS.filter(c => (c.label || 'Actions').toLowerCase().includes(columnSearchQuery.toLowerCase())).map((c) => (
+                            {COLUMNS.filter(c => isColumnAllowed(c.key) && (c.label || 'Actions').toLowerCase().includes(columnSearchQuery.toLowerCase())).map((c) => (
                               <DropdownMenuCheckboxItem
                                 key={c.key}
                                 checked={pendingColumns.has(c.key)}
@@ -257,11 +266,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                   if (onTaskClick) {
                     onTaskClick(task.taskNo);
                   } else {
-                    if (task.categoryName?.toLowerCase() === 'deal monitor') {
-                      navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
-                    } else {
-                      navigate(`/task/${task.taskNo}`);
-                    }
+                    navigate(taskUrl(task.taskNo, task.categoryName));
                   }
                 }}
                 className="group hover:bg-slate-50/80 transition-colors cursor-pointer"
@@ -303,7 +308,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                 )}
 
                 {/* Category */}
-                {visibleColumns.has('category') && (
+                {visibleColumns.has('category') && isColumnAllowed('category') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     {task.categoryName ? (() => {
                       const catObj = fillValues?.category?.find(
@@ -324,7 +329,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                 )}
 
                 {/* Type */}
-                {visibleColumns.has('type') && (
+                {visibleColumns.has('type') && !isHideType && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     {task.typeName ? (
                       <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
@@ -381,7 +386,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                 )}
 
                 {/* Folder */}
-                {visibleColumns.has('folder') && (
+                {visibleColumns.has('folder') && !isHideFolder && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     <span className="text-xs font-medium text-slate-700">
                       {task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.["Folder Name"] || task.project_No || '-'}
@@ -439,11 +444,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick }: TaskListViewProp
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (task.categoryName?.toLowerCase() === 'deal monitor') {
-                            navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
-                          } else {
-                            navigate(`/task/${task.taskNo}`);
-                          }
+                          navigate(taskUrl(task.taskNo, task.categoryName));
                         }}
                         className="h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center transition-all duration-200"
                       >

@@ -112,4 +112,12 @@ export interface Task {
   createdDate?: string;
   createdBy?: { displayName: string };
   roadBlock?: string;
+  // typeNo 1 = Task Execution Log entry, typeNo 2 = Road Block Remark entry
+  executionChallenges?: {
+    typeNo: number;
+    logDate: string | null;
+    remarks: string | null;
+    proposedSolution: string | null;
+    statusNo: number | null;
+  }[];
 }

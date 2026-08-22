@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera } from 'lucide-react';
+import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ import { motion } from 'framer-motion';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Combobox } from '@/components/ui/Combobox';
+import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -50,6 +51,8 @@ import {
 
 
 import { useNavigate, useSearchParams, useBlocker, Link } from 'react-router-dom';
+import { taskUrl } from '@/lib/dealMonitor';
+import { useSettings } from '@/hooks/useSettings';
 
 const standaloneSubtaskSchema = z.object({
   id: z.string(),
@@ -69,8 +72,8 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
   code: z.string().optional(),
   description: z.string().optional(),
   priority_No: z.string().min(1, 'Priority is required'),
-  type_No: z.string().min(1, 'Type is required'),
-  folder_No: z.string().min(1, 'Folder is required'),
+  type_No: z.string().optional(),
+  folder_No: z.string().optional(),
   category_No: z.string().min(1, 'Category is required'),
   tags: z.array(z.string()).optional().default([]),
   company: z.string().min(1, 'Company is required'),
@@ -83,7 +86,13 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
   end_date: isSubTask ? z.string().min(1, 'Due Date is required for sub-tasks') : z.string().optional(),
   completionDate: z.string().optional(),
   completionRemark: z.string().max(500, 'Remark cannot exceed 500 characters').optional(),
-  roadBlock: z.string().max(1000, 'Road Block cannot exceed 1000 characters').optional(),
+  road_block_remarks: z.array(z.object({
+    id: z.string(),
+    date: z.string().min(1, 'Date is required'),
+    remark: z.string().min(1, 'Remark is required'),
+    proposedSolution: z.string().optional(),
+    status_No: z.string().min(1, 'Status is required'),
+  })).optional().default([]),
   isAllDay: z.boolean().optional().default(false),
   calendarColor: z.string().optional().default(''),
   recurrence: z.object({
@@ -163,7 +172,11 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     customFieldNo: z.string(),
     fieldValue: z.string().optional().default('')
   })).optional().default([]),
-  executionNotes: z.string().optional(),
+  execution_logs: z.array(z.object({
+    id: z.string(),
+    date: z.string().min(1, 'Date is required'),
+    remark: z.string().min(1, 'Remark is required'),
+  })).optional().default([]),
 }).superRefine((data, ctx) => {
   if (data.start_date && data.end_date) {
     if (new Date(data.end_date) < new Date(data.start_date)) {
@@ -173,6 +186,14 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
         path: ['end_date']
       });
     }
+  }
+  const executionLogDates = (data.execution_logs || []).map((r: any) => r.date).filter(Boolean);
+  if (new Set(executionLogDates).size !== executionLogDates.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Duplicate dates are not allowed in Task Execution Log',
+      path: ['execution_logs'],
+    });
   }
   if (data.is_business_benefit_applicable) {
     if (!data.business_benefit_type_No || data.business_benefit_type_No === '') {
@@ -254,6 +275,35 @@ const statusTransitions: Record<string, string[]> = {
   "Close": []
 };
 
+// The backend stores both the Task Execution Log and Road Block Remarks in a single
+// `executionChallenges` array, distinguished by `typeNo` (1 = execution log, 2 = road block).
+// This splits that array back into the two form-side field arrays when loading a task.
+const splitExecutionChallenges = (challenges?: any[] | null) => {
+  const list = Array.isArray(challenges) ? challenges : [];
+  const toDateInputValue = (iso?: string | null) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? '' : d.toISOString();
+  };
+  const execution_logs = list
+    .filter((c: any) => Number(c.typeNo ?? c.TypeNo) === 1)
+    .map((c: any, idx: number) => ({
+      id: (c.operTaskExecutionChallengeNo ?? c.id ?? `${idx}-log`).toString(),
+      date: toDateInputValue(c.logDate ?? c.LogDate),
+      remark: c.remarks ?? c.Remarks ?? '',
+    }));
+  const road_block_remarks = list
+    .filter((c: any) => Number(c.typeNo ?? c.TypeNo) === 2)
+    .map((c: any, idx: number) => ({
+      id: (c.operTaskExecutionChallengeNo ?? c.id ?? `${idx}-block`).toString(),
+      date: toDateInputValue(c.logDate ?? c.LogDate),
+      remark: c.remarks ?? c.Remarks ?? '',
+      proposedSolution: c.proposedSolution ?? c.ProposedSolution ?? '',
+      status_No: (c.statusNo ?? c.StatusNo ?? '').toString(),
+    }));
+  return { execution_logs, road_block_remarks };
+};
+
 function FormSection({ title, icon: Icon, children, headerAction }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode }) {
   return (
     <div className="space-y-0 pt-2 first:pt-0">
@@ -315,7 +365,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const parentTaskNoQuery = searchParams.get('parentTaskNo');
   const parentTaskNo = parentTaskNoQuery ? parseInt(parentTaskNoQuery) : (initialData?.parent_task_No || null);
   const isSubTask = parentTaskNo !== null && parentTaskNo > 0;
-
+  const { isHideType, isHideFolder, categoryFieldCaption, typeFieldCaption, tagCaption, isHideDetailSection } = useSettings();
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
   const formRights = useAuthStore(state => state.formRights) || {};
   const [activeMasterType, setActiveMasterType] = useState<string | null>(null);
 
@@ -542,6 +593,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
   });
 
+  const executionChallengeDefaults = splitExecutionChallenges(initialData?.executionChallenges);
+
   const form = useForm({
     resolver: formResolver,
     mode: 'onChange',
@@ -553,7 +606,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       company: resolveCompanyValue(initialData?.company, authCompanies) || (isSubTask && parentTask ? resolveCompanyValue(parentTask.company, authCompanies) : ''),
       description: initialData?.description || searchParams.get('description') || '',
       priority_No: initialData?.priority_No?.toString() || (isSubTask && parentTask ? parentTask.priority_No.toString() : '') || searchParams.get('priority_No') || '',
-      type_No: initialData?.type_No?.toString() || (isSubTask && parentTask ? parentTask.type_No.toString() : '') || searchParams.get('type_No') || '',
+      type_No: initialData?.type_No?.toString() || (isSubTask && parentTask ? parentTask.type_No?.toString() || '' : '') || searchParams.get('type_No') || '',
       folder_No: (initialData as any)?.folder_No?.toString() || (initialData as any)?.folderNo?.toString() || (isSubTask && parentTask ? (parentTask.project_No || (parentTask as any).folder_No || (parentTask as any).folderNo)?.toString() : '') || selectedFolder?.TaskFolderNo?.toString() || searchParams.get('folder_No') || '1',
       category_No: initialData?.category_No?.toString() || (isSubTask && parentTask ? parentTask.category_No.toString() : '') || searchParams.get('category_No') || '',
       location_No: initialData?.location_No?.toString() || (isSubTask && parentTask ? parentTask.location_No.toString() : '') || searchParams.get('location_No') || '',
@@ -561,7 +614,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : (searchParams.get('end_date') ? new Date(searchParams.get('end_date') as string).toISOString() : ''),
       completionDate: initialData?.completionDate ? new Date(initialData.completionDate).toISOString() : '',
       completionRemark: initialData?.completionRemark || '',
-      roadBlock: initialData?.roadBlock || '',
+      road_block_remarks: executionChallengeDefaults.road_block_remarks,
       estimated_effort_value: initialData?.estimated_effort_value?.toString() || searchParams.get('estimated_effort_value') || '',
       estimated_effort_unit: resolveFrequencyValue(initialData?.estimated_effort_unit || searchParams.get('estimated_effort_unit') || 'hours'),
       is_business_benefit_applicable: initialData?.is_business_benefit_applicable || false,
@@ -586,7 +639,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         customFieldNo: (cf.customFieldNo ?? '').toString(),
         fieldValue: cf.fieldValue || ''
       })) || [],
-      executionNotes: initialData?.executionNotes || initialData?.execution_notes || '',
+      execution_logs: executionChallengeDefaults.execution_logs,
       status: initialData?.status || initialStatus || 'Draft',
       isPrivate: initialData?.isPrivate || searchParams.get('isPrivate') === 'true' || false,
       isAllDay: initialData?.isAllDay ?? false,
@@ -664,7 +717,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             // Pre-fill the inherited fields in the form dynamically
             form.setValue('category_No', mappedParent.category_No.toString());
             form.setValue('company', resolveCompanyValue(mappedParent.company, authCompanies));
-            form.setValue('type_No', mappedParent.type_No.toString());
+            form.setValue('type_No', mappedParent.type_No?.toString() || '');
             const parsedFolderVal = (d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || '').toString();
             form.setValue('folder_No', parsedFolderVal && parsedFolderVal !== '0' ? parsedFolderVal : (selectedFolder?.TaskFolderNo?.toString() || ''));
             form.setValue('location_No', mappedParent.location_No.toString());
@@ -773,6 +826,22 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     control: form.control,
     name: "sub_tasks"
   });
+
+  const { fields: executionLogFields, append: appendExecutionLog, remove: removeExecutionLog } = useFieldArray({
+    control: form.control,
+    name: "execution_logs"
+  });
+
+  const { fields: roadBlockFields, append: appendRoadBlock, remove: removeRoadBlock } = useFieldArray({
+    control: form.control,
+    name: "road_block_remarks"
+  });
+
+  // Subtask "Type" field must always show for Deal Monitor tasks, irrespective of isHideType.
+  const selectedCategoryNo = form.watch('category_No');
+  const isDealMonitorCategory = initialData?.categoryName?.toLowerCase() === 'deal monitor'
+    || fillValues?.category.find(c => c.OperTaskCategoryNo.toString() === selectedCategoryNo)?.Category?.toLowerCase() === 'deal monitor';
+  const showSubtaskType = !isHideType || isDealMonitorCategory;
 
   const [savingSubtaskIndex, setSavingSubtaskIndex] = useState<number | null>(null);
 
@@ -1052,13 +1121,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   useEffect(() => {
     if (initialData) {
+      const resetExecutionChallenges = splitExecutionChallenges(initialData.executionChallenges);
       form.reset({
         title: initialData.title,
         code: initialData.code || '',
         description: initialData.description,
         isPrivate: initialData.isPrivate || false,
         priority_No: initialData.priority_No.toString(),
-        type_No: initialData.type_No.toString(),
+        type_No: initialData.type_No?.toString() || '',
         folder_No: (initialData as any).folder_No?.toString() || (initialData as any).folderNo?.toString() || selectedFolder?.TaskFolderNo?.toString() || '',
         category_No: initialData.category_No.toString(),
         tags: initialData.tags,
@@ -1071,7 +1141,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         end_date: initialData.end_date || '',
         completionDate: initialData.completionDate || '',
         completionRemark: initialData.completionRemark || '',
-        roadBlock: initialData.roadBlock || '',
+        road_block_remarks: resetExecutionChallenges.road_block_remarks,
         isAllDay: (initialData as any).isAllday || (initialData as any).isAllDay || false,
         calendarColor: (initialData as any).colorCoding || (initialData as any).calendarColor || '',
         estimated_effort_value: initialData.estimated_effort_value?.toString() || '',
@@ -1091,7 +1161,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           customFieldNo: (cf.customFieldNo ?? '').toString(),
           fieldValue: cf.fieldValue || ''
         })) || [],
-        executionNotes: initialData.executionNotes || initialData.execution_notes || '',
+        execution_logs: resetExecutionChallenges.execution_logs,
         attachments: (initialData.attachments || initialData.attachments || []).map((a: any) => ({
           id: a.id || a.docNo || a.operTaskAttachmentDetailNo || null,
           name: a.docName || a.name || a.fileName || a.storedFileName || 'attachment',
@@ -1464,6 +1534,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       }))
     ];
 
+    // Task Execution Log (typeNo 1) and Road Block Remarks (typeNo 2) save into one combined array
+    const executionChallenges = [
+      ...(data.execution_logs || []).map((r: any) => ({
+        typeNo: 1,
+        logDate: r.date ? new Date(r.date).toISOString() : null,
+        remarks: r.remark || null,
+        proposedSolution: null,
+        statusNo: null,
+      })),
+      ...(data.road_block_remarks || []).map((r: any) => ({
+        typeNo: 2,
+        logDate: r.date ? new Date(r.date).toISOString() : null,
+        remarks: r.remark || null,
+        proposedSolution: r.proposedSolution || null,
+        statusNo: parseInt(r.status_No) || null,
+      })),
+    ];
+
     const payload = {
       operTaskNo: initialData ? initialData.taskNo : null,
       companyNo: parseInt(data.company) || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1,
@@ -1471,11 +1559,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       title: data.title || null,
       code: data.code || null,
       description: data.description || null,
-      executionNotes: data.executionNotes || null,
+      executionChallenges,
       isPrivate: data.isPrivate,
       operTaskPriorityNo: parseInt(data.priority_No) || null,
       operTaskCategoryNo: parseInt(data.category_No) || null,
-      operTaskTypeNo: parseInt(data.type_No) || null,
+      operTaskTypeNo: isHideType ? null : (parseInt(data.type_No) || null),
       categoryNo: parseInt(data.category_No) || null,
       tags: data.tags && data.tags.length > 0 ? data.tags.join(',') : null,
       collaboratorUserGroupNo: parseInt(selectedCollabTeam) || null,
@@ -1488,7 +1576,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       endDate: data.end_date ? new Date(data.end_date).toISOString() : null,
       completionDate: data.completionDate ? new Date(data.completionDate).toISOString() : null,
       completionRemark: data.completionRemark || null,
-      roadBlock: data.roadBlock || null,
       estimatedEfforts: parseFloat(data.estimated_effort_value) || null,
       estimatedEffortsFequencyNo: data.estimated_effort_unit ? parseInt(data.estimated_effort_unit) : null,
       isBusinessBenefitApplicable: data.is_business_benefit_applicable,
@@ -1498,7 +1585,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       actualBenefitAmount: data.is_business_benefit_applicable ? (parseFloat(data.actual_benefit_amount) || null) : null,
       benefitFrequencyNo: data.is_business_benefit_applicable ? (benefitFrequencyMap[data.benefit_period] || null) : null,
       statusNo: statusNo || null,
-      folderNo: parseInt(data.folder_No) || selectedFolder?.TaskFolderNo || null,
+      folderNo: isHideFolder ? null : (parseInt(data.folder_No) || selectedFolder?.TaskFolderNo || null),
       isAllday: data.isAllDay,
       colorCoding: data.calendarColor || null,
       createdBy: authUser?.loginNo || authUser?.LoginNo || 1,
@@ -1702,6 +1789,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const informError = form.formState.errors.informed_to;
   const hasInformError = informError && !Array.isArray(informError) && (informError as any).message;
 
+  const executionLogError = form.formState.errors.execution_logs;
+  const hasExecutionLogError = executionLogError && !Array.isArray(executionLogError) && (executionLogError as any).message;
+
   return (
     <Card className="border-none shadow-none bg-transparent relative">
       {isDragging && (
@@ -1777,7 +1867,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               <div className="mb-5 flex items-center gap-1.5 border border-blue-100 bg-blue-50/50 px-3 py-1.5 rounded-lg w-fit">
                 <ExternalLink size={12} className="text-blue-600" />
                 <span className="text-[11px] text-slate-600 font-medium">Parent Task:</span>
-                <Link to={`/task/${initialData.parentTask.operTaskNo}`} className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 hover:underline transition-colors">
+                <Link to={taskUrl(initialData.parentTask.operTaskNo, isDealMonitorCategory ? 'deal monitor' : undefined)} className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 hover:underline transition-colors">
                   {initialData.parentTask.title}
                 </Link>
               </div>
@@ -1802,13 +1892,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             {/* Row 2: Task Description */}
             <div className="space-y-0" id="form-group-description">
               <Label className="text-slate-700 font-medium text-[11px] ml-1">Task Description</Label>
-              <Textarea placeholder="Enter description" className={cn("min-h-[60px] rounded-xl p-3 leading-relaxed text-slate-900 shadow-sm transition-all", form.formState.errors.description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")} {...form.register('description')} maxLength={1000} />
+              <Textarea placeholder="Enter task description" className={cn("min-h-[60px] rounded-xl p-3 leading-relaxed text-slate-900 shadow-sm transition-all", form.formState.errors.description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")} {...form.register('description')} maxLength={1000} />
               {form.formState.errors.description && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.description.message}</p>}
             </div>
 
             {/* Row 4: Tags */}
             <div className="space-y-0">
-              <Label className="text-slate-700 font-medium text-[11px] ml-1">Tags</Label>
+              <Label className="text-slate-700 font-medium text-[11px] ml-1">Tags/Keywords</Label>
               <Controller
                 name="tags"
                 control={form.control}
@@ -1816,8 +1906,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <TagInput
                     tags={field.value || []}
                     onChange={field.onChange}
-                    placeholder="Add tags..."
+                    placeholder="Enter tags/keywords"
                     className="min-h-[36px] py-1 border-slate-300 shadow-sm input-section"
+                    infoText={tagCaption}
                   />
                 )}
               />
@@ -1854,55 +1945,63 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         setIsMasterCreateOpen(true);
                       } : undefined}
                       addNewLabel="Add New Category"
+                      infoText={categoryFieldCaption}
                     />
                   )}
                 />
                 {form.formState.errors.category_No && <p className="text-[10px] text-red-500 font-medium ml-1">Category is required</p>}
               </div>
-              <div className="space-y-0" id="form-group-type_No">
-                <Label className="text-slate-700 font-medium text-[11px] ml-1">Type <span className="text-red-500 font-medium">*</span></Label>
-                <Controller
-                  name="type_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox disabled={isSubTask} options={fillValues?.type.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
-                      .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select type"
-                      className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={formRights[1560]?.isSave ? () => {
-                        setActiveMasterType('type');
-                        setIsMasterCreateOpen(true);
-                      } : undefined}
-                      addNewLabel="Add New Type"
-                    />
-                  )}
-                />
-                {form.formState.errors.type_No && <p className="text-[10px] text-red-500 font-medium ml-1">Type is required</p>}
-              </div>
-              <div className="space-y-0" id="form-group-folder_No">
-                <Label className="text-slate-700 font-medium text-[11px] ml-1">Folder <span className="text-red-500 font-medium">*</span></Label>
-                <Controller
-                  name="folder_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox disabled={isSubTask} options={fillValues?.folder.map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select folder"
-                      className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      isClearable={false}
-                      onAddNew={formRights[1542]?.isSave ? () => {
-                        setActiveMasterType('folder');
-                        setIsMasterCreateOpen(true);
-                      } : undefined}
-                      addNewLabel="Add New Folder"
-                    />
-                  )}
-                />
-                {form.formState.errors.folder_No && <p className="text-[10px] text-red-500 font-medium ml-1">Folder is required</p>}
-              </div>
+              {
+                !isHideType && 
+                <div className="space-y-0" id="form-group-type_No">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Type</Label>
+                  <Controller
+                    name="type_No"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Combobox disabled={isSubTask} options={fillValues?.type.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
+                        .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select type"
+                        className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        onAddNew={formRights[1560]?.isSave ? () => {
+                          setActiveMasterType('type');
+                          setIsMasterCreateOpen(true);
+                        } : undefined}
+                        addNewLabel="Add New Type"
+                        infoText={typeFieldCaption}
+                      />
+                    )}
+                  />
+                  {form.formState.errors.type_No && <p className="text-[10px] text-red-500 font-medium ml-1">Type is required</p>}
+                </div>
+              }
+              {
+                !isHideFolder &&
+                <div className="space-y-0" id="form-group-folder_No">
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Folder</Label>
+                  <Controller
+                    name="folder_No"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Combobox disabled={isSubTask} options={fillValues?.folder.map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select folder"
+                        className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        isClearable={false}
+                        onAddNew={formRights[1542]?.isSave ? () => {
+                          setActiveMasterType('folder');
+                          setIsMasterCreateOpen(true);
+                        } : undefined}
+                        addNewLabel="Add New Folder"
+                      />
+                    )}
+                  />
+                  {form.formState.errors.folder_No && <p className="text-[10px] text-red-500 font-medium ml-1">Folder is required</p>}
+                </div>
+              }
               <div className="space-y-0" id="form-group-priority_No">
                 <Label className="text-slate-700 font-medium text-[11px] ml-1">Priority <span className="text-red-500 font-medium">*</span></Label>
                 <Controller
@@ -1957,12 +2056,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     name="location_No"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox disabled={isSubTask} options={fillValues?.location.filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]')
-                        .map(l => ({ label: l.Location, value: l.OperLocationNo.toString() })) || []}
+                      <LocationCombobox
+                        disabled={isSubTask}
                         value={field.value}
-                        onChange={field.onChange}
+                        onChange={(location) => field.onChange(location.operLocationNo ? location.operLocationNo.toString() : '')}
+                        initialLabel={initialData?.locationName || undefined}
                         placeholder="Select location"
-                        className={form.formState.errors.location_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        error={!!form.formState.errors.location_No}
                         onAddNew={formRights[1541]?.isSave ? () => {
                           setActiveMasterType('location');
                           setIsMasterCreateOpen(true);
@@ -2057,63 +2157,60 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         <UserPlus size={12} /> Add
                       </Button>
                     </div>
-                    <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasCollabError && "border-red-500 ring-2 ring-red-500/10")}>
-                      <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
-                        <table className="w-full text-left text-[11px] border-collapse">
-                          <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
-                            <tr>
-                              <th className="px-3 py-1.5 font-medium text-slate-700">User Name</th>
-                              <th className="px-3 py-1.5 font-medium text-slate-700">Display Name</th>
-                              <th className="px-3 py-1.5 font-medium text-slate-700">Email</th>
-                              <th className="px-2 py-1.5 w-8"></th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {collabFields.map((field, index) => (
-                              <tr key={field.id} className="group hover:bg-white transition-colors">
-                                <td className="px-2 py-1">
-                                  <Controller
-                                    name={`collaborators.${index}.userName`}
-                                    control={form.control}
-                                    render={({ field: nameField }) => (
-                                      <UserCombobox value={nameField.value} onChange={(user) => {
-                                        nameField.onChange(user.loginId);
-                                        form.setValue(`collaborators.${index}.displayName`, user.printingName);
-                                        form.setValue(`collaborators.${index}.email`, user.email || '');
-                                        form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
-                                      }}
-                                        placeholder="Select username"
-                                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm font-medium text-slate-900 bg-transparent shadow-none px-2"
-                                        initialLabel={nameField.value}
-                                        disabled={field.isFromTeam}
-                                      />
-                                    )}
-                                  />
-                                </td>
-                                <td className="px-2 py-1">
-                                  <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
-                                </td>
-                                <td className="px-2 py-1">
-                                  <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
-                                </td>
-                                <td className="px-1 py-1 text-center">
-                                  {!field.isFromTeam && (
-                                    <button type="button" onClick={() => removeCollab(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                      <Trash2 size={12} />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                            {collabFields.length === 0 && (
+                    {collabFields.length > 0 && (
+                      <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasCollabError && "border-red-500 ring-2 ring-red-500/10")}>
+                        <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
+                          <table className="w-full text-left text-[11px] border-collapse">
+                            <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
                               <tr>
-                                <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No collaborators / supporters.</td>
+                                <th className="px-3 py-1.5 font-medium text-slate-700">User Name <span className="text-red-500">*</span></th>
+                                <th className="px-3 py-1.5 font-medium text-slate-700">Display Name <span className="text-red-500">*</span></th>
+                                <th className="px-3 py-1.5 font-medium text-slate-700">Email</th>
+                                <th className="px-2 py-1.5 w-8"></th>
                               </tr>
-                            )}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {collabFields.map((field, index) => (
+                                <tr key={field.id} className="group hover:bg-white transition-colors">
+                                  <td className="px-2 py-1">
+                                    <Controller
+                                      name={`collaborators.${index}.userName`}
+                                      control={form.control}
+                                      render={({ field: nameField }) => (
+                                        <UserCombobox value={nameField.value} onChange={(user) => {
+                                          nameField.onChange(user.loginId);
+                                          form.setValue(`collaborators.${index}.displayName`, user.printingName);
+                                          form.setValue(`collaborators.${index}.email`, user.email || '');
+                                          form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
+                                        }}
+                                          placeholder="Select username"
+                                          className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm font-medium text-slate-900 bg-transparent shadow-none px-2"
+                                          initialLabel={nameField.value}
+                                          disabled={field.isFromTeam}
+                                        />
+                                      )}
+                                    />
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    <Input disabled {...form.register(`collaborators.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    <Input disabled {...form.register(`collaborators.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
+                                  </td>
+                                  <td className="px-1 py-1 text-center">
+                                    {!field.isFromTeam && (
+                                      <button type="button" onClick={() => removeCollab(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                        <Trash2 size={12} />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     {hasCollabError && <p className="text-[10px] text-red-500 font-medium ml-1">{collabError.message}</p>}
                   </div>
 
@@ -2156,63 +2253,60 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         <UserPlus size={12} /> Add
                       </Button>
                     </div>
-                    <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasInformError && "border-red-500 ring-2 ring-red-500/10")}>
-                      <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
-                        <table className="w-full text-left text-[11px] border-collapse">
-                          <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
-                            <tr>
-                              <th className="px-3 py-1.5 font-medium text-slate-700">User Name</th>
-                              <th className="px-3 py-1.5 font-medium text-slate-700">Display Name</th>
-                              <th className="px-3 py-1.5 font-medium text-slate-700">Email</th>
-                              <th className="px-2 py-1.5 w-8"></th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {informFields.map((field, index) => (
-                              <tr key={field.id} className="group hover:bg-white transition-colors">
-                                <td className="px-2 py-1">
-                                  <Controller
-                                    name={`informed_to.${index}.userName`}
-                                    control={form.control}
-                                    render={({ field: nameField }) => (
-                                      <UserCombobox value={nameField.value} onChange={(user) => {
-                                        nameField.onChange(user.loginId);
-                                        form.setValue(`informed_to.${index}.displayName`, user.printingName);
-                                        form.setValue(`informed_to.${index}.email`, user.email || '');
-                                        form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
-                                      }}
-                                        placeholder="Select username"
-                                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm bg-transparent shadow-none px-2"
-                                        initialLabel={nameField.value}
-                                        disabled={field.isFromTeam}
-                                      />
-                                    )}
-                                  />
-                                </td>
-                                <td className="px-2 py-1">
-                                  <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
-                                </td>
-                                <td className="px-2 py-1">
-                                  <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
-                                </td>
-                                <td className="px-1 py-1 text-center">
-                                  {!field.isFromTeam && (
-                                    <button type="button" onClick={() => removeInform(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                                      <Trash2 size={12} />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                            {informFields.length === 0 && (
+                    {informFields.length > 0 && (
+                      <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasInformError && "border-red-500 ring-2 ring-red-500/10")}>
+                        <div className="max-h-[360px] overflow-y-auto scrollbar-hide">
+                          <table className="w-full text-left text-[11px] border-collapse">
+                            <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
                               <tr>
-                                <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No report to.</td>
+                                <th className="px-3 py-1.5 font-medium text-slate-700">User Name <span className="text-red-500">*</span></th>
+                                <th className="px-3 py-1.5 font-medium text-slate-700">Display Name <span className="text-red-500">*</span></th>
+                                <th className="px-3 py-1.5 font-medium text-slate-700">Email</th>
+                                <th className="px-2 py-1.5 w-8"></th>
                               </tr>
-                            )}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {informFields.map((field, index) => (
+                                <tr key={field.id} className="group hover:bg-white transition-colors">
+                                  <td className="px-2 py-1">
+                                    <Controller
+                                      name={`informed_to.${index}.userName`}
+                                      control={form.control}
+                                      render={({ field: nameField }) => (
+                                        <UserCombobox value={nameField.value} onChange={(user) => {
+                                          nameField.onChange(user.loginId);
+                                          form.setValue(`informed_to.${index}.displayName`, user.printingName);
+                                          form.setValue(`informed_to.${index}.email`, user.email || '');
+                                          form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
+                                        }}
+                                          placeholder="Select username"
+                                          className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm bg-transparent shadow-none px-2"
+                                          initialLabel={nameField.value}
+                                          disabled={field.isFromTeam}
+                                        />
+                                      )}
+                                    />
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    <Input disabled {...form.register(`informed_to.${index}.displayName`)} placeholder="Display Name" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    <Input disabled {...form.register(`informed_to.${index}.email`)} placeholder="Email" className="h-7 rounded-lg border-transparent md: bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
+                                  </td>
+                                  <td className="px-1 py-1 text-center">
+                                    {!field.isFromTeam && (
+                                      <button type="button" onClick={() => removeInform(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                        <Trash2 size={12} />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     {hasInformError && <p className="text-[10px] text-red-500 font-medium ml-1">{informError.message}</p>}
                   </div>
                 </div>
@@ -2221,7 +2315,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </FormSection>
         )}
 
-        {isShowTopAdditionalFields && (
+        {isShowTopAdditionalFields && (form.watch('custom_fields') as any[])?.length > 0 && (
           <FormSection title="Additional Fields" icon={Sparkles}>
             <CustomFieldsSection
               customFields={(form.watch('custom_fields') as any) || []}
@@ -2234,8 +2328,168 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </FormSection>
         )}
 
-        {/* 3. Timeline */}
-        {!hiddenSections.includes('timeline') && (
+        {!hiddenSections.includes('attachments') && (
+          <FormSection title="Attachments" icon={Paperclip}>
+            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#006699] rounded-2xl p-8 bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer group"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="application/pdf,image/*"
+                  onChange={handleFileSelection}
+                  className="hidden"
+                />
+                <div className="h-12 w-12 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#006699] group-hover:scale-110 transition-all">
+                  <UploadCloud size={22} />
+                </div>
+                <p className="mt-3 text-xs font-medium text-slate-700">Drag & drop files or click to upload</p>
+                <p className="mt-1 text-[10px] font-medium text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
+              </div>
+
+              {/* <div
+                onClick={() => setIsCameraModalOpen(true)}
+                className="flex flex-col items-center justify-center border border-slate-200 hover:border-[#006699] rounded-2xl py-3 bg-white hover:bg-slate-50 transition-all cursor-pointer group"
+              >
+                <Camera size={20} className="text-[#006699]" />
+              </div> */}
+              {/* Active Uploading Files Queue */}
+              {uploadingFiles.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-medium text-slate-500 ml-1">Uploading Queue</h4>
+                  <div className="space-y-0">
+                    {uploadingFiles.map(file => (
+                      <motion.div
+                        key={file.tempId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className={cn(
+                          "flex items-center justify-between p-3.5 rounded-xl border transition-all shadow-sm",
+                          file.status === 'failed' ? "bg-red-50/50 border-red-200" : "bg-slate-50/50 border-slate-200"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className={cn(
+                            "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border shadow-sm",
+                            file.status === 'failed' ? "bg-red-100 border-red-200 text-red-600" : "bg-white border-slate-200 text-[#006699]"
+                          )}>
+                            {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-slate-900 truncate leading-none mb-1">{file.name}</p>
+                            <span className="text-[9px] font-medium flex items-center gap-0.5">
+                              {file.status === 'pending' && <span className="text-slate-500">Pending upload...</span>}
+                              {file.status === 'uploading' && (
+                                <span className="text-[#006699] flex items-center gap-1">
+                                  <Loader2 size={10} className="animate-spin" /> Registering entry...
+                                </span>
+                              )}
+                              {file.status === 'verifying' && (
+                                <span className="text-blue-600 flex items-center gap-1">
+                                  <Loader2 size={10} className="animate-spin" /> Uploading file payload...
+                                </span>
+                              )}
+                              {file.status === 'failed' && (
+                                <span className="text-red-600 font-medium flex items-center gap-1">
+                                  Failed: {file.errorMessage || "Network error"}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-0.5">
+                          {file.status === 'failed' && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRetryUpload(file.tempId)}
+                              className="h-8 w-8 rounded-lg border border-red-200/50 bg-white text-red-600 hover:bg-red-100/50 flex items-center justify-center transition-all shadow-sm"
+                            >
+                              <RefreshCw size={13} />
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleRemoveUploading(file.tempId)}
+                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 flex items-center justify-center transition-all shadow-sm"
+                          >
+                            <X size={13} />
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Successfully Uploaded Attachments List */}
+              {(() => {
+                const attachments = form.watch('attachments') || [];
+                if (attachments.length === 0) return null;
+
+                return (
+                  <div className="space-y-3 pt-2">
+                    <h4 className="text-[10px] font-medium text-slate-500 ml-1">Attached Documents ({attachments.length})</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {attachments.map((file: any) => (
+                        <motion.div
+                          key={file.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="flex items-center justify-between p-3 bg-slate-50/30 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+                              {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-baseline gap-0.5 mb-0.5">
+                                <p className="text-xs font-medium text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
+                                {file.size ? (
+                                  <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
+                                ) : null}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
+                                className="text-[9px] font-medium text-[#006699] hover:underline block text-left"
+                              >
+                                View document
+                              </button>
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleRemoveAttachment(file.id, file.name)}
+                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all shadow-sm"
+                          >
+                            <Trash size={13} />
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </FormSection>
+        )}
+
+        {(!isHideDetailSection || showMoreDetails) && (
+        <>
+                {/* 3. Timeline */}
+                {!hiddenSections.includes('timeline') && (
           <FormSection title="Timeline & Effort" icon={Clock}>
             <div className="space-y-3">
               {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
@@ -2404,12 +2658,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </div>
           </FormSection>
         )}
-
         {/* 4. Business Impact */}
         {!hiddenSections.includes('business_benefit') && (
-          <FormSection title="Business Benefit Section" icon={TrendingUp}>
-            <div className="space-y-3">
-              <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-300 flex items-center gap-3 shadow-sm transition-all hover:bg-slate-100/50">
+          <FormSection
+            title="Business Benefit"
+            icon={TrendingUp}
+            headerAction={
+              <div className="flex items-center gap-2 shrink-0 border rounded-md px-2 py-1">
                 <Controller
                   name="is_business_benefit_applicable"
                   control={form.control}
@@ -2419,19 +2674,19 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       checked={field.value}
                       onCheckedChange={field.onChange}
                       disabled={isBenefitDisabled}
-                      className="h-5 w-5 rounded-md border-slate-400"
+                      className="h-4 w-4 rounded-md border-slate-400"
                     />
                   )}
                 />
-                <div className="space-y-0.5">
-                  <Label htmlFor="benefit-section" className="text-sm font-medium text-slate-700 cursor-pointer">Business Benefit Applicable</Label>
-                </div>
+                <Label htmlFor="benefit-section" className="text-xs font-medium text-slate-700 cursor-pointer">Business Benefit Applicable</Label>
               </div>
-
+            }
+          >
+            <div className="space-y-3">
               {isBenefitApplicable && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="space-y-0" id="form-group-business_benefit_type_No">
-                    <Label className="text-slate-700 font-medium text-[11px] ml-1">Benefit Type</Label>
+                    <Label className="text-slate-700 font-medium text-[11px] ml-1">Benefit Type <span className="text-red-500 font-medium">*</span></Label>
                     <Controller
                       name="business_benefit_type_No"
                       control={form.control}
@@ -2461,7 +2716,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     {form.formState.errors.business_benefit_type_No && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.business_benefit_type_No.message}</p>}
                   </div>
                   <div className="space-y-0" id="form-group-benefit_period">
-                    <Label className="text-slate-700 font-medium text-[11px] ml-1">Benefit Period</Label>
+                    <Label className="text-slate-700 font-medium text-[11px] ml-1">Benefit Period <span className="text-red-500 font-medium">*</span></Label>
                     <Controller
                       name="benefit_period"
                       control={form.control}
@@ -2483,7 +2738,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   {!shouldHideBenefitAmount && (
                     <>
                       <div className="space-y-0" id="form-group-estimated_benefit_amount">
-                        <Label className="text-slate-700 font-medium text-[11px] ml-1">Estimated Benefit Amount</Label>
+                        <Label className="text-slate-700 font-medium text-[11px] ml-1">Estimated Benefit Amount <span className="text-red-500 font-medium">*</span></Label>
                         <Input type="number" step="0.01" placeholder="" {...form.register('estimated_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("rounded-xl h-9 text-slate-900 shadow-sm text-right transition-all", form.formState.errors.estimated_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={8} />
                         {form.formState.errors.estimated_benefit_amount && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.estimated_benefit_amount.message}</p>}
                       </div>
@@ -2537,7 +2792,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
                         <th className="px-1 py-0.5 text-[10px] font-medium text-slate-500 w-[40px]">Sl. No.</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 w-[180px]">Type</th>
+                        {showSubtaskType && <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 w-[180px]">Type</th>}
                         <th className="pl-2 pr-0.5 py-0.5 text-[10px] font-medium text-slate-500">Sub-Task Title <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Status</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Task Assign To <span className="text-red-500">*</span></th>
@@ -2558,23 +2813,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <td className="px-1 py-1 align-top text-xs font-medium text-slate-500 mt-1">
                                 {idx + 1}.
                               </td>
-                              <td className="px-0.5 py-0 align-top w-[180px]">
-                                <Controller
-                                  name={`sub_tasks.${index}.type_No`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
-                                    <div className="flex flex-col mt-1.5">
-                                      <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
-                                        value={subField.value || ''}
-                                        onChange={(val) => {
-                                          subField.onChange(val);
-                                        }}
-                                        placeholder="Select type"
-                                      />
-                                    </div>
-                                  )}
-                                />
-                              </td>
+                              {showSubtaskType && (
+                                <td className="px-0.5 py-0 align-top w-[180px]">
+                                  <Controller
+                                    name={`sub_tasks.${index}.type_No`}
+                                    control={form.control}
+                                    render={({ field: subField }) => (
+                                      <div className="flex flex-col mt-1.5">
+                                        <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                          value={subField.value || ''}
+                                          onChange={(val) => {
+                                            subField.onChange(val);
+                                          }}
+                                          placeholder="Select type"
+                                        />
+                                      </div>
+                                    )}
+                                  />
+                                </td>
+                              )}
                               <td className="px-0.5 py-0 align-top">
                                 <div className="flex flex-grow items-start gap-0.5 py-1.5">
                                   <div className="flex-1">
@@ -2719,23 +2976,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             <td className="px-1 py-1 align-top text-xs font-medium text-slate-500 mt-1">
                               {localSubtasks.length + index + 1}.
                             </td>
-                            <td className="px-0.5 py-0 align-top w-[180px]">
-                              <Controller
-                                name={`sub_tasks.${index}.type_No`}
-                                control={form.control}
-                                render={({ field: subField }) => (
-                                  <div className="flex flex-col mt-1.5">
-                                    <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
-                                      value={subField.value || ''}
-                                      onChange={(val) => {
-                                        subField.onChange(val);
-                                      }}
-                                      placeholder="Select type"
-                                    />
-                                  </div>
-                                )}
-                              />
-                            </td>
+                            {showSubtaskType && (
+                              <td className="px-0.5 py-0 align-top w-[180px]">
+                                <Controller
+                                  name={`sub_tasks.${index}.type_No`}
+                                  control={form.control}
+                                  render={({ field: subField }) => (
+                                    <div className="flex flex-col mt-1.5">
+                                      <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                        value={subField.value || ''}
+                                        onChange={(val) => {
+                                          subField.onChange(val);
+                                        }}
+                                        placeholder="Select type"
+                                      />
+                                    </div>
+                                  )}
+                                />
+                              </td>
+                            )}
                             <td className="px-0.5 py-0 min-w-[400px] align-top">
                               <div className="flex items-start gap-0.5 py-1.5 pl-2.5">
                                 <div className="flex-1">
@@ -2823,7 +3082,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         {/* 5. Execution Detail */}
         {!hiddenSections.includes('checklist') && (
           <FormSection
-            title={checklist.length > 0 ? `Check Lists (${completedCount}/${checklist.length} (${progressPercent}%))` : "Check Lists"}
+            title={checklist.length > 0 ? `Checklists for task completion  (${completedCount}/${checklist.length} (${progressPercent}%))` : "Checklist for task completion"}
             icon={CheckCircle}
             headerAction={
               <Button
@@ -2892,23 +3151,77 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </FormSection>
         )}
 
-        {/* 6. Execution Notes */}
+        {/* 6. Task Execution Log */}
         {!hiddenSections.includes('execution_note') && (
-          <FormSection title="Task Execution Note" icon={FileText}>
-            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
-              <div className="space-y-0">
-                <label className="text-[10px] font-medium text-slate-700 ml-1">
-                  Execution Notes
-                </label>
-                <Controller
-                  name="executionNotes"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Textarea {...field} placeholder="Enter execution note" className="min-h-[100px] input-section bg-white shadow-sm " maxLength={1000} />
-                  )}
-                />
-              </div>
-              {/* Row 3: Completion Date, Completion Remark */}
+          <FormSection
+            title="Task Execution Log"
+            icon={FileText}
+            headerAction={
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => appendExecutionLog({ id: Date.now().toString(), date: '', remark: '' })}
+                className="rounded-xl font-medium border-slate-300 hover:bg-slate-50 h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95 text-slate-700"
+              >
+                <Plus size={12} className="text-[#006699]" /> Add Log
+              </Button>
+            }
+          >
+            <div className="space-y-3">
+              {executionLogFields.length > 0 && (
+                <div className={cn("bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200", hasExecutionLogError && "border-red-500 ring-2 ring-red-500/10")}>
+                  <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
+                    <table className="w-full text-left text-[11px] border-collapse">
+                      <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
+                        <tr>
+                          <th className="px-3 py-1.5 font-medium text-slate-700 w-40">Date <span className="text-red-500">*</span></th>
+                          <th className="px-3 py-1.5 font-medium text-slate-700">Remark <span className="text-red-500">*</span></th>
+                          <th className="px-2 py-1.5 w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {executionLogFields.map((field, index) => (
+                          <tr key={field.id} className="group hover:bg-white transition-colors">
+                            <td className="px-2 py-1 align-top">
+                              <Controller
+                                name={`execution_logs.${index}.date`}
+                                control={form.control}
+                                render={({ field: dateField }) => (
+                                  <DateTimePicker
+                                    date={dateField.value ? new Date(dateField.value) : undefined}
+                                    onChange={(date) => dateField.onChange(date ? date.toISOString() : '')}
+                                    placeholder="Select date"
+                                    hideTime
+                                    className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-xs font-medium text-slate-900 bg-transparent shadow-none px-2"
+                                  />
+                                )}
+                              />
+                              {form.formState.errors.execution_logs?.[index]?.date && (
+                                <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.execution_logs[index]?.date?.message}</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-1 align-top">
+                              <Textarea {...form.register(`execution_logs.${index}.remark`)} placeholder="Enter remark" rows={1} className="min-h-[36px] py-1.5 resize-none rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm text-slate-900 bg-transparent shadow-none px-2" />
+                              {form.formState.errors.execution_logs?.[index]?.remark && (
+                                <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.execution_logs[index]?.remark?.message}</span>
+                              )}
+                            </td>
+                            <td className="px-1 py-1 text-center align-top">
+                              <button type="button" onClick={() => removeExecutionLog(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                <Trash2 size={12} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {hasExecutionLogError && <p className="text-[10px] text-red-500 font-medium ml-1">{executionLogError.message}</p>}
+
+              {/* Completion Date, Completion Remark */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-2">
                 <div className="space-y-0.5 md:col-span-1" id="form-group-completionDate">
                   <Label className="text-slate-700 font-medium text-[11px] ml-1">Completion Date</Label>
@@ -2932,172 +3245,106 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   {form.formState.errors.completionRemark && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.completionRemark.message}</p>}
                 </div>
               </div>
-              {/* Row 4: Road Block Remark */}
-              <div className="grid grid-cols-1 gap-4 items-start pt-2">
-                <div className="space-y-0.5" id="form-group-roadBlock">
-                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Road Block Remark</Label>
-                  <Textarea placeholder="Enter road block remark" {...form.register('roadBlock')} maxLength={1000} className={cn("min-h-[80px] resize-none rounded-xl transition-all text-slate-900 ", form.formState.errors.roadBlock ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "border-slate-300 focus:border-[#006699] focus:ring-[#006699]/15")} />
-                  {form.formState.errors.roadBlock && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.roadBlock.message}</p>}
-                </div>
-              </div>
             </div>
           </FormSection>
         )}
 
-        {!hiddenSections.includes('attachments') && (
-          <FormSection title="Attachments" icon={Paperclip}>
-            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#006699] rounded-2xl p-8 bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer group"
+        {/* 6b. Road Block Remarks */}
+        {!hiddenSections.includes('execution_note') && (
+          <FormSection
+            title="Challenges"
+            icon={AlertCircle}
+            headerAction={
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => appendRoadBlock({ id: Date.now().toString(), date: '', remark: '', proposedSolution: '', status_No: '' })}
+                className="rounded-xl font-medium border-slate-300 hover:bg-slate-50 h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95 text-slate-700"
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="application/pdf,image/*"
-                  onChange={handleFileSelection}
-                  className="hidden"
-                />
-                <div className="h-12 w-12 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#006699] group-hover:scale-110 transition-all">
-                  <UploadCloud size={22} />
-                </div>
-                <p className="mt-3 text-xs font-medium text-slate-700">Drag & drop files or click to upload</p>
-                <p className="mt-1 text-[10px] font-medium text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
-              </div>
-
-              {/* <div
-                onClick={() => setIsCameraModalOpen(true)}
-                className="flex flex-col items-center justify-center border border-slate-200 hover:border-[#006699] rounded-2xl py-3 bg-white hover:bg-slate-50 transition-all cursor-pointer group"
-              >
-                <Camera size={20} className="text-[#006699]" />
-              </div> */}
-              {/* Active Uploading Files Queue */}
-              {uploadingFiles.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-[10px] font-medium text-slate-500 ml-1">Uploading Queue</h4>
-                  <div className="space-y-0">
-                    {uploadingFiles.map(file => (
-                      <motion.div
-                        key={file.tempId}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className={cn(
-                          "flex items-center justify-between p-3.5 rounded-xl border transition-all shadow-sm",
-                          file.status === 'failed' ? "bg-red-50/50 border-red-200" : "bg-slate-50/50 border-slate-200"
-                        )}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className={cn(
-                            "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border shadow-sm",
-                            file.status === 'failed' ? "bg-red-100 border-red-200 text-red-600" : "bg-white border-slate-200 text-[#006699]"
-                          )}>
-                            {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-slate-900 truncate leading-none mb-1">{file.name}</p>
-                            <span className="text-[9px] font-medium flex items-center gap-0.5">
-                              {file.status === 'pending' && <span className="text-slate-500">Pending upload...</span>}
-                              {file.status === 'uploading' && (
-                                <span className="text-[#006699] flex items-center gap-1">
-                                  <Loader2 size={10} className="animate-spin" /> Registering entry...
-                                </span>
+                <Plus size={12} className="text-[#006699]" /> Add Challenges
+              </Button>
+            }
+          >
+            <div className="space-y-3">
+              {roadBlockFields.length > 0 && (
+                <div className="bg-slate-50/50 rounded-xl border overflow-hidden shadow-sm transition-all border-slate-200">
+                  <div className="max-h-[300px] overflow-y-auto scrollbar-hide">
+                    <table className="w-full text-left text-[11px] border-collapse">
+                      <thead className="bg-slate-100/95 border-b border-slate-200 sticky top-0 z-10 backdrop-blur-sm">
+                        <tr>
+                          <th className="px-3 py-1.5 font-medium text-slate-700 w-36">Date <span className="text-red-500">*</span></th>
+                          <th className="px-3 py-1.5 font-medium text-slate-700">Remarks <span className="text-red-500">*</span></th>
+                          <th className="px-3 py-1.5 font-medium text-slate-700">Proposed Solution</th>
+                          <th className="px-3 py-1.5 font-medium text-slate-700 w-32">Status <span className="text-red-500">*</span></th>
+                          <th className="px-2 py-1.5 w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {roadBlockFields.map((field, index) => (
+                          <tr key={field.id} className="group hover:bg-white transition-colors">
+                            <td className="px-2 py-1 align-top">
+                              <Controller
+                                name={`road_block_remarks.${index}.date`}
+                                control={form.control}
+                                render={({ field: dateField }) => (
+                                  <DateTimePicker
+                                    date={dateField.value ? new Date(dateField.value) : undefined}
+                                    onChange={(date) => dateField.onChange(date ? date.toISOString() : '')}
+                                    placeholder="Select date"
+                                    hideTime
+                                    className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-xs font-medium text-slate-900 bg-transparent shadow-none px-2"
+                                  />
+                                )}
+                              />
+                              {form.formState.errors.road_block_remarks?.[index]?.date && (
+                                <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.road_block_remarks[index]?.date?.message}</span>
                               )}
-                              {file.status === 'verifying' && (
-                                <span className="text-blue-600 flex items-center gap-1">
-                                  <Loader2 size={10} className="animate-spin" /> Uploading file payload...
-                                </span>
+                            </td>
+                            <td className="px-2 py-1 align-top">
+                              <Textarea {...form.register(`road_block_remarks.${index}.remark`)} placeholder="Enter remark" rows={1} className="min-h-[36px] py-1.5 resize-none rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm text-slate-900 bg-transparent shadow-none px-2" />
+                              {form.formState.errors.road_block_remarks?.[index]?.remark && (
+                                <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.road_block_remarks[index]?.remark?.message}</span>
                               )}
-                              {file.status === 'failed' && (
-                                <span className="text-red-600 font-medium flex items-center gap-1">
-                                  Failed: {file.errorMessage || "Network error"}
-                                </span>
+                            </td>
+                            <td className="px-2 py-1 align-top">
+                              <Textarea {...form.register(`road_block_remarks.${index}.proposedSolution`)} placeholder="Enter proposed solution" rows={1} className="min-h-[36px] py-1.5 resize-none rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-sm text-slate-900 bg-transparent shadow-none px-2" />
+                            </td>
+                            <td className="px-2 py-1 align-top">
+                              <Controller
+                                name={`road_block_remarks.${index}.status_No`}
+                                control={form.control}
+                                render={({ field: statusField }) => (
+                                  <Select onValueChange={statusField.onChange} value={statusField.value}>
+                                    <SelectTrigger className="rounded-lg h-7 border-transparent group-hover:border-slate-200 text-[11px] bg-transparent shadow-none px-2">
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                      {fillValues?.status
+                                        .filter(s => ['Open', 'In Progress', 'Close'].includes(s.Status))
+                                        .map(s => (
+                                          <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs">{s.Status}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                              {form.formState.errors.road_block_remarks?.[index]?.status_No && (
+                                <span className="text-[9px] text-red-500 font-medium mt-1 block">{form.formState.errors.road_block_remarks[index]?.status_No?.message}</span>
                               )}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-0.5">
-                          {file.status === 'failed' && (
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleRetryUpload(file.tempId)}
-                              className="h-8 w-8 rounded-lg border border-red-200/50 bg-white text-red-600 hover:bg-red-100/50 flex items-center justify-center transition-all shadow-sm"
-                            >
-                              <RefreshCw size={13} />
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleRemoveUploading(file.tempId)}
-                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 flex items-center justify-center transition-all shadow-sm"
-                          >
-                            <X size={13} />
-                          </Button>
-                        </div>
-                      </motion.div>
-                    ))}
+                            </td>
+                            <td className="px-1 py-1 text-center align-top">
+                              <button type="button" onClick={() => removeRoadBlock(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
+                                <Trash2 size={12} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
-
-              {/* Successfully Uploaded Attachments List */}
-              {(() => {
-                const attachments = form.watch('attachments') || [];
-                if (attachments.length === 0) return null;
-
-                return (
-                  <div className="space-y-3 pt-2">
-                    <h4 className="text-[10px] font-medium text-slate-500 ml-1">Attached Documents ({attachments.length})</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {attachments.map((file: any) => (
-                        <motion.div
-                          key={file.id}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="flex items-center justify-between p-3 bg-slate-50/30 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
-                              {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-baseline gap-0.5 mb-0.5">
-                                <p className="text-xs font-medium text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
-                                {file.size ? (
-                                  <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>
-                                ) : null}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
-                                className="text-[9px] font-medium text-[#006699] hover:underline block text-left"
-                              >
-                                View document
-                              </button>
-                            </div>
-                          </div>
-
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleRemoveAttachment(file.id, file.name)}
-                            className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all shadow-sm"
-                          >
-                            <Trash size={13} />
-                          </Button>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
           </FormSection>
         )}
@@ -3122,7 +3369,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </FormSection>
         )}
 
-        {!isShowTopAdditionalFields && (
+        {!isShowTopAdditionalFields && (form.watch('custom_fields') as any[])?.length > 0 && (
           <FormSection title="Additional Fields" icon={Sparkles}>
             <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
               <CustomFieldsSection
@@ -3134,6 +3381,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               />
             </div>
           </FormSection>
+        )}
+        </>
+        )}
+
+        {isHideDetailSection && (
+          <div className="flex justify-center py-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowMoreDetails(v => !v)}
+              className="rounded-xl font-medium border-slate-300 hover:bg-slate-50 h-9 px-4 text-xs shadow-sm gap-1.5 transition-all active:scale-95 text-slate-700"
+            >
+              {showMoreDetails ? (
+                <>Show less details <ChevronUp size={14} /></>
+              ) : (
+                <>Show more details <ChevronDown size={14} /></>
+              )}
+            </Button>
+          </div>
         )}
       </form>
 
@@ -3414,7 +3680,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
                         <th className="px-1 py-0.5 text-[10px] font-medium text-slate-500 w-[40px]">Sl. No.</th>
-                        <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 w-[180px]">Type</th>
+                        {showSubtaskType && <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500 w-[180px]">Type</th>}
                         <th className="pl-2 pr-0.5 py-0.5 text-[10px] font-medium text-slate-500">Sub-Task Title <span className="text-red-500">*</span></th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Status</th>
                         <th className="px-0.5 py-0.5 text-[10px] font-medium text-slate-500">Task Assign To <span className="text-red-500">*</span></th>
@@ -3435,23 +3701,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <td className="px-1 py-1 align-top text-xs font-medium text-slate-500 mt-1">
                                 {idx + 1}.
                               </td>
-                              <td className="px-0.5 py-0 align-top w-[180px]">
-                                <Controller
-                                  name={`sub_tasks.${index}.type_No`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
-                                    <div className="flex flex-col mt-1.5">
-                                      <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
-                                        value={subField.value || ''}
-                                        onChange={(val) => {
-                                          subField.onChange(val);
-                                        }}
-                                        placeholder="Select type"
-                                      />
-                                    </div>
-                                  )}
-                                />
-                              </td>
+                              {showSubtaskType && (
+                                <td className="px-0.5 py-0 align-top w-[180px]">
+                                  <Controller
+                                    name={`sub_tasks.${index}.type_No`}
+                                    control={form.control}
+                                    render={({ field: subField }) => (
+                                      <div className="flex flex-col mt-1.5">
+                                        <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                          value={subField.value || ''}
+                                          onChange={(val) => {
+                                            subField.onChange(val);
+                                          }}
+                                          placeholder="Select type"
+                                        />
+                                      </div>
+                                    )}
+                                  />
+                                </td>
+                              )}
                               <td className="px-0.5 py-0 align-top">
                                 <div className="flex flex-grow items-start gap-0.5 py-1.5">
                                   <div className="flex-1">
@@ -3596,23 +3864,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             <td className="px-1 py-1 align-top text-xs font-medium text-slate-500 mt-1">
                               {localSubtasks.length + index + 1}.
                             </td>
-                            <td className="px-0.5 py-0 align-top w-[180px]">
-                              <Controller
-                                name={`sub_tasks.${index}.type_No`}
-                                control={form.control}
-                                render={({ field: subField }) => (
-                                  <div className="flex flex-col mt-1.5">
-                                    <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
-                                      value={subField.value || ''}
-                                      onChange={(val) => {
-                                        subField.onChange(val);
-                                      }}
-                                      placeholder="Select type"
-                                    />
-                                  </div>
-                                )}
-                              />
-                            </td>
+                            {showSubtaskType && (
+                              <td className="px-0.5 py-0 align-top w-[180px]">
+                                <Controller
+                                  name={`sub_tasks.${index}.type_No`}
+                                  control={form.control}
+                                  render={({ field: subField }) => (
+                                    <div className="flex flex-col mt-1.5">
+                                      <Combobox options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                        value={subField.value || ''}
+                                        onChange={(val) => {
+                                          subField.onChange(val);
+                                        }}
+                                        placeholder="Select type"
+                                      />
+                                    </div>
+                                  )}
+                                />
+                              </td>
+                            )}
                             <td className="px-0.5 py-0 min-w-[400px] align-top">
                               <div className="flex items-start gap-0.5 py-1.5 pl-2.5">
                                 <div className="flex-1">
@@ -3861,23 +4131,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Type */}
-                  <div className="space-y-1.5">
-                    <Label className="text-slate-700 font-medium text-xs">Type</Label>
-                    <Controller
-                      control={standaloneSubtaskForm.control}
-                      name="type_No"
-                      render={({ field }) => (
-                        <Combobox
-                          options={fillValues?.type?.map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select Type"
-                          className="w-full text-sm rounded-xl h-10 border-slate-300"
-                        />
-                      )}
-                    />
-                  </div>
+                  {/* Type: always shown for Deal Monitor tasks, irrespective of isHideType */}
+                  {showSubtaskType && (
+                    <div className="space-y-1.5">
+                      <Label className="text-slate-700 font-medium text-xs">Type</Label>
+                      <Controller
+                        control={standaloneSubtaskForm.control}
+                        name="type_No"
+                        render={({ field }) => (
+                          <Combobox
+                            options={fillValues?.type?.map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select Type"
+                            className="w-full text-sm rounded-xl h-10 border-slate-300"
+                          />
+                        )}
+                      />
+                    </div>
+                  )}
 
                   {/* Task Assign To */}
                   <div className="space-y-1.5">

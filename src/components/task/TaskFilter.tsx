@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useSettings } from '@/hooks/useSettings';
 
 interface FilterFormValues {
   taskCode?: string;
@@ -52,6 +53,7 @@ interface TaskFilterProps {
   onCreateTask?: () => void;
   showFilters?: boolean;
   onToggleFilters?: () => void;
+  hideCategoryFilter?: boolean;
 }
 
 export function TaskFilter({
@@ -61,7 +63,8 @@ export function TaskFilter({
   onViewModeChange,
   onCreateTask,
   showFilters,
-  onToggleFilters
+  onToggleFilters,
+  hideCategoryFilter = false
 }: TaskFilterProps) {
   const authCompanies = useAuthStore((state) => state.company);
   const authUser = useAuthStore((state) => state.user);
@@ -83,6 +86,17 @@ export function TaskFilter({
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const { fetchFillValues, setSearchKeyword } = useTaskStore();
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
+  const { isHideType, isHideFolder } = useSettings();
+
+  const sortingColumnOptions = (fillValues?.sortingColumns || [])
+    .filter(sc => {
+      const name = sc.DisplayName?.toLowerCase() || '';
+      if (hideCategoryFilter && name.includes('category')) return false;
+      if (isHideType && name.includes('type')) return false;
+      if (isHideFolder && name.includes('folder')) return false;
+      return true;
+    })
+    .map(sc => ({ value: sc.SortingColumnName, label: sc.DisplayName }));
 
   const { control, handleSubmit, reset, watch, setValue, trigger, formState: { errors } } = useForm<FilterFormValues>({
     defaultValues: {
@@ -300,6 +314,7 @@ export function TaskFilter({
                   </div>
 
                   {/* Category */}
+                  {!hideCategoryFilter && (
                   <div className="space-y-0.5">
                     <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
                       <Layers size={12} className="text-slate-400" />
@@ -322,30 +337,33 @@ export function TaskFilter({
                       )}
                     />
                   </div>
+                  )}
 
                   {/* Task Type */}
-                  <div className="space-y-0.5">
-                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
-                      <Tag size={12} className="text-slate-400" />
-                      Task Type
-                    </label>
-                    <Controller
-                      name="operTaskTypeNo"
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                            <SelectValue placeholder="All Types" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
-                            {fillValues?.type.map(t => (
-                              <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()} className="">{t["Task Type"]}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
+                  {!isHideType && (
+                    <div className="space-y-0.5">
+                      <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
+                        <Tag size={12} className="text-slate-400" />
+                        Task Type
+                      </label>
+                      <Controller
+                        name="operTaskTypeNo"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                              <SelectValue placeholder="All Types" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl">
+                              {fillValues?.type.map(t => (
+                                <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()} className="">{t["Task Type"]}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  )}
 
                   {/* Location */}
                   <div className="space-y-0.5">
@@ -454,26 +472,28 @@ export function TaskFilter({
                   </div>
 
                   {/* Workspace Folder */}
-                  <div className="space-y-0.5">
-                    <div className="flex items-center justify-between ml-1 mb-1">
-                      <label className="text-[11px] font-medium text-slate-700 normal-case flex items-center gap-0.5">
-                        <Folder size={12} className="text-slate-400" />
-                        Workspace Folder
-                      </label>
+                  {!isHideFolder && (
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between ml-1 mb-1">
+                        <label className="text-[11px] font-medium text-slate-700 normal-case flex items-center gap-0.5">
+                          <Folder size={12} className="text-slate-400" />
+                          Workspace Folder
+                        </label>
+                      </div>
+                      <Controller
+                        name="folderNo"
+                        control={control}
+                        render={({ field }) => (
+                          <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
+                            <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
+                              placeholder="All Folders"
+                              className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                            />
+                          </div>
+                        )}
+                      />
                     </div>
-                    <Controller
-                      name="folderNo"
-                      control={control}
-                      render={({ field }) => (
-                        <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
-                          <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
-                            placeholder="All Folders"
-                            className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
-                          />
-                        </div>
-                      )}
-                    />
-                  </div>
+                  )}
 
                   {/* Sort Column */}
                   <div className="space-y-0.5">
@@ -485,7 +505,7 @@ export function TaskFilter({
                       name="sortingColumnName"
                       control={control}
                       render={({ field }) => (
-                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.sortingColumns || []).map(sc => ({ value: sc.SortingColumnName, label: sc.DisplayName }))}
+                        <Combobox value={field.value} onChange={field.onChange} options={sortingColumnOptions}
                           placeholder="Select Sort Column"
                           className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
                         />
@@ -600,19 +620,21 @@ export function TaskFilter({
 
             {/* Action buttons toolbar: distributed evenly on mobile, aligned on desktop */}
             <div className="flex items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
-              <Controller
-                name="isAllFolder"
-                control={control}
-                render={({ field }) => (
-                  <label className="flex items-center gap-1.5 cursor-pointer px-2 py-1.5 sm:py-1 rounded-lg hover:bg-slate-50 border border-transparent transition-colors shrink-0">
-                    <Checkbox checked={field.value} onCheckedChange={(val) => {
-                      field.onChange(val);
-                      setTimeout(() => handleSubmit(onSubmit)(), 0);
-                    }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#006699] data-[state=checked]:border-[#006699]" />
-                    <span className="text-[11px] sm:text-xs text-slate-600 font-medium whitespace-nowrap">Search all folders</span>
-                  </label>
-                )}
-              />
+              {!isHideFolder && (
+                <Controller
+                  name="isAllFolder"
+                  control={control}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-1.5 cursor-pointer px-2 py-1.5 sm:py-1 rounded-lg hover:bg-slate-50 border border-transparent transition-colors shrink-0">
+                      <Checkbox checked={field.value} onCheckedChange={(val) => {
+                        field.onChange(val);
+                        setTimeout(() => handleSubmit(onSubmit)(), 0);
+                      }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#006699] data-[state=checked]:border-[#006699]" />
+                      <span className="text-[11px] sm:text-xs text-slate-600 font-medium whitespace-nowrap">Search all folders</span>
+                    </label>
+                  )}
+                />
+              )}
 
               <Button
                 type="button"
@@ -868,40 +890,44 @@ export function TaskFilter({
                 </div>
 
                 {/* Category */}
-                <div className="space-y-0.5">
-                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
-                    <Layers size={12} className="text-slate-400" />
-                    Category
-                  </label>
-                  <Controller
-                    name="operTaskCategoryNo"
-                    control={control}
-                    render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.category || []).map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category }))}
-                        placeholder="All Categories"
-                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
-                      />
-                    )}
-                  />
-                </div>
+                {!hideCategoryFilter && (
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
+                      <Layers size={12} className="text-slate-400" />
+                      Category
+                    </label>
+                    <Controller
+                      name="operTaskCategoryNo"
+                      control={control}
+                      render={({ field }) => (
+                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.category || []).map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category }))}
+                          placeholder="All Categories"
+                          className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                        />
+                      )}
+                    />
+                  </div>
+                )}
 
                 {/* Task Type */}
-                <div className="space-y-0.5">
-                  <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
-                    <Tag size={12} className="text-slate-400" />
-                    Task Type
-                  </label>
-                  <Controller
-                    name="operTaskTypeNo"
-                    control={control}
-                    render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.type || []).map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] }))}
-                        placeholder="All Types"
-                        className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
-                      />
-                    )}
-                  />
-                </div>
+                {!isHideType && (
+                  <div className="space-y-0.5">
+                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
+                      <Tag size={12} className="text-slate-400" />
+                      Task Type
+                    </label>
+                    <Controller
+                      name="operTaskTypeNo"
+                      control={control}
+                      render={({ field }) => (
+                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.type || []).map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] }))}
+                          placeholder="All Types"
+                          className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                        />
+                      )}
+                    />
+                  </div>
+                )}
 
                 {/* Location */}
                 <div className="space-y-0.5">
@@ -1007,26 +1033,28 @@ export function TaskFilter({
                 </div>
 
                 {/* Workspace Folder */}
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between ml-1 mb-1">
-                    <label className="text-[11px] font-medium text-slate-700 normal-case flex items-center gap-0.5">
-                      <Folder size={12} className="text-slate-400" />
-                      Workspace Folder
-                    </label>
+                {!isHideFolder && (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between ml-1 mb-1">
+                      <label className="text-[11px] font-medium text-slate-700 normal-case flex items-center gap-0.5">
+                        <Folder size={12} className="text-slate-400" />
+                        Workspace Folder
+                      </label>
+                    </div>
+                    <Controller
+                      name="folderNo"
+                      control={control}
+                      render={({ field }) => (
+                        <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
+                          <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
+                            placeholder="All Folders"
+                            className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
+                          />
+                        </div>
+                      )}
+                    />
                   </div>
-                  <Controller
-                    name="folderNo"
-                    control={control}
-                    render={({ field }) => (
-                      <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
-                        <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
-                          placeholder="All Folders"
-                          className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
-                        />
-                      </div>
-                    )}
-                  />
-                </div>
+                )}
 
                 {/* Sort Column */}
                 <div className="space-y-0.5">
@@ -1038,7 +1066,7 @@ export function TaskFilter({
                     name="sortingColumnName"
                     control={control}
                     render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.sortingColumns || []).map(sc => ({ value: sc.SortingColumnName, label: sc.DisplayName }))}
+                      <Combobox value={field.value} onChange={field.onChange} options={sortingColumnOptions}
                         placeholder="Select Sort Column"
                         className={cn("h-11 rounded-2xl border-slate-200 bg-white shadow-sm", FIELD_TEXT_STYLE)}
                       />

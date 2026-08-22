@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
 import { useTaskStore } from '@/store/useTaskStore';
+import { useSettings } from '@/hooks/useSettings';
+import { taskUrl } from '@/lib/dealMonitor';
 
 interface TaskCardProps {
   task: Task;
@@ -17,6 +19,7 @@ interface TaskCardProps {
 export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
   const navigate = useNavigate();
   const { fillValues } = useTaskStore();
+  const { isHideType } = useSettings();
 
   const getContrastColor = (hexColor?: string) => {
     if (!hexColor) return '#1e293b';
@@ -59,11 +62,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
             if (onTaskClick) {
               onTaskClick(task.taskNo);
             } else {
-              if (task.categoryName?.toLowerCase() === 'deal monitor') {
-                navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
-              } else {
-                navigate(`/task/${task.taskNo}`);
-              }
+              navigate(taskUrl(task.taskNo, task.categoryName));
             }
           }}
           className={cn(
@@ -83,11 +82,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (task.categoryName?.toLowerCase() === 'deal monitor') {
-                        navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
-                      } else {
-                        navigate(`/task/${task.taskNo}`);
-                      }
+                      navigate(taskUrl(task.taskNo, task.categoryName));
                     }}
                     className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center cursor-pointer shrink-0"
                   >
@@ -103,7 +98,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                 </h4>
                 
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {task.typeName && (
+                  {task.typeName && !isHideType && (
                     <span className="bg-slate-200 text-slate-800 text-[8px] font-black px-1.5 py-0.5 rounded-md  ">
                       {task.typeName}
                     </span>

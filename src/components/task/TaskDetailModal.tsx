@@ -26,6 +26,7 @@ import {
   Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { taskUrl } from '@/lib/dealMonitor';
 import { format } from 'date-fns';
 import { useTaskStore } from '@/store/useTaskStore';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -191,6 +192,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           subTasks: mappedSubTasks,
           executionNotes: d.executionNotes || d.execution_notes || '',
           execution_notes: d.executionNotes || d.execution_notes || '',
+          executionChallenges: d.executionChallenges || [],
           collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
           infromToUserGroupNo: d.infromToUserGroupNo || null,
           attachments: (d.attachment || d.attachments || d.documentAttachments || []).map((a: any) => ({
@@ -275,11 +277,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                   <Button
                     type="button"
                     onClick={() => {
-                      if (task.categoryName?.toLowerCase() === 'deal monitor') {
-                        navigate(`/task/${task.taskNo}?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true`);
-                      } else {
-                        navigate(`/task/${task.taskNo}`);
-                      }
+                      navigate(taskUrl(task.taskNo, task.categoryName));
                       onClose();
                     }}
                     className="h-8 text-xs font-medium normal-case gap-0.5 px-4 rounded-xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-md shadow-[#006699]/10 hover:scale-[1.02] active:scale-95 transition-all"
@@ -388,16 +386,59 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                     </div>
                   )}
 
-                  {/* Task Execution Note */}
-                  {(task.executionNotes || task.execution_notes) && (
+                  {/* Task Execution Log */}
+                  {(task.executionChallenges || []).filter((c: any) => c.typeNo === 1).length > 0 && (
                     <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
                       <div className="border-b border-slate-100 pb-1 flex items-center gap-0.5">
                         <FileText className="text-[#006699]" size={16} />
-                        <h4 className="text-xs font-medium text-slate-900  ">Task Execution Note</h4>
+                        <h4 className="text-xs font-medium text-slate-900  ">Task Execution Log</h4>
                       </div>
-                      <p className="text-xs text-slate-700 font-semibold leading-relaxed whitespace-pre-line bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                        {task.executionNotes || task.execution_notes}
-                      </p>
+                      <div className="space-y-1.5 pt-1">
+                        {task.executionChallenges!.filter((c: any) => c.typeNo === 1).map((entry: any, idx: number) => (
+                          <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl flex flex-col gap-0.5">
+                            <span className="text-[10px] font-medium text-slate-500">{entry.logDate ? format(new Date(entry.logDate), 'MMM dd, yyyy') : '-'}</span>
+                            <span className="text-xs font-medium text-slate-900 whitespace-pre-wrap">{entry.remarks}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Challenges (Road Block Remarks) */}
+                  {(task.executionChallenges || []).filter((c: any) => c.typeNo === 2).length > 0 && (
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
+                      <div className="border-b border-slate-100 pb-1 flex items-center gap-0.5">
+                        <AlertCircle className="text-[#006699]" size={16} />
+                        <h4 className="text-xs font-medium text-slate-900  ">Challenges</h4>
+                      </div>
+                      <div className="space-y-1.5 pt-1">
+                        {task.executionChallenges!.filter((c: any) => c.typeNo === 2).map((entry: any, idx: number) => {
+                          const statusLabel = fillValues?.status?.find(s => s.StatusNo === entry.statusNo)?.Status;
+                          return (
+                            <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl flex flex-col gap-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-medium text-slate-500">{entry.logDate ? format(new Date(entry.logDate), 'MMM dd, yyyy') : '-'}</span>
+                                {statusLabel && (
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded-md text-[9px] font-medium shrink-0",
+                                    statusLabel === 'Close' ? "bg-green-100 text-green-700" :
+                                      statusLabel === 'In Progress' ? "bg-blue-100 text-blue-700" :
+                                        "bg-orange-100 text-orange-700"
+                                  )}>
+                                    {statusLabel}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs font-medium text-slate-900 whitespace-pre-wrap">{entry.remarks}</span>
+                              {entry.proposedSolution && (
+                                <span className="text-[11px] text-slate-600 font-medium">
+                                  <span className="text-slate-400">Proposed Solution: </span>{entry.proposedSolution}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 

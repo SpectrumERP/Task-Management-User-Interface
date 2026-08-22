@@ -9,6 +9,7 @@ import TaskDetail from '@/pages/TaskDetail';
 import MeetingNotesPage from '@/pages/MeetingNotesPage';
 import ReportPage from '@/pages/ReportPage';
 import MeetingReportPage from '@/pages/MeetingReportPage';
+import DealMonitorPage from '@/pages/DealMonitorPage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
@@ -31,6 +32,7 @@ import { toast, Toaster } from 'sonner';
 import { DealManager } from '@/components/sales/deals/DealManager';
 import { cleanupExpiredDrafts } from '@/utils/draftCleanup';
 import { useFormRights } from '@/hooks/useFormRights';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 function Dashboard() {
   const { isSave } = useFormRights(1547);
@@ -157,7 +159,7 @@ function Dashboard() {
     } else if (id === 'sales-deals') {
       navigate('/sales/deals');
     } else if (id === 'deal-monitor') {
-      navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+      navigate('/deal-monitor');
     } else if (id === 'meeting-notes') {
       navigate('/meetings');
     } else if (id === 'reports') {
@@ -377,7 +379,7 @@ function MasterPageRoute() {
         } else if (id === 'sales-deals') {
           navigate('/sales/deals');
         } else if (id === 'deal-monitor') {
-          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+          navigate('/deal-monitor');
         } else if (id === 'meeting-notes') {
           navigate('/meetings');
         } else if (id === 'reports') {
@@ -408,7 +410,7 @@ function SalesDealsRoute() {
         } else if (id === 'sales-deals') {
           navigate('/sales/deals');
         } else if (id === 'deal-monitor') {
-          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+          navigate('/deal-monitor');
         } else if (id === 'meeting-notes') {
           navigate('/meetings');
         } else if (id === 'reports') {
@@ -436,7 +438,7 @@ function MeetingNotesRoute() {
         } else if (id === 'sales-deals') {
           navigate('/sales/deals');
         } else if (id === 'deal-monitor') {
-          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+          navigate('/deal-monitor');
         } else if (id === 'meeting-notes') {
           navigate('/meetings');
         } else if (id === 'reports') {
@@ -464,7 +466,7 @@ function ReportRoute() {
         } else if (id === 'sales-deals') {
           navigate('/sales/deals');
         } else if (id === 'deal-monitor') {
-          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+          navigate('/deal-monitor');
         } else if (id === 'meeting-notes') {
           navigate('/meetings');
         } else if (id === 'reports') {
@@ -475,6 +477,34 @@ function ReportRoute() {
       }}
     >
       <ReportPage />
+    </MainLayout>
+  );
+}
+
+function DealMonitorRoute() {
+  const navigate = useNavigate();
+  return (
+    <MainLayout
+      activeTab="deal-monitor"
+      onTabChange={(id) => {
+        if (id.startsWith('master-')) {
+          navigate(`/master/${id.replace('master-', '')}`);
+        } else if (id === 'tasks') {
+          navigate('/');
+        } else if (id === 'sales-deals') {
+          navigate('/sales/deals');
+        } else if (id === 'deal-monitor') {
+          navigate('/deal-monitor');
+        } else if (id === 'meeting-notes') {
+          navigate('/meetings');
+        } else if (id === 'reports') {
+          navigate('/reports');
+        } else if (id === 'meeting-reports') {
+          navigate('/meeting-reports');
+        }
+      }}
+    >
+      <DealMonitorPage />
     </MainLayout>
   );
 }
@@ -492,7 +522,7 @@ function MeetingReportRoute() {
         } else if (id === 'sales-deals') {
           navigate('/sales/deals');
         } else if (id === 'deal-monitor') {
-          navigate('/task/new?category=deal%20monitor&hideSections=timeline,business_benefit,checklist,execution_note,informto&isShowTopAdditionalFields=true');
+          navigate('/deal-monitor');
         } else if (id === 'meeting-notes') {
           navigate('/meetings');
         } else if (id === 'reports') {
@@ -617,6 +647,14 @@ const router = createBrowserRouter([
           </PrivateRoute>
         ),
       },
+      {
+        path: "/deal-monitor",
+        element: (
+          <PrivateRoute>
+            <DealMonitorRoute />
+          </PrivateRoute>
+        ),
+      },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
@@ -624,11 +662,13 @@ const router = createBrowserRouter([
 
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
+  const fetchSettings = useSettingsStore((state) => state.fetchSettings);
 
   useEffect(() => {
     checkAuth();
+    fetchSettings();
     cleanupExpiredDrafts(); // Clean up old drafts on startup
-  }, [checkAuth]);
+  }, [checkAuth, fetchSettings]);
 
   // Version Cache Busting Check
   useEffect(() => {

@@ -46,7 +46,7 @@ export function DateTimePicker({ date, onChange, placeholder, className, disable
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-slate-500 shrink-0" />
           {date ? (
-            <span className="truncate">{format(date, hideTime ? "PPP" : "PPP p")}</span>
+            <span className="truncate">{format(date, hideTime ? "MMM dd, yyyy" : "MMM dd, yyyy h:mm a")}</span>
           ) : (
             <span className="truncate">{displayPlaceholder}</span>
           )}

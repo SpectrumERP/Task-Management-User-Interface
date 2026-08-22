@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettings } from '@/hooks/useSettings';
 
 interface ReportFilterValues {
   DateOnFilter?: string;
@@ -65,6 +66,7 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
       showSubTasks: false,
     }
   });
+  const { isHideType } = useSettings();
 
   const { errors } = formState;
 
@@ -179,25 +181,27 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
               )}
             />
           </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">Type</label>
-            <Controller
-              name="operTaskTypeNo"
-              control={control}
-              render={({ field }) => (
-                <Combobox
-                  value={field.value}
-                  onChange={field.onChange}
-                  options={(fillValues?.type || [])
-                    .filter(t => t["Task Type"] !== '[All]' && t["Task Type"] !== 'All')
-                    .map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] }))}
-                  placeholder="Select Type"
-                  className="h-9 rounded-2xl border-slate-200 bg-white"
-                />
-              )}
-            />
-          </div>
+          {
+            !isHideType && 
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Type</label>
+              <Controller
+                name="operTaskTypeNo"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={(fillValues?.type || [])
+                      .filter(t => t["Task Type"] !== '[All]' && t["Task Type"] !== 'All')
+                      .map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] }))}
+                    placeholder="Select Type"
+                    className="h-9 rounded-2xl border-slate-200 bg-white"
+                  />
+                )}
+              />
+            </div>
+          }
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-600">Category</label>

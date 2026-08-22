@@ -719,7 +719,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             {participantType === 1 && (
                               <>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select User</label>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select User <span className="text-red-500">*</span></label>
                                   <Controller
                                     control={form.control}
                                     name={`participants.${index}.userNo`}
@@ -760,7 +760,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             {participantType === 2 && (
                               <>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Employee</label>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Employee <span className="text-red-500">*</span></label>
                                   <Controller
                                     control={form.control}
                                     name={`participants.${index}.empNo`}
@@ -801,35 +801,35 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             {participantType === 3 && (
                               <>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Name</label>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Name <span className="text-red-500">*</span></label>
                                   <Input {...form.register(`participants.${index}.participantName`)} placeholder="Name" className="h-8 rounded-lg bg-white text-xs" maxLength={100} />
                                   {form.formState.errors.participants?.[index]?.participantName && (
                                     <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.participantName?.message}</span>
                                   )}
                                 </div>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company</label>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company <span className="text-red-500">*</span></label>
                                   <Input {...form.register(`participants.${index}.companyName`)} placeholder="Company" className="h-8 rounded-lg bg-white text-xs" maxLength={100} />
                                   {form.formState.errors.participants?.[index]?.companyName && (
                                     <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.companyName?.message}</span>
                                   )}
                                 </div>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email</label>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email <span className="text-red-500">*</span></label>
                                   <Input {...form.register(`participants.${index}.email`)} placeholder="Email" className="h-8 rounded-lg bg-white text-xs" maxLength={100} />
                                   {form.formState.errors.participants?.[index]?.email && (
                                     <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.email?.message}</span>
                                   )}
                                 </div>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Designation</label>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Designation <span className="text-red-500">*</span></label>
                                   <Input {...form.register(`participants.${index}.designation`)} placeholder="Designation" className="h-8 rounded-lg bg-white text-xs" maxLength={100} />
                                   {form.formState.errors.participants?.[index]?.designation && (
                                     <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.designation?.message}</span>
                                   )}
                                 </div>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contact No</label>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contact No <span className="text-red-500">*</span></label>
                                   <Input {...form.register(`participants.${index}.contactNo`)} placeholder="Contact No" className="h-8 rounded-lg bg-white text-xs" maxLength={20} />
                                   {form.formState.errors.participants?.[index]?.contactNo && (
                                     <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.contactNo?.message}</span>
@@ -842,7 +842,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             {participantType === 4 && (
                               <>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Entity Contact</label>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Entity Contact <span className="text-red-500">*</span></label>
                                   <Controller
                                     control={form.control}
                                     name={`participants.${index}.participantName`}

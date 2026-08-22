@@ -32,6 +32,8 @@ interface MultiSelectProps {
   maxVisible?: number
 }
 
+const CHIP_GAP_PX = 4 // matches the chip row's gap-1
+
 export function MultiSelect({
   options,
   value = [],
@@ -43,11 +45,62 @@ export function MultiSelect({
   disabled = false,
   isClearable = true,
   modal = false,
-  maxVisible = 2,
+  maxVisible,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
 
   const selectedOptions = options.filter((option) => value.includes(option.value))
+
+  // Dynamic mode (default, when maxVisible isn't forced): measure the real chip row width
+  // and show as many chips as actually fit, collapsing the rest into "+N more".
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const measureRef = React.useRef<HTMLDivElement>(null)
+  const moreRef = React.useRef<HTMLSpanElement>(null)
+  const [dynamicVisible, setDynamicVisible] = React.useState(selectedOptions.length)
+
+  React.useLayoutEffect(() => {
+    if (maxVisible !== undefined) return
+    const container = containerRef.current
+    const measure = measureRef.current
+    if (!container || !measure) return
+
+    const recalc = () => {
+      const available = container.offsetWidth
+      const chipEls = Array.from(measure.children) as HTMLElement[]
+      if (chipEls.length === 0) {
+        setDynamicVisible(0)
+        return
+      }
+
+      const totalWidth = chipEls.reduce((sum, el, i) => sum + el.offsetWidth + (i > 0 ? CHIP_GAP_PX : 0), 0)
+      if (totalWidth <= available) {
+        setDynamicVisible(chipEls.length)
+        return
+      }
+
+      const moreWidth = moreRef.current?.offsetWidth || 0
+      const budget = available - moreWidth - CHIP_GAP_PX
+      let used = 0
+      let count = 0
+      for (let i = 0; i < chipEls.length; i++) {
+        const next = used + chipEls[i].offsetWidth + (i > 0 ? CHIP_GAP_PX : 0)
+        if (next <= budget) {
+          used = next
+          count++
+        } else {
+          break
+        }
+      }
+      setDynamicVisible(Math.max(count, 1))
+    }
+
+    recalc()
+    const ro = new ResizeObserver(recalc)
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [selectedOptions.map(o => o.value).join(','), maxVisible])
+
+  const effectiveVisible = maxVisible !== undefined ? maxVisible : dynamicVisible
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={modal}>
@@ -65,19 +118,30 @@ export function MultiSelect({
             value.length === 0 && "text-slate-400"
           )}
         >
-          <div className="flex flex-wrap gap-1 pr-2 max-w-full overflow-hidden">
+          <div ref={containerRef} className="relative flex flex-1 min-w-0 flex-nowrap gap-1 pr-2 overflow-hidden">
             {selectedOptions.length > 0 ? (
                 <>
-                  {selectedOptions.slice(0, maxVisible).map(opt => (
-                      <span key={opt.value} className="bg-slate-100 text-slate-800 text-[11px] px-2 py-0.5 rounded-md truncate max-w-[100px]">
+                  {selectedOptions.slice(0, effectiveVisible).map(opt => (
+                      <span key={opt.value} className="bg-slate-100 text-slate-800 text-[11px] px-2 py-0.5 rounded-md truncate max-w-[160px] shrink-0">
                           {opt.label}
                       </span>
                   ))}
-                  {selectedOptions.length > maxVisible && (
-                      <span className="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-md font-medium">
-                          +{selectedOptions.length - maxVisible} more
+                  {selectedOptions.length > effectiveVisible && (
+                      <span className="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-md font-medium shrink-0">
+                          +{selectedOptions.length - effectiveVisible} more
                       </span>
                   )}
+                  {/* Hidden measuring clones: same markup as the visible chips, used to compute how many actually fit. */}
+                  <div ref={measureRef} className="absolute left-0 top-0 flex gap-1" style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
+                    {selectedOptions.map(opt => (
+                      <span key={opt.value} className="bg-slate-100 text-slate-800 text-[11px] px-2 py-0.5 rounded-md truncate max-w-[160px] shrink-0">
+                        {opt.label}
+                      </span>
+                    ))}
+                  </div>
+                  <span ref={moreRef} className="absolute left-0 top-0 bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-md font-medium" style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
+                    +99 more
+                  </span>
                 </>
             ) : (
                 <span className="truncate py-0.5">{placeholder}</span>

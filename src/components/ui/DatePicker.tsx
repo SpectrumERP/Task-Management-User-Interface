@@ -33,7 +33,7 @@ export function DatePicker({ date, onChange, placeholder = "Pick a date", classN
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 shrink-0" />
           {date ? (
-            <span className="text-slate-700 font-bold text-xs">{format(date, "PPP")}</span>
+            <span className="text-slate-700 font-bold text-xs">{format(date, "MMM dd, yyyy")}</span>
           ) : (
             <span className="text-slate-400 font-medium text-xs">{placeholder}</span>
           )}

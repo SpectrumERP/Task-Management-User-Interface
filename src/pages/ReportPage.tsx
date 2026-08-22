@@ -4,13 +4,14 @@ import { ReportTable } from '@/components/report/ReportTable';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { format } from 'date-fns';
+import { useSettings } from '@/hooks/useSettings';
 
 export default function ReportPage() {
   const [reportData, setReportData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1);
-
+  const { isHideType } = useSettings();
   const handleApplyFilters = async (filters: any) => {
     setIsLoading(true);
     try {
@@ -25,7 +26,7 @@ export default function ReportPage() {
 
       if (filters.operTaskStatusNo) searchParamsPascal.Status = Number(filters.operTaskStatusNo);
       if (filters.operTaskPriorityNo) searchParamsPascal.Priority = Number(filters.operTaskPriorityNo);
-      if (filters.operTaskTypeNo) searchParamsPascal.Type = Number(filters.operTaskTypeNo);
+      if (!isHideType && filters.operTaskTypeNo) searchParamsPascal.Type = Number(filters.operTaskTypeNo);
       if (filters.operTaskCategoryNo) searchParamsPascal.Category = Number(filters.operTaskCategoryNo);
       if (filters.operTaskLocationNo) searchParamsPascal.Location = Number(filters.operTaskLocationNo);
       if (filters.originatorNo) searchParamsPascal.Originator = Number(filters.originatorNo);

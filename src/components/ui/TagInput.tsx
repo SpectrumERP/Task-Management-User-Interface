@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { cn } from '@/lib/utils';
 
 interface TagInputProps {
@@ -8,9 +9,10 @@ interface TagInputProps {
   onChange: (tags: string[]) => void;
   placeholder?: string;
   className?: string;
+  infoText?: string;
 }
 
-export function TagInput({ tags, onChange, placeholder = "Add tag...", className }: TagInputProps) {
+export function TagInput({ tags, onChange, placeholder = "Add tag...", className, infoText }: TagInputProps) {
   const [inputValue, setInputValue] = React.useState('');
 
   const addTag = (tag: string) => {
@@ -34,15 +36,15 @@ export function TagInput({ tags, onChange, placeholder = "Add tag...", className
     }
   };
 
-  return (
+  const box = (
     <div className={cn(
       "flex flex-wrap gap-2 p-2 min-h-[40px] w-full rounded-xl border border-slate-300 bg-white shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-[#006699] transition-all",
       className
     )}>
       {tags.map((tag, index) => (
-        <Badge 
-          key={index} 
-          variant="secondary" 
+        <Badge
+          key={index}
+          variant="secondary"
           className="gap-1.5 px-2 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 border-none rounded-lg font-medium text-xs group"
         >
           {tag}
@@ -63,6 +65,15 @@ export function TagInput({ tags, onChange, placeholder = "Add tag...", className
         placeholder={tags.length === 0 ? placeholder : ""}
         className="flex-1 bg-transparent outline-none text-sm text-slate-900 font-medium placeholder:text-slate-400 min-w-[120px]"
       />
+    </div>
+  );
+
+  if (!infoText) return box;
+
+  return (
+    <div className="flex w-full items-center gap-2">
+      <div className="min-w-0 flex-1">{box}</div>
+      <InfoTooltip text={infoText} />
     </div>
   );
 }

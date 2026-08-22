@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ClipboardDrawer } from '@/components/ui/ClipboardDrawer';
+import { useSettings } from '@/hooks/useSettings';
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -25,6 +26,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
   const { fillValues, selectedFolder, setSelectedFolder, fetchFillValues } = useTaskStore();
+  const { isHideFolder } = useSettings();
 
   const [folderSearch, setFolderSearch] = useState('');
 
@@ -72,6 +74,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
 
       <div className="flex items-center gap-2">
         {/* Workspace Folder Dropdown */}
+        {!isHideFolder && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -139,6 +142,7 @@ export function Navbar({ onMenuClick }: NavbarProps) {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
         <ClipboardDrawer />
 

@@ -1,0 +1,128 @@
+import { useEffect, useState } from 'react';
+import { apiService } from '@/services/apiService';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useFormRights } from '@/hooks/useFormRights';
+import { useNavigate } from 'react-router-dom';
+import { MapPin } from 'lucide-react';
+import { MasterListHeader } from '../shared/MasterListHeader';
+import { MasterEntityTable } from '../shared/MasterEntityTable';
+import { MasterPaginationBar } from '../shared/MasterPaginationBar';
+import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
+import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
+import { StateMaster } from '@/store/useMasterStore';
+
+const FORM_NO = 13;
+const TITLE = 'State Master';
+
+export function StateList() {
+  const navigate = useNavigate();
+  const { isSave, isUpdate, isDelete } = useFormRights(FORM_NO);
+  const { company: authCompanies } = useAuthStore();
+  const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
+
+  const [apiStates, setApiStates] = useState<StateMaster[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+  const fetchStates = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiService.get<any>(`/api/master/states/search-data?companyNo=${companyNo}`);
+      if (response) {
+        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const mapped = rawItems.map((s: any) => ({
+          id: (s.stateNo ?? s.id ?? '').toString(),
+          code: s.code || s.stateCode || '',
+          name: s.stateName || s.name || '',
+          countryNo: (s.countryNo ?? s.CountryNo ?? '').toString(),
+          gstStateCode: s.gstStateCode || s.gstCode || '',
+          isUnionTerritory: s.isUnionTerritory || false,
+          createdBy: s.createdBy?.printingName || s.createdBy?.displayName || s.createdBy?.loginId || s.createdByName || (typeof s.createdBy === 'string' || typeof s.createdBy === 'number' ? s.createdBy : '') || 'System',
+          createdDate: s.createdDate || s.createdDateTime || s.createdOn || ''
+        }));
+        setApiStates(mapped);
+      }
+    } catch (error) {
+      console.error('Failed to fetch API states:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchStates(); }, [companyNo]);
+
+  const filteredList = apiStates.filter((item) => {
+    const query = searchQuery.toLowerCase();
+    return item.name?.toLowerCase().includes(query) || item.code?.toLowerCase().includes(query);
+  });
+
+  const totalItems = filteredList.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedList = filteredList.slice(startIndex, endIndex);
+
+  const handleDeleteClick = (id: string) => {
+    setDeleteTargetId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTargetId) return;
+    apiService.delete('/api/master/states/delete', {
+      params: { stateNo: deleteTargetId }
+    }).then(() => fetchStates()).catch(err => console.error('Failed to delete state:', err));
+    setDeleteConfirmOpen(false);
+    setDeleteTargetId(null);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+      <MasterListHeader
+        title={TITLE}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onAddClick={() => navigate(toMasterNewPath('state'))}
+        canAdd={isSave}
+      />
+
+      <div className="flex-1 min-h-0 flex flex-col">
+        <MasterEntityTable
+          rows={paginatedList}
+          nameHeader="State Name"
+          getCode={(item) => item.code || `SYS-${item.id}`}
+          getName={(item) => <span>{item.name}</span>}
+          onEdit={(item) => navigate(toMasterEditPath('state', item.id))}
+          onDelete={handleDeleteClick}
+          canUpdate={isUpdate}
+          canDelete={isDelete}
+          isLoading={isLoading}
+          emptyIcon={MapPin}
+        />
+        {!isLoading && filteredList.length > 0 && (
+          <MasterPaginationBar
+            totalItems={totalItems}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
+      </div>
+
+      <MasterDeleteDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={confirmDelete}
+      />
+    </div>
+  );
+}

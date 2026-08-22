@@ -5,6 +5,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover"
 import { cn } from "@/lib/utils"
 import { FIELD_TEXT_STYLE } from "@/lib/fieldStyles"
 import { Button } from "@/components/ui/button"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
 import {
   Command,
   CommandEmpty,
@@ -31,6 +32,7 @@ interface ComboboxProps {
   onAddNew?: () => void
   addNewLabel?: string
   modal?: boolean
+  infoText?: string
 }
 
 export function Combobox({
@@ -46,6 +48,7 @@ export function Combobox({
   onAddNew,
   addNewLabel = "Add New",
   modal = false,
+  infoText,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -59,7 +62,7 @@ export function Combobox({
 
   const selectedOption = options.find((option) => option.value === value)
 
-  return (
+  const trigger = (
     <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
         <Button
@@ -146,6 +149,15 @@ export function Combobox({
       </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </Popover>
+  )
+
+  if (!infoText) return trigger
+
+  return (
+    <div className="flex w-full items-center gap-2">
+      <div className="min-w-0 flex-1">{trigger}</div>
+      <InfoTooltip text={infoText} />
+    </div>
   )
 }
 

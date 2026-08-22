@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Task, TaskStatus } from '@/types/task';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 interface FilterParams {
   operTaskNo?: number;
@@ -149,6 +150,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     set({ isLoading: true });
     try {
       const activeFolder = get().selectedFolder;
+      const { isHideType, isHideFolder } = useSettingsStore.getState().settings;
 
       let finalFolderNo: number | undefined = undefined;
       if (filters && filters.folderNo !== undefined && filters.folderNo !== null) {
@@ -171,8 +173,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const searchParamsPascal: any = {};
 
       if (searchParamsCamel.companyNo !== undefined) searchParamsPascal.CompanyNo = Number(searchParamsCamel.companyNo);
-      if (searchParamsCamel.isAllFolder) searchParamsPascal.IsAllFolder = true;
-      else if (searchParamsCamel.folderNo !== undefined) searchParamsPascal.FolderNo = Number(searchParamsCamel.folderNo);
+      if (!isHideFolder) {
+        if (searchParamsCamel.isAllFolder) searchParamsPascal.IsAllFolder = true;
+        else if (searchParamsCamel.folderNo !== undefined) searchParamsPascal.FolderNo = Number(searchParamsCamel.folderNo);
+      }
       if (searchParamsCamel.operTaskNo !== undefined && !isNaN(Number(searchParamsCamel.operTaskNo))) searchParamsPascal.OperTaskNo = Number(searchParamsCamel.operTaskNo);
       if (searchParamsCamel.taskCode !== undefined && searchParamsCamel.taskCode !== '') searchParamsPascal.TaskCode = searchParamsCamel.taskCode;
       // Instead of sending title to backend, we'll use it for local keyword filtering across all columns
@@ -190,7 +194,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       }
       
       if (searchParamsCamel.operTaskLocationNo !== undefined) searchParamsPascal.OperTaskLocationNo = Number(searchParamsCamel.operTaskLocationNo);
-      if (searchParamsCamel.operTaskTypeNo !== undefined) searchParamsPascal.OperTaskTypeNo = Number(searchParamsCamel.operTaskTypeNo);
+      if (!isHideType && searchParamsCamel.operTaskTypeNo !== undefined) searchParamsPascal.OperTaskTypeNo = Number(searchParamsCamel.operTaskTypeNo);
       if (searchParamsCamel.ownerLoginNo !== undefined) searchParamsPascal.OwnerLoginNo = Number(searchParamsCamel.ownerLoginNo);
       if (searchParamsCamel.fromDueDate !== undefined) searchParamsPascal.FromDueDate = searchParamsCamel.fromDueDate;
       if (searchParamsCamel.toDueDate !== undefined) searchParamsPascal.ToDueDate = searchParamsCamel.toDueDate;
