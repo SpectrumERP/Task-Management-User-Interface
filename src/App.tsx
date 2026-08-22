@@ -662,13 +662,21 @@ const router = createBrowserRouter([
 
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const fetchSettings = useSettingsStore((state) => state.fetchSettings);
 
   useEffect(() => {
     checkAuth();
-    fetchSettings();
     cleanupExpiredDrafts(); // Clean up old drafts on startup
-  }, [checkAuth, fetchSettings]);
+  }, [checkAuth]);
+
+  // Portal settings require an authenticated session, so only fetch once
+  // checkAuth (or a fresh login) confirms the user is logged in.
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchSettings();
+    }
+  }, [isAuthenticated, fetchSettings]);
 
   // Version Cache Busting Check
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Sidebar, navItems, masterItems, menuMasterItems } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, LogOut } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
   const accessibleForms = useAuthStore(state => state.accessibleForms);
   const fetchAccessibleForms = useAuthStore(state => state.fetchAccessibleForms);
   const logout = useAuthStore(state => state.logout);
+  const isSettingsLoaded = useSettingsStore(state => state.isLoaded);
 
   useEffect(() => {
     if (accessibleForms === null) {
@@ -52,7 +54,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
     }
   }, [accessibleForms, activeTab, onTabChange]);
 
-  if (accessibleForms === null) {
+  if (accessibleForms === null || !isSettingsLoaded) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#f8fafc] fixed inset-0 z-[100]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#006699]"></div>
