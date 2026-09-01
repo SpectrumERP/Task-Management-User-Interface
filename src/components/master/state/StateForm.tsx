@@ -184,7 +184,13 @@ export function StateForm({ id }: StateFormProps) {
         type="country"
         companyNo={companyNo}
         fillValues={fillValues}
-        onSuccess={() => {}}
+        onSuccess={(id) => {
+          setStateCountryNo(id);
+          // Refresh fill values to show new items
+          apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${companyNo}`).then((response) => {
+            if (response) setLocationFillValues(response);
+          }).catch(err => console.error('Failed to fetch location fill-values:', err));
+        }}
       />
     </MasterFormShell>
   );

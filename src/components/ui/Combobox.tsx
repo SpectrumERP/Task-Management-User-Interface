@@ -56,7 +56,12 @@ export function Combobox({
 
   React.useEffect(() => {
     if (open) {
-      setContainer(document.querySelector('[role="dialog"]') as HTMLElement)
+      const dialogs = document.querySelectorAll('[role="dialog"]')
+      if (dialogs.length > 0) {
+        setContainer(dialogs[dialogs.length - 1] as HTMLElement)
+      } else {
+        setContainer(null)
+      }
     }
   }, [open])
 

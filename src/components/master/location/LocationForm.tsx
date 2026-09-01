@@ -392,7 +392,19 @@ export function LocationForm({ id }: LocationFormProps) {
         type={activeMasterType}
         companyNo={companyNo}
         fillValues={fillValues}
-        onSuccess={() => {}}
+        onSuccess={(id) => {
+          if (activeMasterType === 'country') {
+            setCountryNo(id);
+          } else if (activeMasterType === 'state') {
+            setStateNo(id);
+          } else if (activeMasterType === 'city') {
+            setCityNo(id);
+          }
+          // Refresh fill values to show new items
+          apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${companyNo}`).then((response) => {
+            if (response) setLocationFillValues(response);
+          }).catch(err => console.error('Failed to fetch location fill-values:', err));
+        }}
       />
     </MasterFormShell>
   );

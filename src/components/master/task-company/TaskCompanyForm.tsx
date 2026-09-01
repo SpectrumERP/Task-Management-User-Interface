@@ -313,7 +313,23 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
         type={activeMasterType}
         companyNo={companyNo}
         fillValues={fillValues}
-        onSuccess={() => {}}
+        onSuccess={(id) => {
+          if (activeMasterType === 'country') {
+            setTcCountryNo(id);
+          } else if (activeMasterType === 'state') {
+            setTcStateNo(id);
+          } else if (activeMasterType === 'city') {
+            setTcCityNo(id);
+          }
+          // Refresh fill values to show new items
+          apiService.get<any>(`/api/crm/task-companies/fill-values`).then((response) => {
+            if (response && response.data && response.data.countries) {
+              setTaskCompanyCountries(response.data.countries);
+            } else if (response && response.countries) {
+              setTaskCompanyCountries(response.countries);
+            }
+          }).catch(err => console.error('Failed to fetch task company countries:', err));
+        }}
       />
     </MasterFormShell>
   );

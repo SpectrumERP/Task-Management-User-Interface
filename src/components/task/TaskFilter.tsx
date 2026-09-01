@@ -315,28 +315,28 @@ export function TaskFilter({
 
                   {/* Category */}
                   {!hideCategoryFilter && (
-                  <div className="space-y-0.5">
-                    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
-                      <Layers size={12} className="text-slate-400" />
-                      Category
-                    </label>
-                    <Controller
-                      name="operTaskCategoryNo"
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
-                            <SelectValue placeholder="All Categories" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
-                            {fillValues?.category.map(c => (
-                              <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()} className="">{c.Category}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
+                    <div className="space-y-0.5">
+                      <label className="text-[11px] font-medium text-slate-700 normal-case ml-1 flex items-center gap-0.5">
+                        <Layers size={12} className="text-slate-400" />
+                        Category
+                      </label>
+                      <Controller
+                        name="operTaskCategoryNo"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-slate-700 focus:ring-2 focus:ring-[#006699]/15">
+                              <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl">
+                              {fillValues?.category.map(c => (
+                                <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()} className="">{c.Category}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
                   )}
 
                   {/* Task Type */}
@@ -741,7 +741,7 @@ export function TaskFilter({
 
         {/* Status Filter Buttons */}
         <div className="flex flex-wrap items-center gap-2 mt-3 px-1">
-          {['Pending', 'Open', 'Draft', 'In-Progress', 'In-Review', 'Reopen', 'Completed', 'Closed'].map(statusName => {
+          {['Pending', 'Open', 'Draft', 'In-Progress', 'In-Review', 'Reopen', 'Complete', 'Close'].map(statusName => {
             const s = fillValues?.status?.find(st =>
               st.Status === statusName ||
               st.Status.toLowerCase() === statusName.toLowerCase() ||
@@ -772,7 +772,7 @@ export function TaskFilter({
             const baseClass = "rounded-full h-7 px-3 text-[11px] font-bold transition-colors border";
             let colorClass = "";
 
-            if (statusName === 'Completed' || statusName === 'Closed') {
+            if (statusName === 'Complete' || statusName === 'Close') {
               colorClass = isActive ? "border-green-500 bg-green-500 text-white shadow-sm" : "border-green-400 text-green-700 hover:bg-green-50";
             } else if (statusName === 'In-Progress' || statusName === 'In-Review') {
               colorClass = isActive ? "border-blue-500 bg-blue-500 text-white shadow-sm" : "border-blue-400 text-blue-700 hover:bg-blue-50";

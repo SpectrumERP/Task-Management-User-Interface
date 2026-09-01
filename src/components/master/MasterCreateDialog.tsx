@@ -17,6 +17,7 @@ import {
 import { X, Loader2, Save, Sparkles, AlertCircle, Layers, Sliders, Folder, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@radix-ui/react-label';
+import { fetchStatesByCountry } from './shared/geo';
 
 interface MasterCreateDialogProps {
   open: boolean;
@@ -74,11 +75,12 @@ export function MasterCreateDialog({
   const [address1, setAddress1] = useState('');
   const [address2, setAddress2] = useState('');
   const [address3, setAddress3] = useState('');
-  const [countryNo, setCountryNo] = useState('United States');
+  const [countryNo, setCountryNo] = useState('');
   const [stateNo, setStateNo] = useState('');
   const [cityNo, setCityNo] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [locationRegion, setLocationRegion] = useState('');
+  const [availableCityStates, setAvailableCityStates] = useState<any[]>([]);
   const [locationFillValues, setLocationFillValues] = useState<any>(null);
 
   // Task Company State
@@ -141,7 +143,7 @@ export function MasterCreateDialog({
       apiService.get<any>(`/api/master/task-folders/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setFolderFillValues(response.data || response);
       }).catch(err => console.error("Failed to load folder fill values:", err));
-    } else if (type === 'location' || type === 'task-company') {
+    } else if (type === 'location' || type === 'task-company' || type === 'state' || type === 'city') {
       apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setLocationFillValues(response);
       }).catch(err => console.error("Failed to load location fill values:", err));
@@ -183,6 +185,17 @@ export function MasterCreateDialog({
       }
       if (!inchargeNo || inchargeNo === 'none' || inchargeNo === '') {
         newErrors.inchargeNo = 'Incharge is required';
+      }
+    } else if (type === 'state') {
+      if (!countryNo || countryNo === 'none' || countryNo === '') {
+        newErrors.countryNo = 'Country is required';
+      }
+    } else if (type === 'city') {
+      if (!countryNo || countryNo === 'none' || countryNo === '') {
+        newErrors.countryNo = 'Country is required to select a State';
+      }
+      if (!stateNo || stateNo === 'none' || stateNo === '') {
+        newErrors.stateNo = 'State is required';
       }
     }
 
@@ -278,6 +291,31 @@ export function MasterCreateDialog({
           countryNo: parseInt(countryNo) || null
         };
         response = await apiService.post('/api/crm/task-companies/save', payload);
+      } else if (type === 'country') {
+        const payload = {
+          countryNo: null,
+          countryName: name,
+          companyNo: companyNo || 1
+        };
+        response = await apiService.post('/api/master/countries/save', payload);
+      } else if (type === 'state') {
+        const payload = {
+          stateNo: null,
+          stateName: name,
+          gstStateCode: null,
+          isUnionTerritory: false,
+          countryNo: parseInt(countryNo) || null,
+          companyNo: companyNo || 1
+        };
+        response = await apiService.post('/api/master/states/save', payload);
+      } else if (type === 'city') {
+        const payload = {
+          cityNo: null,
+          cityName: name,
+          stateNo: parseInt(stateNo) || null,
+          companyNo: companyNo || 1
+        };
+        response = await apiService.post('/api/master/cities/save', payload);
       }
 
       // Resolve the saved record's ID
@@ -290,6 +328,9 @@ export function MasterCreateDialog({
         else if (type === 'folder') createdId = (data.taskFolderNo || data.id || '').toString();
         else if (type === 'location') createdId = (data.operLocationNo || data.id || '').toString();
         else if (type === 'task-company') createdId = (data.operTaskCompanyNo || data.id || '').toString();
+        else if (type === 'country') createdId = (data.countryNo || data.id || '').toString();
+        else if (type === 'state') createdId = (data.stateNo || data.id || '').toString();
+        else if (type === 'city') createdId = (data.cityNo || data.id || '').toString();
       }
 
       // Success Callback!
@@ -325,6 +366,9 @@ export function MasterCreateDialog({
       case 'folder': return 'Folder Master';
       case 'location': return 'Location Master';
       case 'task-company': return 'Task Company Master';
+      case 'country': return 'Country Master';
+      case 'state': return 'State Master';
+      case 'city': return 'City Master';
       default: return 'Master Form';
     }
   };
@@ -861,6 +905,71 @@ export function MasterCreateDialog({
             </div>
           )}
 
+          {type === 'state' && (
+            <div className="space-y-3">
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country <span className="text-red-500">*</span></Label>
+                <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || fillValues?.data?.countries || fillValues?.countries || []).map((c: any) => ({
+                    label: c.countryName || '',
+                    value: (c.countryNo || '').toString()
+                  }))}
+                  value={countryNo}
+                  onChange={(val) => {
+                    setCountryNo(val);
+                    if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
+                  }}
+                  placeholder="Select Country"
+                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                />
+                {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
+              </div>
+            </div>
+          )}
+
+          {type === 'city' && (
+            <div className="space-y-3">
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country <span className="text-red-500">*</span></Label>
+                <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || fillValues?.data?.countries || fillValues?.countries || []).map((c: any) => ({
+                    label: c.countryName || '',
+                    value: (c.countryNo || '').toString()
+                  }))}
+                  value={countryNo}
+                  onChange={(val) => {
+                    setCountryNo(val);
+                    setStateNo('');
+                    setAvailableCityStates([]);
+                    if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
+                    if (val) {
+                      fetchStatesByCountry(val).then((states) => {
+                        setAvailableCityStates(states);
+                      });
+                    }
+                  }}
+                  placeholder="Select Country first"
+                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                />
+              </div>
+              <div className="space-y-0">
+                <Label  className="text-[10px] font-medium text-slate-700 ml-1">State / Province <span className="text-red-500">*</span></Label>
+                <Combobox options={availableCityStates.map((s: any) => ({
+                    label: s.stateName || '',
+                    value: (s.stateNo || '').toString()
+                  }))}
+                  value={stateNo}
+                  onChange={(val) => {
+                    setStateNo(val);
+                    if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
+                  }}
+                  placeholder={countryNo ? "Select State" : "Select country first"}
+                  disabled={!countryNo}
+                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                />
+                {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
+              </div>
+            </div>
+          )}
+
           {serverError && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-2.5 rounded-2xl flex items-start gap-0.5 animate-pulse mt-2">
               <span className="font-medium select-none">⚠️ Error:</span>
@@ -904,7 +1013,20 @@ export function MasterCreateDialog({
           type={nestedMasterType}
           companyNo={companyNo}
           fillValues={fillValues}
-          onSuccess={() => {}}
+          onSuccess={(id) => {
+            if (nestedMasterType === 'country') {
+              setCountryNo(id);
+            } else if (nestedMasterType === 'state') {
+              setStateNo(id);
+            } else if (nestedMasterType === 'city') {
+              setCityNo(id);
+            }
+            // Trigger a re-fetch of fill values so the new item is available in the lists
+            const activeCompanyNo = companyNo || 1;
+            apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
+              setLocationFillValues(response);
+            }).catch(err => console.error("Failed to load location fill values:", err));
+          }}
         />
       )}
     </Dialog>
