@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- TaskForm maps loosely-typed API payloads throughout */
 import { useForm, Controller, useFieldArray, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown } from 'lucide-react';
+import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, type LucideIcon } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
@@ -334,7 +335,7 @@ function FieldLabel({ children, required, className, htmlFor }: { children: Reac
   );
 }
 
-function FormSection({ title, icon: Icon, children, headerAction }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode }) {
+function FormSection({ title, icon: Icon, children, headerAction }: { title?: string, icon?: LucideIcon, children?: React.ReactNode, headerAction?: React.ReactNode }) {
   return (
     <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
