@@ -73,12 +73,13 @@ export function Combobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-medium text-sm h-9 shadow-sm transition-all border relative pr-8",
+            "w-full justify-between font-medium text-sm h-9 shadow-sm transition-all border border-[#a8afb7] relative pr-8",
+            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[#f8fbfd] disabled:hover:bg-[#f8fbfd]",
             className,
             FIELD_TEXT_STYLE,
             !value && "text-slate-400",
             "rounded-[8px]",
-            !(typeof className === "string" && /border-red/.test(className)) && "border-[#a8afb7]"
+            !(typeof className === "string" && /border-red/.test(className)) && "!border-[#a8afb7]"
           )}
         >
           <span className="truncate pr-2">{selectedOption ? selectedOption.label : placeholder}</span>

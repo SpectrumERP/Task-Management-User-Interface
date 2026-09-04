@@ -201,8 +201,8 @@ function Dashboard() {
               <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
             </div>
 
-            {/* Pagination — only when there are records to page through */}
-            {tasks.length > 0 ? (
+            {/* Pagination — only when more than 9 records (or past page 1) */}
+            {tasks.length > 9 || pageNo > 1 ? (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2 border-t border-slate-100 bg-[#f8fbfd] shrink-0 select-none">
                 <div className="text-[11px] text-slate-500 font-semibold">
                   Showing <span className="text-slate-800 font-bold">{((pageNo - 1) * pageSize) + 1}</span> to{" "}

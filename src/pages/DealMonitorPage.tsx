@@ -118,7 +118,7 @@ export default function DealMonitorPage() {
             <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} hideCategoryColumn />
           </div>
 
-          {tasks.length > 0 ? (
+          {tasks.length > 9 || pageNo > 1 ? (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-2 border-t border-slate-100 bg-[#f8fbfd] shrink-0 select-none">
               <div className="text-[11px] text-slate-500 font-bold">
                 Showing <span className="text-slate-800 font-black">{((pageNo - 1) * pageSize) + 1}</span> to{" "}

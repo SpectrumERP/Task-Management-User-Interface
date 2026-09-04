@@ -91,32 +91,35 @@ export function StateList() {
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="State Name"
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('state', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={MapPin}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="State Name"
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('state', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        emptyIcon={MapPin}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

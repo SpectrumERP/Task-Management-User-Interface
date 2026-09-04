@@ -154,7 +154,7 @@ export function DocumentCombobox({
             disabled && "bg-slate-50/80 cursor-not-allowed opacity-80",
             className,
             "rounded-[8px]",
-            error ? "!border-red-500 text-red-500" : "border-[#a8afb7]"
+            error ? "!border-red-500 text-red-500" : "!border-[#a8afb7]"
           )}
         >
           <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium", error && "text-red-500")}>

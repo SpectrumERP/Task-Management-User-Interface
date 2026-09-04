@@ -171,7 +171,7 @@ export function MeetingCategoryForm({ id }: MeetingCategoryFormProps) {
         </div>
 
         <div className="p-4 sm:p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5 max-w-3xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
             <div className="space-y-1.5 min-w-0">
               <FieldLabel>Code</FieldLabel>
               <Input

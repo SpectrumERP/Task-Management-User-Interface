@@ -1,5 +1,8 @@
 import { Textarea } from '../../ui/textarea';
-import { FileText } from 'lucide-react';
+import { StickyNote } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { CONTROL_BORDER, CONTROL_RADIUS } from '@/lib/fieldStyles';
+import { CompanyFormSection } from './CompanyFormSection';
 
 interface CompanyNotesSectionProps {
   notes: string;
@@ -8,27 +11,27 @@ interface CompanyNotesSectionProps {
 
 export function CompanyNotesSection({ notes, onChange }: CompanyNotesSectionProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-0.5 pb-2 border-b border-slate-200/80">
-        <div className="p-1.5 bg-[#006699]/10 rounded-lg text-[#006699]">
-          <FileText size={18} />
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-slate-800 tracking-tight">Notes</h3>
-        </div>
-      </div>
-      <div className="space-y-0">
+    <CompanyFormSection
+      icon={StickyNote}
+      title="Notes"
+      description="Optional remarks for this business entity"
+    >
+      <div className="space-y-1.5">
         <Textarea
           placeholder="Enter notes..."
           maxLength={1000}
-          className="bg-white border border-slate-200 hover:border-slate-300 transition-colors rounded-xl px-3 w-full resize-none min-h-[100px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+          className={cn(
+            'bg-white border w-full resize-none min-h-[100px] text-xs font-medium text-slate-700 shadow-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]',
+            CONTROL_BORDER,
+            CONTROL_RADIUS
+          )}
           value={notes}
           onChange={(e) => onChange(e.target.value)}
         />
-        <div className="text-right text-[10px] text-slate-400 mt-1 font-medium">
+        <div className="text-right text-[10px] text-slate-400 font-medium tabular-nums">
           {notes.length}/1000
         </div>
       </div>
-    </div>
+    </CompanyFormSection>
   );
 }

@@ -4,6 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/Combobox';
 import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+
+const fieldClass = FIELD_CONTROL_CLASS;
 
 interface CompanyContactModalProps {
   open: boolean;
@@ -76,176 +79,221 @@ export function CompanyContactModal({
 }: CompanyContactModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-3xl max-w-3xl p-6 border-none shadow-2xl bg-white select-none">
-        <DialogHeader className="pb-3 border-b border-slate-150">
-          <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
-            <User size={18} className="text-[#006699]" />
+      <DialogContent
+        className={cn(
+          'w-[calc(100vw-1.5rem)] max-w-3xl p-0 gap-0 overflow-hidden',
+          'max-h-[min(90dvh,900px)] flex flex-col',
+          'rounded-[12px] border border-slate-200/80 shadow-xl bg-white select-none'
+        )}
+      >
+        <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-slate-100 bg-[#f8fbfd]">
+          <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight flex items-center gap-2 pr-6">
+            <User size={16} className="text-[#006699] shrink-0" />
             {editingIndex !== null ? 'Edit Contact Person' : 'Add Contact Person'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2 pr-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-0 col-span-2">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Contact Person Name</label>
-              <Input placeholder="Enter contact person name" value={contactName} onChange={(e) => {
-                setContactName(e.target.value);
-                if (contactErrors.name) setContactErrors(prev => ({ ...prev, name: '' }));
-              }}
-                className={cn(
-                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 scrollbar-thin">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <label className="text-[11px] font-medium text-slate-600">Contact Person Name</label>
+              <Input
+                placeholder="Enter contact person name"
+                value={contactName}
+                onChange={(e) => {
+                  setContactName(e.target.value);
+                  if (contactErrors.name) setContactErrors((prev) => ({ ...prev, name: '' }));
+                }}
+                className={cn(fieldClass, contactErrors.name && 'border-red-400')}
               />
-              {contactErrors.name && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.name}</p>}
-            </div>
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Designation</label>
-              <Input placeholder="Enter designation" value={contactDesignation} onChange={(e) => {
-                setContactDesignation(e.target.value);
-                if (contactErrors.designation) setContactErrors(prev => ({ ...prev, designation: '' }));
-              }}
-                className={cn(
-                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.designation && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
-              />
-              {contactErrors.designation && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.designation}</p>}
+              {contactErrors.name ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.name}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Department</label>
-              <Input placeholder="Enter department" value={contactDepartment} onChange={(e) => {
-                setContactDepartment(e.target.value);
-                if (contactErrors.department) setContactErrors(prev => ({ ...prev, department: '' }));
-              }}
-                className={cn(
-                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.department && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-600">Designation</label>
+              <Input
+                placeholder="Enter designation"
+                value={contactDesignation}
+                onChange={(e) => {
+                  setContactDesignation(e.target.value);
+                  if (contactErrors.designation) {
+                    setContactErrors((prev) => ({ ...prev, designation: '' }));
+                  }
+                }}
+                className={cn(fieldClass, contactErrors.designation && 'border-red-400')}
               />
-              {contactErrors.department && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.department}</p>}
+              {contactErrors.designation ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.designation}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Phone</label>
-              <Input placeholder="Enter phone" value={contactPhone} onChange={(e) => {
-                const val = e.target.value.replace(/[^\d+()\-\s]/g, '');
-                setContactPhone(val);
-                if (contactErrors.phone) setContactErrors(prev => ({ ...prev, phone: '' }));
-              }}
-                className={cn(
-                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.phone && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-600">Department</label>
+              <Input
+                placeholder="Enter department"
+                value={contactDepartment}
+                onChange={(e) => {
+                  setContactDepartment(e.target.value);
+                  if (contactErrors.department) {
+                    setContactErrors((prev) => ({ ...prev, department: '' }));
+                  }
+                }}
+                className={cn(fieldClass, contactErrors.department && 'border-red-400')}
               />
-              {contactErrors.phone && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.phone}</p>}
+              {contactErrors.department ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.department}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Email</label>
-              <Input placeholder="Enter email" value={contactEmail} onBlur={onEmailBlur} onChange={(e) => {
-                setContactEmail(e.target.value);
-                if (contactErrors.email) setContactErrors(prev => ({ ...prev, email: '' }));
-              }}
-                className={cn(
-                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.email && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-600">Phone</label>
+              <Input
+                placeholder="Enter phone"
+                value={contactPhone}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^\d+()\-\s]/g, '');
+                  setContactPhone(val);
+                  if (contactErrors.phone) setContactErrors((prev) => ({ ...prev, phone: '' }));
+                }}
+                className={cn(fieldClass, contactErrors.phone && 'border-red-400')}
               />
-              {contactErrors.email && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.email}</p>}
+              {contactErrors.phone ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.phone}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0 col-span-2">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Address</label>
-              <Input placeholder="Enter address" value={contactAddress} onChange={(e) => setContactAddress(e.target.value)}
-                className="bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-600">Email</label>
+              <Input
+                placeholder="Enter email"
+                value={contactEmail}
+                onBlur={onEmailBlur}
+                onChange={(e) => {
+                  setContactEmail(e.target.value);
+                  if (contactErrors.email) setContactErrors((prev) => ({ ...prev, email: '' }));
+                }}
+                className={cn(fieldClass, contactErrors.email && 'border-red-400')}
+              />
+              {contactErrors.email ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.email}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <label className="text-[11px] font-medium text-slate-600">Address</label>
+              <Input
+                placeholder="Enter address"
+                value={contactAddress}
+                onChange={(e) => setContactAddress(e.target.value)}
+                className={fieldClass}
               />
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Country</label>
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-600">Country</label>
               <Combobox
-                options={countries.map((c: any) => ({ label: c.countryName, value: c.countryName }))}
+                options={countries.map((c: any) => ({
+                  label: c.countryName,
+                  value: c.countryName,
+                }))}
                 value={contactCountry}
                 onChange={onCountryChange}
                 placeholder="Select country"
-                className={cn(
-                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.country && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+                className={cn(fieldClass, 'px-3', contactErrors.country && 'border-red-400')}
               />
-              {contactErrors.country && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.country}</p>}
+              {contactErrors.country ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.country}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">State</label>
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-600">State</label>
               <Combobox
-                options={statesList.map((s: any) => ({ label: s.stateName, value: s.stateName }))}
+                options={statesList.map((s: any) => ({
+                  label: s.stateName,
+                  value: s.stateName,
+                }))}
                 value={contactState}
                 onChange={onStateChange}
                 placeholder="Select state"
-                className={cn(
-                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.state && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+                className={cn(fieldClass, 'px-3', contactErrors.state && 'border-red-400')}
               />
-              {contactErrors.state && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.state}</p>}
+              {contactErrors.state ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.state}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">City</label>
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-600">City</label>
               <Combobox
-                options={citiesList.map((ci: any) => ({ label: ci.cityName, value: ci.cityName }))}
+                options={citiesList.map((ci: any) => ({
+                  label: ci.cityName,
+                  value: ci.cityName,
+                }))}
                 value={contactCity}
                 onChange={(val) => {
                   setContactCity(val);
-                  if (contactErrors.city) setContactErrors(prev => ({ ...prev, city: '' }));
+                  if (contactErrors.city) setContactErrors((prev) => ({ ...prev, city: '' }));
                 }}
                 placeholder="Select city"
-                className={cn(
-                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.city && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+                className={cn(fieldClass, 'px-3', contactErrors.city && 'border-red-400')}
               />
-              {contactErrors.city && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.city}</p>}
+              {contactErrors.city ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.city}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">PIN/Zip Code</label>
-              <Input placeholder="Enter PIN/Zip Code" value={contactPinCode} maxLength={10} onChange={(e) => {
-                setContactPinCode(e.target.value);
-                if (contactErrors.pinCode) setContactErrors(prev => ({ ...prev, pinCode: '' }));
-              }}
-                className={cn(
-                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  contactErrors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-600">PIN/Zip Code</label>
+              <Input
+                placeholder="Enter PIN/Zip Code"
+                value={contactPinCode}
+                maxLength={10}
+                onChange={(e) => {
+                  setContactPinCode(e.target.value);
+                  if (contactErrors.pinCode) {
+                    setContactErrors((prev) => ({ ...prev, pinCode: '' }));
+                  }
+                }}
+                className={cn(fieldClass, contactErrors.pinCode && 'border-red-400')}
               />
-              {contactErrors.pinCode && <p className="text-[9px] text-red-500 font-medium ml-1">{contactErrors.pinCode}</p>}
+              {contactErrors.pinCode ? (
+                <p className="text-[10px] text-red-500 font-medium">{contactErrors.pinCode}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Status</label>
+            <div className="space-y-1.5 min-w-0 sm:col-span-2 sm:max-w-xs">
+              <label className="text-[11px] font-medium text-slate-600">Status</label>
               <Combobox
                 options={[
                   { label: 'Active', value: 'Active' },
-                  { label: 'Inactive', value: 'Inactive' }
+                  { label: 'Inactive', value: 'Inactive' },
                 ]}
                 value={contactStatus}
                 onChange={(val) => setContactStatus(val)}
                 placeholder="Select status"
-                className="bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                className={cn(fieldClass, 'px-3')}
               />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-[8px] h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
+        <DialogFooter className="shrink-0 px-4 sm:px-5 py-3 border-t border-slate-100 bg-[#f8fbfd] flex flex-row justify-end gap-2 rounded-b-[12px]">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-[8px] h-9 text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none"
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={onSave} className="rounded-[8px] h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white">
+          <Button
+            type="button"
+            onClick={onSave}
+            className="rounded-[8px] h-9 text-xs font-semibold bg-[#006699] hover:bg-[#005580] text-white shadow-sm"
+          >
             {editingIndex !== null ? 'Save Changes' : 'Add Contact'}
           </Button>
         </DialogFooter>

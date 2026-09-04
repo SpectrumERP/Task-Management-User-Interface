@@ -96,43 +96,46 @@ export function TaskCompanyList() {
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Task Company Name"
-          columns={[
-            { header: 'Alias', render: (item) => item.aliasName || '-' },
-            {
-              header: 'Address 1',
-              render: (item) => (
-                <span title={[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ')}>
-                  {[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ') || '-'}
-                </span>
-              ),
-            },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('task-company', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={Building2}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Task Company Name"
+        columns={[
+          { header: 'Alias', render: (item) => item.aliasName || '-' },
+          {
+            header: 'Address 1',
+            render: (item) => (
+              <span title={[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ')}>
+                {[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ') || '-'}
+              </span>
+            ),
+          },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('task-company', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        emptyIcon={Building2}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

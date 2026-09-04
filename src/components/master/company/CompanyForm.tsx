@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 const CameraComp = lazy(() => import('@/components/ui/CameraComp'));
 import { Camera as CameraIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
 import { parseApiSaveError } from '../shared/parseSaveError';
@@ -696,7 +697,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
       showSuccessAlert={showSuccessAlert}
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
-      <div className="space-y-4 pb-4">
+      <div className="space-y-3 pb-4">
         <CompanyHeaderFields
           code={editingId ? `BE-${editingId}` : ''}
           editingId={editingId}
@@ -762,28 +763,38 @@ export function CompanyForm({ id }: CompanyFormProps) {
             if (!open) setAnalyzeFile(undefined);
           }}
         >
-          <DialogContent className="rounded-3xl max-w-6xl p-0 border-none shadow-2xl bg-white overflow-hidden flex flex-col max-h-[90vh]">
-            <DialogHeader className="px-5 py-2 border-b border-slate-100">
-              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <CameraIcon size={18} className="text-[#006699]" />
+          <DialogContent
+            className={cn(
+              'w-[calc(100vw-1.5rem)] max-w-4xl p-0 gap-0 overflow-hidden',
+              'max-h-[min(90dvh,900px)] flex flex-col',
+              'rounded-[12px] border border-slate-200/80 shadow-xl bg-white select-none'
+            )}
+          >
+            <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-slate-100 bg-[#f8fbfd]">
+              <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight flex items-center gap-2 pr-6">
+                <CameraIcon size={16} className="text-[#006699] shrink-0" />
                 {analyzeFile ? 'Analyze Attachment' : 'Capture Attachment'}
               </DialogTitle>
-              <DialogDescription className="text-xs font-semibold text-slate-500">
-                {analyzeFile ? 'Review and extract data from the selected document.' : 'Take a photo and upload it as a Business Entity attachment.'}
+              <DialogDescription className="text-[11px] font-medium text-slate-500 mt-0.5">
+                {analyzeFile
+                  ? 'Review and extract data from the selected document.'
+                  : 'Take a photo and upload it as a Business Entity attachment.'}
               </DialogDescription>
             </DialogHeader>
-            <div className="px-5 overflow-y-auto flex-1">
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-16 text-slate-500 text-sm font-medium">
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  Loading camera…
-                </div>
-              }>
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              <Suspense
+                fallback={
+                  <div className="flex flex-1 items-center justify-center py-20 text-slate-500 text-sm font-medium">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2 text-[#006699]" />
+                    Loading camera…
+                  </div>
+                }
+              >
                 <CameraComp
                   companyNo={parseInt(companyNo as any) || 1}
                   formNo={1550}
                   fileNamePrefix="business-entity-capture"
-                  className="border-slate-100 shadow-none"
+                  className="border-0 shadow-none rounded-none flex-1 min-h-0"
                   initialAnalyzeFile={analyzeFile}
                   onUploaded={handleCameraAttachmentUploaded}
                   onCancel={() => {
@@ -795,7 +806,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
                       setName(data.company);
                     }
                     if (data.name || data.email || data.phone || data.mobile || data.designation) {
-                      setCompanyContacts(prev => [
+                      setCompanyContacts((prev) => [
                         ...prev,
                         {
                           contactName: data.name || '',
@@ -807,8 +818,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
                           phoneNo: data.phone || data.mobile || '',
                           email: data.email || '',
                           address: data.address || '',
-                          status: 'Active'
-                        }
+                          status: 'Active',
+                        },
                       ]);
                     }
                   }}

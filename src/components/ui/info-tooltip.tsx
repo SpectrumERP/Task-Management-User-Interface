@@ -36,7 +36,7 @@ export function InfoTooltip({ text, className }: InfoTooltipProps) {
           type="button"
           aria-label="Field information"
           className={cn(
-            'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]',
+            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px]',
             'bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/15',
             'transition-all hover:bg-[#006699] hover:text-white hover:ring-[#006699]/40',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006699]/35',
@@ -52,7 +52,7 @@ export function InfoTooltip({ text, className }: InfoTooltipProps) {
             setOpen((v) => !v);
           }}
         >
-          <Info size={14} strokeWidth={2} />
+          <Info size={13} strokeWidth={2.25} />
         </button>
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal container={container || document.body}>
@@ -90,5 +90,40 @@ export function InfoTooltip({ text, className }: InfoTooltipProps) {
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
+  );
+}
+
+/**
+ * Places help icon above the control at top-right (top: 37px, right: 7px).
+ */
+export function FieldInfoControl({
+  info,
+  children,
+  className,
+  id,
+}: {
+  info?: string;
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+}) {
+  if (!info) {
+    return (
+      <div id={id} className={className}>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div id={id} className={cn('relative', className)}>
+      <div
+        className="absolute z-20"
+        style={{ top: 37, right: 7 }}
+      >
+        <InfoTooltip text={info} />
+      </div>
+      {children}
+    </div>
   );
 }

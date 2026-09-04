@@ -14,6 +14,9 @@ interface MasterPaginationBarProps {
   onPageChange: (page: number) => void;
 }
 
+/** Hide pagination when there are 9 or fewer records. */
+export const PAGINATION_VISIBLE_AFTER = 9;
+
 export function MasterPaginationBar({
   totalItems,
   startIndex,
@@ -24,6 +27,10 @@ export function MasterPaginationBar({
   totalPages,
   onPageChange,
 }: MasterPaginationBarProps) {
+  if (totalItems <= PAGINATION_VISIBLE_AFTER) {
+    return null;
+  }
+
   const safeCurrentPage = currentPage;
 
   return (

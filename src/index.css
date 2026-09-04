@@ -114,10 +114,17 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* App-wide form control chrome */
+  /* App-wide form control chrome — border #a8afb7, radius 8px */
   input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='color']):not([type='submit']):not([type='button']),
   textarea,
   select {
+    border-color: #a8afb7;
+    border-radius: 8px;
+  }
+
+  [role='combobox'],
+  [data-radix-select-trigger],
+  button[role='combobox'] {
     border-color: #a8afb7;
     border-radius: 8px;
   }
@@ -232,13 +239,24 @@ textarea {
   resize: none !important;
 }
 
-/* Centralized Form Field & Layout Border Visibility Upgrade */
-input:not([type="checkbox"]):not([type="radio"]),
+/* Centralized form-field border + radius (overrides leftover slate borders) */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='color']):not([type='submit']):not([type='button']),
 textarea,
 select,
 .input-section,
-[role="combobox"],
-[data-radix-select-trigger] {
-  border-color: #a8afb7;
-  /* Elegant slate-300 border for superior readability and crisp visual definition */
+[role='combobox'],
+[data-radix-select-trigger],
+button[role='combobox'] {
+  border-color: #a8afb7 !important;
+  border-radius: 8px !important;
+}
+
+/* Keep validation error borders visible */
+input[class*='border-red'],
+textarea[class*='border-red'],
+select[class*='border-red'],
+[role='combobox'][class*='border-red'],
+[data-radix-select-trigger][class*='border-red'],
+button[role='combobox'][class*='border-red'] {
+  border-color: #ef4444 !important;
 }

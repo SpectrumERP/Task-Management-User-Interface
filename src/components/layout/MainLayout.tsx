@@ -132,6 +132,13 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
             onTabChange={handleTabChange}
             isCollapsed={isDesktopSidebarCollapsed}
             hideBrand
+            onToggleCollapse={() => {
+              setIsDesktopSidebarCollapsed(prev => {
+                const next = !prev;
+                localStorage.setItem('isSidebarCollapsed', String(next));
+                return next;
+              });
+            }}
           />
         </div>
 

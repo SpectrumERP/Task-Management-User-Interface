@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { useTaskStore } from '@/store/useTaskStore';
 
 import { useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
-import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { FieldInfoControl } from '@/components/ui/info-tooltip';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -1934,11 +1934,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </div>
 
             {/* Row 4: Tags */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2 min-h-[18px]">
-                <FieldLabel>Tags/Keywords</FieldLabel>
-                {tagCaption ? <InfoTooltip text={tagCaption} className="h-6 w-6" /> : null}
-              </div>
+            <FieldInfoControl info={tagCaption} className="space-y-1.5">
+              <FieldLabel>Tags/Keywords</FieldLabel>
               <Controller
                 name="tags"
                 control={form.control}
@@ -1952,7 +1949,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 )}
               />
               <p className="text-[10px] text-slate-500 font-medium mt-1">Note: Press Enter or type a comma to add a tag.</p>
-            </div>
+            </FieldInfoControl>
           </div>
         </FormSection>
 
@@ -1963,11 +1960,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           >
             {/* Row 3: Category, Type, Priority */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-x-3 gap-y-2.5">
-              <div className="space-y-1.5" id="form-group-category_No">
-                <div className="flex items-center justify-between gap-2 min-h-[18px]">
-                  <FieldLabel required>Category</FieldLabel>
-                  {categoryFieldCaption ? <InfoTooltip text={categoryFieldCaption} className="h-6 w-6" /> : null}
-                </div>
+              <FieldInfoControl info={categoryFieldCaption} className="space-y-1.5" id="form-group-category_No">
+                <FieldLabel required>Category</FieldLabel>
                 <FieldControl error={form.formState.errors.category_No ? 'Category is required' : undefined}>
                 <Controller
                   name="category_No"
@@ -1992,14 +1986,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   )}
                 />
                 </FieldControl>
-              </div>
+              </FieldInfoControl>
               {
                 !isHideType && 
-                <div className="space-y-1.5" id="form-group-type_No">
-                  <div className="flex items-center justify-between gap-2 min-h-[18px]">
-                    <FieldLabel>Type</FieldLabel>
-                    {typeFieldCaption ? <InfoTooltip text={typeFieldCaption} className="h-6 w-6" /> : null}
-                  </div>
+                <FieldInfoControl info={typeFieldCaption} className="space-y-1.5" id="form-group-type_No">
+                  <FieldLabel>Type</FieldLabel>
                   <FieldControl error={form.formState.errors.type_No ? 'Type is required' : undefined}>
                   <Controller
                     name="type_No"
@@ -2020,7 +2011,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     )}
                   />
                   </FieldControl>
-                </div>
+                </FieldInfoControl>
               }
               {
                 !isHideFolder &&
