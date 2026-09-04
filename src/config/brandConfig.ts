@@ -73,11 +73,9 @@ const STEELMONT_SPECTRUM: BrandConfig = {
 
 /**
  * Temporary: always use SteelMont client branding.
- * Host-based multi-brand can be re-enabled later.
+ * Host-based multi-brand can be re-enabled later via an optional hostname arg.
  */
-export function getBrandConfig(
-  _hostname = typeof window !== 'undefined' ? window.location.hostname : '',
-): BrandConfig {
+export function getBrandConfig(): BrandConfig {
   return STEELMONT_SPECTRUM;
 }
 

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar as CalendarIcon, Clipboard, Folder, ArrowUpDown, ChevronDown, Plus, LayoutGrid, List as ListIcon, X, User } from 'lucide-react';
+import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar as CalendarIcon, Clipboard, Folder, ArrowUpDown, ChevronDown, Plus, LayoutGrid, List as ListIcon, X, User, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_TEXT_STYLE } from '@/lib/fieldStyles';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
@@ -31,7 +31,7 @@ function FilterFieldLabel({
   children,
   required,
 }: {
-  icon?: any;
+  icon?: LucideIcon;
   children: ReactNode;
   required?: boolean;
 }) {
@@ -56,7 +56,7 @@ function FilterPanel({
   cols = 2,
 }: {
   title: string;
-  icon?: any;
+  icon?: LucideIcon;
   children: ReactNode;
   className?: string;
   cols?: 1 | 2 | 3;
@@ -108,7 +108,7 @@ interface FilterFormValues {
 }
 
 interface TaskFilterProps {
-  onFilter: (filters: any) => void;
+  onFilter: (filters: Record<string, unknown>) => void;
   className?: string;
   viewMode?: 'list' | 'board' | 'calendar';
   onViewModeChange?: (mode: 'list' | 'board' | 'calendar') => void;
@@ -225,7 +225,7 @@ export function TaskFilter({
 
   const onSubmit = (data: FilterFormValues) => {
     setAppliedFilters(data); // Commit selected values to applied state!
-    const cleanFilters: any = {};
+    const cleanFilters: Record<string, unknown> = {};
     Object.entries(data).forEach(([key, value]) => {
       if (key === 'folderNo' && data.isAllFolder) return;
 
@@ -273,7 +273,7 @@ export function TaskFilter({
     };
     setAppliedFilters(resetState);
 
-    const cleanFilters: any = { companyNo, filterType: 'All' };
+    const cleanFilters: Record<string, unknown> = { companyNo, filterType: 'All' };
     if (selectedFolder) {
       cleanFilters.folderNo = selectedFolder.TaskFolderNo.toString();
     }
@@ -766,16 +766,16 @@ export function TaskFilter({
               (statusName === 'In-Progress' && st.Status === 'In Progress')
             );
 
-            let count = 0;
-            if (statusName === 'Pending') {
-              const pendingStatuses = ['Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
-              count = Object.keys(statusCounts).reduce((sum, key) => {
-                if (pendingStatuses.includes(key)) return sum + statusCounts[key];
-                return sum;
-              }, 0);
-            } else {
-              count = statusCounts[s ? s.Status : statusName] || statusCounts[statusName] || 0;
-            }
+            const count = (() => {
+              if (statusName === 'Pending') {
+                const pendingStatuses = ['Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
+                return Object.keys(statusCounts).reduce((sum, key) => {
+                  if (pendingStatuses.includes(key)) return sum + statusCounts[key];
+                  return sum;
+                }, 0);
+              }
+              return statusCounts[s ? s.Status : statusName] || statusCounts[statusName] || 0;
+            })();
 
             const statusNoStr = statusName === 'Pending' ? 'PendingGroup' : (s ? s.StatusNo.toString() : statusName);
             const currentStatusStr = String(watch('operTaskStatusNo') || '');
@@ -787,17 +787,22 @@ export function TaskFilter({
             if (anyActive && !isActive) return null;
 
             const baseClass = "rounded-full h-7 px-3 text-[11px] font-medium transition-all duration-200 border bg-white/90 shadow-none hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)]";
-            let colorClass = "";
-
-            if (statusName === 'Complete' || statusName === 'Close') {
-              colorClass = isActive ? "border-green-500 bg-green-500 text-white shadow-[0_4px_12px_-4px_rgba(34,197,94,0.45)]" : "border-green-200/80 text-green-700 hover:bg-green-50";
-            } else if (statusName === 'In-Progress' || statusName === 'In-Review') {
-              colorClass = isActive ? "border-blue-500 bg-blue-500 text-white shadow-[0_4px_12px_-4px_rgba(59,130,246,0.45)]" : "border-blue-200/80 text-blue-700 hover:bg-blue-50";
-            } else if (statusName === 'Pending' || statusName === 'Open' || statusName === 'Draft' || statusName === 'Reopen') {
-              colorClass = isActive ? "border-orange-500 bg-orange-500 text-white shadow-[0_4px_12px_-4px_rgba(249,115,22,0.45)]" : "border-orange-200/80 text-orange-700 hover:bg-orange-50";
-            } else {
-              colorClass = isActive ? "border-[#006699] bg-[#e8f3f8] text-[#006699]" : "border-slate-200/80 text-slate-600 hover:bg-slate-50";
-            }
+            const colorClass =
+              statusName === 'Complete' || statusName === 'Close'
+                ? isActive
+                  ? "border-green-500 bg-green-500 text-white shadow-[0_4px_12px_-4px_rgba(34,197,94,0.45)]"
+                  : "border-green-200/80 text-green-700 hover:bg-green-50"
+                : statusName === 'In-Progress' || statusName === 'In-Review'
+                  ? isActive
+                    ? "border-blue-500 bg-blue-500 text-white shadow-[0_4px_12px_-4px_rgba(59,130,246,0.45)]"
+                    : "border-blue-200/80 text-blue-700 hover:bg-blue-50"
+                  : statusName === 'Pending' || statusName === 'Open' || statusName === 'Draft' || statusName === 'Reopen'
+                    ? isActive
+                      ? "border-orange-500 bg-orange-500 text-white shadow-[0_4px_12px_-4px_rgba(249,115,22,0.45)]"
+                      : "border-orange-200/80 text-orange-700 hover:bg-orange-50"
+                    : isActive
+                      ? "border-[#006699] bg-[#e8f3f8] text-[#006699]"
+                      : "border-slate-200/80 text-slate-600 hover:bg-slate-50";
 
             return (
               <Button

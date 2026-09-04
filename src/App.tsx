@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Board } from '@/components/kanban/Board';
@@ -23,11 +23,12 @@ import {
 } from '@/components/ui/dialog';
 import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
-import { useTaskStore } from '@/store/useTaskStore';
+import { useTaskStore, type FilterParams } from '@/store/useTaskStore';
 import { TaskCalendarView } from '@/components/task/TaskCalendarView';
 import { cn } from '@/lib/utils';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
 import { MasterManager } from '@/components/master/MasterManager';
+import { type MasterType } from '@/components/master/shared/masterRoutes';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { toast, Toaster } from 'sonner';
 import { DealManager } from '@/components/sales/deals/DealManager';
@@ -37,13 +38,22 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 
 function Dashboard() {
   const { isSave } = useFormRights(1547);
-  const [activeTab, setActiveTab] = useState('tasks');
+  const location = useLocation();
+  const tabFromUrl = new URLSearchParams(location.search).get('tab');
+  const [activeTab, setActiveTab] = useState(() => tabFromUrl || 'tasks');
+  const [prevSearch, setPrevSearch] = useState(location.search);
+  if (location.search !== prevSearch) {
+    setPrevSearch(location.search);
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }
+
   const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>(() => {
     const saved = localStorage.getItem('glacier_task_view_mode');
     return (saved === 'list' || saved === 'board' || saved === 'calendar') ? saved : 'list';
   });
   const navigate = useNavigate();
-  const location = useLocation();
   const { fetchTasks, fetchFillValues, isLoading } = useTaskStore();
   const tasks = useTaskStore((state) => state.tasks);
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
@@ -51,21 +61,29 @@ function Dashboard() {
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tab = params.get('tab');
-    if (tab) {
-      setActiveTab(tab);
-    }
-  }, [location.search]);
-
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const [pageSize, setPageSize] = useState(100);
   const [pageNo, setPageNo] = useState(1);
-  const [currentFilters, setCurrentFilters] = useState<any>(null);
+  const [currentFilters, setCurrentFilters] = useState<Record<string, unknown> | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [trackedFolderNo, setTrackedFolderNo] = useState<number | null>(null);
+
+  const selectedFolderNo = selectedFolder?.TaskFolderNo ?? null;
+  if (selectedFolder && selectedFolderNo !== trackedFolderNo) {
+    setTrackedFolderNo(selectedFolderNo);
+    setPageNo(1);
+    setCurrentFilters((prev) => {
+      if (prev && prev.folderNo === selectedFolder.TaskFolderNo) {
+        return prev;
+      }
+      return {
+        ...(prev || { companyNo }),
+        folderNo: selectedFolder.TaskFolderNo,
+      };
+    });
+  }
 
   const handleTaskClick = (taskId: number) => {
     setSelectedTaskId(taskId);
@@ -89,33 +107,18 @@ function Dashboard() {
   }, [fetchFillValues, companyNo]);
 
   useEffect(() => {
-    if (selectedFolder) {
-      setPageNo(1);
-      setCurrentFilters((prev: any) => {
-        if (prev && prev.folderNo === selectedFolder.TaskFolderNo) {
-          return prev;
-        }
-        return {
-          ...(prev || { companyNo }),
-          folderNo: selectedFolder.TaskFolderNo
-        };
-      });
-    }
-  }, [selectedFolder, companyNo]);
-
-  useEffect(() => {
     if (currentFilters) {
       fetchTasks({
         ...currentFilters,
         pageSize,
-        pageNo
-      });
+        pageNo,
+      } as FilterParams);
     }
   }, [currentFilters, pageSize, pageNo, fetchTasks]);
 
-  const handleCreateTask = () => {
+  const handleCreateTask = useCallback(() => {
     navigate('/task/new');
-  };
+  }, [navigate]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -141,9 +144,9 @@ function Dashboard() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
+  }, [handleCreateTask]);
 
-  const handleFilter = (filters: any) => {
+  const handleFilter = (filters: Record<string, unknown>) => {
     setPageNo(1); // Reset page number on filter change
     setCurrentFilters(filters);
   };
@@ -382,7 +385,7 @@ function MasterPageRoute() {
         }
       }}
     >
-      <MasterManager type={form as any} />
+      <MasterManager type={form as MasterType} />
     </MainLayout>
   );
 }

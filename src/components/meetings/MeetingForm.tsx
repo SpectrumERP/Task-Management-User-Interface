@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Loader2, Clock, UserRound, IdCard, Building2, UserPlus, X } from 'lucide-react';
 import { Combobox } from '@/components/ui/Combobox';
@@ -1579,7 +1578,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   : 'bg-[#e8f3f8] text-[#006699] ring-[#006699]/12'
                               )}
                             >
-                              {file.status !== 'failed' && file.status !== 'done' ? (
+                              {file.status !== 'failed' ? (
                                 <Loader2 size={14} className="animate-spin" />
                               ) : file.name.toLowerCase().endsWith('.pdf') ? (
                                 <FileText size={14} />

@@ -4,7 +4,7 @@ import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
-interface FilterParams {
+export interface FilterParams {
   operTaskNo?: number;
   taskCode?: string;
   title?: string;
