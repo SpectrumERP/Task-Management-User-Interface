@@ -74,16 +74,16 @@ export function Board({ onAddTask, onTaskClick }: BoardProps) {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
-        <p className="text-slate-500 font-bold text-sm uppercase tracking-widest animate-pulse">Syncing Status Schema...</p>
+      <div className="flex-1 flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 text-[#006699] animate-spin" />
+        <p className="text-slate-500 font-medium text-xs">Loading board…</p>
       </div>
     );
   }
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-4 h-full overflow-x-auto pb-10 pt-2 px-2 scrollbar-hide">
+      <div className="flex gap-3 h-full overflow-x-auto pb-8 pt-1 px-1 scrollbar-hide">
         {statuses.map((s) => (
           <Column
             key={s.StatusNo}

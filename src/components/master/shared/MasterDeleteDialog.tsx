@@ -18,28 +18,29 @@ interface MasterDeleteDialogProps {
 export function MasterDeleteDialog({ open, onOpenChange, onConfirm }: MasterDeleteDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-2xl max-w-sm p-0 border-none shadow-xl">
-        <DialogHeader className="p-6 pb-4">
-          <DialogTitle className="text-lg font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
-            <AlertCircle size={20} className="text-red-500" />
+      <DialogContent className="rounded-[12px] max-w-sm p-0 border border-slate-200/80 shadow-xl">
+        <DialogHeader className="p-5 pb-3">
+          <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight flex items-center gap-2">
+            <AlertCircle size={18} className="text-red-500 shrink-0" />
             Confirm Deletion
           </DialogTitle>
-          <DialogDescription className="text-sm text-slate-500 mt-2">
-            Do you want to delete?
+          <DialogDescription className="text-sm text-slate-500 mt-1.5">
+            Do you want to delete this record?
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-2xl">
+        <DialogFooter className="p-4 pt-2 bg-[#f8fbfd] flex justify-end gap-2 rounded-b-[12px] border-t border-slate-100">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+            className="h-9 px-4 rounded-[8px] text-xs font-medium border-slate-200 shadow-none"
           >
             No
           </Button>
           <Button
+            type="button"
             onClick={onConfirm}
-            className="h-10 px-5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium text-xs normal-case shadow-md shadow-red-500/20 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95"
+            className="h-9 px-4 rounded-[8px] bg-red-500 hover:bg-red-600 text-white font-semibold text-xs shadow-sm"
           >
             Yes
           </Button>

@@ -12,6 +12,7 @@ import MeetingReportPage from '@/pages/MeetingReportPage';
 import DealMonitorPage from '@/pages/DealMonitorPage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
 import { useAuthStore } from '@/store/useAuthStore';
+import { authService } from '@/services/authService';
 import {
   Dialog,
   DialogContent,
@@ -177,9 +178,9 @@ function Dashboard() {
 
   return (
     <MainLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      <main className="flex-1 p-0.5 sm:px-1 overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+      <main className="page-shell gap-4">
         {/* Unified Top Control Bar */}
-        <div className="">
+        <div className="shrink-0">
           <TaskFilter
             onFilter={handleFilter}
             viewMode={viewMode}
@@ -191,105 +192,96 @@ function Dashboard() {
         </div>
 
         {/* Content Area */}
-        <div className={cn(
-          "flex-1 min-h-0",
-          viewMode === 'list' ? "flex flex-col overflow-hidden" : "flex flex-col overflow-hidden"
-        )}>
-          {viewMode === 'list' ? (
-            <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
-          ) : viewMode === 'board' ? (
-            <Board onAddTask={(status) => navigate(`/task/new?status=${status}`)} onTaskClick={handleTaskClick} />
-          ) : (
-            <TaskCalendarView
-              tasks={tasks}
-              isLoading={isLoading}
-              onTaskClick={handleTaskClick}
-              onAddTask={(date) => {
-                const dateStr = date ? `?date=${date.toISOString()}` : '';
-                navigate(`/task/new${dateStr}`);
-              }}
-              showFilters={showFilters}
-              onToggleFilters={() => setShowFilters(!showFilters)}
-              onViewModeChange={setViewModeAndStore}
-            />
-          )}
-        </div>
-
-        {/* Pagination Control Bar */}
-        {viewMode === 'list' && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-1 bg-slate-50/70 border border-slate-200/80 rounded-2xl shadow-sm shrink-0 select-none">
-            {/* Left Side: Range Info */}
-            <div className="text-[11px] text-slate-500 font-bold">
-              {tasks.length > 0 ? (
-                <>
-                  Showing <span className="text-slate-800 font-black">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
-                  <span className="text-slate-800 font-black">{((pageNo - 1) * pageSize) + tasks.length}</span> records
-                </>
-              ) : (
-                "No records found"
-              )}
+        {viewMode === 'list' ? (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
             </div>
 
-            {/* Center: Items Per Page Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400  ">Per Page:</span>
-              <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
-                {[10, 25, 50, 100].map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => {
-                      setPageSize(size);
-                      setPageNo(1);
-                    }}
-                    className={cn(
-                      "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
-                      pageSize === size
-                        ? "bg-[#006699] text-white shadow-sm font-black"
-                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                    )}
+            {/* Pagination — only when there are records to page through */}
+            {tasks.length > 0 ? (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2 border-t border-slate-100 bg-[#f8fbfd] shrink-0 select-none">
+                <div className="text-[11px] text-slate-500 font-semibold">
+                  Showing <span className="text-slate-800 font-bold">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
+                  <span className="text-slate-800 font-bold">{((pageNo - 1) * pageSize) + tasks.length}</span> records
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Per Page:</span>
+                  <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-lg border border-slate-200">
+                    {[10, 25, 50, 100].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => {
+                          setPageSize(size);
+                          setPageNo(1);
+                        }}
+                        className={cn(
+                          "h-6 px-2.5 rounded-md text-[10px] font-semibold tracking-wide uppercase transition-all",
+                          pageSize === size
+                            ? "bg-[#006699] text-white shadow-sm"
+                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={pageNo === 1 || isLoading}
+                    onClick={() => setPageNo((prev) => Math.max(1, prev - 1))}
+                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[#e8f1f8] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
                   >
-                    {size}
-                  </button>
-                ))}
+                    <ChevronLeft size={14} strokeWidth={2.5} />
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled
+                      className="h-7 w-7 rounded-lg text-[10px] font-bold bg-[#006699] border border-[#006699] text-white shadow-sm flex items-center justify-center cursor-default"
+                    >
+                      {pageNo}
+                    </button>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={tasks.length < pageSize || isLoading}
+                    onClick={() => setPageNo((prev) => prev + 1)}
+                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[#e8f1f8] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                  >
+                    <ChevronRight size={14} strokeWidth={2.5} />
+                  </Button>
+                </div>
               </div>
-            </div>
-
-            {/* Right Side: Page Controls */}
-            <div className="flex items-center gap-1">
-              {/* Previous Page Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={pageNo === 1 || isLoading}
-                onClick={() => setPageNo((prev) => Math.max(1, prev - 1))}
-                className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
-              >
-                <ChevronLeft size={14} strokeWidth={2.5} />
-              </Button>
-
-              {/* Direct Page Numbers (only current page displayed) */}
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled
-                  className="h-7 w-7 rounded-lg text-[10px] font-black bg-[#006699] border border-[#006699] text-white shadow-md shadow-[#006699]/10 flex items-center justify-center cursor-default"
-                >
-                  {pageNo}
-                </button>
-              </div>
-
-              {/* Next Page Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={tasks.length < pageSize || isLoading}
-                onClick={() => setPageNo((prev) => prev + 1)}
-                className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
-              >
-                <ChevronRight size={14} strokeWidth={2.5} />
-              </Button>
-            </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {viewMode === 'board' ? (
+              <Board onAddTask={(status) => navigate(`/task/new?status=${status}`)} onTaskClick={handleTaskClick} />
+            ) : (
+              <TaskCalendarView
+                tasks={tasks}
+                isLoading={isLoading}
+                onTaskClick={handleTaskClick}
+                onAddTask={(date) => {
+                  const dateStr = date ? `?date=${date.toISOString()}` : '';
+                  navigate(`/task/new${dateStr}`);
+                }}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                onViewModeChange={setViewModeAndStore}
+              />
+            )}
           </div>
         )}
 
@@ -310,10 +302,9 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check every 10 seconds in the background for active token expiration
-    const intervalId = setInterval(async () => {
+    const intervalId = setInterval(() => {
       const { token, isAuthenticated, isSessionTimeoutOpen } = useAuthStore.getState();
       if (isAuthenticated && token && !isSessionTimeoutOpen) {
-        const { authService } = await import('@/services/authService');
         if (authService.isTokenExpired(token)) {
           useAuthStore.setState({ isSessionTimeoutOpen: true });
         }

@@ -1,20 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, ArrowRight, Eye, EyeOff, LayoutDashboard, CalendarDays, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { authService } from '@/services/authService';
-import LogoImage from '@/assets/SteelMountLogo01.png';
+import { getBrand } from '@/config/brandConfig';
+
+const FEATURE_ICONS = {
+  boards: LayoutDashboard,
+  planner: CalendarDays,
+  teams: Users,
+} as const;
 
 const loginSchema = z.object({
-  loginId: z.string().min(1, 'Username is required'),
+  loginId: z.string().min(1, 'User name is required'),
   password: z.string().min(1, 'Password is required'),
 });
 
@@ -24,6 +29,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const brand = useMemo(() => getBrand(), []);
 
   const { login, isAuthenticated, checkAuth, logout } = useAuthStore();
   const navigate = useNavigate();
@@ -37,9 +44,10 @@ export default function Login() {
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    shouldFocusError: false,
+    mode: 'onSubmit',
   });
 
-  // Redirect if already authenticated
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -50,18 +58,17 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate, from]);
 
-  // Session monitor interval
   useEffect(() => {
     const checkSession = async () => {
       const session = await authService.getSession();
       if (session && authService.isTokenExpired(session.token)) {
-        alert('Session timeout. Please login again.');
+        setServerError('Session timed out. Please sign in again.');
         await logout();
         navigate('/login');
       }
     };
 
-    const interval = setInterval(checkSession, 60000); // Check every minute
+    const interval = setInterval(checkSession, 60000);
     return () => clearInterval(interval);
   }, [logout, navigate]);
 
@@ -74,7 +81,7 @@ export default function Login() {
       if (success) {
         navigate(from, { replace: true });
       } else {
-        setServerError('Invalid username or password');
+        setServerError('Invalid user name or password');
       }
     } catch (error: any) {
       setServerError(error.message || 'Something went wrong. Please try again.');
@@ -84,92 +91,264 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#f8fafc] relative overflow-hidden p-4">
-      {/* Background Decorative Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/5 rounded-full blur-[120px] -z-10" />
-
-      {/* Bottom Illustration Overlay */}
-      <div className="absolute bottom-0 left-0 w-full h-[60vh] pointer-events-none z-0 overflow-hidden">
-        <motion.img
-          initial={{ opacity: 0, y: 100 }}
-          animate={{ opacity: 0.15, y: 0 }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
-          src="/login-illustration.png"
-          alt="Illustration"
-          className="w-full h-full object-cover object-center mix-blend-multiply opacity-20"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-[#f8fafc]/50 to-[#f8fafc]" />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative z-10"
+    <div className="min-h-screen w-full relative overflow-hidden bg-[#dceaf2]">
+      {/* Perspective stage background */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.85),_transparent_55%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(0,102,153,0.16),_transparent_55%)] pointer-events-none" />
+      <svg
+        className="absolute inset-x-0 bottom-0 h-[48vh] w-full opacity-[0.22] pointer-events-none"
+        viewBox="0 0 1200 500"
+        preserveAspectRatio="none"
+        aria-hidden="true"
       >
-        <Card className="border-slate-200/60 shadow-2xl bg-white/95 backdrop-blur-md overflow-hidden rounded-[24px]">
-          <CardHeader className="space-y-4 pb-8">
-            <div className="flex justify-center mb-2 py-2">
-              <img src={LogoImage} alt="SteelMont Logo" className="h-12 w-auto object-contain" />
-            </div>
-            <div className="text-center space-y-0">
-              <CardTitle className="text-3xl font-extrabold tracking-tight text-slate-900">Welcome Back</CardTitle>
-              <CardDescription className="text-slate-500 font-medium">
-                Enter your credentials
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              <div className="space-y-0">
-                <Label htmlFor="loginId" className="text-slate-700 font-bold">Username</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="loginId"
-                    placeholder="Enter username"
-                    className={`pl-10 bg-white border-slate-300 focus:border-[#006699] focus:ring-[#006699]/10 transition-all rounded-xl h-11 ${errors.loginId ? 'border-red-500' : ''}`}
-                    {...register('loginId')}
-                    maxLength={50}
+        <path d="M600 0 L0 500 M600 0 L1200 500" stroke="#006699" strokeWidth="1.2" fill="none" />
+        <path d="M600 0 L120 500 M600 0 L1080 500" stroke="#006699" strokeWidth="0.9" fill="none" />
+        <path d="M600 0 L240 500 M600 0 L960 500" stroke="#006699" strokeWidth="0.8" fill="none" />
+        <path d="M600 0 L360 500 M600 0 L840 500" stroke="#006699" strokeWidth="0.7" fill="none" />
+        <path d="M0 120 H1200 M0 200 H1200 M0 290 H1200 M0 390 H1200" stroke="#006699" strokeWidth="0.6" fill="none" />
+      </svg>
+
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-3 sm:p-4 lg:p-5 [perspective:1400px]">
+        <motion.div
+          initial={{ opacity: 0, y: 28, rotateX: 8 }}
+          animate={{ opacity: 1, y: 0, rotateX: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-[42rem] max-h-[calc(100vh-1.5rem)] grid grid-cols-1 lg:grid-cols-[20rem_minmax(0,1fr)] overflow-visible border border-white/80 bg-white shadow-[0_28px_60px_rgba(0,60,100,0.18)] rounded-tl-none rounded-br-none rounded-tr-[1.75rem] rounded-bl-[1.75rem] [transform-style:preserve-3d]"
+        >
+          {/* Left brand — perspective planes */}
+          <div className="relative hidden lg:flex flex-col overflow-hidden bg-[#006699] text-white">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0080b8] via-[#006699] to-[#003d5c]" />
+            <div className="absolute inset-0 opacity-[0.1] bg-[radial-gradient(circle_at_1px_1px,_white_1px,_transparent_0)] [background-size:16px_16px]" />
+
+            {/* Angled floor plane on left panel */}
+            <div
+              className="absolute inset-x-0 bottom-0 h-[42%] bg-[#003049]/35"
+              style={{ clipPath: 'polygon(0 38%, 100% 0, 100% 100%, 0 100%)' }}
+              aria-hidden="true"
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 h-[28%] opacity-30"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent), repeating-linear-gradient(90deg, transparent, transparent 18px, rgba(255,255,255,0.12) 18px, rgba(255,255,255,0.12) 19px)',
+                clipPath: 'polygon(0 45%, 100% 0, 100% 100%, 0 100%)',
+              }}
+              aria-hidden="true"
+            />
+
+            {/* Perspective white header — first angled design */}
+            <div
+              className="absolute top-0 inset-x-0 z-[5] h-[80px] bg-[#003d5c]/35"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 48%, 78% 100%, 0 68%)' }}
+            />
+            <div
+              className="absolute top-0 inset-x-0 z-[6] h-[76px] bg-white shadow-[0_10px_28px_rgba(0,40,70,0.12)]"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 52%, 82% 100%, 0 72%)' }}
+            />
+            <div className="absolute top-0 right-0 z-[6] h-[48px] w-8 bg-white" aria-hidden="true" />
+            <div
+              className="absolute top-[44px] inset-x-0 z-[5] h-[18px] bg-gradient-to-r from-transparent via-white/25 to-transparent"
+              style={{ clipPath: 'polygon(0 40%, 78% 0, 100% 20%, 100% 100%, 0 100%)' }}
+              aria-hidden="true"
+            />
+
+            <motion.img
+              src={brand.maskLogoSrc}
+              alt=""
+              aria-hidden="true"
+              animate={{ opacity: [0.04, 0.07, 0.04], y: [0, -4, 0] }}
+              transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+              className={`pointer-events-none absolute -right-6 bottom-4 h-[72px] w-[120px] object-contain select-none ${
+                brand.invertMaskLogo ? 'brightness-0 invert' : 'opacity-40'
+              }`}
+            />
+
+            <div className="relative z-10 flex h-full flex-col px-5 pb-5 pt-0">
+              <div className="relative z-10 flex h-[60px] min-w-0 items-center justify-between gap-2">
+                {/* Fixed logo slot — any client logo fits without breaking layout */}
+                <div className="flex h-10 w-[10.5rem] shrink min-w-0 items-center overflow-hidden">
+                  <img
+                    src={brand.logoSrc}
+                    alt={brand.brandName}
+                    className="h-10 w-auto max-h-10 max-w-full object-contain object-left"
                   />
                 </div>
-                {errors.loginId && (
-                  <p className="text-[10px] text-red-500 font-bold ml-1">{errors.loginId.message}</p>
-                )}
-              </div>
-              <div className="space-y-0">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-slate-700 font-bold">Password</Label>
+                <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#006699]/20 bg-[#006699]/8 px-2 py-0.5 max-w-[8.75rem]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-[8px] font-semibold uppercase tracking-wider text-[#006699] truncate">
+                    {brand.productName}
+                  </span>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              </div>
+
+              <div className="mt-6 space-y-1.5 max-w-[16rem]">
+                <h1 className="text-[1.25rem] font-semibold tracking-tight leading-[1.2] text-white">
+                  Plan. Track.
+                  <span className="block text-white/85">Deliver together.</span>
+                </h1>
+                <p className="text-white/75 text-[11px] leading-relaxed pt-0.5">
+                  {brand.description}
+                </p>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-2">
+                {[
+                  { key: 'boards' as const, title: 'Boards', desc: 'See work across stages' },
+                  { key: 'planner' as const, title: 'Planner', desc: 'Deadlines in one place' },
+                  { key: 'teams' as const, title: 'Teams', desc: 'Shared team visibility' },
+                ].map(({ key, title, desc }, index) => {
+                  const Icon = FEATURE_ICONS[key];
+                  return (
+                    <motion.div
+                      key={key}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + index * 0.08, duration: 0.35 }}
+                      className="flex items-center gap-2 border border-white/15 bg-white/10 px-2.5 py-1.5 shadow-[4px_4px_0_rgba(0,40,70,0.18)]"
+                      style={{
+                        clipPath: 'polygon(0 0, 100% 0, 97% 100%, 0 100%)',
+                        transform: `translateX(${index * 4}px)`,
+                      }}
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/15">
+                        <Icon className="h-3 w-3 text-white" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-white leading-tight">{title}</p>
+                        <p className="text-[9px] text-white/65 leading-tight mt-0.5">{desc}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-auto pt-4 flex items-center justify-between gap-2 border-t border-white/15">
+                <p className="text-[9px] text-white/60 font-medium">{brand.secureNote}</p>
+                <span className="shrink-0 text-[8px] font-semibold uppercase tracking-wider text-emerald-200/90">
+                  {brand.liveBadge}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right form — perspective panel */}
+          <div className="relative bg-white px-6 py-6 sm:px-7 sm:py-7 flex flex-col justify-center overflow-visible">
+            {/* Perspective accent planes on form side */}
+            <div
+              className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 bg-[#006699]/5"
+              style={{ clipPath: 'polygon(30% 0, 100% 0, 100% 70%, 0 100%)' }}
+              aria-hidden="true"
+            />
+            <div
+              className="pointer-events-none absolute bottom-0 inset-x-0 h-16 opacity-[0.07]"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(90deg, #006699 0, #006699 1px, transparent 1px, transparent 28px)',
+                clipPath: 'polygon(0 55%, 100% 0, 100% 100%, 0 100%)',
+              }}
+              aria-hidden="true"
+            />
+
+            <div className="relative z-10 mb-5 flex flex-col items-center lg:items-start gap-2">
+              <img
+                src={brand.logoSrc}
+                alt={brand.brandName}
+                className="h-10 w-auto max-h-10 max-w-[13rem] object-contain lg:hidden"
+              />
+              <span className="inline-flex items-center rounded-full bg-[#006699]/8 px-3 py-1 text-[11px] font-semibold tracking-wide text-[#006699] lg:hidden">
+                {brand.productName}
+              </span>
+              <div className="text-center lg:text-left space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#006699]/70">
+                  Sign in
+                </p>
+                <h2 className="text-xl font-semibold tracking-tight text-slate-800">Welcome Back</h2>
+                <p className="text-slate-500 text-sm font-medium">Enter your credentials to continue</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="relative z-10 space-y-5 max-w-md mx-auto lg:mx-0 w-full overflow-visible">
+              <div className="space-y-1.5">
+                <Label htmlFor="loginId" className="inline-flex items-start gap-0.5 text-slate-700 font-semibold text-sm">
+                  User name
+                  <span className="text-red-600 leading-none" aria-hidden="true">*</span>
+                </Label>
+                <div className="relative min-w-0">
+                  <User className="absolute left-3 top-1/2 z-[1] -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    id="loginId"
+                    placeholder="Enter user name"
+                    autoFocus
+                    autoComplete="username"
+                    aria-invalid={!!errors.loginId}
+                    className={`pl-10 bg-[#f7fafc] rounded-xl h-11 shadow-[3px_3px_0_rgba(0,102,153,0.06)] focus-visible:!ring-0 focus-visible:!ring-offset-0 focus:!ring-0 outline-none ${
+                      errors.loginId
+                        ? '!border !border-red-500 focus:!border-red-500'
+                        : 'border border-slate-200 focus:!border-[#006699]'
+                    }`}
+                    {...register('loginId', {
+                      onChange: () => setServerError(''),
+                    })}
+                    maxLength={50}
+                  />
+                  {errors.loginId?.message ? (
+                    <span
+                      role="alert"
+                      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,220px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
+                    >
+                      {errors.loginId.message}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="inline-flex items-start gap-0.5 text-slate-700 font-semibold text-sm">
+                  Password
+                  <span className="text-red-600 leading-none" aria-hidden="true">*</span>
+                </Label>
+                <div className="relative min-w-0">
+                  <Lock className="absolute left-3 top-1/2 z-[1] -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter password"
-                    className={`pl-10 pr-10 bg-white border-slate-300 focus:border-[#006699] focus:ring-[#006699]/10 transition-all rounded-xl h-11 ${errors.password ? 'border-red-500' : ''}`}
-                    {...register('password')}
+                    autoComplete="current-password"
+                    aria-invalid={!!errors.password}
+                    className={`pl-10 pr-10 bg-[#f7fafc] rounded-xl h-11 shadow-[3px_3px_0_rgba(0,102,153,0.06)] focus-visible:!ring-0 focus-visible:!ring-offset-0 focus:!ring-0 outline-none ${
+                      errors.password
+                        ? '!border !border-red-500 focus:!border-red-500'
+                        : 'border border-slate-200 focus:!border-[#006699]'
+                    }`}
+                    {...register('password', {
+                      onChange: () => setServerError(''),
+                    })}
                     maxLength={50}
                   />
+                  {errors.password?.message ? (
+                    <span
+                      role="alert"
+                      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,220px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
+                    >
+                      {errors.password.message}
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                {errors.password && (
-                  <p className="text-[10px] text-red-500 font-bold ml-1">{errors.password.message}</p>
-                )}
               </div>
 
               {serverError && (
                 <motion.p
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="text-xs text-red-500 font-bold bg-red-50 p-3 rounded-xl border border-red-100 flex items-center gap-2"
+                  className="text-xs text-red-600 font-medium bg-red-50 px-3 py-2.5 rounded-xl border border-red-100 flex items-center gap-2"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
                   {serverError}
@@ -178,7 +357,7 @@ export default function Login() {
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-[#006699] hover:bg-[#005580] text-white shadow-lg shadow-[#006699]/20 transition-all hover:scale-[1.02] active:scale-[0.98] rounded-xl"
+                className="w-full h-11 mt-1 bg-[#006699] hover:bg-[#005580] text-white shadow-[0_10px_24px_rgba(0,102,153,0.28)] transition-all hover:translate-y-[-1px] active:translate-y-0 rounded-xl font-semibold"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -187,18 +366,19 @@ export default function Login() {
                     Signing in...
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2 font-bold">
+                  <span className="flex items-center gap-2">
                     Sign In <ArrowRight size={18} />
                   </span>
                 )}
               </Button>
             </form>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4 pb-8 pt-2">
-            {/* Social logins commented out */}
-          </CardFooter>
-        </Card>
-      </motion.div>
+
+            <p className="relative z-10 mt-5 text-center lg:text-left text-xs text-slate-400 font-medium">
+              © {new Date().getFullYear()} {brand.brandName} · {brand.copyrightSuffix}
+            </p>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }

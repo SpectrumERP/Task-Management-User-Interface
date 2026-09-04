@@ -248,103 +248,97 @@ export default function TaskDetail() {
         }
       }}
     >
-      <div className="flex-1 w-full flex flex-col bg-[#f1f5f9] overflow-hidden">
-        {/* Fixed Header Section */}
-        <div className="w-full px-2 sm:px-6 py-1.5 sm:py-2 z-20">
-          <div className="flex flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <button
-                onClick={() => navigate('/')}
-                className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded"
-              >
-                Tasks List
-              </button>
-              <ChevronRight size={16} className="text-slate-400" />
-              <span className="text-slate-900 font-bold tracking-tight">
-                {isEdit ? 'Update Task' : 'Create Task'}
-              </span>
-            </div>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#eef4f8]">
+        <div className="shrink-0 z-20 bg-white border-b border-slate-200/70 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 text-sm font-semibold min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded"
+            >
+              Tasks List
+            </button>
+            <ChevronRight size={14} className="text-slate-400 shrink-0" />
+            <span className="text-slate-900 font-bold tracking-tight">
+              {isEdit ? 'Update Task' : 'Create Task'}
+            </span>
+          </div>
 
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => navigate(-1)}
+              disabled={isSaving}
+              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none gap-1.5 disabled:opacity-40"
+            >
+              <X size={14} />
+              <span className="hidden sm:inline">Cancel</span>
+            </Button>
 
+            {(isEdit ? isUpdate : isSave) && (
               <Button
-                variant="ghost"
-                type="button"
-                onClick={() => navigate(-1)}
+                type="submit"
+                form="task-form"
                 disabled={isSaving}
-                className="rounded-xl px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
+                className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#006699] hover:bg-[#005580] text-white shadow-sm shadow-[#006699]/20 gap-1.5 disabled:opacity-50"
               >
-                <X size={16} />
-                <span className="hidden sm:inline">Cancel</span>
+                {isSaving ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
+                  </>
+                )}
               </Button>
-              
-              {(isEdit ? isUpdate : isSave) && (
-                <Button
-                  type="submit"
-                  form="task-form"
-                  disabled={isSaving}
-                  className="rounded-xl px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save size={16} />
-                      <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
-                    </>
-                  )}
-                </Button>
-              )}
-              {isEdit && isDelete && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 shadow-sm flex items-center justify-center transition-all"
-                    >
-                      <MoreVertical size={18} className="text-slate-600" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-xl w-36 shadow-md border-slate-200">
-                    <DropdownMenuItem
-                      onClick={() => setIsDeleteDialogOpen(true)}
-                      className="text-red-600 focus:text-red-700 focus:bg-red-50 font-bold text-xs cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg"
-                    >
-                      <Trash2 size={14} />
-                      Delete Task
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+            )}
+            {isEdit && isDelete && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 rounded-[8px] border-slate-200 bg-white hover:bg-slate-50 shadow-none"
+                  >
+                    <MoreVertical size={16} className="text-slate-600" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-[8px] w-36 shadow-md border-slate-200">
+                  <DropdownMenuItem
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    className="text-red-600 focus:text-red-700 focus:bg-red-50 font-semibold text-xs cursor-pointer flex items-center gap-2 px-3 py-2 rounded-[6px]"
+                  >
+                    <Trash2 size={14} />
+                    Delete Task
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
-        {/* Scrollable Form Content */}
-        <div className="flex-1 overflow-y-auto sm:px-8 sm:pt-1 pb-6 sm:pb-8 scrollbar-hide">
-          <div className="max-w-8xl mx-auto">
-            <div className="bg-white rounded-[16px] sm:rounded-[20px] p-4 sm:px-8 shadow-xl shadow-slate-200/40 border border-slate-100 h-fit min-h-[400px] flex flex-col justify-center">
-              {isFetching ? (
-                <div className="flex flex-col items-center justify-center gap-4 py-20">
-                  <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
-                  <p className="text-slate-500 font-bold text-sm uppercase tracking-widest animate-pulse">Syncing Task Schema...</p>
-                </div>
-              ) : (
-                <TaskForm
-                  key={location.pathname + location.search}
-                  initialData={isEdit ? task : undefined}
-                  parentTask={!isEdit ? task : undefined}
-                  initialStatus={initialStatus}
-                  onComplete={handleGoBack}
-                  onSaveStateChange={setIsSaving}
-                  onRefreshData={fetchTaskDetails}
-                />
-              )}
-            </div>
+        <div className="flex-1 overflow-y-auto bg-[#eef4f8]">
+          <div className="w-full mx-auto p-4">
+            {isFetching ? (
+              <div className="flex flex-col items-center justify-center gap-3 rounded-[8px] border border-slate-200/70 bg-white py-16 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
+                <Loader2 className="h-8 w-8 text-[#006699] animate-spin" />
+                <p className="text-slate-500 font-medium text-sm">Loading task...</p>
+              </div>
+            ) : (
+              <TaskForm
+                key={location.pathname + location.search}
+                initialData={isEdit ? task : undefined}
+                parentTask={!isEdit ? task : undefined}
+                initialStatus={initialStatus}
+                onComplete={handleGoBack}
+                onSaveStateChange={setIsSaving}
+                onRefreshData={fetchTaskDetails}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle } from 'lucide-react';
+import { Flag } from 'lucide-react';
 import { MasterListHeader } from '../shared/MasterListHeader';
 import { MasterEntityTable } from '../shared/MasterEntityTable';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
@@ -93,7 +93,7 @@ export function PriorityList() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
@@ -102,36 +102,53 @@ export function PriorityList() {
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Priority Name"
-          columns={[
-            { header: 'Sequence', render: (item) => item.sequence },
-            { header: 'Priority Duration', render: (item) => `${item.priorityDuration} ${getFrequencyName(item.priorityFrequencyNo)}` },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('priority', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={AlertCircle}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Priority Name"
+        columns={[
+          {
+            header: 'Sequence',
+            render: (item) => (
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-slate-100 px-1.5 text-[11px] font-semibold text-slate-700 tabular-nums">
+                {item.sequence || '—'}
+              </span>
+            ),
+          },
+          {
+            header: 'Priority Duration',
+            render: (item) => (
+              <span className="inline-flex items-center rounded-[6px] border border-[#006699]/15 bg-[#e8f3f8] px-2 py-0.5 text-[11px] font-semibold text-[#006699]">
+                {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
+              </span>
+            ),
+          },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span className="uppercase tracking-wide">{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('priority', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        emptyIcon={Flag}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

@@ -1,5 +1,12 @@
 import * as z from 'zod';
 
+/** Convert cleared combobox / NaN into null so Zod shows friendly required messages */
+const emptyToNull = (v: unknown) => {
+  if (v === '' || v === undefined) return null;
+  if (typeof v === 'number' && Number.isNaN(v)) return null;
+  return v;
+};
+
 export const meetingParticipantSchema = z.object({
   mnParticipantDetailNo: z.number().optional(),
   participantType: z.number(),
@@ -67,29 +74,29 @@ export const meetingDiscussionSchema = z.object({
   remarks: z.string().max(500, 'Remarks cannot exceed 500 characters').optional().nullable(),
 
   // Required only if isActionRequired is true
-  actionTaskOwnerNo: z.number().optional().nullable(),
+  actionTaskOwnerNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
   actionDueDate: z.string().optional().nullable(),
-  operTaskCategoryNo: z.number().optional().nullable(),
-  operTaskTypeNo: z.number().optional().nullable(),
-  operTaskPriorityNo: z.number().optional().nullable(),
-  taskFolderNo: z.number().optional().nullable(),
-  actionTaskOriginatorNo: z.number().optional().nullable(),
-  operTaskNo: z.number().optional().nullable(),
+  operTaskCategoryNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  operTaskTypeNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  operTaskPriorityNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  taskFolderNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  actionTaskOriginatorNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  operTaskNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
 }).superRefine((data, ctx) => {
   if (data.isActionRequired) {
-    if (!data.actionTaskOwnerNo) {
+    if (data.actionTaskOwnerNo == null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Assign To is required', path: ['actionTaskOwnerNo'] });
     }
     if (!data.actionDueDate) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Due Date is required', path: ['actionDueDate'] });
     }
-    if (!data.operTaskCategoryNo) {
+    if (data.operTaskCategoryNo == null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Category is required', path: ['operTaskCategoryNo'] });
     }
-    if (!data.operTaskTypeNo) {
+    if (data.operTaskTypeNo == null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Type is required', path: ['operTaskTypeNo'] });
     }
-    if (!data.operTaskPriorityNo) {
+    if (data.operTaskPriorityNo == null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Priority is required', path: ['operTaskPriorityNo'] });
     }
   }
@@ -97,8 +104,14 @@ export const meetingDiscussionSchema = z.object({
 
 export const meetingDocumentSchema = z.object({
   mnDocumentDetailNo: z.number().optional(),
-  documentType: z.number(),
-  documentNo: z.number(),
+  documentType: z.preprocess(
+    (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? 0 : Number(v)),
+    z.number().refine((n) => n > 0, { message: 'Document Name is required' })
+  ),
+  documentNo: z.preprocess(
+    (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? 0 : Number(v)),
+    z.number().refine((n) => n > 0, { message: 'Document No is required' })
+  ),
   formNo: z.number().optional(), // For UI logic
   context: z.string().optional(), // For UI logic
   documentDisplayValue: z.string().optional(), // For showing the selected doc name
