@@ -137,6 +137,9 @@ export interface TaskCompanyMaster {
   countryNo: string;
   stateNo: string;
   cityNo: string;
+  countryName: string;
+  stateName: string;
+  cityName: string;
   pinCode: string;
   createdBy?: string;
   createdDate?: string;

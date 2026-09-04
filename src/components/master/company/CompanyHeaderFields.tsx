@@ -74,6 +74,8 @@ interface CompanyHeaderFieldsProps {
   setCompanyTimeZoneNo: (v: string) => void;
   creditLimit: number | null;
   setCreditLimit: (v: number | null) => void;
+  creditInsuranceCompanyName: string;
+  setCreditInsuranceCompanyName: (v: string) => void;
   companyVatGst: string;
   setCompanyVatGst: (v: string) => void;
   businessEntityTypes: any[];
@@ -94,6 +96,8 @@ export function CompanyHeaderFields({
   setCompanyTimeZoneNo,
   creditLimit,
   setCreditLimit,
+  creditInsuranceCompanyName,
+  setCreditInsuranceCompanyName,
   companyVatGst,
   setCompanyVatGst,
   businessEntityTypes,
@@ -162,7 +166,7 @@ export function CompanyHeaderFields({
           <Input
             readOnly
             tabIndex={-1}
-            value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
+            value={editingId ? code || 'â' : 'AUTO-GEN-CODE'}
             className={cn(
               fieldClass,
               'bg-[#f8fbfd] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-slate-200/80'
@@ -285,6 +289,18 @@ export function CompanyHeaderFields({
             value={creditLimit ?? ''}
             onChange={(e) => setCreditLimit(e.target.value === '' ? null : Number(e.target.value))}
             className={cn(fieldClass, 'text-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none')}
+          />
+        </div>
+
+        <div className="space-y-1.5 min-w-0">
+          <FieldLabel htmlFor="creditInsuranceCompany">Credit Insurance Company Name</FieldLabel>
+          <Input
+            id="creditInsuranceCompany"
+            placeholder="Enter credit insurance company name"
+            value={creditInsuranceCompanyName}
+            maxLength={100}
+            onChange={(e) => setCreditInsuranceCompanyName(e.target.value)}
+            className={fieldClass}
           />
         </div>
 

@@ -6,6 +6,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/Combobox';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
@@ -91,6 +92,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
   const [tcAddress2, setTcAddress2] = useState('');
   const [tcAddress3, setTcAddress3] = useState('');
   const [tcPinCode, setTcPinCode] = useState('');
+  const [tcIncorporationDate, setTcIncorporationDate] = useState<Date | undefined>(undefined);
   const [tcCountryNo, setTcCountryNo] = useState('');
   const [tcStateNo, setTcStateNo] = useState('');
   const [tcCityNo, setTcCityNo] = useState('');
@@ -138,6 +140,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
         setTcAddress2(dl.address2 || '');
         setTcAddress3(dl.address3 || '');
         setTcPinCode(dl.pinCode || '');
+        setTcIncorporationDate(dl.incorporationDate ? new Date(dl.incorporationDate) : undefined);
         setCode(dl.code || '');
 
         const countryVal = dl.country?.id ?? dl.countryNo ?? '';
@@ -189,6 +192,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
         stateNo: parseInt(tcStateNo) || null,
         countryNo: parseInt(tcCountryNo) || null,
         pinCode: tcPinCode,
+        incorporationDate: tcIncorporationDate ? tcIncorporationDate.toISOString() : null,
       };
       await apiService.post('/api/crm/task-companies/save', payload);
       setShowSuccessAlert(true);
@@ -292,6 +296,16 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
                 className={fieldClass}
               />
             </div>
+          </div>
+
+          <div className="space-y-0">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Date of Incorporation</label>
+            <DatePicker
+              date={tcIncorporationDate}
+              onChange={setTcIncorporationDate}
+              placeholder="Select date of incorporation"
+              className="h-10"
+            />
           </div>
         </div>
       </section>

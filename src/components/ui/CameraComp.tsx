@@ -10,9 +10,10 @@ import { DocumentAttachment } from '@/types/task';
 import { cn } from '@/lib/utils';
 
 import { useBusinessCardDetection } from './camera/hooks/useBusinessCardDetection';
-import { useOCR } from './camera/hooks/useOCR';
+import { useOCR, OCRResult } from './camera/hooks/useOCR';
 import { CardCropperService } from './camera/services/CardCropperService';
 import { BusinessCardParserService } from './camera/services/BusinessCardParserService';
+import { GoogleVisionService } from './camera/services/GoogleVisionService';
 import { LogoDetectionService } from './camera/services/LogoDetectionService';
 import { BusinessCardOverlay } from './camera/overlays/BusinessCardOverlay';
 import { CardReviewForm } from './camera/components/CardReviewForm';
@@ -146,9 +147,17 @@ export function CameraComp({
 
   const cropperService = useRef(new CardCropperService());
   const parserService = useRef(new BusinessCardParserService());
+  const googleVisionService = useRef(new GoogleVisionService());
   const logoService = useRef(new LogoDetectionService());
   const analysisCache = useRef(new Map<string, any>());
   const { processImage, progress } = useOCR();
+
+  const parseOcrResult = useCallback((result: OCRResult): { data: BusinessCardData; formattedText: string } => {
+    if (result.googleText) {
+      return { data: googleVisionService.current.parseCardData(result.googleText), formattedText: result.googleText };
+    }
+    return { data: parserService.current.parse(result.tesseractText), formattedText: result.tesseractText };
+  }, []);
 
   const [state, dispatch] = useReducer(cameraReducer, initialState);
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
@@ -264,14 +273,13 @@ export function CameraComp({
         result = await processImage(finalBlob);
         analysisCache.current.set(cacheKey, result);
       }
-      const rawTextToParse = result.googleText || result.tesseractText;
-      const data = parserService.current.parse(rawTextToParse);
+      const { data, formattedText } = parseOcrResult(result);
 
       // Auto-store in clipboard
       useClipboardStore.getState().addEntry({
         source: 'BusinessCard',
         data,
-        formattedText: rawTextToParse
+        formattedText
       });
 
       const finalFile = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
@@ -282,7 +290,7 @@ export function CameraComp({
       console.error(e);
       dispatch({ type: 'ERROR', error: 'Analysis failed. Please try again.' });
     }
-  }, [capturedFile, capturedUrl, processImage, previewCompletedCrop, fileNamePrefix]);
+  }, [capturedFile, capturedUrl, processImage, previewCompletedCrop, fileNamePrefix, parseOcrResult]);
 
   const analyzedFileRef = useRef<File | null>(null);
 
@@ -334,14 +342,13 @@ export function CameraComp({
 
           const ocrResult = await processImage(croppedBlob);
 
-          const rawText = ocrResult.googleText || ocrResult.tesseractText;
-          const data = parserService.current.parse(rawText);
+          const { data, formattedText } = parseOcrResult(ocrResult);
 
           // Auto-store in clipboard
           useClipboardStore.getState().addEntry({
             source: 'BusinessCard',
             data,
-            formattedText: rawText
+            formattedText
           });
 
           const finalFile = new File([croppedBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
@@ -359,7 +366,7 @@ export function CameraComp({
       }
     }, 'image/jpeg', 0.9);
 
-  }, [status, fileNamePrefix, processImage, stopCamera]);
+  }, [status, fileNamePrefix, processImage, stopCamera, parseOcrResult]);
 
   const { isCvReady, detectionResult, isStable } = useBusinessCardDetection(
     videoRef,

@@ -547,6 +547,9 @@ export function CompanyList() {
                         <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business Entity Name</th>
                         <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Type</th>
                         <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Primary Address</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">City</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">State</th>
+                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Country</th>
                         <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">VAT/GST No.</th>
                         <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Credit Limit</th>
                         <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500">Actions</th>
@@ -585,6 +588,15 @@ export function CompanyList() {
                             </td>
                             <td className="px-3 py-2 text-xs font-medium text-slate-600 max-w-[200px] truncate" title={locStr}>
                               {locStr}
+                            </td>
+                            <td className="px-3 py-2 text-xs font-medium text-slate-600">
+                              {company.city || 'N/A'}
+                            </td>
+                            <td className="px-3 py-2 text-xs font-medium text-slate-600">
+                              {company.state || 'N/A'}
+                            </td>
+                            <td className="px-3 py-2 text-xs font-medium text-slate-600">
+                              {company.country || 'N/A'}
                             </td>
                             <td className="px-3 py-2 text-xs font-medium text-slate-600 font-mono">
                               {company.vatGst || 'N/A'}
@@ -878,7 +890,7 @@ export function CompanyList() {
                                       </div>
                                       <div>
                                         <h4 className={cn('text-xs font-semibold text-slate-900', isUpdate && 'hover:text-[#006699] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</h4>
-                                        <p className="text-[9px] font-medium text-slate-400">{company.code} • {company.type}</p>
+                                        <p className="text-[9px] font-medium text-slate-400">{company.code} â¢ {company.type}</p>
                                       </div>
                                     </div>
                                     <span className="text-[10px] text-slate-500 font-semibold bg-white px-2.5 py-1 rounded-[6px] border border-slate-200/80">

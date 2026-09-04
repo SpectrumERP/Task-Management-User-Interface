@@ -45,6 +45,9 @@ export function TaskCompanyList() {
           countryNo: tc.countryNo || '',
           stateNo: tc.stateNo || '',
           cityNo: tc.cityNo || '',
+          countryName: tc.countryName || '',
+          stateName: tc.stateName || '',
+          cityName: tc.cityName || '',
           pinCode: tc.pinCode || '',
           createdBy: tc.createdBy?.printingName || tc.createdBy?.displayName || tc.createdBy?.loginId || tc.createdByName || 'System',
           createdDate: tc.createdDate || tc.createdDateTime || tc.createdOn || ''
@@ -62,7 +65,11 @@ export function TaskCompanyList() {
 
   const filteredList = apiTaskCompanies.filter((item) => {
     const query = searchQuery.toLowerCase();
-    return item.name?.toLowerCase().includes(query) || item.code?.toLowerCase().includes(query);
+    return item.name?.toLowerCase().includes(query)
+      || item.code?.toLowerCase().includes(query)
+      || item.cityName?.toLowerCase().includes(query)
+      || item.stateName?.toLowerCase().includes(query)
+      || item.countryName?.toLowerCase().includes(query);
   });
 
   const totalItems = filteredList.length;
@@ -94,6 +101,7 @@ export function TaskCompanyList() {
         onSearchChange={setSearchQuery}
         onAddClick={() => navigate(toMasterNewPath('task-company'))}
         canAdd={isSave}
+        searchPlaceholder="Search task company master records by name, code, city, state, country..."
       />
 
       <MasterEntityTable
@@ -101,14 +109,10 @@ export function TaskCompanyList() {
         nameHeader="Task Company Name"
         columns={[
           { header: 'Alias', render: (item) => item.aliasName || '-' },
-          {
-            header: 'Address 1',
-            render: (item) => (
-              <span title={[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ')}>
-                {[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ') || '-'}
-              </span>
-            ),
-          },
+          { header: 'Address 1', render: (item) => item.address1 || '-' },
+          { header: 'City', render: (item) => item.cityName || '-' },
+          { header: 'State', render: (item) => item.stateName || '-' },
+          { header: 'Country', render: (item) => item.countryName || '-' },
         ]}
         getCode={(item) => item.code || `SYS-${item.id}`}
         getName={(item) => <span>{item.name}</span>}
