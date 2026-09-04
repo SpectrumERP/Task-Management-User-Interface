@@ -88,8 +88,8 @@ export function CompanyLocationModal({
               }}
               placeholder="Select Location Type"
               className={cn(
-                "bg-white border hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                locErrors.type ? "border-red-500" : "border-slate-200"
+                "bg-white border hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                locErrors.type ? "border-red-500" : "border-[#a8afb7]"
               )}
             />
             {locErrors.type && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.type}</p>}
@@ -106,7 +106,7 @@ export function CompanyLocationModal({
                 if (locErrors.address) setLocErrors(prev => ({ ...prev, address: '' }));
               }}
               className={cn(
-                "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 min-h-[50px] resize-y",
+                "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors py-2 px-3 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 min-h-[50px] resize-none",
                 locErrors.address && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
               )}
             />
@@ -122,7 +122,7 @@ export function CompanyLocationModal({
                 onChange={onCountryChange}
                 placeholder="Select country"
                 className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   locErrors.country && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -137,7 +137,7 @@ export function CompanyLocationModal({
                 onChange={onStateChange}
                 placeholder="Select state"
                 className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   locErrors.state && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -155,7 +155,7 @@ export function CompanyLocationModal({
                 }}
                 placeholder="Select city"
                 className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   locErrors.city && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -169,7 +169,7 @@ export function CompanyLocationModal({
                 if (locErrors.pin) setLocErrors(prev => ({ ...prev, pin: '' }));
               }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   locErrors.pin && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -178,29 +178,29 @@ export function CompanyLocationModal({
             <div className="space-y-0 col-span-2">
               <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Map URL</label>
               <Input placeholder="Enter Map URL" value={locMapUrl} maxLength={2000} onChange={(e) => setLocMapUrl(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                className="bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
               />
             </div>
             <div className="space-y-0">
               <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Latitude</label>
               <Input placeholder="Enter Latitude" value={locLatitude} maxLength={15} onChange={(e) => setLocLatitude(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                className="bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
               />
             </div>
             <div className="space-y-0">
               <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Longitude</label>
               <Input placeholder="Enter Longitude" value={locLongitude} maxLength={15} onChange={(e) => setLocLongitude(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                className="bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
               />
             </div>
           </div>
         </div>
 
         <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-[8px] h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
             Cancel
           </Button>
-          <Button type="button" onClick={onSave} className="rounded-xl h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white">
+          <Button type="button" onClick={onSave} className="rounded-[8px] h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white">
             {editingIndex !== null ? 'Save Changes' : 'Add Location'}
           </Button>
         </DialogFooter>

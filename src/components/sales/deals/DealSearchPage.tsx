@@ -163,7 +163,7 @@ export function DealSearchPage() {
               }))}
                 placeholder="Select company"
                 searchPlaceholder="Search company..."
-                className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-11 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 
@@ -173,7 +173,7 @@ export function DealSearchPage() {
                 disabled={!filters.companyNo || isLoadingDivisions}
                 placeholder={!filters.companyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "All divisions"}
                 searchPlaceholder="Search division..."
-                className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-11 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 

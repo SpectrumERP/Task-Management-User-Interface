@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { authService } from '@/services/authService';
 import { getBrand } from '@/config/brandConfig';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 
 const FEATURE_ICONS = {
   boards: LayoutDashboard,
@@ -166,12 +167,8 @@ export default function Login() {
             <div className="relative z-10 flex h-full flex-col px-5 pb-5 pt-0">
               <div className="relative z-10 flex h-[60px] min-w-0 items-center justify-between gap-2">
                 {/* Fixed logo slot — any client logo fits without breaking layout */}
-                <div className="flex h-10 w-[10.5rem] shrink min-w-0 items-center overflow-hidden">
-                  <img
-                    src={brand.logoSrc}
-                    alt={brand.brandName}
-                    className="h-10 w-auto max-h-10 max-w-full object-contain object-left"
-                  />
+                <div className="flex h-11 w-[14rem] shrink min-w-0 items-center overflow-hidden">
+                  <BrandLogo maxHeight={44} maxWidth={224} />
                 </div>
                 <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#006699]/20 bg-[#006699]/8 px-2 py-0.5 max-w-[8.75rem]">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -250,11 +247,7 @@ export default function Login() {
             />
 
             <div className="relative z-10 mb-5 flex flex-col items-center lg:items-start gap-2">
-              <img
-                src={brand.logoSrc}
-                alt={brand.brandName}
-                className="h-10 w-auto max-h-10 max-w-[13rem] object-contain lg:hidden"
-              />
+              <BrandLogo maxHeight={44} maxWidth={240} className="lg:hidden" />
               <span className="inline-flex items-center rounded-full bg-[#006699]/8 px-3 py-1 text-[11px] font-semibold tracking-wide text-[#006699] lg:hidden">
                 {brand.productName}
               </span>
@@ -281,10 +274,10 @@ export default function Login() {
                     autoFocus
                     autoComplete="username"
                     aria-invalid={!!errors.loginId}
-                    className={`pl-10 bg-[#f7fafc] rounded-xl h-11 shadow-[3px_3px_0_rgba(0,102,153,0.06)] focus-visible:!ring-0 focus-visible:!ring-offset-0 focus:!ring-0 outline-none ${
+                    className={`pl-10 bg-[#f7fafc] rounded-[8px] h-11 shadow-[3px_3px_0_rgba(0,102,153,0.06)] focus-visible:!ring-0 focus-visible:!ring-offset-0 focus:!ring-0 outline-none ${
                       errors.loginId
                         ? '!border !border-red-500 focus:!border-red-500'
-                        : 'border border-slate-200 focus:!border-[#006699]'
+                        : 'border border-[#a8afb7] focus:!border-[#006699]'
                     }`}
                     {...register('loginId', {
                       onChange: () => setServerError(''),
@@ -315,10 +308,10 @@ export default function Login() {
                     placeholder="Enter password"
                     autoComplete="current-password"
                     aria-invalid={!!errors.password}
-                    className={`pl-10 pr-10 bg-[#f7fafc] rounded-xl h-11 shadow-[3px_3px_0_rgba(0,102,153,0.06)] focus-visible:!ring-0 focus-visible:!ring-offset-0 focus:!ring-0 outline-none ${
+                    className={`pl-10 pr-10 bg-[#f7fafc] rounded-[8px] h-11 shadow-[3px_3px_0_rgba(0,102,153,0.06)] focus-visible:!ring-0 focus-visible:!ring-offset-0 focus:!ring-0 outline-none ${
                       errors.password
                         ? '!border !border-red-500 focus:!border-red-500'
-                        : 'border border-slate-200 focus:!border-[#006699]'
+                        : 'border border-[#a8afb7] focus:!border-[#006699]'
                     }`}
                     {...register('password', {
                       onChange: () => setServerError(''),

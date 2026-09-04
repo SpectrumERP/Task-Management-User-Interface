@@ -24,7 +24,7 @@ export interface BrandConfig {
   statusBadge: string;
   secureNote: string;
   copyrightSuffix: string;
-  /** App / sidebar / login logo */
+  /** App / sidebar / login logo (any client asset URL or bundled import) */
   logoSrc: string;
   /**
    * Watermark / mask logo (login left panel, etc.).
@@ -43,7 +43,7 @@ export interface BrandConfig {
 }
 
 /**
- * SteelMont Spectrum — active client brand (temporary: used everywhere).
+ * SteelMont Spectrum — default client brand when env overrides are not set.
  */
 const STEELMONT_SPECTRUM: BrandConfig = {
   brandName: 'SteelMont',
@@ -71,12 +71,43 @@ const STEELMONT_SPECTRUM: BrandConfig = {
   invertMaskLogo: true,
 };
 
+function env(key: string): string | undefined {
+  const value = (import.meta.env as Record<string, unknown>)[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
 /**
- * Temporary: always use SteelMont client branding.
- * Host-based multi-brand can be re-enabled later via an optional hostname arg.
+ * Resolve brand for this deployment.
+ * Any client can override via Vite env (no code change):
+ * - VITE_BRAND_NAME
+ * - VITE_BRAND_PRODUCT_NAME
+ * - VITE_BRAND_LOGO_URL        (absolute URL or /public path e.g. /brand/logo.png)
+ * - VITE_BRAND_MASK_LOGO_URL
+ * - VITE_BRAND_FAVICON_URL
+ * - VITE_BRAND_DOCUMENT_TITLE
+ * - VITE_BRAND_PRIMARY_COLOR
+ * - VITE_BRAND_INVERT_MASK     ("true" | "false")
  */
 export function getBrandConfig(): BrandConfig {
-  return STEELMONT_SPECTRUM;
+  const base = STEELMONT_SPECTRUM;
+  const logoSrc = env('VITE_BRAND_LOGO_URL') ?? base.logoSrc;
+  const invertMask = env('VITE_BRAND_INVERT_MASK');
+
+  return {
+    ...base,
+    brandName: env('VITE_BRAND_NAME') ?? base.brandName,
+    productName: env('VITE_BRAND_PRODUCT_NAME') ?? base.productName,
+    logoSrc,
+    maskLogoSrc: env('VITE_BRAND_MASK_LOGO_URL') ?? logoSrc,
+    faviconSrc: env('VITE_BRAND_FAVICON_URL') ?? base.faviconSrc,
+    documentTitle: env('VITE_BRAND_DOCUMENT_TITLE') ?? base.documentTitle,
+    primaryColor: env('VITE_BRAND_PRIMARY_COLOR') ?? base.primaryColor,
+    invertMaskLogo:
+      invertMask === undefined ? base.invertMaskLogo : invertMask.toLowerCase() === 'true',
+    platformLabel: env('VITE_BRAND_PLATFORM_LABEL') ?? base.platformLabel,
+    secureNote: env('VITE_BRAND_SECURE_NOTE') ?? base.secureNote,
+    copyrightSuffix: env('VITE_BRAND_COPYRIGHT_SUFFIX') ?? base.copyrightSuffix,
+  };
 }
 
 /** Cached brand for the current page load (use everywhere). */

@@ -24,10 +24,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { getBrand } from '@/config/brandConfig';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 import { useAuthStore } from '@/store/useAuthStore';
-
-const brand = getBrand();
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
   // { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
@@ -68,6 +66,8 @@ interface SidebarProps {
   onClose?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** When true, brand/logo row is omitted (logo lives in the app header). */
+  hideBrand?: boolean;
   className?: string;
 }
 
@@ -120,7 +120,7 @@ function SectionFlyoutMenu({
   );
 }
 
-export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, onToggleCollapse, className }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, onToggleCollapse, hideBrand = false, className }: SidebarProps) {
   const accessibleForms = useAuthStore(state => state.accessibleForms);
   const fetchAccessibleForms = useAuthStore(state => state.fetchAccessibleForms);
 
@@ -324,11 +324,12 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
       className={cn(
         "h-full flex flex-col shrink-0 transition-all duration-300 border-r border-[#d9e4ec]/80",
         "bg-[linear-gradient(180deg,#f7fafc_0%,#f3f7fa_48%,#eef4f8_100%)]",
-        isCollapsed ? "w-[80px] items-center overflow-visible" : "w-64",
+        isCollapsed ? "w-[80px] items-center overflow-visible" : "w-56",
         className
       )}
     >
-      {/* Brand */}
+      {/* Brand — skipped when logo is in the full app header */}
+      {!hideBrand && (
       <div
         className={cn(
           "relative shrink-0",
@@ -343,13 +344,11 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             isCollapsed ? "w-14 h-11 justify-center" : "min-w-0 flex-1"
           )}
         >
-          <img
-            src={brand.logoSrc}
-            alt={`${brand.brandName} Logo`}
-            className={cn(
-              "w-auto object-contain object-left",
-              isCollapsed ? "h-10 max-h-10 max-w-full" : "h-9 max-h-9 max-w-[148px]"
-            )}
+          <BrandLogo
+            maxHeight={isCollapsed ? 40 : 44}
+            maxWidth={isCollapsed ? 56 : 200}
+            className={isCollapsed ? "justify-center" : undefined}
+            imgClassName={isCollapsed ? "object-center" : undefined}
           />
         </div>
         {onClose && (
@@ -374,6 +373,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         )}
         <div className="pointer-events-none absolute inset-x-3 bottom-0 h-px bg-gradient-to-r from-transparent via-slate-200/90 to-transparent" />
       </div>
+      )}
 
       {/* Navigation */}
       <nav
@@ -382,12 +382,6 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
           isCollapsed ? "overflow-visible px-1.5 pt-3 space-y-1" : "overflow-y-auto px-2.5 py-3.5 space-y-0.5"
         )}
       >
-        {!isCollapsed && (
-          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400/90">
-            Menu
-          </p>
-        )}
-
         {filteredNavItems.map((item) => renderNavItem(item))}
 
         {/* Master Data Section */}

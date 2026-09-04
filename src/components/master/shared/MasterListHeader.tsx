@@ -24,7 +24,7 @@ export function MasterListHeader({
   return (
     <>
       {/* Matches TaskDetail / Create Task: white strip under Navbar */}
-      <div className="-mx-[var(--page-pad)] -mt-[var(--page-pad)] shrink-0 z-20 bg-white border-b border-slate-200/70 px-4 py-2.5">
+      <div className="-mx-[var(--page-pad)] -mt-[var(--page-pad)] shrink-0 z-20 bg-white border-b border-slate-200/70 px-4 py-2.5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
         <MasterBreadcrumb
           items={[
             { label: 'Masters' },
@@ -34,7 +34,7 @@ export function MasterListHeader({
       </div>
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-        <div className="flex-1 flex items-center gap-2.5 h-10 rounded-[8px] border border-slate-200/80 bg-white px-3 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
+        <div className="flex-1 flex items-center gap-2.5 h-10 rounded-[8px] border border-[#a8afb7] bg-white px-3 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
           <Search size={15} className="text-slate-400 shrink-0" strokeWidth={1.75} />
           <Input
             placeholder={`Search ${title.toLowerCase()} records by name, code...`}

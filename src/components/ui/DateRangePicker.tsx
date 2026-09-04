@@ -173,7 +173,7 @@ export function DateRangePicker({
             variant={"outline"}
             disabled={disabled}
             className={cn(
-              "w-full h-10 justify-start text-left font-medium rounded-[8px] border border-slate-200/80 bg-white text-xs shadow-none transition-all text-slate-800 hover:bg-[#f8fbfd] hover:border-[#006699]/35 focus-visible:ring-2 focus-visible:ring-[#006699]/15",
+              "w-full h-10 justify-start text-left font-medium rounded-[8px] border border-[#a8afb7] bg-white text-xs shadow-none transition-all text-slate-800 hover:bg-[#f8fbfd] hover:border-[#006699]/35 focus-visible:ring-2 focus-visible:ring-[#006699]/15",
               !range && "text-slate-400"
             )}
           >

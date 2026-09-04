@@ -140,7 +140,7 @@ export function CompanyHeaderFields({
                 }
               }}
               className={cn(
-                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-10 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                 errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
               )}
             />
@@ -180,7 +180,7 @@ export function CompanyHeaderFields({
             }}
             placeholder="Select business entity type"
             className={cn(
-              "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+              "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-10 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
               errors.companyType && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
             )}
           />
@@ -194,21 +194,21 @@ export function CompanyHeaderFields({
             value={companyTimeZoneNo}
             onChange={(val) => setCompanyTimeZoneNo(val)}
             placeholder="Select timezone"
-            className="bg-white border border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+            className="bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-10 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
           />
         </div>
 
         <div className="space-y-0">
           <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Credit Insurance Limit</label>
           <Input type="number" placeholder="Enter credit insurance limit" value={creditLimit ?? ''} onChange={(e) => setCreditLimit(e.target.value === '' ? null : Number(e.target.value))}
-            className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+            className="bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-10 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
           />
         </div>
 
         <div className="space-y-0">
           <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">VAT / GST No</label>
           <Input placeholder="Enter VAT No. / GST No." value={companyVatGst} maxLength={30} onChange={(e) => setCompanyVatGst(e.target.value)}
-            className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+            className="bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-10 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
           />
         </div>
       </div>

@@ -5,7 +5,6 @@ import * as PopoverPrimitive from "@radix-ui/react-popover"
 import { cn } from "@/lib/utils"
 import { FIELD_TEXT_STYLE } from "@/lib/fieldStyles"
 import { Button } from "@/components/ui/button"
-import { InfoTooltip } from "@/components/ui/info-tooltip"
 import {
   Command,
   CommandEmpty,
@@ -32,7 +31,6 @@ interface ComboboxProps {
   onAddNew?: () => void
   addNewLabel?: string
   modal?: boolean
-  infoText?: string
 }
 
 export function Combobox({
@@ -48,7 +46,6 @@ export function Combobox({
   onAddNew,
   addNewLabel = "Add New",
   modal = false,
-  infoText,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -76,11 +73,12 @@ export function Combobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-medium text-sm rounded-xl h-9 shadow-sm transition-all border relative pr-8",
-            !className?.includes("border-") && "border-slate-300",
+            "w-full justify-between font-medium text-sm h-9 shadow-sm transition-all border relative pr-8",
             className,
             FIELD_TEXT_STYLE,
-            !value && "text-slate-400"
+            !value && "text-slate-400",
+            "rounded-[8px]",
+            !(typeof className === "string" && /border-red/.test(className)) && "border-[#a8afb7]"
           )}
         >
           <span className="truncate pr-2">{selectedOption ? selectedOption.label : placeholder}</span>
@@ -156,13 +154,6 @@ export function Combobox({
     </Popover>
   )
 
-  if (!infoText) return trigger
-
-  return (
-    <div className="flex w-full items-center gap-2">
-      <div className="min-w-0 flex-1">{trigger}</div>
-      <InfoTooltip text={infoText} />
-    </div>
-  )
+  return trigger
 }
 

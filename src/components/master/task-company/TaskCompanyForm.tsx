@@ -169,7 +169,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
               maxLength={100}
               placeholder="Enter Company Name"
               className={cn(
-                "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full",
+                "h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full",
                 errors.tcCompanyName && "border-red-500 focus:ring-red-500/10"
               )}
             />
@@ -181,7 +181,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
             <Input value={tcAliasName} onChange={(e) => setTcAliasName(e.target.value)}
               maxLength={15}
               placeholder="Enter Alias"
-              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+              className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
             />
           </div>
         </div>
@@ -191,7 +191,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
           <Input value={tcLocationName} onChange={(e) => setTcLocationName(e.target.value)}
             maxLength={50}
             placeholder="Enter Location Name"
-            className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+            className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
           />
         </div>
 
@@ -200,7 +200,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
           <Input value={tcAddress1} onChange={(e) => setTcAddress1(e.target.value)}
             maxLength={50}
             placeholder="Enter Address 1"
-            className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+            className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
           />
         </div>
 
@@ -209,7 +209,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
           <Input value={tcAddress2} onChange={(e) => setTcAddress2(e.target.value)}
             maxLength={50}
             placeholder="Enter Address 2"
-            className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+            className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
           />
         </div>
 
@@ -218,7 +218,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
           <Input value={tcAddress3} onChange={(e) => setTcAddress3(e.target.value)}
             maxLength={50}
             placeholder="Enter Address 3"
-            className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+            className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
           />
         </div>
 
@@ -242,7 +242,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
               }}
               placeholder="Select Country"
               searchPlaceholder="Search country..."
-              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+              className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
               onAddNew={() => {
                 setActiveMasterType('country');
                 setIsMasterCreateOpen(true);
@@ -269,7 +269,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
               disabled={!tcCountryNo}
               placeholder={tcCountryNo ? "Select State..." : "Select country first"}
               searchPlaceholder="Search state..."
-              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+              className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
               onAddNew={() => {
                 setActiveMasterType('state');
                 setIsMasterCreateOpen(true);
@@ -288,7 +288,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
               disabled={!tcStateNo}
               placeholder={tcStateNo ? "Select City..." : "Select state first"}
               searchPlaceholder="Search city..."
-              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+              className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
               onAddNew={() => {
                 setActiveMasterType('city');
                 setIsMasterCreateOpen(true);
@@ -300,7 +300,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
             <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Pin Code</label>
             <Input value={tcPinCode} onChange={(e) => setTcPinCode(e.target.value)}
               placeholder="Enter Pin Code"
-              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
+              className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
               maxLength={6}
             />
           </div>

@@ -105,7 +105,7 @@ export function ClipboardDrawer() {
                   </div>
                   <textarea
                     readOnly
-                    className="w-full h-32 text-xs p-2 rounded border border-slate-200 bg-white font-mono mt-2 resize-y focus:outline-none focus:ring-1 focus:ring-slate-300"
+                    className="w-full h-32 text-xs p-2 rounded border border-slate-200 bg-white font-mono mt-2 resize-none focus:outline-none focus:ring-1 focus:ring-slate-300"
                     value={entry.formattedText}
                   />
                 </div>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { Users, UserPlus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
@@ -14,8 +15,7 @@ import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 const FORM_NO = 1546;
 const TITLE = 'User Group Master';
 
-const fieldClass =
-  'h-10 w-full rounded-[8px] border-slate-200/80 bg-white text-xs font-medium text-slate-700 shadow-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]';
+const fieldClass = FIELD_CONTROL_CLASS;
 
 function FieldErrorTip({ message }: { message?: string }) {
   if (!message) return null;
@@ -380,7 +380,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             value={field.userName}
                             onChange={(user) => updateGridUser(index, user)}
                             placeholder="Select user"
-                            className="h-8 rounded-[8px] border-slate-200/80 group-hover:border-slate-300 focus:border-[#006699] text-[11px] bg-white shadow-none px-2"
+                            className="h-8 rounded-[8px] border-[#a8afb7] group-hover:border-[#006699]/30 focus:border-[#006699] text-[11px] bg-white shadow-none px-2"
                             initialLabel={field.userName}
                             error={isDuplicate}
                           />

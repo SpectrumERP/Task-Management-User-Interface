@@ -109,7 +109,7 @@ export function CountryForm({ id }: CountryFormProps) {
           if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
         }}
           className={cn(
-            "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+            "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-10 rounded-[8px] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
             errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
           )}
         />

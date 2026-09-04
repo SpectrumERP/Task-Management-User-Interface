@@ -48,7 +48,7 @@ export function MasterFormShell({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#eef4f8]">
-      <div className="shrink-0 z-20 bg-white border-b border-slate-200/70 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="shrink-0 z-20 bg-white border-b border-slate-200/70 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
         <MasterBreadcrumb
           items={[
             { label: 'Masters', href: listPath },

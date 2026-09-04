@@ -29,7 +29,7 @@ function CompactStepper({
   onDown: () => void
 }) {
   return (
-    <div className="inline-flex shrink-0 items-center rounded-[7px] border border-slate-200/80 bg-white shadow-sm">
+    <div className="inline-flex shrink-0 items-center rounded-[8px] border border-[#a8afb7] bg-white shadow-sm">
       <button
         type="button"
         onClick={onDown}
@@ -341,11 +341,12 @@ export function DateTimePicker({
         aria-expanded={isOpen}
         onClick={() => !disabled && setIsOpen((open) => !open)}
         className={cn(
-          "w-full h-10 justify-start text-left font-medium rounded-[8px] bg-white text-xs transition-all text-slate-800 hover:bg-[#f8fbfd] hover:border-[#006699]/35 focus-visible:ring-2 focus-visible:ring-[#006699]/15 border shadow-none",
-          !className?.includes("border-") && "border-slate-200/80",
+          "w-full h-10 justify-start text-left font-medium bg-white text-xs transition-all text-slate-800 hover:bg-[#f8fbfd] hover:border-[#006699]/35 focus-visible:ring-2 focus-visible:ring-[#006699]/15 border shadow-none",
           !date && "text-slate-400",
           isOpen && "border-[#006699]/40 ring-2 ring-[#006699]/10",
-          className
+          className,
+          "rounded-[8px] border-[#a8afb7]",
+          isOpen && "border-[#006699]/40"
         )}
       >
         <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[#e8f3f8] text-[#006699]">

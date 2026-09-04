@@ -417,7 +417,7 @@ export function MasterCreateDialog({
                 if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
               }}
               className={cn(
-                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-10 rounded-[8px] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
                 errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
               )}
             />
@@ -448,7 +448,7 @@ export function MasterCreateDialog({
                   value={selectedTypeNos}
                   onChange={setSelectedTypeNos}
                   placeholder="Select type(s) (optional)"
-                  className="bg-white border-slate-200 hover:border-slate-300 rounded-xl"
+                  className="bg-white border-[#a8afb7] hover:border-[#006699]/35 rounded-xl"
                 />
               </div>
 
@@ -608,7 +608,7 @@ export function MasterCreateDialog({
                     setPriorityDuration(val);
                     if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-[8px]"
                 />
                 {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
               </div>
@@ -622,7 +622,7 @@ export function MasterCreateDialog({
                   value={priorityFrequencyNo}
                   onChange={setPriorityFrequencyNo}
                   placeholder="Select frequency..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 w-full"
                 />
               </div>
 
@@ -633,7 +633,7 @@ export function MasterCreateDialog({
                     setSequence(val);
                     if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-[8px]"
                 />
                 {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
               </div>
@@ -648,7 +648,7 @@ export function MasterCreateDialog({
                     setDescription(e.target.value);
                     if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-[8px]"
                 />
                 {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
               </div>
@@ -663,7 +663,7 @@ export function MasterCreateDialog({
                   value={parentFolderNo}
                   onChange={setParentFolderNo}
                   placeholder="Select Parent Folder..."
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                 />
               </div>
             </div>
@@ -682,7 +682,7 @@ export function MasterCreateDialog({
                     value={parentLocationNo}
                     onChange={setParentLocationNo}
                     placeholder="Select Parent"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                   />
                 </div>
 
@@ -695,7 +695,7 @@ export function MasterCreateDialog({
                     }}
                     initialLabel={inchargeLabel}
                     placeholder="Search Incharge..."
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                   />
                   {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
                 </div>
@@ -710,7 +710,7 @@ export function MasterCreateDialog({
                   value={locationRegion}
                   onChange={setLocationRegion}
                   placeholder="Select Region"
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                 />
               </div>
 
@@ -721,14 +721,14 @@ export function MasterCreateDialog({
                       setAddress1(e.target.value);
                       if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
                     }}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-[8px]"
                   />
                   {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
                   <Input placeholder="Address Line 2 (Optional)" value={address2} onChange={(e) => setAddress2(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-[8px]"
                   />
                   <Input placeholder="Address Line 3 (Optional)" value={address3} onChange={(e) => setAddress3(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-[8px]"
                   />
                 </div>
               </div>
@@ -746,7 +746,7 @@ export function MasterCreateDialog({
                       if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
                     }}
                     placeholder="Select Country"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('country');
                       setIsNestedMasterOpen(true);
@@ -766,7 +766,7 @@ export function MasterCreateDialog({
                       if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
                     }}
                     placeholder="Select State"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('state');
                       setIsNestedMasterOpen(true);
@@ -789,7 +789,7 @@ export function MasterCreateDialog({
                       if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
                     }}
                     placeholder="Select City"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('city');
                       setIsNestedMasterOpen(true);
@@ -803,7 +803,7 @@ export function MasterCreateDialog({
                       setPinCode(e.target.value);
                       if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
                     }}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-[8px]"
                   />
                   {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
                 </div>
@@ -817,14 +817,14 @@ export function MasterCreateDialog({
                 <Label  className="text-[10px] font-medium text-slate-700 ml-1">Alias Name</Label>
                 <Input placeholder="Enter alias" value={aliasName} onChange={(e) => setAliasName(e.target.value)}
                   maxLength={15}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-[8px]"
                 />
               </div>
               <div className="space-y-0">
                 <Label  className="text-[10px] font-medium text-slate-700 ml-1">Location Name</Label>
                 <Input placeholder="Enter location name" value={locationName} onChange={(e) => setLocationName(e.target.value)}
                   maxLength={50}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-white border-slate-200 h-10 rounded-[8px]"
                 />
               </div>
 
@@ -832,13 +832,13 @@ export function MasterCreateDialog({
                 <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Address</Label>
                 <div className="space-y-0">
                   <Input placeholder="Address Line 1" value={address1} onChange={(e) => setAddress1(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-[8px]"
                   />
                   <Input placeholder="Address Line 2 (Optional)" value={address2} onChange={(e) => setAddress2(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-[8px]"
                   />
                   <Input placeholder="Address Line 3 (Optional)" value={address3} onChange={(e) => setAddress3(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-[8px]"
                   />
                 </div>
               </div>
@@ -853,7 +853,7 @@ export function MasterCreateDialog({
                     value={countryNo}
                     onChange={setCountryNo}
                     placeholder="Select Country"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('country');
                       setIsNestedMasterOpen(true);
@@ -869,7 +869,7 @@ export function MasterCreateDialog({
                     value={stateNo}
                     onChange={setStateNo}
                     placeholder="Select State"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('state');
                       setIsNestedMasterOpen(true);
@@ -888,7 +888,7 @@ export function MasterCreateDialog({
                     value={cityNo}
                     onChange={setCityNo}
                     placeholder="Select City"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                     onAddNew={() => {
                       setNestedMasterType('city');
                       setIsNestedMasterOpen(true);
@@ -898,7 +898,7 @@ export function MasterCreateDialog({
                 <div className="space-y-0">
                   <Label  className="text-[10px] font-medium text-slate-700 ml-1">PIN / ZIP Code</Label>
                   <Input placeholder="ZIP" value={pinCode} onChange={(e) => setPinCode(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-white border-slate-200 h-10 rounded-[8px]"
                   />
                 </div>
               </div>
@@ -919,7 +919,7 @@ export function MasterCreateDialog({
                     if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
                   }}
                   placeholder="Select Country"
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                 />
                 {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
               </div>
@@ -947,7 +947,7 @@ export function MasterCreateDialog({
                     }
                   }}
                   placeholder="Select Country first"
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                 />
               </div>
               <div className="space-y-0">
@@ -963,7 +963,7 @@ export function MasterCreateDialog({
                   }}
                   placeholder={countryNo ? "Select State" : "Select country first"}
                   disabled={!countryNo}
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[#a8afb7] bg-white text-xs font-medium text-slate-700 w-full"
                 />
                 {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
               </div>

@@ -45,7 +45,7 @@ const ClipboardEntryView = ({ entry, fieldLabel, onHistorySelect }: { entry: Cli
         </span>
       </div>
       <div
-        className="w-full text-[10px] rounded border border-slate-200 bg-white font-mono mb-2"
+        className="w-full text-[10px] rounded-[8px] border border-[#a8afb7] bg-white font-mono mb-2"
       >
         {lines.map((line, idx) => {
            const isSelected = selectedLineIndices.has(idx);

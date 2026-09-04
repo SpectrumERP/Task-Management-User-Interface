@@ -24,7 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/hooks/useSettings';
 
 const filterControlClass =
-  'h-10 rounded-[8px] border-slate-200 bg-white shadow-none text-xs text-slate-700 focus:ring-2 focus:ring-[#006699]/15';
+  'h-10 rounded-[8px] border border-[#a8afb7] bg-white shadow-none text-xs text-slate-700 focus:ring-2 focus:ring-[#006699]/15';
 
 function FilterFieldLabel({
   icon: Icon,
@@ -621,7 +621,7 @@ export function TaskFilter({
                   <Input
                     {...field}
                     placeholder="Search task"
-                    className="pl-10 h-11 rounded-[16px] border-slate-200/80 bg-white text-slate-700 placeholder:text-slate-400 w-full shadow-none hover:border-slate-300/80 focus-visible:ring-2 focus-visible:ring-[#006699]/12 focus-visible:border-[#006699]/35 transition-all duration-200"
+                    className="pl-10 h-11 rounded-[8px] border-[#a8afb7] bg-white text-slate-700 placeholder:text-slate-400 w-full shadow-none hover:border-slate-300/80 focus-visible:ring-2 focus-visible:ring-[#006699]/12 focus-visible:border-[#006699]/35 transition-all duration-200"
                     onChange={(e) => {
                       field.onChange(e);
                       setSearchKeyword(e.target.value);

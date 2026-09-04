@@ -93,7 +93,7 @@ export function CompanyContactModal({
                 if (contactErrors.name) setContactErrors(prev => ({ ...prev, name: '' }));
               }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -106,7 +106,7 @@ export function CompanyContactModal({
                 if (contactErrors.designation) setContactErrors(prev => ({ ...prev, designation: '' }));
               }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.designation && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -120,7 +120,7 @@ export function CompanyContactModal({
                 if (contactErrors.department) setContactErrors(prev => ({ ...prev, department: '' }));
               }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.department && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -135,7 +135,7 @@ export function CompanyContactModal({
                 if (contactErrors.phone) setContactErrors(prev => ({ ...prev, phone: '' }));
               }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.phone && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -149,7 +149,7 @@ export function CompanyContactModal({
                 if (contactErrors.email) setContactErrors(prev => ({ ...prev, email: '' }));
               }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-355 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.email && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -159,7 +159,7 @@ export function CompanyContactModal({
             <div className="space-y-0 col-span-2">
               <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Address</label>
               <Input placeholder="Enter address" value={contactAddress} onChange={(e) => setContactAddress(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                className="bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
               />
             </div>
 
@@ -171,7 +171,7 @@ export function CompanyContactModal({
                 onChange={onCountryChange}
                 placeholder="Select country"
                 className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.country && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -186,7 +186,7 @@ export function CompanyContactModal({
                 onChange={onStateChange}
                 placeholder="Select state"
                 className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.state && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -204,7 +204,7 @@ export function CompanyContactModal({
                 }}
                 placeholder="Select city"
                 className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.city && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -218,7 +218,7 @@ export function CompanyContactModal({
                 if (contactErrors.pinCode) setContactErrors(prev => ({ ...prev, pinCode: '' }));
               }}
                 className={cn(
-                  "bg-white border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
+                  "bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
                   contactErrors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
                 )}
               />
@@ -235,17 +235,17 @@ export function CompanyContactModal({
                 value={contactStatus}
                 onChange={(val) => setContactStatus(val)}
                 placeholder="Select status"
-                className="bg-white border border-slate-200 hover:border-slate-350 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+                className="bg-white border border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-9 rounded-[8px] px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
               />
             </div>
           </div>
         </div>
 
         <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-[8px] h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
             Cancel
           </Button>
-          <Button type="button" onClick={onSave} className="rounded-xl h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white">
+          <Button type="button" onClick={onSave} className="rounded-[8px] h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white">
             {editingIndex !== null ? 'Save Changes' : 'Add Contact'}
           </Button>
         </DialogFooter>

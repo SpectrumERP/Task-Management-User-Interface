@@ -78,61 +78,69 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
     );
   }
 
-  return (
-    <div className="flex h-screen w-full fixed inset-0 bg-[#eef4f8] overflow-hidden">
-      {/* Mobile Sidebar Slide-Over Drawer */}
-      <div
-        className={cn(
-          "fixed inset-0 z-50 lg:hidden transition-all duration-300",
-          isMobileSidebarOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"
-        )}
-      >
-        {/* Backdrop overlay */}
-        <div
-          className={cn(
-            "absolute inset-0 bg-slate-900/50 backdrop-blur-[2px] transition-opacity duration-300",
-            isMobileSidebarOpen ? "opacity-100" : "opacity-0"
-          )}
-          onClick={() => setIsMobileSidebarOpen(false)}
-        />
+  const sidebarWidth = isDesktopSidebarCollapsed ? 'w-[80px]' : 'w-56';
 
-        {/* Drawer Panel */}
+  return (
+    <div className="flex flex-col h-screen w-full fixed inset-0 bg-[#eef4f8] overflow-hidden">
+      {/* Single full-width header (100%) — logo left, actions right */}
+      <Navbar
+        onMenuClick={() => setIsMobileSidebarOpen(true)}
+        isSidebarCollapsed={isDesktopSidebarCollapsed}
+        onToggleSidebar={() => {
+          setIsDesktopSidebarCollapsed(prev => {
+            const next = !prev;
+            localStorage.setItem('isSidebarCollapsed', String(next));
+            return next;
+          });
+        }}
+      />
+
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Mobile Sidebar Slide-Over Drawer */}
         <div
           className={cn(
-            "absolute inset-y-0 left-0 w-64 bg-white shadow-2xl transform transition-transform duration-300 ease-out flex flex-col h-full border-r border-slate-200/80",
-            isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            "fixed inset-0 z-50 lg:hidden transition-all duration-300",
+            isMobileSidebarOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"
           )}
         >
+          <div
+            className={cn(
+              "absolute inset-0 bg-slate-900/50 backdrop-blur-[2px] transition-opacity duration-300",
+              isMobileSidebarOpen ? "opacity-100" : "opacity-0"
+            )}
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+
+          <div
+            className={cn(
+              "absolute inset-y-0 left-0 w-56 bg-white shadow-2xl transform transition-transform duration-300 ease-out flex flex-col h-full border-r border-slate-200/80",
+              isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            )}
+          >
+            <Sidebar
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              onClose={() => setIsMobileSidebarOpen(false)}
+            />
+          </div>
+        </div>
+
+        {/* Desktop Static Sidebar (logo lives in header) */}
+        <div className={cn("hidden lg:flex h-full transition-all duration-300 overflow-visible", sidebarWidth)}>
           <Sidebar
             activeTab={activeTab}
             onTabChange={handleTabChange}
-            onClose={() => setIsMobileSidebarOpen(false)}
+            isCollapsed={isDesktopSidebarCollapsed}
+            hideBrand
           />
         </div>
-      </div>
 
-      {/* Desktop Static Sidebar */}
-      <div className={cn("hidden lg:flex h-full transition-all duration-300 overflow-visible", isDesktopSidebarCollapsed ? "w-[80px]" : "w-64")}>
-        <Sidebar
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          isCollapsed={isDesktopSidebarCollapsed}
-          onToggleCollapse={() => {
-            setIsDesktopSidebarCollapsed(prev => {
-              const next = !prev;
-              localStorage.setItem('isSidebarCollapsed', String(next));
-              return next;
-            });
-          }}
-        />
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden">
-        <Navbar onMenuClick={() => setIsMobileSidebarOpen(true)} />
-        <main className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#eef4f8]">
-          {children}
-        </main>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden">
+          <main className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#eef4f8]">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );

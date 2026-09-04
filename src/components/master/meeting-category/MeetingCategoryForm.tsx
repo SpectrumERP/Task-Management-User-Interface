@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
@@ -12,8 +13,7 @@ import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 const FORM_NO = 1561;
 const TITLE = 'Meeting Category Master';
 
-const fieldClass =
-  'h-10 w-full rounded-[8px] border-slate-200/80 bg-white text-xs font-medium text-slate-700 shadow-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]';
+const fieldClass = FIELD_CONTROL_CLASS;
 
 function FieldErrorTip({ message }: { message?: string }) {
   if (!message) return null;

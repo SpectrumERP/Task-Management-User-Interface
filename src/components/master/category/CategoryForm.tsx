@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 import { Edit, Trash2, X, CheckCircle, Layers, ListChecks, ListTodo, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
@@ -28,8 +29,7 @@ const COLOR_PRESETS = [
   { hex: '#67e8f9', name: 'Cyan' },
 ];
 
-const fieldClass =
-  'h-10 w-full rounded-[8px] border-slate-200/80 bg-white text-xs font-medium text-slate-700 shadow-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]';
+const fieldClass = FIELD_CONTROL_CLASS;
 
 function FieldErrorTip({ message }: { message?: string }) {
   if (!message) return null;

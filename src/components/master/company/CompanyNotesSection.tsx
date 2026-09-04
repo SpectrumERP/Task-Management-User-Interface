@@ -21,7 +21,7 @@ export function CompanyNotesSection({ notes, onChange }: CompanyNotesSectionProp
         <Textarea
           placeholder="Enter notes..."
           maxLength={1000}
-          className="bg-white border border-slate-200 hover:border-slate-300 transition-colors rounded-xl px-3 w-full resize-y min-h-[100px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+          className="bg-white border border-slate-200 hover:border-slate-300 transition-colors rounded-xl px-3 w-full resize-none min-h-[100px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
           value={notes}
           onChange={(e) => onChange(e.target.value)}
         />

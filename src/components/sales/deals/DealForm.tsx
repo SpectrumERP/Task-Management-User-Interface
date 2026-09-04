@@ -203,7 +203,7 @@ export function DealForm() {
                       }}
                         placeholder="Select company"
                         searchPlaceholder="Search company..."
-                        className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                        className="h-11 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
                       />
                     )}
                   />
@@ -216,14 +216,14 @@ export function DealForm() {
                     name="divisionNo"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox options={divisionOptions} value={field.value} onChange={field.onChange} disabled={!watchedCompanyNo || isLoadingDivisions} placeholder={!watchedCompanyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "Select division"} searchPlaceholder="Search division..." className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none" />
+                      <Combobox options={divisionOptions} value={field.value} onChange={field.onChange} disabled={!watchedCompanyNo || isLoadingDivisions} placeholder={!watchedCompanyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "Select division"} searchPlaceholder="Search division..." className="h-11 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none" />
                     )}
                   />
                 </div>
 
                 <div className="space-y-0">
                   <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document No Yearly <span className="text-red-500">*</span></label>
-                  <Input {...form.register('documentNoYearly')} maxLength={30} className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm" placeholder="Enter document no" />
+                  <Input {...form.register('documentNoYearly')} maxLength={30} className="h-11 rounded-[8px] border-[#a8afb7] bg-white shadow-sm" placeholder="Enter document no" />
                   {form.formState.errors.documentNoYearly && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.documentNoYearly.message}</p>}
                 </div>
 
@@ -242,7 +242,7 @@ export function DealForm() {
 
               <div className="space-y-0">
                 <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Description <span className="text-red-500">*</span></label>
-                <Textarea {...form.register('description')} maxLength={1000} className="min-h-[140px] rounded-2xl border-slate-200 bg-white shadow-sm resize-none" placeholder="Enter description" />
+                <Textarea {...form.register('description')} maxLength={1000} className="min-h-[140px] rounded-[8px] border-[#a8afb7] bg-white shadow-sm resize-none" placeholder="Enter description" />
                 {form.formState.errors.description && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.description.message}</p>}
               </div>
             </form>
@@ -282,7 +282,7 @@ export function DealForm() {
             <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">Data save sucessfully.</p>
           </div>
           <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 flex justify-center">
-            <Button type="button" onClick={() => navigate('/sales/deals')} className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs normal-case">
+            <Button type="button" onClick={() => navigate('/sales/deals')} className="w-full h-10 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs normal-case">
               OK
             </Button>
           </div>

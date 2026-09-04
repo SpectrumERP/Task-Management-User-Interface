@@ -148,13 +148,13 @@ export function DocumentCombobox({
           aria-expanded={open}
           disabled={disabled || !formNo}
           className={cn(
-            "w-full justify-between transition-all border shadow-none relative pr-8 rounded-[8px] h-10 text-xs font-medium",
-            !className?.includes("border-") && "border-slate-200/80",
+            "w-full justify-between transition-all border shadow-none relative pr-8 h-10 text-xs font-medium",
             !className?.includes("text-") && "text-slate-800",
             !selectedLabel && "text-slate-400",
             disabled && "bg-slate-50/80 cursor-not-allowed opacity-80",
             className,
-            error && "!border-red-500 text-red-500"
+            "rounded-[8px]",
+            error ? "!border-red-500 text-red-500" : "border-[#a8afb7]"
           )}
         >
           <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium", error && "text-red-500")}>

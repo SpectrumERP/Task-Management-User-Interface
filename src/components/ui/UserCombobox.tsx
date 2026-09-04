@@ -188,12 +188,11 @@ export function UserCombobox({
           disabled={disabled}
           className={cn(
             "w-full justify-between transition-all border shadow-sm relative pr-8",
-            !className?.includes("border-") && "border-slate-300",
             !className?.includes("text-") && "text-sm font-medium text-slate-900",
-            !className?.includes("rounded-") && "rounded-xl",
             !className?.includes("h-") && "h-9",
             className,
-            error && "!border-red-500 text-red-500"
+            "rounded-[8px]",
+            error ? "!border-red-500 text-red-500" : "border-[#a8afb7]"
           )}
         >
           <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium", error && "text-red-500")}>{selectedLabel || placeholder}</span>

@@ -29,11 +29,12 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 82%;
-    --input: 214.3 31.8% 82%;
+    --border: 212 9% 69%;
+    /* #a8afb7 */
+    --input: 212 9% 69%;
     --ring: 199.2 100% 30%;
 
-    --radius: 0.75rem;
+    --radius: 8px;
 
     /* Generic page layout (50% of previous 32px pad / 16px gap) */
     --page-pad: 16px;
@@ -111,6 +112,14 @@
   body {
     @apply bg-background text-foreground antialiased overflow-hidden;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* App-wide form control chrome */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='color']):not([type='submit']):not([type='button']),
+  textarea,
+  select {
+    border-color: #a8afb7;
+    border-radius: 8px;
   }
 }
 
@@ -220,7 +229,7 @@
 }
 
 textarea {
-  resize: none;
+  resize: none !important;
 }
 
 /* Centralized Form Field & Layout Border Visibility Upgrade */

@@ -12,6 +12,7 @@ import { SlidersHorizontal, RotateCcw, FileBarChart2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
 import { useTaskStore } from '@/store/useTaskStore';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 
 interface MeetingReportFilterValues {
   meetingDateRange?: { from: Date | undefined; to: Date | undefined };
@@ -37,8 +38,7 @@ interface MeetingReportFilterProps {
   onApply: (filters: MeetingReportFilterValues) => void;
 }
 
-const fieldClass =
-  'h-10 w-full rounded-[8px] border-slate-200/80 bg-white text-xs shadow-none';
+const fieldClass = FIELD_CONTROL_CLASS;
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (

@@ -114,7 +114,7 @@ export function MultiUserCombobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-normal bg-white h-9",
+            "w-full justify-between font-normal bg-white h-9 rounded-[8px] border border-[#a8afb7]",
             !value.length && "text-muted-foreground",
             className
           )}

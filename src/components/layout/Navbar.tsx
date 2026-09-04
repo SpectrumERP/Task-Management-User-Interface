@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Folder, ChevronDown, Check, Menu, Search, LogOut } from 'lucide-react';
+import { Folder, ChevronDown, Check, Menu, Search, LogOut, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -16,14 +16,18 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ClipboardDrawer } from '@/components/ui/ClipboardDrawer';
 import { useSettings } from '@/hooks/useSettings';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 import { cn } from '@/lib/utils';
 
 interface NavbarProps {
   onMenuClick?: () => void;
+  /** Desktop sidebar expand/collapse */
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
   className?: string;
 }
 
-export function Navbar({ onMenuClick, className }: NavbarProps) {
+export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = false, className }: NavbarProps) {
   const { user, logout } = useAuthStore();
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
@@ -80,38 +84,83 @@ export function Navbar({ onMenuClick, className }: NavbarProps) {
   return (
     <header
       className={cn(
-        "h-14 shrink-0 px-4 flex items-center justify-between border-b z-20 transition-[background-color,border-color,backdrop-filter,box-shadow] duration-300",
+        "h-14 w-full shrink-0 flex items-center border-b z-30 transition-[background-color,border-color,backdrop-filter,box-shadow] duration-300",
         isScrolled
           ? "bg-white/35 backdrop-blur-md border-slate-200/30 shadow-none"
           : "bg-white border-slate-200/60 shadow-none",
         className
       )}
     >
-      <div className="flex items-center gap-4 flex-1 min-w-0">
+      {/* Mobile: menu + logo */}
+      <div className="flex lg:hidden items-center gap-2.5 min-w-0 pl-4">
         {onMenuClick && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
-            className="lg:hidden w-10 rounded-xl hover:bg-[#e8f1f8] flex items-center justify-center shrink-0 border border-slate-200/80"
+            className="w-10 rounded-xl hover:bg-[#e8f1f8] flex items-center justify-center shrink-0 border border-slate-200/80"
           >
             <Menu size={20} className="text-slate-600" />
           </Button>
         )}
-        <div className="hidden sm:flex flex-col gap-1 leading-none py-0.5">
-          <span className="page-eyebrow">Workspace</span>
-          <span className="page-title">Task overview</span>
-        </div>
+        <BrandLogo maxHeight={44} maxWidth={200} className="min-w-0" />
       </div>
 
-      <div className="flex items-center gap-2">
-        {/* Workspace Folder Dropdown */}
+      {/* Desktop: brand rail aligned to sidebar width — logo left, hamburger at rail end */}
+      <div
+        className={cn(
+          "hidden lg:flex h-full items-center shrink-0 border-r border-slate-200/60 transition-[width] duration-300",
+          isSidebarCollapsed ? "w-[80px] justify-center gap-0 px-1.5" : "w-56 pl-3 pr-2 justify-between gap-2"
+        )}
+      >
+        {isSidebarCollapsed ? (
+          <>
+            {onToggleSidebar && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleSidebar}
+                className="h-9 w-9 rounded-xl shrink-0 text-[#006699] bg-[#e8f3f8]/80 hover:text-[#006699] hover:bg-[#e8f3f8]"
+                aria-label="Expand sidebar"
+                title="Expand menu"
+              >
+                <X size={18} strokeWidth={2} />
+              </Button>
+            )}
+          </>
+        ) : (
+          <>
+            <BrandLogo maxHeight={44} maxWidth={160} className="min-w-0" />
+            {onToggleSidebar && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleSidebar}
+                className="h-9 w-9 rounded-xl shrink-0 text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8]"
+                aria-label="Collapse sidebar"
+                title="Collapse menu"
+              >
+                <Menu size={18} strokeWidth={1.75} />
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* When sidebar collapsed: logo sits in header right after hamburger */}
+      {isSidebarCollapsed && (
+        <div className="hidden lg:flex items-center pl-3 min-w-0">
+          <BrandLogo maxHeight={44} maxWidth={220} className="min-w-0" />
+        </div>
+      )}
+
+      <div className="flex flex-1 items-center justify-end gap-2 min-w-0 px-4 sm:px-5">
         {!isHideFolder && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="flex items-center gap-2.5 px-3.5 h-9 rounded-xl border border-slate-200 bg-white hover:bg-[#f5f9fc] hover:border-[#006699]/25 transition-all font-semibold text-xs text-slate-700 shadow-sm"
+                className="flex items-center gap-2.5 px-3.5 h-9 rounded-xl border border-[#a8afb7] bg-white hover:bg-[#f5f9fc] hover:border-[#006699]/25 transition-all font-semibold text-xs text-slate-700 shadow-sm"
               >
                 <div className="flex w-6 h-6 shrink-0 items-center justify-center rounded-lg bg-[#006699]/10 text-[#006699]">
                   <Folder size={14} className="fill-[#006699]/20" />
@@ -217,7 +266,6 @@ export function Navbar({ onMenuClick, className }: NavbarProps) {
             sideOffset={10}
             forceMount
           >
-            {/* Profile header */}
             <div className="relative overflow-hidden px-3.5 pt-3.5 pb-3">
               <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,#e8f3f8_0%,#ffffff_55%)]" />
               <div className="relative flex items-center gap-3">
@@ -251,7 +299,6 @@ export function Navbar({ onMenuClick, className }: NavbarProps) {
 
             <div className="mx-3 h-px bg-slate-100" />
 
-            {/* Actions */}
             <div className="p-2">
               <DropdownMenuItem
                 className="group/logout flex cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2.5 text-[13px] font-semibold text-slate-600 outline-none focus:bg-red-50 focus:text-red-600 data-[highlighted]:bg-red-50 data-[highlighted]:text-red-600"

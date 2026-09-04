@@ -257,7 +257,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                     handlePostComment();
                   }
                 }}
-                className="min-h-[75px] text-xs font-semibold rounded-xl border-slate-300 bg-white shadow-sm focus-visible:ring-[#006699] pr-10 resize-none pb-2 pt-2.5 text-slate-900"
+                className="min-h-[75px] text-xs font-semibold rounded-[8px] border-[#a8afb7] bg-white shadow-sm focus-visible:ring-[#006699] pr-10 resize-none pb-2 pt-2.5 text-slate-900"
               />
               <Button
                 type="button"

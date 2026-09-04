@@ -6,6 +6,7 @@ import { useFormRights } from '@/hooks/useFormRights';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
@@ -13,11 +14,10 @@ import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 const FORM_NO = 1564;
 const TITLE = 'Business Entity Type Master';
 
-const fieldClass =
-  'h-10 w-full rounded-[8px] border-slate-200/80 bg-white text-xs font-medium text-slate-700 shadow-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]';
+const fieldClass = FIELD_CONTROL_CLASS;
 
 const textareaClass =
-  'min-h-[88px] w-full rounded-[8px] border-slate-200/80 bg-white text-xs font-medium text-slate-700 shadow-none resize-y focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]';
+  'min-h-[88px] w-full rounded-[8px] border border-[#a8afb7] bg-white text-xs font-medium text-slate-700 shadow-none resize-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]';
 
 function FieldErrorTip({ message }: { message?: string }) {
   if (!message) return null;

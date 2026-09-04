@@ -111,11 +111,11 @@ export function MultiSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-medium text-sm rounded-xl min-h-[36px] h-auto shadow-sm transition-all border relative pr-8 py-1.5",
-            !className?.includes("border-") && "border-slate-300",
+            "w-full justify-between font-medium text-sm min-h-[36px] h-auto shadow-sm transition-all border relative pr-8 py-1.5",
             className,
             FIELD_TEXT_STYLE,
-            value.length === 0 && "text-slate-400"
+            value.length === 0 && "text-slate-400",
+            "rounded-[8px] border-[#a8afb7]"
           )}
         >
           <div ref={containerRef} className="relative flex flex-1 min-w-0 flex-nowrap gap-1 pr-2 overflow-hidden">

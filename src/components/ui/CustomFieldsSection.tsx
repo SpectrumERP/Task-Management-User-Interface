@@ -165,8 +165,9 @@ export function AsyncAutoCompleteList({
               role="combobox"
               aria-expanded={open}
               className={cn(
-                "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-medium text-slate-700 hover:bg-slate-50/50 rounded-lg h-7 px-2",
-                className
+                "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-medium text-slate-700 hover:bg-slate-50/50 h-7 px-2",
+                className,
+                "rounded-[8px] border-[#a8afb7]"
               )}
             >
               <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium")}>
@@ -359,8 +360,8 @@ export function CustomFieldsSection({
 
   const renderValueField = (cf: any, index: number) => {
     const baseClasses = viewMode === 'grid'
-      ? "h-10 rounded-[8px] border border-slate-200/80 focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:border-[#006699] text-xs bg-white shadow-none px-3 w-full transition-all text-slate-800 font-medium"
-      : "h-9 rounded-[8px] border border-slate-200/80 group-hover:border-[#006699]/25 focus-visible:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/15 text-xs bg-white shadow-none px-2.5 w-full transition-colors";
+      ? "h-10 rounded-[8px] border border-[#a8afb7] focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:border-[#006699] text-xs bg-white shadow-none px-3 w-full transition-all text-slate-800 font-medium"
+      : "h-9 rounded-[8px] border border-[#a8afb7] group-hover:border-[#006699]/25 focus-visible:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/15 text-xs bg-white shadow-none px-2.5 w-full transition-colors";
 
     if (!cf.customFieldNo) {
       return (
@@ -538,7 +539,7 @@ export function CustomFieldsSection({
                         value={cf.customFieldNo}
                         onChange={(val) => updateField(index, 'customFieldNo', val)}
                         placeholder="Select custom field..."
-                        className="h-9 mb-1 rounded-[8px] border-slate-200/80 text-xs bg-white shadow-none w-full"
+                        className="h-9 mb-1 rounded-[8px] border border-[#a8afb7] text-xs bg-white shadow-none w-full"
                       />
                     )}
                     {renderValueField(cf, index)}
@@ -562,7 +563,7 @@ export function CustomFieldsSection({
                       value={cf.customFieldNo}
                       onChange={(val) => updateField(index, 'customFieldNo', val)}
                       placeholder="Select custom field..."
-                      className="h-9 rounded-[8px] border-slate-200/80 text-xs bg-white shadow-none w-full"
+                      className="h-9 rounded-[8px] border border-[#a8afb7] text-xs bg-white shadow-none w-full"
                     />
                   </div>
                   <div className="space-y-1 min-w-0">
