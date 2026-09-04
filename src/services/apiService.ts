@@ -1,4 +1,5 @@
 import { dbService } from './dbService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'sonner';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -62,9 +63,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
     if (!response.ok) {
       if (response.status === 401) {
-        import('@/store/useAuthStore').then(({ useAuthStore }) => {
-          useAuthStore.setState({ isSessionTimeoutOpen: true });
-        });
+        useAuthStore.setState({ isSessionTimeoutOpen: true });
       } else {
         const errorMessage = getErrorMessage(data, response.status);
         toast.error(errorMessage);

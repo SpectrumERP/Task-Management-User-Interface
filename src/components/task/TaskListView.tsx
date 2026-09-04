@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Task } from '@/types/task';
-import { Card } from '@/components/ui/card';
-import { ArrowRight, Settings2, Edit2, Search } from 'lucide-react';
+import { ClipboardList, Settings2, Edit2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -151,9 +150,9 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="h-full space-y-3 p-3">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-16 w-full bg-slate-100 animate-pulse rounded-lg border border-slate-200" />
+          <div key={i} className="h-14 w-full bg-slate-50 animate-pulse rounded-xl border border-slate-100" />
         ))}
       </div>
     );
@@ -161,103 +160,104 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
 
   if (tasks.length === 0) {
     return (
-      <Card className="flex flex-col items-center justify-center py-20 bg-white/50 border-dashed border-2 border-slate-200 rounded-[32px]">
-        <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-          <ArrowRight className="text-slate-300" size={32} />
+      <div className="h-full min-h-0 flex flex-col items-center justify-center px-6">
+        <div className="h-14 w-14 rounded-2xl bg-[#e8f3f8] flex items-center justify-center mb-2.5">
+          <ClipboardList className="text-[#006699]" size={26} strokeWidth={1.75} />
         </div>
-        <h3 className="text-lg font-medium text-slate-800">No tasks found</h3>
-        <p className="text-slate-500 text-sm font-medium">Try adjusting your filters or create a new task.</p>
-      </Card>
+        <h3 className="text-base font-semibold text-slate-800 tracking-tight">No tasks found</h3>
+        <p className="text-slate-500 text-sm font-medium mt-0.5 max-w-sm text-center">
+          Try adjusting your filters or create a new task.
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0">
-      <Card className="flex-1 overflow-auto border-slate-200/60 rounded-xl bg-white/80 backdrop-blur-sm shadow-sm">
-        <table className="w-full text-sm text-left">
-          <thead className="sticky top-0 z-30 bg-slate-50/90 backdrop-blur-md border-b border-slate-200 text-slate-600 font-semibold text-xs tracking-wider">
-            <tr>
-              {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
-                <th
-                  key={col.key}
-                  className={cn(
-                    "px-1.5 py-1 whitespace-nowrap relative group/th",
-                    col.key === 'actions' && "w-[50px] text-center p-1 sticky right-0 z-40 bg-slate-50/90 backdrop-blur-md border-l border-slate-200 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
-                  )}
-                  style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : {}}
-                >
-                  {col.key === 'actions' ? (
-                    <div className="flex justify-center">
-                      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-6 px-1 flex items-center gap-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200/50">
-                            <Settings2 size={14} />
+    <div className="h-full min-h-0 overflow-auto">
+      <table className="w-full text-sm text-left">
+        <thead className="sticky top-0 z-30 bg-[#f3f8fb] border-b border-slate-200 text-slate-600 font-semibold text-xs tracking-wider">
+          <tr>
+            {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
+              <th
+                key={col.key}
+                className={cn(
+                  "px-1.5 py-1 whitespace-nowrap relative group/th",
+                  col.key === 'actions' && "w-[50px] text-center p-1 sticky right-0 z-40 bg-slate-50/90 backdrop-blur-md border-l border-slate-200 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
+                )}
+                style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : {}}
+              >
+                {col.key === 'actions' ? (
+                  <div className="flex justify-center">
+                    <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 px-1 flex items-center gap-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200/50">
+                          <Settings2 size={14} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48" onInteractOutside={() => setDropdownOpen(false)}>
+                        <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
+                        <div className="px-2 pb-2">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                            <Input
+                              placeholder="Search columns..."
+                              value={columnSearchQuery}
+                              onChange={(e) => setColumnSearchQuery(e.target.value)}
+                              className="h-8 w-full pl-8 text-xs bg-slate-50 border-slate-200"
+                            />
+                          </div>
+                        </div>
+                        <DropdownMenuSeparator />
+                        <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
+                          {COLUMNS.filter(c => isColumnAllowed(c.key) && (c.label || 'Actions').toLowerCase().includes(columnSearchQuery.toLowerCase())).map((c) => (
+                            <DropdownMenuCheckboxItem
+                              key={c.key}
+                              checked={pendingColumns.has(c.key)}
+                              onSelect={(e) => e.preventDefault()} // Prevent closing on click
+                              onCheckedChange={() => togglePendingColumn(c.key)}
+                              disabled={c.key === 'title' || c.key === 'actions'} // Prevent hiding subject and actions
+                            >
+                              {c.label || 'Actions'}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </div>
+                        <DropdownMenuSeparator />
+                        <div className="flex justify-end gap-0.5 p-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            Cancel
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48" onInteractOutside={() => setDropdownOpen(false)}>
-                          <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
-                          <div className="px-2 pb-2">
-                            <div className="relative">
-                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                              <Input
-                                placeholder="Search columns..."
-                                value={columnSearchQuery}
-                                onChange={(e) => setColumnSearchQuery(e.target.value)}
-                                className="h-8 w-full pl-8 text-xs bg-slate-50 border-slate-200"
-                              />
-                            </div>
-                          </div>
-                          <DropdownMenuSeparator />
-                          <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
-                            {COLUMNS.filter(c => isColumnAllowed(c.key) && (c.label || 'Actions').toLowerCase().includes(columnSearchQuery.toLowerCase())).map((c) => (
-                              <DropdownMenuCheckboxItem
-                                key={c.key}
-                                checked={pendingColumns.has(c.key)}
-                                onSelect={(e) => e.preventDefault()} // Prevent closing on click
-                                onCheckedChange={() => togglePendingColumn(c.key)}
-                                disabled={c.key === 'title' || c.key === 'actions'} // Prevent hiding subject and actions
-                              >
-                                {c.label || 'Actions'}
-                              </DropdownMenuCheckboxItem>
-                            ))}
-                          </div>
-                          <DropdownMenuSeparator />
-                          <div className="flex justify-end gap-0.5 p-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => setDropdownOpen(false)}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-7 text-xs bg-[#006699] hover:bg-[#005580]"
-                              onClick={() => {
-                                setVisibleColumns(pendingColumns);
-                                setDropdownOpen(false);
-                              }}
-                            >
-                              Apply
-                            </Button>
-                          </div>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ) : (
-                    <div className="flex items-center w-full h-full pr-2">
-                      <span className="truncate">{col.label}</span>
-                      <div
-                        className="w-1.5 h-full absolute right-0 top-0 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500 opacity-0 group-hover/th:opacity-100 transition-opacity z-10"
-                        onMouseDown={(e) => handleResizeStart(e, col.key)}
-                      />
-                    </div>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs bg-[#006699] hover:bg-[#005580]"
+                            onClick={() => {
+                              setVisibleColumns(pendingColumns);
+                              setDropdownOpen(false);
+                            }}
+                          >
+                            Apply
+                          </Button>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ) : (
+                  <div className="flex items-center w-full h-full pr-2">
+                    <span className="truncate">{col.label}</span>
+                    <div
+                      className="w-1.5 h-full absolute right-0 top-0 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500 opacity-0 group-hover/th:opacity-100 transition-opacity z-10"
+                      onMouseDown={(e) => handleResizeStart(e, col.key)}
+                    />
+                  </div>
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
           <tbody className="divide-y divide-slate-100">
             {tasks.map((task) => (
               <tr
@@ -269,7 +269,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                     navigate(taskUrl(task.taskNo, task.categoryName));
                   }
                 }}
-                className="group hover:bg-slate-50/80 transition-colors cursor-pointer"
+                className="group hover:bg-[#006699]/5 transition-colors cursor-pointer"
               >
                 {/* Code */}
                 {visibleColumns.has('code') && (
@@ -458,7 +458,6 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
             ))}
           </tbody>
         </table>
-      </Card>
     </div>
   );
 }

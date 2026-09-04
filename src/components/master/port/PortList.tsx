@@ -89,7 +89,7 @@ export function PortList() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
@@ -98,37 +98,58 @@ export function PortList() {
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Port Name"
-          columns={[
-            { header: 'Country', render: (item) => item.countryName || <span className="italic text-slate-300 font-medium">Not set</span> },
-            { header: 'State', render: (item) => item.stateName || <span className="italic text-slate-300 font-medium">Not set</span> },
-            { header: 'City', render: (item) => item.cityName || <span className="italic text-slate-300 font-medium">Not set</span> },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('port', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={Anchor}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Port Name"
+        columns={[
+          {
+            header: 'Country',
+            render: (item) =>
+              item.countryName || (
+                <span className="italic text-slate-300 font-medium">Not set</span>
+              ),
+          },
+          {
+            header: 'State',
+            render: (item) =>
+              item.stateName || (
+                <span className="italic text-slate-300 font-medium">Not set</span>
+              ),
+          },
+          {
+            header: 'City',
+            render: (item) =>
+              item.cityName || (
+                <span className="italic text-slate-300 font-medium">Not set</span>
+              ),
+          },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('port', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        emptyIcon={Anchor}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

@@ -3,7 +3,7 @@ import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useNavigate } from 'react-router-dom';
-import { Sliders } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import { MasterListHeader } from '../shared/MasterListHeader';
 import { MasterEntityTable } from '../shared/MasterEntityTable';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
@@ -31,15 +31,21 @@ export function MeetingTypeList() {
   const fetchMeetingTypes = async () => {
     setIsLoading(true);
     try {
-      const response = await apiService.get<any>(`/api/master/meeting-types/search-data?CompanyNo=${companyNo}`);
+      const response = await apiService.get<any>(
+        `/api/master/meeting-types/search-data?CompanyNo=${companyNo}`
+      );
       if (response) {
-        const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
+        const rawItems = Array.isArray(response)
+          ? response
+          : response.data && Array.isArray(response.data)
+            ? response.data
+            : [];
         const mapped = rawItems.map((c: any) => ({
           id: (c.meetingTypeNo ?? '').toString(),
           code: c.code || '',
           name: c.meetingTypeName || '',
           createdBy: c.createdBy || 'System',
-          createdDate: c.createdDate || ''
+          createdDate: c.createdDate || '',
         }));
         setApiMeetingTypes(mapped);
       }
@@ -50,7 +56,9 @@ export function MeetingTypeList() {
     }
   };
 
-  useEffect(() => { fetchMeetingTypes(); }, [companyNo]);
+  useEffect(() => {
+    fetchMeetingTypes();
+  }, [companyNo]);
 
   const filteredList = apiMeetingTypes.filter((item) => {
     const query = searchQuery.toLowerCase();
@@ -71,49 +79,58 @@ export function MeetingTypeList() {
 
   const confirmDelete = () => {
     if (!deleteTargetId) return;
-    apiService.delete('/api/master/meeting-types/delete', {
-      params: { meetingTypeNo: deleteTargetId }
-    }).then(() => fetchMeetingTypes()).catch(err => console.error('Failed to delete meeting type:', err));
+    apiService
+      .delete('/api/master/meeting-types/delete', {
+        params: { meetingTypeNo: deleteTargetId },
+      })
+      .then(() => fetchMeetingTypes())
+      .catch((err) => console.error('Failed to delete meeting type:', err));
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell-scroll bg-[#eef4f8]">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(value) => {
+          setSearchQuery(value);
+          setCurrentPage(1);
+        }}
         onAddClick={() => navigate(toMasterNewPath('meeting-type'))}
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Meeting Type Name"
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('meeting-type', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={Sliders}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Meeting Type Name"
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('meeting-type', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        emptyIcon={SlidersHorizontal}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

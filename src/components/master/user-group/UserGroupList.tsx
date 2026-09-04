@@ -80,7 +80,7 @@ export function UserGroupList() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
@@ -89,38 +89,44 @@ export function UserGroupList() {
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="User Group Name"
-          columns={[
-            {
-              header: 'Description',
-              render: (item) => item.description || <span className="italic text-slate-300 font-medium">No description</span>,
-            },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('user-group', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={Users}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="User Group Name"
+        columns={[
+          {
+            header: 'Description',
+            render: (item) =>
+              item.description || (
+                <span className="italic text-slate-300 font-medium">No description</span>
+              ),
+          },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('user-group', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        emptyIcon={Users}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

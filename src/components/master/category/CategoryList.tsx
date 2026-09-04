@@ -84,7 +84,7 @@ export function CategoryList() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
@@ -93,55 +93,66 @@ export function CategoryList() {
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Category Name"
-          columns={[
-            {
-              header: 'Features',
-              render: (item) => (
-                <div className="flex flex-wrap gap-1">
-                  {item.isApprovalApplicable && (
-                    <span className="text-[9px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Approval</span>
-                  )}
-                  {item.isInReviewRequired && (
-                    <span className="text-[9px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">Review</span>
-                  )}
-                  {item.isBusinessBenefitApplicable && (
-                    <span className="text-[9px] font-medium text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">Benefit</span>
-                  )}
-                </div>
-              ),
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Category Name"
+        columns={[
+          {
+            header: 'Features',
+            render: (item) => {
+              const chips = [
+                item.isApprovalApplicable && (
+                  <span key="approval" className="text-[9px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-[6px] border border-emerald-100">Approval</span>
+                ),
+                item.isInReviewRequired && (
+                  <span key="review" className="text-[9px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-[6px] border border-amber-100">Review</span>
+                ),
+                item.isBusinessBenefitApplicable && (
+                  <span key="benefit" className="text-[9px] font-medium text-sky-700 bg-sky-50 px-2 py-0.5 rounded-[6px] border border-sky-100">Benefit</span>
+                ),
+              ].filter(Boolean);
+
+              if (chips.length === 0) {
+                return <span className="text-slate-300">—</span>;
+              }
+
+              return <div className="flex flex-wrap gap-1">{chips}</div>;
             },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => (
-            <>
-              {item.color && <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />}
-              <span>{item.name}</span>
-            </>
-          )}
-          onEdit={(item) => navigate(toMasterEditPath('category', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={Layers}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => (
+          <>
+            {item.color ? (
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+            ) : null}
+            <span className="break-words">{item.name}</span>
+          </>
         )}
-      </div>
+        onEdit={(item) => navigate(toMasterEditPath('category', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        emptyIcon={Layers}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

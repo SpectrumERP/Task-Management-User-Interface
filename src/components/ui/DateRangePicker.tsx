@@ -165,7 +165,7 @@ export function DateRangePicker({
   };
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className={cn("w-full", className)}>
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
@@ -173,23 +173,25 @@ export function DateRangePicker({
             variant={"outline"}
             disabled={disabled}
             className={cn(
-              "w-full justify-start text-left mt-2 h-9 rounded-2xl border-slate-400 bg-white text-xs transition-all text-slate-900 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15",
-              !range && "text-slate-400 font-medium"
+              "w-full h-10 justify-start text-left font-medium rounded-[8px] border border-slate-200/80 bg-white text-xs shadow-none transition-all text-slate-800 hover:bg-[#f8fbfd] hover:border-[#006699]/35 focus-visible:ring-2 focus-visible:ring-[#006699]/15",
+              !range && "text-slate-400"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 shrink-0" />
+            <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[#e8f3f8] text-[#006699]">
+              <CalendarIcon className="h-3.5 w-3.5" />
+            </span>
             {range?.from ? (
               range.to ? (
-                <span className="text-slate-700 text-[13px]">
-                  {format(range.from, "LLL dd, yyyy")} - {format(range.to, "LLL dd, yyyy")}
+                <span className="truncate text-slate-800 text-xs">
+                  {format(range.from, "LLL dd, yyyy")} – {format(range.to, "LLL dd, yyyy")}
                 </span>
               ) : (
-                <span className="text-slate-700 text-[13px]">
+                <span className="truncate text-slate-800 text-xs">
                   {format(range.from, "LLL dd, yyyy")}
                 </span>
               )
             ) : (
-              <span className="text-slate-400 font-medium text-xs">{placeholder}</span>
+              <span className="truncate text-slate-400 text-xs">{placeholder}</span>
             )}
           </Button>
         </PopoverTrigger>

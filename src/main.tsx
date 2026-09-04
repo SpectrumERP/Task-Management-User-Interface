@@ -2,6 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { applyBrandToDocument } from '@/config/brandConfig'
+
+// Apply SteelMont logo / title / favicon (temporary client branding)
+applyBrandToDocument()
 
 // Register Custom Service Worker for PWA
 if ('serviceWorker' in navigator) {

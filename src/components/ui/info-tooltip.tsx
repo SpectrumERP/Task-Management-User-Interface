@@ -8,20 +8,21 @@ interface InfoTooltipProps {
   className?: string;
 }
 
-// Hover-triggered info popup, e.g. next to a field label/input. Renders nothing if no text is configured.
-// Built on Radix Popover (not a plain CSS box) so it portals out of any ancestor `whitespace-nowrap`
-// (e.g. a button trigger) and gets real viewport-collision handling (auto flip/shift to stay on-screen).
+/**
+ * Hover-triggered field help tip.
+ * Portals out of overflow/whitespace ancestors and flips on collision.
+ */
 export function InfoTooltip({ text, className }: InfoTooltipProps) {
   const [open, setOpen] = React.useState(false);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
 
   React.useEffect(() => {
     if (open) {
-      const dialogs = document.querySelectorAll('[role="dialog"]')
+      const dialogs = document.querySelectorAll('[role="dialog"]');
       if (dialogs.length > 0) {
-        setContainer(dialogs[dialogs.length - 1] as HTMLElement)
+        setContainer(dialogs[dialogs.length - 1] as HTMLElement);
       } else {
-        setContainer(null)
+        setContainer(null);
       }
     }
   }, [open]);
@@ -31,27 +32,61 @@ export function InfoTooltip({ text, className }: InfoTooltipProps) {
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild>
-        <span
-          className={cn('inline-flex shrink-0 cursor-pointer text-slate-400 transition-colors hover:text-[#006699]', className)}
+        <button
+          type="button"
+          aria-label="Field information"
+          className={cn(
+            'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]',
+            'bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/15',
+            'transition-all hover:bg-[#006699] hover:text-white hover:ring-[#006699]/40',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006699]/35',
+            className
+          )}
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={() => setOpen(false)}
-          onClick={(e) => e.stopPropagation()}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
         >
-          <Info className="h-4.5 w-4.5" />
-        </span>
+          <Info size={14} strokeWidth={2} />
+        </button>
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal container={container || document.body}>
         <PopoverPrimitive.Content
-          side="bottom"
-          align="center"
+          side="top"
+          align="end"
           sideOffset={8}
           collisionPadding={12}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className="z-[100] w-64 whitespace-normal break-words rounded-lg border border-slate-200 bg-popover p-3 text-[11px] font-normal normal-case leading-relaxed text-popover-foreground pointer-events-none shadow-lg shadow-slate-900/10 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          className={cn(
+            'z-[100] w-[min(280px,calc(100vw-24px))] whitespace-normal break-words',
+            'rounded-[8px] border border-slate-200/80 bg-white p-0',
+            'shadow-[0_12px_32px_-12px_rgba(15,23,42,0.28)]',
+            'pointer-events-auto',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95'
+          )}
         >
-          {text}
-          <PopoverPrimitive.Arrow className="fill-popover" width={14} height={7} />
+          <div className="flex items-center gap-1.5 border-b border-slate-100 bg-[#f8fbfd] px-3 py-1.5 rounded-t-[8px]">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-[5px] bg-[#e8f3f8] text-[#006699]">
+              <Info size={11} strokeWidth={2.25} />
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#006699]/80">
+              Tip
+            </span>
+          </div>
+          <p className="px-3 py-2.5 text-[11px] font-medium leading-relaxed text-slate-600">
+            {text}
+          </p>
+          <PopoverPrimitive.Arrow className="fill-white drop-shadow-sm" width={12} height={6} />
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

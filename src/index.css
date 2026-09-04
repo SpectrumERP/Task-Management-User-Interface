@@ -34,6 +34,12 @@
     --ring: 199.2 100% 30%;
 
     --radius: 0.75rem;
+
+    /* Generic page layout (50% of previous 32px pad / 16px gap) */
+    --page-pad: 16px;
+    --page-gap: 16px;
+    --card-pad: 12px;
+    --card-radius: 16px;
   }
 
   .dark {
@@ -70,6 +76,36 @@
 @layer base {
   * {
     @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 102, 153, 0.28) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(0, 102, 153, 0.28);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 102, 153, 0.45);
+  }
+
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   body {
@@ -94,6 +130,82 @@
     scrollbar-width: none;
   }
 
+  /* Slim premium scrollbar */
+  .scrollbar-sleek {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 102, 153, 0.28) transparent;
+  }
+
+  .scrollbar-sleek::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-sleek::-webkit-scrollbar-track {
+    background: transparent;
+    margin-block: 6px;
+  }
+
+  .scrollbar-sleek::-webkit-scrollbar-thumb {
+    background: rgba(0, 102, 153, 0.28);
+    border-radius: 999px;
+  }
+
+  .scrollbar-sleek::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 102, 153, 0.45);
+  }
+
+  .scrollbar-sleek::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  .page-shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: var(--page-pad);
+    gap: var(--page-gap);
+  }
+
+  main.page-shell {
+    gap: 0;
+  }
+
+  .page-shell-scroll {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    padding: var(--page-pad);
+    gap: var(--page-gap);
+  }
+
+  .surface-card {
+    border-radius: var(--card-radius);
+  }
+
+  .page-eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #006699;
+    line-height: 1;
+  }
+
+  .page-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #1e293b;
+    line-height: 1.2;
+  }
+
+
   /* Hide arrows in number inputs */
   input::-webkit-outer-spin-button,
   input::-webkit-inner-spin-button {
@@ -105,6 +217,10 @@
     -moz-appearance: textfield;
     text-align: right;
   }
+}
+
+textarea {
+  resize: none;
 }
 
 /* Centralized Form Field & Layout Border Visibility Upgrade */

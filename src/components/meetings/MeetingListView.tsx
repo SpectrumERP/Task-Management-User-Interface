@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, Edit2, Plus } from 'lucide-react';
+import { ClipboardList, Edit2, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -78,15 +78,21 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
 
   if (meetings.length === 0) {
     return (
-      <Card className="flex flex-col items-center justify-center py-20 bg-white/50 border-dashed border-2 border-slate-200 rounded-[32px]">
-        <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-          <ArrowRight className="text-slate-300" size={32} />
+      <Card className="h-full min-h-0 flex flex-col items-center justify-center px-6 bg-white border border-slate-200/70 rounded-2xl shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
+        <div className="h-14 w-14 rounded-2xl bg-[#e8f3f8] flex items-center justify-center mb-2.5">
+          <ClipboardList className="text-[#006699]" size={26} strokeWidth={1.75} />
         </div>
-        <h3 className="text-lg font-medium text-slate-800">No meeting notes found</h3>
-        <p className="text-slate-500 text-sm font-medium mb-6">Create a new meeting note to get started.</p>
+        <h3 className="text-base font-semibold text-slate-800 tracking-tight">No meeting notes found</h3>
+        <p className="text-slate-500 text-sm font-medium mt-0.5 max-w-sm text-center">
+          Create a new meeting note to get started.
+        </p>
         {isSave && (
-          <Button onClick={() => navigate('/meetings/new')} className="bg-[#006699] hover:bg-[#005580]">
-            <Plus className="w-4 h-4 mr-2" /> New Meeting Note
+          <Button
+            onClick={() => navigate('/meetings/new')}
+            className="mt-6 h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white text-xs font-semibold shadow-[0_8px_20px_-6px_rgba(0,102,153,0.45)]"
+          >
+            <Plus className="w-4 h-4 mr-1.5" strokeWidth={2.4} />
+            New Meeting Note
           </Button>
         )}
       </Card>

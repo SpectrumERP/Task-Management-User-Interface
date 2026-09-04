@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
-  Search, X, Plus, Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText,
+  Search, X, Plus, Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
@@ -450,13 +450,18 @@ export function CompanyList() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       {/* Breadcrumb Header */}
-      <div className="flex items-center shrink-0 mb-0 px-1">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <button className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded cursor-default">Masters</button>
-          <span className="text-slate-400">/</span>
-          <span className="text-slate-900 font-bold tracking-tight">{TITLE}</span>
+      <div className="flex items-center shrink-0 px-1">
+        <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
+          <button
+            type="button"
+            className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded cursor-default"
+          >
+            Masters
+          </button>
+          <ChevronRight size={16} className="text-slate-400 shrink-0" />
+          <span className="text-slate-900 font-bold tracking-tight truncate">{TITLE}</span>
         </div>
       </div>
 

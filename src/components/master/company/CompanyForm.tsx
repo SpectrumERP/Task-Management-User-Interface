@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import CameraComp from '@/components/ui/CameraComp';
-import { Camera as CameraIcon } from 'lucide-react';
+const CameraComp = lazy(() => import('@/components/ui/CameraComp'));
+import { Camera as CameraIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
@@ -754,6 +754,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
         <CompanyNotesSection notes={companyNotes} onChange={setCompanyNotes} />
 
+        {isCameraModalOpen && (
         <Dialog
           open={isCameraModalOpen}
           onOpenChange={(open) => {
@@ -772,43 +773,51 @@ export function CompanyForm({ id }: CompanyFormProps) {
               </DialogDescription>
             </DialogHeader>
             <div className="px-5 overflow-y-auto flex-1">
-              <CameraComp
-                companyNo={parseInt(companyNo as any) || 1}
-                formNo={1550}
-                fileNamePrefix="business-entity-capture"
-                className="border-slate-100 shadow-none"
-                initialAnalyzeFile={analyzeFile}
-                onUploaded={handleCameraAttachmentUploaded}
-                onCancel={() => {
-                  setIsCameraModalOpen(false);
-                  setAnalyzeFile(undefined);
-                }}
-                onCardScanned={(data: any) => {
-                  if (data.company && !name?.trim()) {
-                    setName(data.company);
-                  }
-                  if (data.name || data.email || data.phone || data.mobile || data.designation) {
-                    setCompanyContacts(prev => [
-                      ...prev,
-                      {
-                        contactName: data.name || '',
-                        name: data.name || '',
-                        contactPersonName: data.name || '',
-                        designation: data.designation || '',
-                        department: '',
-                        phone: data.phone || data.mobile || '',
-                        phoneNo: data.phone || data.mobile || '',
-                        email: data.email || '',
-                        address: data.address || '',
-                        status: 'Active'
-                      }
-                    ]);
-                  }
-                }}
-              />
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-16 text-slate-500 text-sm font-medium">
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  Loading camera…
+                </div>
+              }>
+                <CameraComp
+                  companyNo={parseInt(companyNo as any) || 1}
+                  formNo={1550}
+                  fileNamePrefix="business-entity-capture"
+                  className="border-slate-100 shadow-none"
+                  initialAnalyzeFile={analyzeFile}
+                  onUploaded={handleCameraAttachmentUploaded}
+                  onCancel={() => {
+                    setIsCameraModalOpen(false);
+                    setAnalyzeFile(undefined);
+                  }}
+                  onCardScanned={(data: any) => {
+                    if (data.company && !name?.trim()) {
+                      setName(data.company);
+                    }
+                    if (data.name || data.email || data.phone || data.mobile || data.designation) {
+                      setCompanyContacts(prev => [
+                        ...prev,
+                        {
+                          contactName: data.name || '',
+                          name: data.name || '',
+                          contactPersonName: data.name || '',
+                          designation: data.designation || '',
+                          department: '',
+                          phone: data.phone || data.mobile || '',
+                          phoneNo: data.phone || data.mobile || '',
+                          email: data.email || '',
+                          address: data.address || '',
+                          status: 'Active'
+                        }
+                      ]);
+                    }
+                  }}
+                />
+              </Suspense>
             </div>
           </DialogContent>
         </Dialog>
+        )}
 
         <CompanyLocationModal
           open={locationModalOpen}

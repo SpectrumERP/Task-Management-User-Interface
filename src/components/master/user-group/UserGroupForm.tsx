@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UserCombobox } from '@/components/ui/UserCombobox';
-import { UserPlus, Trash2 } from 'lucide-react';
+import { Users, UserPlus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
@@ -13,6 +13,62 @@ import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 
 const FORM_NO = 1546;
 const TITLE = 'User Group Master';
+
+const fieldClass =
+  'h-10 w-full rounded-[8px] border-slate-200/80 bg-white text-xs font-medium text-slate-700 shadow-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]';
+
+function FieldErrorTip({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <span
+      role="alert"
+      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
+    >
+      {message}
+    </span>
+  );
+}
+
+function FieldControl({
+  children,
+  error,
+  className,
+}: {
+  children: ReactNode;
+  error?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('relative min-w-0', className)}>
+      {children}
+      <FieldErrorTip message={error} />
+    </div>
+  );
+}
+
+function FieldLabel({
+  children,
+  required,
+  htmlFor,
+}: {
+  children: ReactNode;
+  required?: boolean;
+  htmlFor?: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600"
+    >
+      <span>{children}</span>
+      {required ? (
+        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
+          *
+        </span>
+      ) : null}
+    </label>
+  );
+}
 
 interface UserGroupFormProps {
   id?: string;
@@ -55,7 +111,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
             loginNo: u.loginNo,
             userName: u.loginId,
             displayName: u.printingName || u.loginId,
-            email: u.email || ''
+            email: u.email || '',
           })) : [];
           setSelectedUsers(members);
           setCode(dl.code || '');
@@ -67,17 +123,17 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) {
-      newErrors.name = 'user-group Name is required';
+      newErrors.name = 'User Group Name is required';
     }
     if (!description.trim()) {
-      newErrors.description = 'User Group Description is required';
+      newErrors.description = 'Group Description is required';
     }
-    const filledUsers = selectedUsers.filter(u => !!u.userName);
+    const filledUsers = selectedUsers.filter((u) => !!u.userName);
     if (filledUsers.length === 0) {
-      newErrors.selectedUsers = 'Atleast one user required.';
+      newErrors.selectedUsers = 'At least one user required.';
     } else {
       const seen = new Set<number>();
-      const hasDuplicate = filledUsers.some(u => {
+      const hasDuplicate = filledUsers.some((u) => {
         if (seen.has(u.loginNo)) return true;
         seen.add(u.loginNo);
         return false;
@@ -120,32 +176,46 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
 
   const duplicateLoginNos = new Set(
     Array.from(
-      selectedUsers.reduce((counts, u) => {
-        if (u.loginNo) counts.set(u.loginNo, (counts.get(u.loginNo) || 0) + 1);
-        return counts;
-      }, new Map<number, number>()).entries()
-    ).filter(([, count]) => count > 1).map(([loginNo]) => loginNo)
+      selectedUsers
+        .reduce((counts, u) => {
+          if (u.loginNo) counts.set(u.loginNo, (counts.get(u.loginNo) || 0) + 1);
+          return counts;
+        }, new Map<number, number>())
+        .entries()
+    )
+      .filter(([, count]) => count > 1)
+      .map(([loginNo]) => loginNo)
   );
 
   const addGridUser = () => {
     setSelectedUsers([...selectedUsers, { loginNo: 0, userName: '', displayName: '', email: '' }]);
   };
+
   const removeGridUser = (index: number) => {
     const next = [...selectedUsers];
     next.splice(index, 1);
     setSelectedUsers(next);
-    if (errors.selectedUsers) setErrors(prev => ({ ...prev, selectedUsers: '' }));
+    if (errors.selectedUsers) setErrors((prev) => ({ ...prev, selectedUsers: '' }));
   };
+
   const updateGridUser = (index: number, user: any) => {
     const next = [...selectedUsers];
     if (!user || user.loginNo === '' || user.loginNo === 0) {
       next[index] = { ...next[index], loginNo: 0, userName: '', displayName: '', email: '' };
     } else {
-      next[index] = { ...next[index], loginNo: user.loginNo, userName: user.loginId || '', displayName: user.printingName || '', email: user.email || '' };
+      next[index] = {
+        ...next[index],
+        loginNo: user.loginNo,
+        userName: user.loginId || '',
+        displayName: user.printingName || '',
+        email: user.email || '',
+      };
     }
     setSelectedUsers(next);
-    if (errors.selectedUsers) setErrors(prev => ({ ...prev, selectedUsers: '' }));
+    if (errors.selectedUsers) setErrors((prev) => ({ ...prev, selectedUsers: '' }));
   };
+
+  const memberCount = selectedUsers.filter((u) => !!u.userName).length;
 
   return (
     <MasterFormShell
@@ -161,98 +231,210 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
       showSuccessAlert={showSuccessAlert}
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
-      {/* Disabled System Code */}
-      <div className="flex items-center gap-0.5 px-1 mb-4">
-        <label className="text-[11px] font-medium text-slate-700 normal-case">Code:</label>
-        <div className="text-xs font-medium text-slate-500 select-none">
-          {editingId ? code : 'AUTO-GEN-CODE'}
-        </div>
-      </div>
-
-      {/* Standard Name Input */}
-      <div className="space-y-0">
-        <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">User Group Name <span className="text-red-500 font-medium">*</span></label>
-        <Input placeholder="Enter user group name" value={name} maxLength={50} onChange={(e) => {
-          setName(e.target.value);
-          if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-        }}
-          className={cn(
-            "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-            errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-          )}
-        />
-        {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
-      </div>
-
-      <div className="space-y-3">
-        <div className="space-y-0">
-          <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Group Description <span className="text-red-500 font-medium">*</span></label>
-          <Input placeholder="Enter Group Description" value={description} onChange={(e) => setDescription(e.target.value)}
-            className={cn(
-              "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-              errors.description && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-            )}
-          />
-          {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
-        </div>
-
-        <div className="space-y-3" id="form-group-members">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-1">
-              <h4 className="text-[11px] font-medium text-slate-700  ">Group Members <span className="text-red-500 font-medium">*</span></h4>
-            </div>
-            <Button type="button" onClick={addGridUser} variant="ghost" size="sm" className="h-7 text-[9px] font-medium text-[#006699] hover:bg-[#e1ecf7] rounded-lg gap-1">
-              <UserPlus size={12} /> Add
-            </Button>
+      <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+            <Users size={15} strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Group Details</h2>
+            <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
+              Define the user group name and description
+            </p>
           </div>
-          <div className={cn("bg-slate-50/50 rounded-xl border border-slate-200 overflow-hidden shadow-sm transition-all", errors.selectedUsers && "border-red-500 ring-2 ring-red-500/10")}>
-            <table className="w-full text-left text-[11px] border-collapse">
-              <thead className="bg-slate-100/80 border-b border-slate-200">
-                <tr>
-                  <th className="px-3 py-1.5 font-semibold text-slate-700  ">User Name</th>
-                  <th className="px-3 py-1.5 font-semibold text-slate-700  ">Display Name</th>
-                  <th className="px-3 py-1.5 font-semibold text-slate-700  ">Email</th>
-                  <th className="px-2 py-1.5 w-8"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {selectedUsers.map((field, index) => {
-                  const isDuplicate = !!field.loginNo && duplicateLoginNos.has(field.loginNo);
-                  return (
-                  <tr key={index} className={cn("group transition-colors", isDuplicate ? "bg-red-50/70 hover:bg-red-50" : "hover:bg-white")}>
-                    <td className="px-2 py-1">
-                      <UserCombobox value={field.userName} onChange={(user) => updateGridUser(index, user)}
-                        placeholder="User Name"
-                        className="h-7 rounded-lg border-transparent group-hover:border-slate-200 focus:border-[#006699] text-[11px] bg-transparent shadow-none px-2"
-                        initialLabel={field.userName}
-                        error={isDuplicate}
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Input disabled value={field.displayName} placeholder="Display Name" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Input disabled value={field.email} placeholder="Email" className="h-7 rounded-lg border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-900 " />
-                    </td>
-                    <td className="px-1 py-1 text-center">
-                      <button type="button" onClick={() => removeGridUser(index)} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md">
-                        <Trash2 size={12} />
-                      </button>
-                    </td>
-                  </tr>
-                  );
-                })}
-                {selectedUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-slate-400 italic font-medium">No members.</td>
-                  </tr>
+        </div>
+
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 w-full">
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel>Code</FieldLabel>
+              <Input
+                readOnly
+                tabIndex={-1}
+                value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
+                className={cn(
+                  fieldClass,
+                  'bg-[#f8fbfd] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-slate-200/80'
                 )}
-              </tbody>
-            </table>
+              />
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel htmlFor="userGroupName" required>
+                User Group Name
+              </FieldLabel>
+              <FieldControl error={errors.name}>
+                <Input
+                  id="userGroupName"
+                  placeholder="Enter user group name"
+                  value={name}
+                  maxLength={50}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+                  }}
+                  className={cn(
+                    fieldClass,
+                    errors.name &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                />
+              </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <FieldLabel htmlFor="userGroupDescription" required>
+                Group Description
+              </FieldLabel>
+              <FieldControl error={errors.description}>
+                <Input
+                  id="userGroupDescription"
+                  placeholder="Enter Group Description"
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
+                  }}
+                  className={cn(
+                    fieldClass,
+                    errors.description &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                />
+              </FieldControl>
+            </div>
           </div>
-          {errors.selectedUsers && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.selectedUsers}</p>}
         </div>
-      </div>
+      </section>
+
+      <section
+        id="form-group-members"
+        className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible"
+      >
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+              <UserPlus size={15} strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-800 tracking-tight inline-flex items-center gap-1">
+                Group Members
+                <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
+                  *
+                </span>
+              </h2>
+              <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
+                {memberCount > 0
+                  ? `${memberCount} member${memberCount === 1 ? '' : 's'} selected`
+                  : 'Add at least one user to this group'}
+              </p>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            onClick={addGridUser}
+            className="h-8 px-3 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-white text-[11px] font-semibold gap-1.5 shrink-0 shadow-sm shadow-[#006699]/20"
+          >
+            <UserPlus size={13} strokeWidth={2.5} />
+            Add
+          </Button>
+        </div>
+
+        <div className="p-4 sm:p-5 space-y-2">
+          <div
+            className={cn(
+              'rounded-[8px] border border-slate-200/80 overflow-hidden bg-white',
+              errors.selectedUsers && 'border-red-400 ring-2 ring-red-500/10'
+            )}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[11px] border-collapse table-fixed">
+                <thead>
+                  <tr className="bg-[#f8fbfd] border-b border-slate-100">
+                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
+                      User Name
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
+                      Display Name
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[36%]">
+                      Email
+                    </th>
+                    <th className="px-2 py-2.5 w-10" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {selectedUsers.map((field, index) => {
+                    const isDuplicate = !!field.loginNo && duplicateLoginNos.has(field.loginNo);
+                    return (
+                      <tr
+                        key={index}
+                        className={cn(
+                          'group transition-colors',
+                          isDuplicate ? 'bg-red-50/70 hover:bg-red-50' : 'hover:bg-[#f8fbfd]/80'
+                        )}
+                      >
+                        <td className="px-2 py-1.5">
+                          <UserCombobox
+                            value={field.userName}
+                            onChange={(user) => updateGridUser(index, user)}
+                            placeholder="Select user"
+                            className="h-8 rounded-[8px] border-slate-200/80 group-hover:border-slate-300 focus:border-[#006699] text-[11px] bg-white shadow-none px-2"
+                            initialLabel={field.userName}
+                            error={isDuplicate}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <Input
+                            disabled
+                            value={field.displayName}
+                            placeholder="—"
+                            className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-700"
+                          />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <Input
+                            disabled
+                            value={field.email}
+                            placeholder="—"
+                            className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-700"
+                          />
+                        </td>
+                        <td className="px-1 py-1.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeGridUser(index)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            aria-label="Remove member"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {selectedUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-8 text-center">
+                        <p className="text-xs font-medium text-slate-400">No members yet</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Click Add to include users in this group
+                        </p>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {errors.selectedUsers ? (
+            <p className="text-[10px] text-red-500 font-semibold px-0.5">{errors.selectedUsers}</p>
+          ) : null}
+        </div>
+      </section>
     </MasterFormShell>
   );
 }

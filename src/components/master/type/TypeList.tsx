@@ -79,7 +79,7 @@ export function TypeList() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}

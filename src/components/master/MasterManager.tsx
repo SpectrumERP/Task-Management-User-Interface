@@ -71,5 +71,9 @@ export function MasterManager({ type }: MasterManagerProps) {
   const isFormPage = location.pathname.endsWith('/new') || !!id;
 
   const { Form, List } = ENTITY_REGISTRY[type];
-  return isFormPage ? <Form id={id} /> : <List />;
+  return (
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
+      {isFormPage ? <Form id={id} /> : <List />}
+    </div>
+  );
 }

@@ -27,28 +27,29 @@ export function MasterPaginationBar({
   const safeCurrentPage = currentPage;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-slate-50/70 border-t border-slate-100 gap-4 select-none mt-auto shrink-0">
-      {/* Left Side: Range Info */}
+    <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-2.5 bg-[#f8fbfd] border-t border-slate-100 gap-3 select-none shrink-0">
       <div className="text-[11px] text-slate-500 font-medium">
-        Showing <span className="text-slate-800 font-medium">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
-        <span className="text-slate-800 font-medium">{endIndex}</span> of{" "}
-        <span className="text-slate-800 font-medium">{totalItems}</span> records
+        Showing{' '}
+        <span className="text-slate-800 font-semibold tabular-nums">
+          {totalItems === 0 ? 0 : startIndex + 1}
+        </span>{' '}
+        to <span className="text-slate-800 font-semibold tabular-nums">{endIndex}</span> of{' '}
+        <span className="text-slate-800 font-semibold tabular-nums">{totalItems}</span> records
       </div>
 
-      {/* Center: Items Per Page Selector */}
-      <div className="flex items-center gap-0.5">
-        <span className="text-[10px] font-medium text-slate-400  ">Per Page:</span>
-        <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-medium text-slate-400">Per page</span>
+        <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-[8px] border border-slate-200/80">
           {[10, 25, 50].map((size) => (
             <button
               key={size}
               type="button"
               onClick={() => onItemsPerPageChange(size)}
               className={cn(
-                "h-6 px-2.5 rounded-md text-[10px] font-medium tracking-wide uppercase transition-all",
+                'h-6 px-2.5 rounded-[6px] text-[10px] font-semibold tabular-nums transition-colors',
                 itemsPerPage === size
-                  ? "bg-[#006699] text-white shadow-sm font-medium"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                  ? 'bg-[#006699] text-white'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
               )}
             >
               {size}
@@ -57,14 +58,14 @@ export function MasterPaginationBar({
         </div>
       </div>
 
-      {/* Right Side: Page Controls */}
       <div className="flex items-center gap-1">
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           disabled={safeCurrentPage === 1}
           onClick={() => onPageChange(Math.max(1, safeCurrentPage - 1))}
-          className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+          className="h-7 w-7 rounded-[6px] text-slate-500 hover:bg-white disabled:opacity-40 border border-slate-200/80 bg-white shadow-none"
         >
           <ChevronLeft size={14} strokeWidth={2.5} />
         </Button>
@@ -84,19 +85,19 @@ export function MasterPaginationBar({
 
               return (
                 <React.Fragment key={page}>
-                  {hasGap && (
+                  {hasGap ? (
                     <span className="text-[10px] font-medium text-slate-400 px-1 select-none">
                       ...
                     </span>
-                  )}
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => onPageChange(page)}
                     className={cn(
-                      "h-7 w-7 rounded-lg text-[10px] font-medium transition-all flex items-center justify-center border shadow-sm",
+                      'h-7 w-7 rounded-[6px] text-[10px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
                       isPageActive
-                        ? "bg-[#006699] border-[#006699] text-white font-medium shadow-md shadow-[#006699]/10"
-                        : "bg-white border-slate-200 text-slate-650 hover:bg-slate-50 hover:text-slate-900"
+                        ? 'bg-[#006699] border-[#006699] text-white'
+                        : 'bg-white border-slate-200/80 text-slate-600 hover:bg-slate-50'
                     )}
                   >
                     {page}
@@ -107,11 +108,12 @@ export function MasterPaginationBar({
         </div>
 
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           disabled={safeCurrentPage === totalPages}
           onClick={() => onPageChange(Math.min(totalPages, safeCurrentPage + 1))}
-          className="h-7 w-7 rounded-lg text-slate-505 hover:bg-slate-105 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+          className="h-7 w-7 rounded-[6px] text-slate-500 hover:bg-white disabled:opacity-40 border border-slate-200/80 bg-white shadow-none"
         >
           <ChevronRight size={14} strokeWidth={2.5} />
         </Button>

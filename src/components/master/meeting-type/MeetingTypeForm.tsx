@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { SlidersHorizontal } from 'lucide-react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -10,6 +11,62 @@ import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 
 const FORM_NO = 1560;
 const TITLE = 'Meeting Type Master';
+
+const fieldClass =
+  'h-10 w-full rounded-[8px] border-slate-200/80 bg-white text-xs font-medium text-slate-700 shadow-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]';
+
+function FieldErrorTip({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <span
+      role="alert"
+      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
+    >
+      {message}
+    </span>
+  );
+}
+
+function FieldControl({
+  children,
+  error,
+  className,
+}: {
+  children: ReactNode;
+  error?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('relative min-w-0', className)}>
+      {children}
+      <FieldErrorTip message={error} />
+    </div>
+  );
+}
+
+function FieldLabel({
+  children,
+  required,
+  htmlFor,
+}: {
+  children: ReactNode;
+  required?: boolean;
+  htmlFor?: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600"
+    >
+      <span>{children}</span>
+      {required ? (
+        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
+          *
+        </span>
+      ) : null}
+    </label>
+  );
+}
 
 interface MeetingTypeFormProps {
   id?: string;
@@ -32,15 +89,18 @@ export function MeetingTypeForm({ id }: MeetingTypeFormProps) {
 
   useEffect(() => {
     if (!editingId) return;
-    apiService.get<any>(`/api/master/meeting-types/load-data/${editingId}?companyNo=${companyNo}`).then((response) => {
-      if (response) {
-        const dl = response.data || response;
-        if (dl) {
-          setMeetingTypeName(dl.meetingTypeName || '');
-          setCode(dl.code || '');
+    apiService
+      .get<any>(`/api/master/meeting-types/load-data/${editingId}?companyNo=${companyNo}`)
+      .then((response) => {
+        if (response) {
+          const dl = response.data || response;
+          if (dl) {
+            setMeetingTypeName(dl.meetingTypeName || '');
+            setCode(dl.code || '');
+          }
         }
-      }
-    }).catch(err => console.error('Failed to load meeting type details:', err));
+      })
+      .catch((err) => console.error('Failed to load meeting type details:', err));
   }, [editingId, companyNo]);
 
   const validate = () => {
@@ -90,29 +150,64 @@ export function MeetingTypeForm({ id }: MeetingTypeFormProps) {
       onCancelConfirm={() => setShowConfirm(false)}
       onConfirmSave={handleConfirmSave}
       showSuccessAlert={showSuccessAlert}
-      onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
+      onSuccessOk={() => {
+        setShowSuccessAlert(false);
+        goToList();
+      }}
     >
-      {/* Disabled System Code */}
-      <div className="flex items-center gap-0.5 px-1 mb-4">
-        <label className="text-[11px] font-medium text-slate-700 normal-case">Code:</label>
-        <div className="text-xs font-medium text-slate-500 select-none">
-          {editingId ? code : 'AUTO-GEN-CODE'}
+      <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+            <SlidersHorizontal size={15} strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Type Details</h2>
+            <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
+              Define the meeting type name used across meeting notes
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-0">
-        <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Meeting Type Name <span className="text-red-500 font-medium">*</span></label>
-        <Input placeholder="Enter Meeting Type Name" value={meetingTypeName} maxLength={100} onChange={(e) => {
-          setMeetingTypeName(e.target.value);
-          if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-        }}
-          className={cn(
-            "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-            errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500"
-          )}
-        />
-        {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1 mt-1">{errors.name}</p>}
-      </div>
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5 max-w-3xl">
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel>Code</FieldLabel>
+              <Input
+                readOnly
+                tabIndex={-1}
+                value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
+                className={cn(
+                  fieldClass,
+                  'bg-[#f8fbfd] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-slate-200/80'
+                )}
+              />
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel htmlFor="meetingTypeName" required>
+                Meeting Type Name
+              </FieldLabel>
+              <FieldControl error={errors.name}>
+                <Input
+                  id="meetingTypeName"
+                  placeholder="Enter Meeting Type Name"
+                  value={meetingTypeName}
+                  maxLength={100}
+                  onChange={(e) => {
+                    setMeetingTypeName(e.target.value);
+                    if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+                  }}
+                  className={cn(
+                    fieldClass,
+                    errors.name &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                />
+              </FieldControl>
+            </div>
+          </div>
+        </div>
+      </section>
     </MasterFormShell>
   );
 }
