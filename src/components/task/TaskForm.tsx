@@ -2051,7 +2051,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   {form.formState.errors.company && <p className="text-[10px] text-red-500 font-medium ml-1">{form.formState.errors.company.message}</p>}
                 </div>
                 <div className="space-y-0" id="form-group-location_No">
-                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Business location <span className="text-red-500 font-medium">*</span></Label>
+                  <Label className="text-slate-700 font-medium text-[11px] ml-1">Task location <span className="text-red-500 font-medium">*</span></Label>
                   <Controller
                     name="location_No"
                     control={form.control}

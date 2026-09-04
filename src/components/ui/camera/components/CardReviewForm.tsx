@@ -47,7 +47,6 @@ export function CardReviewForm({ data, onChange }: CardReviewFormProps) {
           className='rounded-md'
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <ClipboardInput
@@ -58,17 +57,16 @@ export function CardReviewForm({ data, onChange }: CardReviewFormProps) {
             onValueChange={(val) => handleChange('email', val)}
             className='rounded-md'
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="phone">Phone</Label>
-          <ClipboardInput
-            id="phone"
-            fieldLabel="Phone"
-            value={data.phone || ''}
-            onValueChange={(val) => handleChange('phone', val)}
-            className='rounded-md'
-          />
-        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="phone">Phone</Label>
+        <ClipboardInput
+          id="phone"
+          fieldLabel="Phone"
+          value={data.phone || ''}
+          onValueChange={(val) => handleChange('phone', val)}
+          className='rounded-md'
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="website">Website</Label>

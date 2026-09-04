@@ -128,7 +128,7 @@ export const ClipboardInput = React.forwardRef<HTMLInputElement, ClipboardInputP
               ref={ref}
               value={value}
               onChange={(e) => onValueChange(e.target.value)}
-              className={cn("pr-16", className)}
+              className={cn("pr-2", className)}
               {...props}
             />
             
@@ -146,7 +146,7 @@ export const ClipboardInput = React.forwardRef<HTMLInputElement, ClipboardInputP
               <button
                 type="button"
                 onClick={handleCopy}
-                className="p-1 text-slate-400 hover:text-slate-700 bg-white rounded-sm"
+                className="p-1 text-slate-400 hover:text-slate-700 group-hover:bg-white rounded-sm"
                 title="Copy value"
               >
                 <ClipboardCopy className="w-3.5 h-3.5" />
@@ -156,7 +156,7 @@ export const ClipboardInput = React.forwardRef<HTMLInputElement, ClipboardInputP
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="p-1 text-slate-400 hover:text-slate-700 bg-white rounded-sm"
+                    className="p-1 text-slate-400 hover:text-slate-700 group-hover:bg-white rounded-sm"
                     title="Clipboard history"
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
