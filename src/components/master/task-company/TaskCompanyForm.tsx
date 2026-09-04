@@ -5,6 +5,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/Combobox';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { cn } from '@/lib/utils';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterCreateDialog } from '../MasterCreateDialog';
@@ -35,6 +36,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
   const [tcAddress2, setTcAddress2] = useState('');
   const [tcAddress3, setTcAddress3] = useState('');
   const [tcPinCode, setTcPinCode] = useState('');
+  const [tcIncorporationDate, setTcIncorporationDate] = useState<Date | undefined>(undefined);
   const [tcCountryNo, setTcCountryNo] = useState('');
   const [tcStateNo, setTcStateNo] = useState('');
   const [tcCityNo, setTcCityNo] = useState('');
@@ -72,6 +74,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
           setTcAddress2(dl.address2 || '');
           setTcAddress3(dl.address3 || '');
           setTcPinCode(dl.pinCode || '');
+          setTcIncorporationDate(dl.incorporationDate ? new Date(dl.incorporationDate) : undefined);
           setCode(dl.code || '');
           const countryVal = dl.country?.id ?? dl.countryNo ?? '';
           const stateVal = dl.state?.id ?? dl.stateNo ?? '';
@@ -123,6 +126,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
         stateNo: parseInt(tcStateNo) || null,
         countryNo: parseInt(tcCountryNo) || null,
         pinCode: tcPinCode,
+        incorporationDate: tcIncorporationDate ? tcIncorporationDate.toISOString() : null,
       };
       await apiService.post('/api/crm/task-companies/save', payload);
       setShowSuccessAlert(true);
@@ -302,6 +306,16 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
               placeholder="Enter Pin Code"
               className="h-10 rounded-[8px] border-[#a8afb7] hover:border-[#006699]/35 bg-white text-xs font-medium text-slate-700 placeholder:text-slate-400 placeholder:font-semibold transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-offset-0 w-full"
               maxLength={6}
+            />
+          </div>
+
+          <div className="space-y-0">
+            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Date of Incorporation</label>
+            <DatePicker
+              date={tcIncorporationDate}
+              onChange={setTcIncorporationDate}
+              placeholder="Select date of incorporation"
+              className="h-10"
             />
           </div>
         </div>

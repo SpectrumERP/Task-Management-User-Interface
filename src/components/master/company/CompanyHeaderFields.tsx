@@ -16,6 +16,8 @@ interface CompanyHeaderFieldsProps {
   setCompanyTimeZoneNo: (v: string) => void;
   creditLimit: number | null;
   setCreditLimit: (v: number | null) => void;
+  creditInsuranceCompanyName: string;
+  setCreditInsuranceCompanyName: (v: string) => void;
   companyVatGst: string;
   setCompanyVatGst: (v: string) => void;
   businessEntityTypes: any[];
@@ -36,6 +38,8 @@ export function CompanyHeaderFields({
   setCompanyTimeZoneNo,
   creditLimit,
   setCreditLimit,
+  creditInsuranceCompanyName,
+  setCreditInsuranceCompanyName,
   companyVatGst,
   setCompanyVatGst,
   businessEntityTypes,
@@ -202,6 +206,13 @@ export function CompanyHeaderFields({
           <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Credit Insurance Limit</label>
           <Input type="number" placeholder="Enter credit insurance limit" value={creditLimit ?? ''} onChange={(e) => setCreditLimit(e.target.value === '' ? null : Number(e.target.value))}
             className="bg-white border-[#a8afb7] hover:border-[#006699]/35 transition-colors h-10 rounded-[8px] focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
+          />
+        </div>
+
+        <div className="space-y-0">
+          <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Credit Insurance Company Name</label>
+          <Input placeholder="Enter credit insurance company name" value={creditInsuranceCompanyName} maxLength={100} onChange={(e) => setCreditInsuranceCompanyName(e.target.value)}
+            className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
           />
         </div>
 

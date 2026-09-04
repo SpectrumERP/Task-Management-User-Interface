@@ -89,6 +89,36 @@ export function CardReviewForm({ data, onChange }: CardReviewFormProps) {
 
         />
       </div>
+        <div className="space-y-2">
+          <Label htmlFor="city">City</Label>
+          <ClipboardInput
+            id="city"
+            fieldLabel="City"
+            value={data.city || ''}
+            onValueChange={(val) => handleChange('city', val)}
+            className='rounded-md'
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="state">State</Label>
+          <ClipboardInput
+            id="state"
+            fieldLabel="State"
+            value={data.state || ''}
+            onValueChange={(val) => handleChange('state', val)}
+            className='rounded-md'
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="country">Country</Label>
+          <ClipboardInput
+            id="country"
+            fieldLabel="Country"
+            value={data.country || ''}
+            onValueChange={(val) => handleChange('country', val)}
+            className='rounded-md'
+          />
+        </div>
     </div>
   );
 }

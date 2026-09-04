@@ -11,6 +11,7 @@ interface MasterListHeaderProps {
   onAddClick: () => void;
   canAdd: boolean;
   children?: React.ReactNode;
+  searchPlaceholder?: string;
 }
 
 export function MasterListHeader({
@@ -20,6 +21,7 @@ export function MasterListHeader({
   onAddClick,
   canAdd,
   children,
+  searchPlaceholder,
 }: MasterListHeaderProps) {
   return (
     <>
@@ -37,7 +39,7 @@ export function MasterListHeader({
         <div className="flex-1 flex items-center gap-2.5 h-10 rounded-[8px] border border-[#a8afb7] bg-white px-3 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
           <Search size={15} className="text-slate-400 shrink-0" strokeWidth={1.75} />
           <Input
-            placeholder={`Search ${title.toLowerCase()} records by name, code...`}
+            placeholder={searchPlaceholder || `Search ${title.toLowerCase()} records by name, code...`}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="bg-transparent border-none text-xs font-medium text-slate-700 h-full p-0 shadow-none focus-visible:ring-0 placeholder:text-slate-400 flex-1"

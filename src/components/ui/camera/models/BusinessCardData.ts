@@ -7,5 +7,8 @@ export interface BusinessCardData {
   phone?: string;
   website?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
   logo?: string;
 }

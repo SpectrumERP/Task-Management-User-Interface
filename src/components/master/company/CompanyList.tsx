@@ -469,7 +469,7 @@ export function CompanyList() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
         <Card className="flex-1 p-3.5 border-none shadow-md shadow-slate-200/20 bg-white/90 backdrop-blur-md rounded-xl sm:rounded-2xl flex items-center gap-3 h-10 sm:h-11">
           <Search size={16} className="text-slate-400 ml-1 shrink-0" />
-          <Input placeholder="Search business entity master records by name, code..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+          <Input placeholder="Search business entity master records by name, code, city, state, country..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             className="bg-transparent border-none text-xs font-medium text-slate-700 h-full p-0 focus-visible:ring-0 placeholder:text-slate-400 placeholder:font-semibold flex-1"
           />
           {searchQuery && (
@@ -567,6 +567,9 @@ export function CompanyList() {
                           <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Business Entity Name</th>
                           <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Type</th>
                           <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Primary Address</th>
+                          <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">City</th>
+                          <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">State</th>
+                          <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Country</th>
                           <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">VAT/GST No.</th>
                           <th className="px-4 py-3 text-[11px] font-semibold text-slate-600  ">Credit Limit</th>
                           <th className="px-4 py-3 text-[11px] font-semibold text-slate-600   text-center pr-5">Actions</th>
@@ -593,6 +596,15 @@ export function CompanyList() {
                               </td>
                               <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[200px] truncate" title={locStr}>
                                 {locStr}
+                              </td>
+                              <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+                                {company.city || 'N/A'}
+                              </td>
+                              <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+                                {company.state || 'N/A'}
+                              </td>
+                              <td className="px-4 py-3 text-xs font-semibold text-slate-500">
+                                {company.country || 'N/A'}
                               </td>
                               <td className="px-4 py-3 text-xs font-semibold text-slate-500 font-mono">
                                 {company.vatGst || 'N/A'}

@@ -18,7 +18,7 @@ import { CompanyContactsSection } from './CompanyContactsSection';
 import { CompanyContactModal } from './CompanyContactModal';
 import { CompanyPortsSection } from './CompanyPortsSection';
 import { CompanyAttachmentsSection } from './CompanyAttachmentsSection';
-import { CompanyNotesSection } from './CompanyNotesSection';
+import { CompanyNotesSection, FollowUpNote } from './CompanyNotesSection';
 
 const FORM_NO = 1550;
 const TITLE = 'Business Entity Master';
@@ -39,8 +39,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [companyType, setCompanyType] = useState('');
   const [companyTimeZoneNo, setCompanyTimeZoneNo] = useState('');
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
+  const [creditInsuranceCompanyName, setCreditInsuranceCompanyName] = useState('');
   const [companyVatGst, setCompanyVatGst] = useState('');
-  const [companyNotes, setCompanyNotes] = useState('');
+  const [followUpNotes, setFollowUpNotes] = useState<FollowUpNote[]>([]);
   const [businessEntityFillValues, setBusinessEntityFillValues] = useState<any>(null);
 
   // Locations
@@ -112,9 +113,13 @@ export function CompanyForm({ id }: CompanyFormProps) {
           setName(dl.businessEntityName || '');
           setCompanyType(dl.businessEntityType?.id?.toString() || '');
           setCompanyVatGst(dl.vatgstNo || '');
-          setCreditLimit(dl.creditInsuranceLimit || null);
+          setCreditLimit(dl.creditInsuranceLimit ?? null);
+          setCreditInsuranceCompanyName(dl.creditInsuranceCompanyName || '');
           setCompanyTimeZoneNo(dl.timeZone?.timeZoneNo?.toString() || '');
-          setCompanyNotes(dl.notes || '');
+          const mappedFollowUpNotes: FollowUpNote[] = Array.isArray(dl.followUpDetails)
+            ? dl.followUpDetails.map((n: any) => ({ date: n.followUpDate || '', note: n.followUpNotes || '' }))
+            : (dl.notes ? [{ date: '', note: dl.notes }] : []);
+          setFollowUpNotes(mappedFollowUpNotes);
 
           const mappedLocations = (dl.locations || []).map((l: any) => ({
             type: l.locationType?.addressTypeNo?.toString() || l.locationType?.addressTypeName || '',
@@ -660,6 +665,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
         crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : null,
         vatgstNo: companyVatGst || null,
         creditInsuranceLimit: creditLimit ?? null,
+        creditInsuranceCompanyName: creditInsuranceCompanyName || null,
         address: null,
         countryNo: null,
         stateNo: null,
@@ -669,7 +675,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
         locations: computedLocations,
         ports: computedPorts,
         attachment: computedAttachments,
-        notes: companyNotes || null
+        followUpDetails: followUpNotes.map(n => ({ followUpNotes: n.note, followUpDate: n.date || null }))
       };
       await apiService.post('/api/master/business-entities/save', payload);
       setShowSuccessAlert(true);
@@ -708,6 +714,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
           setCompanyTimeZoneNo={setCompanyTimeZoneNo}
           creditLimit={creditLimit}
           setCreditLimit={setCreditLimit}
+          creditInsuranceCompanyName={creditInsuranceCompanyName}
+          setCreditInsuranceCompanyName={setCreditInsuranceCompanyName}
           companyVatGst={companyVatGst}
           setCompanyVatGst={setCompanyVatGst}
           businessEntityTypes={businessEntityTypes}
@@ -752,7 +760,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
           error={errors.attachments}
         />
 
-        <CompanyNotesSection notes={companyNotes} onChange={setCompanyNotes} />
+        <CompanyNotesSection notes={followUpNotes} onChange={setFollowUpNotes} />
 
         {isCameraModalOpen && (
         <Dialog
@@ -807,7 +815,27 @@ export function CompanyForm({ id }: CompanyFormProps) {
                           phoneNo: data.phone || data.mobile || '',
                           email: data.email || '',
                           address: data.address || '',
+                          country: data.country || '',
+                          state: data.state || '',
+                          city: data.city || '',
                           status: 'Active'
+                        }
+                      ]);
+                    }
+                    if (data.address || data.city || data.state || data.country) {
+                      const defaultLocType = locationTypes.find((t: any) => /office/i.test(t.locationTypeName || ''))?.locationTypeNo ?? locationTypes[0]?.locationTypeNo;
+                      setCompanyLocations(prev => [
+                        ...prev,
+                        {
+                          type: defaultLocType !== undefined ? defaultLocType.toString() : '',
+                          address: data.address || '',
+                          country: data.country || '',
+                          state: data.state || '',
+                          city: data.city || '',
+                          pinCode: '',
+                          mapUrl: '',
+                          latitude: '',
+                          longitude: ''
                         }
                       ]);
                     }
