@@ -21,8 +21,28 @@ import { CompanyPortsSection } from './CompanyPortsSection';
 import { CompanyAttachmentsSection } from './CompanyAttachmentsSection';
 import { CompanyNotesSection, FollowUpNote } from './CompanyNotesSection';
 
+/* API payloads in this form are loosely typed; keep runtime behavior unchanged. */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 const FORM_NO = 1550;
 const TITLE = 'Business Entity Master';
+
+/** Loose shapes returned by master geo / fill-values APIs */
+type GeoCountry = { countryName?: string; countryNo?: string | number };
+type GeoState = { stateName?: string; stateNo?: string | number; id?: string | number };
+type GeoCity = { cityName?: string; cityNo?: string | number; id?: string | number };
+
+const asGeoList = <T,>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
+
+const resolveGeoNo = (
+  row: { stateNo?: string | number; countryNo?: string | number; cityNo?: string | number; id?: string | number } | undefined,
+  key: 'stateNo' | 'countryNo' | 'cityNo'
+): string | number | null => {
+  if (!row) return null;
+  const value = row[key] ?? row.id;
+  if (value === undefined || value === null || value === '') return null;
+  return value;
+};
 
 interface CompanyFormProps {
   id?: string;
@@ -59,8 +79,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [locLatitude, setLocLatitude] = useState('');
   const [locLongitude, setLocLongitude] = useState('');
   const [locErrors, setLocErrors] = useState<Record<string, string>>({});
-  const [locStatesList, setLocStatesList] = useState<any[]>([]);
-  const [locCitiesList, setLocCitiesList] = useState<any[]>([]);
+  const [locStatesList, setLocStatesList] = useState<GeoState[]>([]);
+  const [locCitiesList, setLocCitiesList] = useState<GeoCity[]>([]);
 
   // Contacts
   const [companyContacts, setCompanyContacts] = useState<any[]>([]);
@@ -78,8 +98,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [contactPinCode, setContactPinCode] = useState('');
   const [contactStatus, setContactStatus] = useState('Active');
   const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
-  const [contactStatesList, setContactStatesList] = useState<any[]>([]);
-  const [contactCitiesList, setContactCitiesList] = useState<any[]>([]);
+  const [contactStatesList, setContactStatesList] = useState<GeoState[]>([]);
+  const [contactCitiesList, setContactCitiesList] = useState<GeoCity[]>([]);
 
   // Ports
   const [companyPorts, setCompanyPorts] = useState<any[]>([]);
@@ -180,25 +200,30 @@ export function CompanyForm({ id }: CompanyFormProps) {
     }).catch(err => console.error('Failed to load company details via API:', err));
   }, [editingId, companyNo]);
 
-  const countries = businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries || [];
+  const countries: GeoCountry[] = asGeoList<GeoCountry>(
+    businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries
+  );
   const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
   const timeZones = businessEntityFillValues?.data?.timeZones || businessEntityFillValues?.timeZones || [];
   const locationTypes = businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || [];
   const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
 
   const getCountryNo = (countryName: string) => {
-    const found = countries.find((x: any) => x.countryName?.toLowerCase() === countryName?.toLowerCase());
-    return found ? parseInt(found.countryNo) : null;
+    const found = countries.find((x) => x.countryName?.toLowerCase() === countryName?.toLowerCase());
+    const no = resolveGeoNo(found, 'countryNo');
+    return no != null ? parseInt(String(no), 10) : null;
   };
   const getStateNo = (stateName: string) => {
     const list = locStatesList.length ? locStatesList : (contactStatesList.length ? contactStatesList : []);
-    const found = list.find((x: any) => x.stateName?.toLowerCase() === stateName?.toLowerCase());
-    return found ? parseInt(found.stateNo) : null;
+    const found = list.find((x) => x.stateName?.toLowerCase() === stateName?.toLowerCase());
+    const no = resolveGeoNo(found, 'stateNo');
+    return no != null ? parseInt(String(no), 10) : null;
   };
   const getCityNo = (cityName: string) => {
     const list = locCitiesList.length ? locCitiesList : (contactCitiesList.length ? contactCitiesList : []);
-    const found = list.find((x: any) => x.cityName?.toLowerCase() === cityName?.toLowerCase());
-    return found ? parseInt(found.cityNo) : null;
+    const found = list.find((x) => x.cityName?.toLowerCase() === cityName?.toLowerCase());
+    const no = resolveGeoNo(found, 'cityNo');
+    return no != null ? parseInt(String(no), 10) : null;
   };
   const getPortNo = (portName: string) => {
     const list = businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || [];
@@ -246,14 +271,17 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocationModalOpen(true);
 
     if (loc.country) {
-      const foundCountry = countries.find((c: any) => c.countryName?.toLowerCase() === loc.country.toLowerCase());
-      if (foundCountry) {
-        fetchStatesByCountry(foundCountry.countryNo).then((states) => {
-          setLocStatesList(states);
+      const foundCountry = countries.find((c) => c.countryName?.toLowerCase() === loc.country.toLowerCase());
+      const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+      if (countryNo != null) {
+        fetchStatesByCountry(countryNo).then((states) => {
+          const stateRows = asGeoList<GeoState>(states);
+          setLocStatesList(stateRows);
           if (loc.state) {
-            const foundState = states.find((s: any) => s.stateName?.toLowerCase() === loc.state.toLowerCase());
-            if (foundState) {
-              fetchCitiesByState(foundState.stateNo).then((cities) => setLocCitiesList(cities));
+            const foundState = stateRows.find((s) => s.stateName?.toLowerCase() === loc.state.toLowerCase());
+            const stateNo = resolveGeoNo(foundState, 'stateNo');
+            if (stateNo != null) {
+              fetchCitiesByState(stateNo).then((cities) => setLocCitiesList(asGeoList<GeoCity>(cities)));
             }
           }
         });
@@ -273,10 +301,11 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCitiesList([]);
     if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
 
-    const foundCountry = countries.find((c: any) => c.countryName === val);
-    if (foundCountry) {
-      const statesData = await fetchStatesByCountry(foundCountry.countryNo);
-      setLocStatesList(statesData);
+    const foundCountry = countries.find((c) => c.countryName === val);
+    const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+    if (countryNo != null) {
+      const statesData = await fetchStatesByCountry(countryNo);
+      setLocStatesList(asGeoList<GeoState>(statesData));
     }
   };
 
@@ -286,10 +315,11 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCitiesList([]);
     if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
 
-    const foundState = locStatesList.find((s: any) => s.stateName === val);
-    if (foundState) {
-      const citiesData = await fetchCitiesByState(foundState.stateNo);
-      setLocCitiesList(citiesData);
+    const foundState = locStatesList.find((s) => s.stateName === val);
+    const stateNo = resolveGeoNo(foundState, 'stateNo');
+    if (stateNo != null) {
+      const citiesData = await fetchCitiesByState(stateNo);
+      setLocCitiesList(asGeoList<GeoCity>(citiesData));
     }
   };
 
@@ -374,14 +404,17 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactModalOpen(true);
 
     if (c.country) {
-      const foundCountry = countries.find((cnt: any) => cnt.countryName?.toLowerCase() === c.country.toLowerCase());
-      if (foundCountry) {
-        fetchStatesByCountry(foundCountry.countryNo).then((states) => {
-          setContactStatesList(states);
+      const foundCountry = countries.find((cnt) => cnt.countryName?.toLowerCase() === c.country.toLowerCase());
+      const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+      if (countryNo != null) {
+        fetchStatesByCountry(countryNo).then((states) => {
+          const stateRows = asGeoList<GeoState>(states);
+          setContactStatesList(stateRows);
           if (c.state) {
-            const foundState = states.find((s: any) => s.stateName?.toLowerCase() === c.state.toLowerCase());
-            if (foundState) {
-              fetchCitiesByState(foundState.stateNo).then((cities) => setContactCitiesList(cities));
+            const foundState = stateRows.find((s) => s.stateName?.toLowerCase() === c.state.toLowerCase());
+            const stateNo = resolveGeoNo(foundState, 'stateNo');
+            if (stateNo != null) {
+              fetchCitiesByState(stateNo).then((cities) => setContactCitiesList(asGeoList<GeoCity>(cities)));
             }
           }
         });
@@ -411,10 +444,11 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactCitiesList([]);
     if (contactErrors.country) setContactErrors(prev => ({ ...prev, country: '' }));
 
-    const foundCountry = countries.find((c: any) => c.countryName === val);
-    if (foundCountry) {
-      const statesData = await fetchStatesByCountry(foundCountry.countryNo);
-      setContactStatesList(statesData);
+    const foundCountry = countries.find((c) => c.countryName === val);
+    const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+    if (countryNo != null) {
+      const statesData = await fetchStatesByCountry(countryNo);
+      setContactStatesList(asGeoList<GeoState>(statesData));
     }
   };
 
@@ -424,10 +458,11 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactCitiesList([]);
     if (contactErrors.state) setContactErrors(prev => ({ ...prev, state: '' }));
 
-    const foundState = contactStatesList.find((s: any) => s.stateName === val);
-    if (foundState) {
-      const citiesData = await fetchCitiesByState(foundState.stateNo);
-      setContactCitiesList(citiesData);
+    const foundState = contactStatesList.find((s) => s.stateName === val);
+    const stateNo = resolveGeoNo(foundState, 'stateNo');
+    if (stateNo != null) {
+      const citiesData = await fetchCitiesByState(stateNo);
+      setContactCitiesList(asGeoList<GeoCity>(citiesData));
     }
   };
 

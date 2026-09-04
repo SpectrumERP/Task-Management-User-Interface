@@ -15,6 +15,9 @@ import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 
+/* API list payloads are loosely shaped; keep runtime mapping unchanged. */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 const FORM_NO = 1550;
 const TITLE = 'Business Entity Master';
 type CompanyViewMode = 'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment';
@@ -60,25 +63,6 @@ export function CompanyList() {
   }, [apiCompanies]);
 
   useEffect(() => {
-    if (apiCompanies.length === 0) return;
-
-    const timer = setTimeout(() => {
-      const container = document.getElementById('company-scroll-container');
-      if (container) {
-        const hasScrollbar = container.scrollHeight > container.clientHeight;
-        const hasMoreData = loadedRanges.current.max < 999999999;
-
-        if (!hasScrollbar && hasMoreData && !isLoadingRef.current && !isLoadingMoreCompanies) {
-          handleLoadMore('down');
-        }
-      }
-    }, 200);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiCompanies, pageSize]);
-
-  useEffect(() => {
     apiService.get<any>(`/api/master/business-entities/fill-values?companyNo=${companyNo}`).then((response) => {
       if (response) setBusinessEntityFillValues(response);
     }).catch(err => console.error('Failed to fetch business entity fill-values:', err));
@@ -93,7 +77,9 @@ export function CompanyList() {
   } = {}) => {
     try {
       const pSize = params.pageSize || pageSize;
-      const targetStartsWith = params.hasOwnProperty('startsWith') ? params.startsWith : currentStartsWith;
+      const targetStartsWith = Object.prototype.hasOwnProperty.call(params, 'startsWith')
+        ? params.startsWith
+        : currentStartsWith;
       const appendMode = params.appendMode || 'replace';
 
       const queryParams: Record<string, string> = {
@@ -368,17 +354,43 @@ export function CompanyList() {
     }
   };
 
+  // Auto-fill viewport when the first page does not create a scrollbar.
+  useEffect(() => {
+    if (apiCompanies.length === 0) return;
+
+    const timer = setTimeout(() => {
+      const container = document.getElementById('company-scroll-container');
+      if (container) {
+        const hasScrollbar = container.scrollHeight > container.clientHeight;
+        const hasMoreData = loadedRanges.current.max < 999999999;
+
+        if (!hasScrollbar && hasMoreData && !isLoadingRef.current && !isLoadingMoreCompanies) {
+          void handleLoadMore('down');
+        }
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiCompanies, pageSize, isLoadingMoreCompanies, lastRowNo]);
+
+  // Remount list data when company or view mode changes (intentional full reset + fetch).
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional list remount on company/view change */
   useEffect(() => {
     setCurrentStartsWith('');
     loadedRanges.current = { min: 999999, max: 0 };
     setFirstRowNo(null);
     setLastRowNo(null);
     setApiCompanies([]);
-    fetchCompanies({ appendMode: 'replace', startsWith: '' });
+    void fetchCompanies({ appendMode: 'replace', startsWith: '' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyViewMode, companyNo]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
 
   const filteredList = apiCompanies.filter((item) => {
     const query = searchQuery.toLowerCase();
@@ -478,7 +490,7 @@ export function CompanyList() {
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
         onAddClick={handleAddClick}
         canAdd={isSave}
       >
@@ -890,7 +902,7 @@ export function CompanyList() {
                                       </div>
                                       <div>
                                         <h4 className={cn('text-xs font-semibold text-slate-900', isUpdate && 'hover:text-[#006699] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</h4>
-                                        <p className="text-[9px] font-medium text-slate-400">{company.code} â¢ {company.type}</p>
+                                        <p className="text-[9px] font-medium text-slate-400">{company.code} Ã¢ÂÂ¢ {company.type}</p>
                                       </div>
                                     </div>
                                     <span className="text-[10px] text-slate-500 font-semibold bg-white px-2.5 py-1 rounded-[6px] border border-slate-200/80">

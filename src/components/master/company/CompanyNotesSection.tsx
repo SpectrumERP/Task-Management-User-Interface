@@ -4,7 +4,7 @@ import { Button } from '../../ui/button';
 import { DatePicker } from '../../ui/DatePicker';
 import { StickyNote, Plus, Trash2, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CONTROL_BORDER, CONTROL_RADIUS } from '@/lib/fieldStyles';
+import { CONTROL_BORDER, CONTROL_RADIUS, FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { CompanyFormSection } from './CompanyFormSection';
 
 export interface FollowUpNote {
@@ -51,64 +51,92 @@ export function CompanyNotesSection({ notes, onChange }: CompanyNotesSectionProp
       description="Add dated remarks for this business entity"
     >
       <div className="space-y-3">
-        <div className="flex flex-col md:flex-row gap-3 md:items-start rounded-[8px] border border-slate-200/70 bg-[#f8fbfd] p-3">
-          <div className="w-full md:w-40 space-y-1.5">
-            <label className="text-[11px] font-medium text-slate-600">Date</label>
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(140px,180px)_minmax(0,1fr)_auto] gap-x-3 gap-y-2.5 items-end">
+          <div className="space-y-1.5 min-w-0">
+            <label className="inline-flex text-[11px] font-medium text-slate-600">Date</label>
             <DatePicker
               date={draftDate}
               onChange={setDraftDate}
               placeholder="Select date"
-              className="h-10"
+              className={cn(FIELD_CONTROL_CLASS, 'h-10 w-full')}
             />
           </div>
-          <div className="flex-1 space-y-1.5">
-            <label className="text-[11px] font-medium text-slate-600">Note</label>
+
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <label className="inline-flex text-[11px] font-medium text-slate-600">Note</label>
+              <span className="text-[10px] font-medium text-slate-400 tabular-nums">
+                {draftNote.length}/1000
+              </span>
+            </div>
             <Textarea
               placeholder="Enter follow-up note..."
               maxLength={1000}
+              rows={1}
               className={cn(
-                'bg-white border w-full resize-y min-h-[42px] text-xs font-medium text-slate-700 shadow-none focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]',
+                'bg-white border w-full resize-none h-10 min-h-10 py-2 text-xs font-medium text-slate-700 shadow-none overflow-hidden focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699]',
                 CONTROL_BORDER,
                 CONTROL_RADIUS
               )}
               value={draftNote}
               onChange={(e) => setDraftNote(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  addNote();
+                }
+              }}
             />
           </div>
+
           <Button
             type="button"
             onClick={addNote}
             disabled={!draftNote.trim()}
-            className="h-10 rounded-[8px] px-3 bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs gap-1 flex items-center shadow-none shrink-0 md:mt-[22px]"
+            className="h-10 w-full sm:w-auto rounded-[8px] px-4 bg-[#006699] hover:bg-[#005580] text-white font-semibold text-xs gap-1.5 shadow-none shrink-0"
           >
-            <Plus size={14} />
+            <Plus size={14} strokeWidth={2.5} />
             Add Note
           </Button>
         </div>
 
-        {notes.length > 0 && (
-          <div className="space-y-2">
-            {notes.map((n, idx) => (
-              <div
-                key={idx}
-                className="bg-white border border-slate-200/70 rounded-[8px] p-3 relative group hover:border-[#006699]/35 transition-colors flex items-start gap-3"
-              >
-                <div className="flex items-center gap-1 shrink-0 text-[10px] font-medium text-slate-500 bg-slate-100 rounded-[6px] px-2 py-1">
-                  <CalendarDays size={12} />
-                  {n.date ? formatDate(n.date) : 'No date'}
-                </div>
-                <p className="text-xs text-slate-700 leading-snug flex-1 whitespace-pre-wrap pr-6">{n.note}</p>
-                <button
-                  type="button"
-                  onClick={() => removeNote(idx)}
-                  className="absolute top-2 right-2 p-1 rounded-[6px] text-slate-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  title="Remove Note"
+        {notes.length > 0 ? (
+          <div className="space-y-2 pt-1 border-t border-slate-100">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              Saved notes ({notes.length})
+            </p>
+            <ul className="space-y-2">
+              {notes.map((n, idx) => (
+                <li
+                  key={`${n.date}-${idx}`}
+                  className="group relative grid grid-cols-1 sm:grid-cols-[112px_minmax(0,1fr)_auto] sm:items-center gap-2 sm:gap-3 rounded-[8px] border border-slate-200/80 bg-white px-3 py-2.5 shadow-[0_1px_0_rgba(15,23,42,0.03)] hover:border-[#006699]/35 hover:bg-[#f8fbfd] transition-colors"
                 >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
+                  <div className="inline-flex h-7 items-center gap-1.5 rounded-[6px] bg-[#e8f3f8] px-2 text-[10px] font-semibold text-[#006699] tabular-nums">
+                    <CalendarDays size={12} strokeWidth={2} className="shrink-0" />
+                    <span className="truncate">{n.date ? formatDate(n.date) : 'No date'}</span>
+                  </div>
+
+                  <p className="text-xs font-medium text-slate-700 leading-snug whitespace-pre-wrap break-words min-w-0">
+                    {n.note}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => removeNote(idx)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-slate-400 opacity-70 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Remove Note"
+                    aria-label="Remove note"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
+        ) : (
+          <p className="text-[11px] font-medium text-slate-400 pt-0.5">
+            No follow-up notes yet. Pick a date and add a remark above.
+          </p>
         )}
       </div>
     </CompanyFormSection>

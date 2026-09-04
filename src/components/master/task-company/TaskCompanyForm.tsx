@@ -285,7 +285,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
               />
             </div>
 
-            <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-4">
+            <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-2">
               <FieldLabel htmlFor="tcLocationName">Location Name</FieldLabel>
               <Input
                 id="tcLocationName"
@@ -296,16 +296,16 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
                 className={fieldClass}
               />
             </div>
-          </div>
 
-          <div className="space-y-0">
-            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Date of Incorporation</label>
-            <DatePicker
-              date={tcIncorporationDate}
-              onChange={setTcIncorporationDate}
-              placeholder="Select date of incorporation"
-              className="h-10"
-            />
+            <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-2">
+              <FieldLabel>Date of Incorporation</FieldLabel>
+              <DatePicker
+                date={tcIncorporationDate}
+                onChange={setTcIncorporationDate}
+                placeholder="Select date of incorporation"
+                className={cn(fieldClass, 'h-10 w-full')}
+              />
+            </div>
           </div>
         </div>
       </section>
