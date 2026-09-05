@@ -49,13 +49,13 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
 }: MasterEntityTableProps<T>) {
   const shellClass = embedded
     ? 'flex flex-col min-h-0 max-h-full overflow-hidden'
-    : 'flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden';
+    : 'flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden';
 
   if (isLoading) {
     return (
-      <div className={cn(shellClass, !embedded && 'bg-white')}>
+      <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')}>
         <div className="flex items-center justify-center gap-2 p-10 text-sm font-medium text-slate-500 min-h-[200px]">
-          <Loader2 className="h-4 w-4 animate-spin text-[#006699]" />
+          <Loader2 className="h-4 w-4 animate-spin text-[#0EA5E9]" />
           Loading records...
         </div>
       </div>
@@ -64,12 +64,12 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
 
   if (rows.length === 0) {
     return (
-      <div className={cn(shellClass, !embedded && 'bg-white')}>
+      <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')}>
         <div className="flex flex-col items-center justify-center p-10 text-center min-h-[200px]">
-          <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-[#e8f3f8] text-[#006699]/70">
+          <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--tm-tint)] text-[#0EA5E9]/70">
             <EmptyIcon size={22} strokeWidth={1.75} />
           </span>
-          <h3 className="text-sm font-semibold text-slate-800 tracking-tight">{emptyTitle}</h3>
+          <h3 className="text-sm font-semibold text-slate-100 tracking-tight">{emptyTitle}</h3>
           <p className="mt-1 max-w-sm text-[11px] font-medium text-slate-400 leading-relaxed">
             {emptyDescription}
           </p>
@@ -80,15 +80,15 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
   }
 
   return (
-    <div className={cn(shellClass, !embedded && 'bg-white')}>
+    <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')} data-page-tour="master-table">
       <div className="overflow-auto min-h-0 max-h-[calc(100dvh-13.5rem)]">
-        <table className="w-full border-collapse text-left table-fixed">
-          <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
+        <table className="tm-data-table w-full border-collapse text-left table-fixed">
+          <thead className="sticky top-0 z-10 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
             <tr>
-              <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500 w-[110px]">
+              <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[110px]">
                 Code
               </th>
-              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 w-[18%]">
+              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[18%]">
                 {nameHeader}
               </th>
               {columns.map((col, idx) => (
@@ -102,13 +102,13 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                   {col.header}
                 </th>
               ))}
-              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 w-[16%]">
+              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[16%]">
                 Created By
               </th>
-              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 w-[160px]">
+              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[160px]">
                 Created Date
               </th>
-              <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500 w-[88px]">
+              <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[88px]">
                 Actions
               </th>
             </tr>
@@ -117,28 +117,28 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
             {rows.map((item) => (
               <tr
                 key={item.id}
-                className="border-b border-slate-100 last:border-b-0 hover:bg-[#f8fbfd]/70 transition-colors group"
+                className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group"
               >
                 <td className="px-3 py-2 pl-4">
-                  <span className="inline-flex items-center rounded-[6px] border border-slate-200/80 bg-[#f8fbfd] px-2 py-0.5 text-[10px] font-semibold text-slate-600 tabular-nums">
+                  <span className="text-[11px] font-medium text-[#0EA5E9] whitespace-nowrap tabular-nums">
                     {getCode(item)}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-xs font-semibold text-slate-800 min-w-0">
+                <td className="px-3 py-2 text-xs font-semibold text-slate-100 min-w-0">
                   <div className="flex items-center gap-2 min-w-0 truncate">{getName(item)}</div>
                 </td>
                 {columns.map((col, idx) => (
                   <td
                     key={idx}
-                    className={cn('px-3 py-2 text-xs font-medium text-slate-600 min-w-0', col.className)}
+                    className={cn('px-3 py-2 text-xs font-medium text-slate-300 min-w-0', col.className)}
                   >
                     <div className="min-w-0 truncate">{col.render(item)}</div>
                   </td>
                 ))}
-                <td className="px-3 py-2 text-xs font-medium text-slate-600 min-w-0 truncate">
+                <td className="px-3 py-2 text-xs font-medium text-slate-300 min-w-0 truncate">
                   {item.createdBy || 'System'}
                 </td>
-                <td className="px-3 py-2 text-xs font-medium text-slate-600 whitespace-nowrap">
+                <td className="px-3 py-2 text-xs font-medium text-slate-300 whitespace-nowrap">
                   {item.createdDate
                     ? format(new Date(item.createdDate), 'MMM dd, yyyy h:mm a')
                     : 'N/A'}
@@ -151,7 +151,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                         variant="ghost"
                         size="icon"
                         onClick={() => onEdit(item)}
-                        className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8]"
+                        className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
                       >
                         <Edit size={13} />
                       </Button>
@@ -162,7 +162,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                         variant="ghost"
                         size="icon"
                         onClick={() => onDelete(item.id)}
-                        className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50"
+                        className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 size={13} />
                       </Button>

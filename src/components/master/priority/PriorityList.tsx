@@ -109,7 +109,7 @@ export function PriorityList() {
           {
             header: 'Sequence',
             render: (item) => (
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-slate-100 px-1.5 text-[11px] font-semibold text-slate-700 tabular-nums">
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[var(--tm-muted)] px-1.5 text-[11px] font-semibold text-slate-200 tabular-nums">
                 {item.sequence || '—'}
               </span>
             ),
@@ -117,7 +117,7 @@ export function PriorityList() {
           {
             header: 'Priority Duration',
             render: (item) => (
-              <span className="inline-flex items-center rounded-[6px] border border-[#006699]/15 bg-[#e8f3f8] px-2 py-0.5 text-[11px] font-semibold text-[#006699]">
+              <span className="inline-flex items-center rounded-[6px] border border-[#0EA5E9]/15 bg-[var(--tm-tint)] px-2 py-0.5 text-[11px] font-semibold text-[#0EA5E9]">
                 {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
               </span>
             ),

@@ -18,9 +18,9 @@ interface MasterDeleteDialogProps {
 export function MasterDeleteDialog({ open, onOpenChange, onConfirm }: MasterDeleteDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[12px] max-w-sm p-0 border border-slate-200/80 shadow-xl">
+      <DialogContent className="rounded-[12px] max-w-sm p-0 border border-[var(--tm-border)]/80 shadow-xl">
         <DialogHeader className="p-5 pb-3">
-          <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight flex items-center gap-2">
+          <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight flex items-center gap-2">
             <AlertCircle size={18} className="text-red-500 shrink-0" />
             Confirm Deletion
           </DialogTitle>
@@ -28,12 +28,12 @@ export function MasterDeleteDialog({ open, onOpenChange, onConfirm }: MasterDele
             Do you want to delete this record?
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="p-4 pt-2 bg-[#f8fbfd] flex justify-end gap-2 rounded-b-[12px] border-t border-slate-100">
+        <DialogFooter className="p-4 pt-2 bg-[var(--tm-elevated)] flex justify-end gap-2 rounded-b-[12px] border-t border-[var(--tm-border)]">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="h-9 px-4 rounded-[8px] text-xs font-medium border-slate-200 shadow-none"
+            className="h-9 px-4 rounded-[8px] text-xs font-medium border-[var(--tm-border)] shadow-none"
           >
             No
           </Button>

@@ -493,8 +493,12 @@ export function CompanyList() {
         onSearchChange={handleSearchChange}
         onAddClick={handleAddClick}
         canAdd={isSave}
+        guideKey="master-company"
       >
-        <div className="flex flex-wrap items-center gap-0.5 h-auto min-h-10 p-0.5 rounded-[8px] border border-[#a8afb7] bg-white shrink-0">
+        <div
+          data-page-tour="company-view-mode"
+          className="flex flex-wrap items-center gap-0.5 h-auto min-h-10 p-0.5 rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shrink-0"
+        >
           {viewModes.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -503,8 +507,8 @@ export function CompanyList() {
               className={cn(
                 'px-2.5 h-8 rounded-[6px] text-[10px] font-semibold transition-colors flex items-center gap-1.5',
                 companyViewMode === id
-                  ? 'bg-[#006699] text-white'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                  ? 'bg-[#0EA5E9] text-white'
+                  : 'text-slate-500 hover:text-slate-100 hover:bg-[var(--tm-muted)]'
               )}
             >
               <Icon size={12} />
@@ -516,19 +520,19 @@ export function CompanyList() {
 
       <div className="flex-1 min-h-0 flex flex-col select-none">
         {filteredList.length === 0 ? (
-          <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+          <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
             <div className="flex flex-col items-center justify-center p-10 text-center min-h-[200px]">
-              <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-[#e8f3f8] text-[#006699]/70">
+              <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--tm-tint)] text-[#0EA5E9]/70">
                 <Layers size={22} strokeWidth={1.75} />
               </span>
-              <h3 className="text-sm font-semibold text-slate-800 tracking-tight">No Companies Found</h3>
+              <h3 className="text-sm font-semibold text-slate-100 tracking-tight">No Companies Found</h3>
               <p className="mt-1 max-w-sm text-[11px] font-medium text-slate-400 leading-relaxed">
                 No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.
               </p>
             </div>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden relative">
+          <div className="flex-1 min-h-0 flex flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden relative">
             <div className="flex-1 min-h-0 flex relative">
               <div
                 className="flex-1 overflow-y-auto overflow-x-auto pr-10 scrollbar-thin min-h-0"
@@ -552,8 +556,8 @@ export function CompanyList() {
                 }}
               >
                 {companyViewMode === 'list' ? (
-                  <table className="w-full border-collapse text-left">
-                    <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
+                  <table className="tm-data-table w-full border-collapse text-left">
+                    <thead className="sticky top-0 z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
                       <tr>
                         <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Code</th>
                         <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business Entity Name</th>
@@ -571,49 +575,49 @@ export function CompanyList() {
                       {paginatedList.map((company: any) => {
                         const locStr = [company.address, company.city, company.state, company.country].filter(Boolean).join(', ') || 'N/A';
                         return (
-                          <tr key={company.id} className="border-b border-slate-100 last:border-b-0 hover:bg-[#f8fbfd]/70 transition-colors group">
+                          <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
                             <td className="px-3 py-2 pl-4">
-                              <span className="inline-flex items-center rounded-[6px] border border-slate-200/80 bg-[#f8fbfd] px-2 py-0.5 text-[10px] font-semibold text-slate-600 tabular-nums">
+                              <span className="text-[11px] font-medium text-[#0EA5E9] whitespace-nowrap tabular-nums">
                                 {company.code}
                               </span>
                             </td>
                             <td
                               className={cn(
-                                'px-3 py-2 text-xs font-semibold text-slate-800 min-w-0',
-                                isUpdate && 'hover:text-[#006699] cursor-pointer'
+                                'px-3 py-2 text-xs font-semibold text-slate-100 min-w-0',
+                                isUpdate && 'hover:text-[#0EA5E9] cursor-pointer'
                               )}
                               onClick={() => isUpdate && handleEditClick(company)}
                             >
                               <div className="min-w-0 truncate">{company.name}</div>
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-600">
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
                               <span
                                 className={cn(
                                   'px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border',
                                   company.type === 'Buy'
-                                    ? 'bg-sky-50 text-sky-600 border-sky-100'
-                                    : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                    ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                                 )}
                               >
                                 {company.type}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-600 max-w-[200px] truncate" title={locStr}>
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 max-w-[200px] truncate" title={locStr}>
                               {locStr}
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-600">
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
                               {company.city || 'N/A'}
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-600">
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
                               {company.state || 'N/A'}
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-600">
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
                               {company.country || 'N/A'}
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-600 font-mono">
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 font-mono">
                               {company.vatGst || 'N/A'}
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-600">
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
                               {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
                             </td>
                             <td className="px-3 py-2 pr-4 text-right">
@@ -624,7 +628,7 @@ export function CompanyList() {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handleEditClick(company)}
-                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8]"
+                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
                                   >
                                     <Edit size={13} />
                                   </Button>
@@ -635,7 +639,7 @@ export function CompanyList() {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handleDeleteClick(company.id)}
-                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                                   >
                                     <Trash2 size={13} />
                                   </Button>
@@ -651,24 +655,24 @@ export function CompanyList() {
                   <div className="space-y-5 p-3">
                     {groupedCompanies.map((group) => (
                       <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                        <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#e8f3f8] rounded-[8px] text-xs font-semibold text-[#006699] flex items-center justify-between">
+                        <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
                           <span>Alphabet {group.letter}</span>
                           <span className="text-[10px] font-medium opacity-70">{group.items.length} Entities</span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {group.items.map((company: any) => (
-                            <Card key={company.id} className="relative rounded-[8px] border border-slate-200/70 shadow-sm hover:shadow-md hover:border-[#006699]/25 p-3.5 bg-white transition-all flex flex-col gap-3 overflow-hidden group">
+                            <Card key={company.id} className="relative rounded-[8px] border border-[var(--tm-border)]/70 shadow-sm hover:shadow-md hover:border-[#0EA5E9]/25 p-3.5 bg-[var(--tm-surface)] transition-all flex flex-col gap-3 overflow-hidden group">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center gap-2.5 min-w-0">
-                                  <div className="w-9 h-9 rounded-[8px] bg-[#006699] text-white flex items-center justify-center font-semibold text-xs shrink-0 uppercase">
+                                  <div className="w-9 h-9 rounded-[8px] bg-[#0EA5E9] text-white flex items-center justify-center font-semibold text-xs shrink-0 uppercase">
                                     {company.name ? company.name.substring(0, 2) : 'BE'}
                                   </div>
                                   <div className="min-w-0">
-                                    <h4 className="text-[11px] font-semibold text-slate-900 leading-tight group-hover:text-[#006699] transition-colors truncate" title={company.name}>{company.name}</h4>
+                                    <h4 className="text-[11px] font-semibold text-slate-50 leading-tight group-hover:text-[#0EA5E9] transition-colors truncate" title={company.name}>{company.name}</h4>
                                     <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                      <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[#f8fbfd] text-slate-600 border border-slate-200/80">{company.code}</span>
+                                      <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-elevated)] text-slate-300 border border-[var(--tm-border)]/80">{company.code}</span>
                                       <span className={cn("text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] border",
-                                        company.type === 'Buy' ? "bg-sky-50 text-sky-600 border-sky-100" : "bg-emerald-50 text-emerald-600 border-emerald-100")}>
+                                        company.type === 'Buy' ? "bg-sky-500/15 text-sky-400 border-sky-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")}>
                                         {company.type}
                                       </span>
                                     </div>
@@ -676,38 +680,38 @@ export function CompanyList() {
                                 </div>
                                 <div className="flex items-center gap-0.5 shrink-0">
                                   {isUpdate && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8]">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                                       <Edit size={11} />
                                     </Button>
                                   )}
                                   {isDelete && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(company.id)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50">
+                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(company.id)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
                                       <Trash2 size={11} />
                                     </Button>
                                   )}
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 py-1.5 border-t border-b border-slate-100 text-[10px] font-medium text-slate-500">
+                              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 py-1.5 border-t border-b border-[var(--tm-border)] text-[10px] font-medium text-slate-500">
                                 <div className="col-span-2">
-                                  <span className="text-[8px] font-semibold text-[#006699] block mb-0.5">Primary Location</span>
-                                  <span className="text-slate-800 font-medium block truncate leading-snug" title={company.address || 'N/A'}>{company.address || 'N/A'}</span>
+                                  <span className="text-[8px] font-semibold text-[#0EA5E9] block mb-0.5">Primary Location</span>
+                                  <span className="text-slate-100 font-medium block truncate leading-snug" title={company.address || 'N/A'}>{company.address || 'N/A'}</span>
                                 </div>
                                 <div className="min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">City & PIN Code</span>
-                                  <span className="text-slate-700 font-medium block truncate" title={[company.city, company.pinCode].filter(Boolean).join(' - ')}>
+                                  <span className="text-slate-200 font-medium block truncate" title={[company.city, company.pinCode].filter(Boolean).join(' - ')}>
                                     {[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'}
                                   </span>
                                 </div>
                                 <div className="min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">State & Country</span>
-                                  <span className="text-slate-700 font-medium block truncate" title={[company.state, company.country].filter(Boolean).join(', ')}>
+                                  <span className="text-slate-200 font-medium block truncate" title={[company.state, company.country].filter(Boolean).join(', ')}>
                                     {[company.state, company.country].filter(Boolean).join(', ') || 'N/A'}
                                   </span>
                                 </div>
                                 <div className="col-span-2 min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">Credit limit & GST</span>
-                                  <span className="text-slate-700 font-medium block truncate" title={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}>
+                                  <span className="text-slate-200 font-medium block truncate" title={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}>
                                     {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
                                     {company.vatGst ? ` | GST: ${company.vatGst}` : ''}
                                   </span>
@@ -717,7 +721,7 @@ export function CompanyList() {
                               <div className="flex items-center justify-between text-[9px] font-medium text-slate-400 pt-0.5 mt-auto">
                                 <span className="flex items-center gap-1 min-w-0">
                                   <User size={10} className="text-slate-400 shrink-0" />
-                                  Created By: <strong className="text-slate-600 truncate max-w-[100px]">{company.createdBy || company.displayName || company.userName || 'System'}</strong>
+                                  Created By: <strong className="text-slate-300 truncate max-w-[100px]">{company.createdBy || company.displayName || company.userName || 'System'}</strong>
                                 </span>
                                 <span className="text-[8px] text-slate-400 font-semibold shrink-0">
                                   {company.createdDate ? new Date(company.createdDate).toLocaleDateString() : ''}
@@ -737,14 +741,14 @@ export function CompanyList() {
 
                       return (
                         <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#e8f3f8] rounded-[8px] text-xs font-semibold text-[#006699] flex items-center justify-between">
+                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
                             <span>Alphabet {group.letter}</span>
                             <span className="text-[10px] font-medium opacity-70">Contacts</span>
                           </div>
 
-                          <div className="rounded-[8px] border border-slate-200/70 overflow-hidden bg-white">
-                            <table className="w-full border-collapse text-left">
-                              <thead className="sticky top-[28px] z-10 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
+                          <div className="rounded-[8px] border border-[var(--tm-border)]/70 overflow-hidden bg-[var(--tm-surface)]">
+                            <table className="tm-data-table w-full border-collapse text-left">
+                              <thead className="sticky top-[28px] z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
                                 <tr>
                                   <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Contact Name</th>
                                   <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business Entity</th>
@@ -759,31 +763,31 @@ export function CompanyList() {
                               <tbody>
                                 {group.items.map((company: any) =>
                                   (company.contacts || []).map((contact: any, cIdx: number) => (
-                                    <tr key={`${company.id}-${cIdx}`} className="border-b border-slate-100 last:border-b-0 hover:bg-[#f8fbfd]/70 transition-colors">
-                                      <td className="px-3 py-2 pl-4 text-xs font-semibold text-slate-800">
+                                    <tr key={`${company.id}-${cIdx}`} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors">
+                                      <td className="px-3 py-2 pl-4 text-xs font-semibold text-slate-100">
                                         {contact.contactPersonName || contact.contactName || contact.name}
                                       </td>
                                       <td
-                                        className={cn('px-3 py-2 text-xs font-medium text-slate-700', isUpdate && 'hover:text-[#006699] cursor-pointer')}
+                                        className={cn('px-3 py-2 text-xs font-medium text-slate-200', isUpdate && 'hover:text-[#0EA5E9] cursor-pointer')}
                                         onClick={() => isUpdate && handleEditClick(company)}
                                       >
                                         {company.name}
                                       </td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-600">{contact.designation || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-600">{contact.department || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-600 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-600">{contact.email || 'N/A'}</td>
+                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.designation || 'N/A'}</td>
+                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.department || 'N/A'}</td>
+                                      <td className="px-3 py-2 text-xs font-medium text-slate-300 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</td>
+                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.email || 'N/A'}</td>
                                       <td className="px-3 py-2 text-xs">
                                         <span className={cn(
                                           'px-2 py-0.5 rounded-[6px] text-[8px] font-semibold',
-                                          (contact.status || 'Active') === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                                          (contact.status || 'Active') === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[var(--tm-muted)] text-slate-500 border border-[var(--tm-border)]'
                                         )}>
                                           {contact.status || 'Active'}
                                         </span>
                                       </td>
                                       <td className="px-3 py-2 pr-4 text-right">
                                         {isUpdate ? (
-                                          <Button type="button" variant="ghost" size="icon" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8] ml-auto">
+                                          <Button type="button" variant="ghost" size="icon" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] ml-auto">
                                             <Edit size={13} />
                                           </Button>
                                         ) : null}
@@ -806,7 +810,7 @@ export function CompanyList() {
 
                       return (
                         <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#e8f3f8] rounded-[8px] text-xs font-semibold text-[#006699] flex items-center justify-between">
+                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
                             <span>Alphabet {group.letter}</span>
                             <span className="text-[10px] font-medium opacity-70">Contact Cards</span>
                           </div>
@@ -816,43 +820,43 @@ export function CompanyList() {
                               (company.contacts || []).map((contact: any, cIdx: number) => {
                                 const cName = contact.contactPersonName || contact.contactName || contact.name;
                                 return (
-                                  <Card key={`${company.id}-${cIdx}`} className="relative rounded-[8px] border border-slate-200/70 shadow-sm hover:shadow-md p-4 bg-white transition-all flex flex-col gap-3 group">
+                                  <Card key={`${company.id}-${cIdx}`} className="relative rounded-[8px] border border-[var(--tm-border)]/70 shadow-sm hover:shadow-md p-4 bg-[var(--tm-surface)] transition-all flex flex-col gap-3 group">
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-[8px] bg-[#006699] text-white flex items-center justify-center font-semibold text-sm shrink-0 uppercase">
+                                        <div className="w-10 h-10 rounded-[8px] bg-[#0EA5E9] text-white flex items-center justify-center font-semibold text-sm shrink-0 uppercase">
                                           {cName ? cName.substring(0, 2) : 'CP'}
                                         </div>
                                         <div>
-                                          <h4 className="text-xs font-semibold text-slate-800 leading-tight">{cName}</h4>
+                                          <h4 className="text-xs font-semibold text-slate-100 leading-tight">{cName}</h4>
                                           <p className="text-[9px] font-medium text-slate-400 mt-0.5">{contact.designation || 'Representative'} ({contact.department || 'General'})</p>
                                         </div>
                                       </div>
                                       <span className={cn(
                                         'px-2 py-0.5 rounded-[6px] text-[8px] font-semibold shrink-0',
-                                        (contact.status || 'Active') === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                                        (contact.status || 'Active') === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[var(--tm-muted)] text-slate-500 border border-[var(--tm-border)]'
                                       )}>
                                         {contact.status || 'Active'}
                                       </span>
                                     </div>
 
-                                    <div className="border-t border-slate-100 pt-2 text-[10px] font-medium text-slate-500 space-y-1">
+                                    <div className="border-t border-[var(--tm-border)] pt-2 text-[10px] font-medium text-slate-500 space-y-1">
                                       <div className="flex justify-between">
-                                        <span className={cn('text-slate-900 font-semibold', isUpdate && 'hover:text-[#006699] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</span>
+                                        <span className={cn('text-slate-50 font-semibold', isUpdate && 'hover:text-[#0EA5E9] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</span>
                                       </div>
                                       <div className="flex justify-between gap-2">
                                         <span className="text-slate-400">Phone:</span>
-                                        <span className="text-slate-700 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
+                                        <span className="text-slate-200 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
                                       </div>
                                       <div className="flex justify-between gap-2">
                                         <span className="text-slate-400">Email:</span>
-                                        <span className="text-slate-700 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
+                                        <span className="text-slate-200 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
                                       </div>
                                     </div>
 
-                                    <div className="pt-2 mt-auto flex items-center justify-between border-t border-slate-100">
+                                    <div className="pt-2 mt-auto flex items-center justify-between border-t border-[var(--tm-border)]">
                                       <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
                                       {isUpdate && (
-                                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(company)} className="h-7 rounded-[6px] text-slate-500 hover:text-[#006699] hover:bg-[#e8f3f8] text-[10px] font-semibold gap-1">
+                                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(company)} className="h-7 rounded-[6px] text-slate-500 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] text-[10px] font-semibold gap-1">
                                           <Edit size={11} />
                                           Edit
                                         </Button>
@@ -886,7 +890,7 @@ export function CompanyList() {
 
                       return (
                         <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[#e8f3f8] rounded-[8px] text-xs font-semibold text-[#006699] flex items-center justify-between">
+                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
                             <span>Alphabet {group.letter}</span>
                             <span className="text-[10px] font-medium opacity-70">{mergedItems.length} Entities</span>
                           </div>
@@ -894,18 +898,18 @@ export function CompanyList() {
                             {mergedItems.map((company: any) => {
                               if (!company.attachments || company.attachments.length === 0) return null;
                               return (
-                                <div key={company.id} className="bg-[#f8fbfd] rounded-[8px] border border-slate-200/70 p-4">
-                                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/60 mb-3">
+                                <div key={company.id} className="bg-[var(--tm-elevated)] rounded-[8px] border border-[var(--tm-border)]/70 p-4">
+                                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--tm-border)]/60 mb-3">
                                     <div className="flex items-center gap-2.5">
-                                      <div className="w-8 h-8 rounded-[8px] bg-[#e8f3f8] text-[#006699] flex items-center justify-center font-semibold text-sm uppercase">
+                                      <div className="w-8 h-8 rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] flex items-center justify-center font-semibold text-sm uppercase">
                                         {company.name ? company.name.substring(0, 2) : 'BE'}
                                       </div>
                                       <div>
-                                        <h4 className={cn('text-xs font-semibold text-slate-900', isUpdate && 'hover:text-[#006699] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</h4>
+                                        <h4 className={cn('text-xs font-semibold text-slate-50', isUpdate && 'hover:text-[#0EA5E9] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</h4>
                                         <p className="text-[9px] font-medium text-slate-400">{company.code} Ã¢ÂÂ¢ {company.type}</p>
                                       </div>
                                     </div>
-                                    <span className="text-[10px] text-slate-500 font-semibold bg-white px-2.5 py-1 rounded-[6px] border border-slate-200/80">
+                                    <span className="text-[10px] text-slate-500 font-semibold bg-[var(--tm-surface)] px-2.5 py-1 rounded-[6px] border border-[var(--tm-border)]/80">
                                       {company.attachments?.length || 0} Document(s)
                                     </span>
                                   </div>
@@ -917,33 +921,33 @@ export function CompanyList() {
                                       const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
 
                                       return (
-                                        <Card key={idx} className="bg-white rounded-[8px] border border-slate-200/70 p-3.5 hover:shadow-md hover:border-[#006699]/30 transition-all flex flex-col justify-between gap-3 group">
+                                        <Card key={idx} className="bg-[var(--tm-surface)] rounded-[8px] border border-[var(--tm-border)]/70 p-3.5 hover:shadow-md hover:border-[#0EA5E9]/30 transition-all flex flex-col justify-between gap-3 group">
                                           <div className="flex items-start gap-3">
                                             <div className={cn(
                                               'p-2 rounded-[8px] shrink-0 flex items-center justify-center',
-                                              isPdf ? 'bg-red-50 text-red-500' : isSheet ? 'bg-emerald-50 text-emerald-500' : isDoc ? 'bg-blue-50 text-blue-500' : 'bg-slate-50 text-slate-500'
+                                              isPdf ? 'bg-red-500/10 text-red-500' : isSheet ? 'bg-emerald-500/15 text-emerald-500' : isDoc ? 'bg-blue-500/15 text-blue-500' : 'bg-[var(--tm-muted)] text-slate-500'
                                             )}>
                                               <FileText size={18} />
                                             </div>
                                             <div className="min-w-0">
-                                              <h5 className="text-xs font-semibold text-slate-700 truncate leading-snug group-hover:text-[#006699] transition-colors">{att.fileName || att.name}</h5>
+                                              <h5 className="text-xs font-semibold text-slate-200 truncate leading-snug group-hover:text-[#0EA5E9] transition-colors">{att.fileName || att.name}</h5>
                                               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                                                 <p className="text-[9px] text-slate-400 font-medium font-mono">
                                                   {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
                                                 </p>
                                                 {att.fileType ? (
-                                                  <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[#f8fbfd] text-slate-500 border border-slate-200/80">{att.fileType}</span>
+                                                  <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-elevated)] text-slate-500 border border-[var(--tm-border)]/80">{att.fileType}</span>
                                                 ) : null}
                                               </div>
                                             </div>
                                           </div>
 
-                                          <div className="flex items-center justify-end pt-2 border-t border-slate-100 mt-auto">
+                                          <div className="flex items-center justify-end pt-2 border-t border-[var(--tm-border)] mt-auto">
                                             <Button
                                               variant="ghost"
                                               size="sm"
                                               onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
-                                              className="h-7 px-2.5 rounded-[6px] text-[9px] font-semibold text-emerald-600 hover:bg-emerald-50 border border-emerald-100"
+                                              className="h-7 px-2.5 rounded-[6px] text-[9px] font-semibold text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30"
                                             >
                                               Download
                                             </Button>
@@ -963,7 +967,7 @@ export function CompanyList() {
                 )}
               </div>
 
-              <div className="absolute right-1.5 top-2 bottom-2 w-9 bg-white/95 backdrop-blur-sm rounded-[8px] border border-slate-200/80 shadow-sm flex flex-col items-center justify-between py-2 z-20 select-none">
+              <div className="absolute right-1.5 top-2 bottom-2 w-9 bg-[var(--tm-surface)]/95 backdrop-blur-sm rounded-[8px] border border-[var(--tm-border)]/80 shadow-sm flex flex-col items-center justify-between py-2 z-20 select-none">
                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
                   const hasItems = apiAlphabets.includes(char) || apiAlphabets.includes(char.toLowerCase());
                   const isSelected = currentStartsWith === char;
@@ -976,9 +980,9 @@ export function CompanyList() {
                       className={cn(
                         'h-5 w-5 text-[9px] font-semibold rounded-[5px] flex items-center justify-center transition-colors',
                         isSelected
-                          ? 'bg-[#006699] text-white'
+                          ? 'bg-[#0EA5E9] text-white'
                           : hasItems
-                            ? 'text-slate-700 hover:text-white hover:bg-[#006699] cursor-pointer'
+                            ? 'text-slate-200 hover:text-white hover:bg-[#0EA5E9] cursor-pointer'
                             : 'text-slate-300 cursor-not-allowed opacity-40'
                       )}
                     >

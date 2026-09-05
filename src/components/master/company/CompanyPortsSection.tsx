@@ -40,7 +40,7 @@ export function CompanyPortsSection({
           type="button"
           onClick={onAdd}
           disabled={!selectedPortName}
-          className="h-10 px-4 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-white font-semibold text-xs shrink-0 shadow-sm shadow-[#006699]/20 disabled:opacity-50"
+          className="h-10 px-4 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold text-xs shrink-0 shadow-sm shadow-[#0EA5E9]/20 disabled:opacity-50"
         >
           Assign
         </Button>
@@ -55,13 +55,13 @@ export function CompanyPortsSection({
           {ports.map((port, idx) => (
             <div
               key={idx}
-              className="bg-[#e8f3f8] border border-[#006699]/15 text-[#006699] text-xs font-semibold rounded-[6px] px-2.5 py-1 flex items-center gap-1.5"
+              className="bg-[var(--tm-tint)] border border-[#0EA5E9]/15 text-[#0EA5E9] text-xs font-semibold rounded-[6px] px-2.5 py-1 flex items-center gap-1.5"
             >
               <span>{port.portName}</span>
               <button
                 type="button"
                 onClick={() => onRemove(idx)}
-                className="p-0.5 rounded-[4px] hover:bg-white/80 text-[#006699]/70 hover:text-[#006699] transition-colors"
+                className="p-0.5 rounded-[4px] hover:bg-[var(--tm-surface)]/80 text-[#0EA5E9]/70 hover:text-[#0EA5E9] transition-colors"
                 title="Unassign Port"
               >
                 <X size={10} strokeWidth={2.5} />

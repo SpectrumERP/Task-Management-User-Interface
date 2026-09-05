@@ -36,6 +36,8 @@ export interface BrandConfig {
   documentTitle: string;
   /** Primary brand color (hex) */
   primaryColor: string;
+  /** Warm accent for priority / attention (hex) */
+  accentColor: string;
   /**
    * When true, mask logo uses brightness/invert (works for dark logos on teal).
    */
@@ -67,7 +69,8 @@ const STEELMONT_SPECTRUM: BrandConfig = {
   maskLogoSrc: SteelMontLogo,
   faviconSrc: SteelMontFavicon,
   documentTitle: 'Steelmont | Spectrum Task & Planner',
-  primaryColor: '#006699',
+  primaryColor: '#0EA5E9',
+  accentColor: '#F59E0B',
   invertMaskLogo: true,
 };
 
@@ -102,12 +105,28 @@ export function getBrandConfig(): BrandConfig {
     faviconSrc: env('VITE_BRAND_FAVICON_URL') ?? base.faviconSrc,
     documentTitle: env('VITE_BRAND_DOCUMENT_TITLE') ?? base.documentTitle,
     primaryColor: env('VITE_BRAND_PRIMARY_COLOR') ?? base.primaryColor,
+    accentColor: env('VITE_BRAND_ACCENT_COLOR') ?? base.accentColor,
     invertMaskLogo:
       invertMask === undefined ? base.invertMaskLogo : invertMask.toLowerCase() === 'true',
     platformLabel: env('VITE_BRAND_PLATFORM_LABEL') ?? base.platformLabel,
     secureNote: env('VITE_BRAND_SECURE_NOTE') ?? base.secureNote,
     copyrightSuffix: env('VITE_BRAND_COPYRIGHT_SUFFIX') ?? base.copyrightSuffix,
   };
+}
+
+/** First letter of each word in a brand name (splits CamelCase too). e.g. SteelMont → SM */
+export function getBrandInitials(name: string): string {
+  const spaced = (name || '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')
+    .trim();
+  const parts = spaced.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'SM';
+  return parts
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 3);
 }
 
 /** Cached brand for the current page load (use everywhere). */
@@ -125,6 +144,7 @@ export function applyBrandToDocument(brand: BrandConfig = getBrand()): void {
   if (typeof document === 'undefined') return;
 
   document.title = brand.documentTitle;
+  document.documentElement.setAttribute('data-brand-name', brand.brandName);
 
   let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
   if (!link) {
@@ -153,5 +173,10 @@ export function applyBrandToDocument(brand: BrandConfig = getBrand()): void {
   const description = document.querySelector<HTMLMetaElement>("meta[name='description']");
   if (description) {
     description.content = `${brand.brandName} — ${brand.productName}`;
+  }
+
+  const bootInitials = document.getElementById('brand-boot-initials');
+  if (bootInitials) {
+    bootInitials.textContent = getBrandInitials(brand.brandName);
   }
 }

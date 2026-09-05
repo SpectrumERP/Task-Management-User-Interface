@@ -115,7 +115,7 @@ export function PWAInstallBanner() {
             <img
               src="/pwa-192x192.png"
               alt="Steel Mont"
-              className="h-11 w-11 rounded-xl object-cover border border-slate-700/50 shadow-md shadow-[#006699]/10 shrink-0"
+              className="h-11 w-11 rounded-xl object-cover border border-slate-700/50 shadow-md shadow-[#0EA5E9]/10 shrink-0"
             />
             <div className="min-w-0">
               <h4 className="text-sm font-black text-white leading-snug flex items-center gap-1.5">
@@ -158,7 +158,7 @@ export function PWAInstallBanner() {
               type="button"
               onClick={handleInstallClick}
               disabled={!deferredPrompt}
-              className="flex-1 h-9 text-xs font-black uppercase tracking-widest gap-1.5 rounded-xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-lg shadow-[#006699]/15 border border-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+              className="flex-1 h-9 text-xs font-black uppercase tracking-widest gap-1.5 rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#00b4d8] hover:from-[#0284C7] hover:to-[#0096c7] text-white shadow-lg shadow-[#0EA5E9]/15 border border-[#0EA5E9]/10 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
             >
               <Download size={13} strokeWidth={2.5} />
               Install Application

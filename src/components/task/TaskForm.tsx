@@ -329,24 +329,24 @@ function FieldControl({ children, error, className }: { children: React.ReactNod
 
 function FieldLabel({ children, required, className, htmlFor }: { children: React.ReactNode; required?: boolean; className?: string; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className={cn('inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600', className)}>
+    <label htmlFor={htmlFor} className={cn('inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300', className)}>
       <span>{children}</span>
       {required ? <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>*</span> : null}
     </label>
   );
 }
 
-function FormSection({ title, icon: Icon, children, headerAction }: { title?: string, icon?: LucideIcon, children?: React.ReactNode, headerAction?: React.ReactNode }) {
+function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: LucideIcon, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
   return (
-    <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
+    <section data-page-tour={tourId} className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
         <div className="flex items-center gap-2 min-w-0">
           {Icon && (
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
               <Icon size={14} strokeWidth={1.75} />
             </span>
           )}
-          {title && <h3 className="text-sm font-semibold text-slate-800 tracking-tight truncate">{title}</h3>}
+          {title && <h3 className="text-sm font-semibold text-slate-100 tracking-tight truncate">{title}</h3>}
         </div>
         {headerAction}
       </div>
@@ -1793,7 +1793,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   if (isLoadingOptions) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
+        <Loader2 className="h-10 w-10 text-[#0EA5E9] animate-spin" />
         <p className="text-slate-500 font-medium text-sm animate-pulse">Synchronizing Application Data...</p>
       </div>
     );
@@ -1831,12 +1831,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   return (
     <Card className="border-none shadow-none bg-transparent relative">
       {isDragging && (
-        <div className="absolute inset-0 z-50 bg-slate-900/10 backdrop-blur-md border-2 border-dashed border-[#006699] rounded-3xl flex flex-col items-center justify-center pointer-events-none transition-all duration-300 animate-in fade-in zoom-in-95">
-          <div className="bg-white/95 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm text-center border border-slate-100">
-            <div className="h-16 w-16 bg-sky-50 rounded-2xl flex items-center justify-center text-[#006699] border border-sky-100 shadow-sm animate-bounce">
+        <div className="absolute inset-0 z-50 bg-slate-900/10 backdrop-blur-md border-2 border-dashed border-[#0EA5E9] rounded-3xl flex flex-col items-center justify-center pointer-events-none transition-all duration-300 animate-in fade-in zoom-in-95">
+          <div className="bg-[var(--tm-surface)]/95 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm text-center border border-[var(--tm-border)]">
+            <div className="h-16 w-16 bg-sky-500/15 rounded-2xl flex items-center justify-center text-[#0EA5E9] border border-sky-500/30 shadow-sm animate-bounce">
               <UploadCloud size={32} />
             </div>
-            <h3 className="mt-4 text-base font-medium text-slate-800">Drop to Upload</h3>
+            <h3 className="mt-4 text-base font-medium text-slate-100">Drop to Upload</h3>
             <p className="mt-2 text-xs font-medium text-slate-500">Release files anywhere to attach to this task.</p>
             <div className="mt-4 flex items-center gap-4 text-[10px] font-medium text-slate-400">
               <span>PDF & Images Only</span>
@@ -1860,6 +1860,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         <FormSection
           title="Task Detail"
           icon={Info}
+          tourId="task-form-detail"
           headerAction={
             <div className="flex flex-wrap items-center gap-0.5">
               <Controller
@@ -1868,19 +1869,19 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 render={({ field }) => (
                   <div className="flex items-center space-x-2 mr-2">
                     <Checkbox id="isPrivate" checked={field.value} onCheckedChange={field.onChange} />
-                    <label htmlFor="isPrivate" className="text-xs font-medium text-slate-700 cursor-pointer">Private Task</label>
+                    <label htmlFor="isPrivate" className="text-xs font-medium text-slate-200 cursor-pointer">Private Task</label>
                   </div>
                 )}
               />
-              <div className="relative flex items-center gap-0.5 sm:gap-3 bg-slate-50/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-[8px] border border-slate-200/60 shadow-sm">
-                <FieldLabel required className="text-[10px] text-slate-700">Status</FieldLabel>
+              <div className="relative flex items-center gap-0.5 sm:gap-3 bg-[var(--tm-muted)]/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-[8px] border border-[var(--tm-border)]/60 shadow-sm">
+                <FieldLabel required className="text-[10px] text-slate-200">Status</FieldLabel>
                 <FieldControl error={form.formState.errors.status?.message}>
                 <Controller
                   name="status"
                   control={form.control}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="rounded-[8px] h-8 border-transparent bg-transparent text-slate-900 shadow-none hover:bg-slate-100 w-[120px] sm:w-[160px]">
+                        <SelectTrigger className="rounded-[8px] h-8 border-transparent bg-transparent text-slate-50 shadow-none hover:bg-[var(--tm-muted)] w-[120px] sm:w-[160px]">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                         <SelectContent className="rounded-[8px]">
@@ -1901,10 +1902,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         >
           <div className="space-y-2.5">
             {initialData?.parentTask && (
-              <div className="mb-1 flex items-center gap-1.5 border border-blue-100 bg-blue-50/50 px-3 py-1.5 rounded-[8px] w-fit">
-                <ExternalLink size={12} className="text-blue-600" />
-                <span className="text-[11px] text-slate-600 font-medium">Parent Task:</span>
-                <Link to={taskUrl(initialData.parentTask.operTaskNo, isDealMonitorCategory ? 'deal monitor' : undefined)} className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 hover:underline transition-colors">
+              <div className="mb-1 flex items-center gap-1.5 border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 rounded-[8px] w-fit">
+                <ExternalLink size={12} className="text-blue-400" />
+                <span className="text-[11px] text-slate-300 font-medium">Parent Task:</span>
+                <Link to={taskUrl(initialData.parentTask.operTaskNo, isDealMonitorCategory ? 'deal monitor' : undefined)} className="text-[11px] font-semibold text-blue-400 hover:text-blue-800 hover:underline transition-colors">
                   {initialData.parentTask.title}
                 </Link>
               </div>
@@ -1913,14 +1914,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-2.5 items-start">
               <div className="space-y-1.5" id="form-group-code">
                 <FieldLabel>Task Code</FieldLabel>
-                <div className="h-10 flex items-center text-xs font-medium text-slate-500 select-none bg-slate-50 px-3 rounded-[8px] border border-[#a8afb7] whitespace-nowrap">
+                <div className="h-10 flex items-center text-xs font-medium text-slate-500 select-none bg-[var(--tm-muted)] px-3 rounded-[8px] border border-[var(--tm-border)] whitespace-nowrap">
                   {form.watch('code') || 'AUTO-GEN-CODE'}
                 </div>
               </div>
               <div className="space-y-1.5 min-w-0" id="form-group-title">
                 <FieldLabel required>Task Title</FieldLabel>
                 <FieldControl error={form.formState.errors.title?.message}>
-                  <Input placeholder="Enter task title" {...form.register('title')} className={cn("h-10 rounded-[8px] border-slate-200/80 text-xs text-slate-900 shadow-sm transition-all", form.formState.errors.title ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={200} />
+                  <Input placeholder="Enter task title" {...form.register('title')} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.title ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={200} />
                 </FieldControl>
               </div>
             </div>
@@ -1929,7 +1930,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <div className="space-y-1.5" id="form-group-description">
               <FieldLabel>Task Description</FieldLabel>
               <FieldControl error={form.formState.errors.description?.message}>
-                <Textarea placeholder="Enter task description" className={cn("min-h-[60px] rounded-[8px] border-slate-200/80 p-3 leading-relaxed text-xs text-slate-900 shadow-sm transition-all", form.formState.errors.description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")} {...form.register('description')} maxLength={1000} />
+                <Textarea placeholder="Enter task description" className={cn("min-h-[60px] rounded-[8px] border-[var(--tm-border)]/80 p-3 leading-relaxed text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} {...form.register('description')} maxLength={1000} />
               </FieldControl>
             </div>
 
@@ -1944,7 +1945,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     tags={field.value || []}
                     onChange={field.onChange}
                     placeholder="Enter tags/keywords"
-                    className="min-h-[40px] py-1 rounded-[8px] border-slate-200/80 shadow-sm input-section"
+                    className="min-h-[40px] py-1 rounded-[8px] border-[var(--tm-border)]/80 shadow-sm input-section"
                   />
                 )}
               />
@@ -1957,6 +1958,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           <FormSection
             title="Category Detail"
             icon={Info}
+            tourId="task-form-category"
           >
             {/* Row 3: Category, Type, Priority */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-x-3 gap-y-2.5">
@@ -2069,7 +2071,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
         {/* 2. Ownership & Responsibility */}
         {!hiddenSections.includes('ownership') && (
-          <FormSection title="Ownership" icon={Users}>
+          <FormSection title="Ownership" icon={Users} tourId="task-form-ownership">
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-1.5" id="form-group-company">
@@ -2166,17 +2168,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               {/* Collaborators / Supporters */}
               <div
                 id="form-group-collaborators"
-                className="rounded-[8px] border border-slate-200/80 bg-[#f8fbfd]/40 overflow-hidden min-w-0"
+                className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/40 overflow-hidden min-w-0"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                       <UserPlus size={13} strokeWidth={1.75} />
                     </span>
                     <div className="min-w-0 flex items-center gap-2">
-                      <p className="text-[12px] font-semibold text-slate-800 truncate">Collaborators / Supporters</p>
+                      <p className="text-[12px] font-semibold text-slate-100 truncate">Collaborators / Supporters</p>
                       {collabFields.length > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#006699] px-1.5 text-[10px] font-semibold text-white">
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
                           {collabFields.length}
                         </span>
                       )}
@@ -2187,7 +2189,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <FieldLabel className="text-[10px] shrink-0">Team</FieldLabel>
                           <div className="relative flex items-center">
                             <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
-                          <SelectTrigger className={cn("rounded-[8px] h-8 border-slate-200 text-[11px] w-[148px] bg-white shadow-none", selectedCollabTeam && "[&>span]:pr-5")}>
+                          <SelectTrigger className={cn("rounded-[8px] h-8 border-[var(--tm-border)] text-[11px] w-[148px] bg-[var(--tm-surface)] shadow-none", selectedCollabTeam && "[&>span]:pr-5")}>
                                 <SelectValue placeholder="Select team" />
                               </SelectTrigger>
                           <SelectContent className="rounded-[8px]">
@@ -2209,7 +2211,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 }}
                             title="Clear team"
                               >
-                                <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+                                <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
                           </button>
                             )}
                           </div>
@@ -2219,7 +2221,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onClick={() => appendCollab({ userName: '', displayName: '', email: '' })}
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-[8px] text-[11px] font-medium border-[#006699]/25 text-[#006699] hover:bg-[#e8f3f8] gap-1 px-2.5"
+                      className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
                     >
                       <Plus size={12} /> Add
                       </Button>
@@ -2229,7 +2231,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
                   {collabFields.length === 0 ? (
                     <FieldControl
-                      className="text-center p-6 border border-dashed border-slate-200 rounded-[8px] bg-white flex flex-col items-center justify-center"
+                      className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center"
                       error={hasCollabError ? (collabError as any).message : undefined}
                     >
                       <p className="text-xs text-slate-500 font-medium">No collaborators added yet.</p>
@@ -2248,17 +2250,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           return (
                             <div
                               key={field.id}
-                              className="relative flex items-start gap-3 rounded-[8px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 transition-all"
+                              className="relative flex items-start gap-3 rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 transition-all"
                             >
                               <input type="hidden" {...form.register(`collaborators.${index}.userName`)} />
                               <input type="hidden" {...form.register(`collaborators.${index}.displayName`)} />
                               <input type="hidden" {...form.register(`collaborators.${index}.email`)} />
-                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                 {index + 1}
                               </span>
                               <UserAvatar loginNo={loginNo ? Number(loginNo) : null} displayName={displayName} size="md" />
                               <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-semibold text-slate-800 break-words leading-snug">{displayName || '—'}</p>
+                                <p className="text-[13px] font-semibold text-slate-100 break-words leading-snug">{displayName || '—'}</p>
                                 {email ? <p className="text-[12px] text-slate-500 break-all mt-0.5 leading-snug">{email}</p> : null}
                               </div>
                             </div>
@@ -2269,24 +2271,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <div
                             key={field.id}
                             className={cn(
-                              "relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden transition-all",
-                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)]",
+                              "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
+                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
                               (userErr || nameErr) && "border-red-300"
                             )}
                           >
-                            <div className="relative flex items-start gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                            <div className="relative flex items-start gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                 {index + 1}
                               </span>
                               {hasUser && loginNo ? (
                                 <UserAvatar loginNo={Number(loginNo)} displayName={displayName} size="md" />
                               ) : (
-                                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/10">
+                                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
                                   <UserPlus size={14} strokeWidth={1.75} />
                                 </span>
                               )}
                               <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-semibold text-slate-800 break-words leading-snug">
+                                <p className="text-[13px] font-semibold text-slate-100 break-words leading-snug">
                                   {displayName || 'Add collaborator'}
                                 </p>
                                 <p className={cn("text-[12px] mt-0.5 leading-snug", email ? "text-slate-500 break-all" : "text-slate-400")}>
@@ -2296,7 +2298,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <button
                                 type="button"
                                 onClick={() => removeCollab(index)}
-                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-100/80 transition-colors"
+                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                                 title="Remove collaborator"
                               >
                                 <Trash2 size={13} />
@@ -2336,7 +2338,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     disabled
                                     {...form.register(`collaborators.${index}.displayName`)}
                                     placeholder="Display Name"
-                                    className={cn("h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-800 bg-slate-50 w-full", nameErr && "border-red-400")}
+                                    className={cn("h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
                                   />
                                 </FieldControl>
                       </div>
@@ -2346,7 +2348,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   disabled
                                   {...form.register(`collaborators.${index}.email`)}
                                   placeholder="Email"
-                                  className="h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-800 bg-slate-50 w-full"
+                                  className="h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
                                 />
                               </div>
                             </div>
@@ -2361,17 +2363,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               {/* Report To */}
               <div
                 id="form-group-informed_to"
-                className="rounded-[8px] border border-slate-200/80 bg-[#f8fbfd]/40 overflow-hidden min-w-0"
+                className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/40 overflow-hidden min-w-0"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                       <Users size={13} strokeWidth={1.75} />
                     </span>
                     <div className="min-w-0 flex items-center gap-2">
-                      <p className="text-[12px] font-semibold text-slate-800 truncate">Report To</p>
+                      <p className="text-[12px] font-semibold text-slate-100 truncate">Report To</p>
                       {informFields.length > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#006699] px-1.5 text-[10px] font-semibold text-white">
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
                           {informFields.length}
                         </span>
                       )}
@@ -2382,7 +2384,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <FieldLabel className="text-[10px] shrink-0">Team</FieldLabel>
                           <div className="relative flex items-center">
                             <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
-                          <SelectTrigger className={cn("rounded-[8px] h-8 border-slate-200 text-[11px] w-[148px] bg-white shadow-none", selectedInformTeam && "[&>span]:pr-5")}>
+                          <SelectTrigger className={cn("rounded-[8px] h-8 border-[var(--tm-border)] text-[11px] w-[148px] bg-[var(--tm-surface)] shadow-none", selectedInformTeam && "[&>span]:pr-5")}>
                                 <SelectValue placeholder="Select team" />
                               </SelectTrigger>
                           <SelectContent className="rounded-[8px]">
@@ -2404,7 +2406,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 }}
                             title="Clear team"
                               >
-                                <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+                                <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
                           </button>
                             )}
                           </div>
@@ -2414,7 +2416,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       onClick={() => appendInform({ userName: '', displayName: '', email: '' })}
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-[8px] text-[11px] font-medium border-[#006699]/25 text-[#006699] hover:bg-[#e8f3f8] gap-1 px-2.5"
+                      className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
                     >
                       <Plus size={12} /> Add
                       </Button>
@@ -2424,7 +2426,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
                   {informFields.length === 0 ? (
                     <FieldControl
-                      className="text-center p-6 border border-dashed border-slate-200 rounded-[8px] bg-white flex flex-col items-center justify-center"
+                      className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center"
                       error={hasInformError ? (informError as any).message : undefined}
                     >
                       <p className="text-xs text-slate-500 font-medium">No report-to users added yet.</p>
@@ -2443,17 +2445,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           return (
                             <div
                               key={field.id}
-                              className="relative flex items-start gap-3 rounded-[8px] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 transition-all"
+                              className="relative flex items-start gap-3 rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 transition-all"
                             >
                               <input type="hidden" {...form.register(`informed_to.${index}.userName`)} />
                               <input type="hidden" {...form.register(`informed_to.${index}.displayName`)} />
                               <input type="hidden" {...form.register(`informed_to.${index}.email`)} />
-                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                 {index + 1}
                               </span>
                               <UserAvatar loginNo={loginNo ? Number(loginNo) : null} displayName={displayName} size="md" />
                               <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-semibold text-slate-800 break-words leading-snug">{displayName || '—'}</p>
+                                <p className="text-[13px] font-semibold text-slate-100 break-words leading-snug">{displayName || '—'}</p>
                                 {email ? <p className="text-[12px] text-slate-500 break-all mt-0.5 leading-snug">{email}</p> : null}
                               </div>
                             </div>
@@ -2464,24 +2466,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <div
                             key={field.id}
                             className={cn(
-                              "relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden transition-all",
-                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)]",
+                              "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
+                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
                               (userErr || nameErr) && "border-red-300"
                             )}
                           >
-                            <div className="relative flex items-start gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                            <div className="relative flex items-start gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                 {index + 1}
                               </span>
                               {hasUser && loginNo ? (
                                 <UserAvatar loginNo={Number(loginNo)} displayName={displayName} size="md" />
                               ) : (
-                                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/10">
+                                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
                                   <Users size={14} strokeWidth={1.75} />
                                 </span>
                               )}
                               <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-semibold text-slate-800 break-words leading-snug">
+                                <p className="text-[13px] font-semibold text-slate-100 break-words leading-snug">
                                   {displayName || 'Add report-to user'}
                                 </p>
                                 <p className={cn("text-[12px] mt-0.5 leading-snug", email ? "text-slate-500 break-all" : "text-slate-400")}>
@@ -2491,7 +2493,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <button
                                 type="button"
                                 onClick={() => removeInform(index)}
-                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-100/80 transition-colors"
+                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                                 title="Remove report-to user"
                               >
                                 <Trash2 size={13} />
@@ -2531,7 +2533,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     disabled
                                     {...form.register(`informed_to.${index}.displayName`)}
                                     placeholder="Display Name"
-                                    className={cn("h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-800 bg-slate-50 w-full", nameErr && "border-red-400")}
+                                    className={cn("h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
                                   />
                                 </FieldControl>
                       </div>
@@ -2541,7 +2543,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   disabled
                                   {...form.register(`informed_to.${index}.email`)}
                                   placeholder="Email"
-                                  className="h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-800 bg-slate-50 w-full"
+                                  className="h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
                                 />
                   </div>
                 </div>
@@ -2570,7 +2572,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         )}
 
         {!hiddenSections.includes('attachments') && (
-          <FormSection title="Attachments" icon={Paperclip}>
+          <FormSection title="Attachments" icon={Paperclip} tourId="task-form-attachments">
             <div className="space-y-3">
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -2584,7 +2586,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   const files = e.dataTransfer?.files;
                   if (files?.length) processFiles(Array.from(files));
                 }}
-                className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#006699]/25 bg-gradient-to-r from-[#f4f9fc] to-white px-3.5 py-3 cursor-pointer transition-all hover:border-[#006699]/45 hover:shadow-[0_8px_24px_-16px_rgba(0,102,153,0.35)]"
+                className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#0EA5E9]/25 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] px-3.5 py-3 cursor-pointer transition-all hover:border-[#0EA5E9]/45 hover:shadow-[0_8px_24px_-16px_rgba(14,165,233,0.35)]"
               >
                 <input
                   ref={fileInputRef}
@@ -2594,13 +2596,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   onChange={handleFileSelection}
                   className="hidden"
                 />
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-white text-[#006699] ring-1 ring-[#006699]/12 shadow-sm group-hover:bg-[#e8f3f8] transition-colors">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12 shadow-sm group-hover:bg-[var(--tm-tint)] transition-colors">
                   <UploadCloud size={18} strokeWidth={1.75} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold text-slate-800 leading-tight">
+                  <p className="text-[12px] font-semibold text-slate-100 leading-tight">
                     Drop files here or{' '}
-                    <span className="text-[#006699] underline decoration-[#006699]/30 underline-offset-2">
+                    <span className="text-[#0EA5E9] underline decoration-[#0EA5E9]/30 underline-offset-2">
                       browse
                     </span>
                   </p>
@@ -2608,7 +2610,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     PDF &amp; Images · Max 10MB each
                   </p>
                 </div>
-                <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#006699] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#006699]/20 group-hover:bg-[#005580] transition-colors">
+                <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
                   Upload
                 </span>
               </div>
@@ -2623,7 +2625,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       {uploadingFiles.length}
                     </span>
                   </div>
-                  <div className="rounded-[8px] border border-slate-200/80 overflow-hidden divide-y divide-slate-100 bg-white">
+                  <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
                     {uploadingFiles.map((file) => (
                       <motion.div
                         key={file.tempId}
@@ -2632,15 +2634,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         exit={{ opacity: 0, y: -6 }}
                         className={cn(
                           'flex items-center gap-2.5 px-2.5 py-2',
-                          file.status === 'failed' ? 'bg-red-50/60' : 'bg-white'
+                          file.status === 'failed' ? 'bg-red-500/10' : 'bg-[var(--tm-surface)]'
                         )}
                       >
                         <span
                           className={cn(
                             'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
                             file.status === 'failed'
-                              ? 'bg-red-50 text-red-600 ring-red-200'
-                              : 'bg-[#e8f3f8] text-[#006699] ring-[#006699]/12'
+                              ? 'bg-red-500/10 text-red-400 ring-red-500/30'
+                              : 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
                           )}
                         >
                           {file.status === 'failed' ? (
@@ -2654,13 +2656,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           )}
                                 </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">
+                          <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
                             {file.name}
                           </p>
                           <p
                             className={cn(
                               'text-[10px] font-medium mt-0.5',
-                              file.status === 'failed' ? 'text-red-600' : 'text-slate-400'
+                              file.status === 'failed' ? 'text-red-400' : 'text-slate-400'
                             )}
                           >
                             {file.status === 'pending' && 'Pending upload...'}
@@ -2676,7 +2678,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               size="icon"
                               variant="ghost"
                               onClick={() => handleRetryUpload(file.tempId)}
-                              className="h-7 w-7 rounded-[7px] text-[#006699] hover:bg-[#e8f3f8]"
+                              className="h-7 w-7 rounded-[7px] text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
                             >
                               <RefreshCw size={12} />
                             </Button>
@@ -2686,7 +2688,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             size="icon"
                             variant="ghost"
                             onClick={() => handleRemoveUploading(file.tempId)}
-                            className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-red-600 hover:bg-red-50"
+                            className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                           >
                             <X size={12} />
                           </Button>
@@ -2707,11 +2709,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                         Attached
                       </h4>
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e8f3f8] px-1.5 text-[10px] font-semibold text-[#006699] tabular-nums">
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
                         {attachments.length}
                       </span>
                     </div>
-                    <div className="rounded-[8px] border border-slate-200/80 overflow-hidden divide-y divide-slate-100 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                    <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
                       {attachments.map((file: any) => {
                         const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
                         return (
@@ -2719,21 +2721,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           key={file.id}
                             initial={{ opacity: 0, y: 4 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[#f8fbfd] transition-colors"
+                            className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
                           >
                             <span
                               className={cn(
                                 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
                                 isPdf
-                                  ? 'bg-[#e8f3f8] text-[#006699] ring-[#006699]/12'
-                                  : 'bg-violet-50 text-violet-600 ring-violet-200/70'
+                                  ? 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
+                                  : 'bg-violet-500/15 text-violet-400 ring-violet-500/30'
                               )}
                             >
                               {isPdf ? <FileText size={14} /> : <Image size={14} />}
                             </span>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 min-w-0">
-                                <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">
+                                <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
                                   {file.name}
                                 </p>
                                 {file.size ? (
@@ -2747,7 +2749,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 onClick={() =>
                                   attachmentService.downloadAttachment(file.id, file.name)
                                 }
-                                className="mt-0.5 text-[10px] font-semibold text-[#006699] hover:underline underline-offset-2"
+                                className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
                               >
                                 View
                               </button>
@@ -2757,7 +2759,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             size="icon"
                             variant="ghost"
                             onClick={() => handleRemoveAttachment(file.id, file.name)}
-                              className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-600 hover:bg-red-50 transition-all"
+                              className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
                           >
                               <Trash size={12} />
                           </Button>
@@ -2776,7 +2778,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         <>
                 {/* 3. Timeline */}
                 {!hiddenSections.includes('timeline') && (
-          <FormSection title="Timeline & Effort" icon={Clock}>
+          <FormSection title="Timeline & Effort" icon={Clock} tourId="task-form-timeline">
             <div className="space-y-2.5">
               {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-end">
@@ -2786,14 +2788,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     name="isAllDay"
                     control={form.control}
                     render={({ field }) => (
-                      <div className="flex items-center space-x-2 bg-slate-50/70 border border-slate-200/80 px-4 rounded-[8px] shadow-sm transition-all hover:bg-slate-100/30 h-10">
+                      <div className="flex items-center space-x-2 bg-[var(--tm-muted)]/70 border border-[var(--tm-border)]/80 px-4 rounded-[8px] shadow-sm transition-all hover:bg-[var(--tm-muted)]/30 h-10">
                         <Checkbox
                           id="isAllDay"
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                          className="h-5 w-5 rounded-md border-slate-300 focus-visible:ring-[#006699]"
+                          className="h-5 w-5 rounded-md border-[#3D4F66] focus-visible:ring-[#0EA5E9]"
                         />
-                        <label htmlFor="isAllDay" className="text-sm font-semibold text-slate-700 cursor-pointer select-none">All-Day Task</label>
+                        <label htmlFor="isAllDay" className="text-sm font-semibold text-slate-200 cursor-pointer select-none">All-Day Task</label>
                       </div>
                     )}
                   />
@@ -2840,17 +2842,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <FieldControl error={form.formState.errors.estimated_effort_value?.message || (!form.formState.errors.estimated_effort_value ? form.formState.errors.estimated_effort_unit?.message : undefined)}>
                     <div className="flex gap-2">
                       <div className="flex-1 min-w-0">
-                        <Input type="number" step="0" placeholder="" {...form.register('estimated_effort_value')} isDecimal={false} className={cn("h-10 rounded-[8px] border-slate-200/80 text-xs text-slate-900 shadow-sm text-right w-full transition-all", form.formState.errors.estimated_effort_value ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={8} />
+                        <Input type="number" step="0" placeholder="" {...form.register('estimated_effort_value')} isDecimal={false} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right w-full transition-all", form.formState.errors.estimated_effort_value ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
                     </div>
                     <Controller
                       name="estimated_effort_unit"
                       control={form.control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className={cn("h-10 rounded-[8px] border-slate-200/80 text-xs text-slate-900 shadow-sm w-32 transition-all", form.formState.errors.estimated_effort_unit ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")}>
+                            <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm w-32 transition-all", form.formState.errors.estimated_effort_unit ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
                             <SelectValue placeholder="Select estimated effort unit" />
                           </SelectTrigger>
-                            <SelectContent className="rounded-[8px] bg-white border border-slate-200">
+                            <SelectContent className="rounded-[8px] bg-[var(--tm-surface)] border border-[var(--tm-border)]">
                             {fillValues?.frequency?.map(f => (
                               <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
                                 {f.FrequencyName || f.Frequency}
@@ -2885,7 +2887,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             else field.onChange(val);
                           }}
                         >
-                          <SelectTrigger className="w-full sm:w-[220px] h-10 bg-white border-slate-200/80 rounded-[8px] text-xs focus:ring-[#006699]/20">
+                          <SelectTrigger className="w-full sm:w-[220px] h-10 bg-[var(--tm-surface)] border-[var(--tm-border)]/80 rounded-[8px] text-xs focus:ring-[#0EA5E9]/20">
                             <SelectValue placeholder="Select color" />
                           </SelectTrigger>
                           <SelectContent>
@@ -2907,14 +2909,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             ].map((preset) => (
                               <SelectItem key={preset.hex} value={preset.hex}>
                                 <div className="flex items-center gap-2">
-                                  <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: preset.hex }} />
+                                  <div className="w-4 h-4 rounded-full border border-[var(--tm-border)]" style={{ backgroundColor: preset.hex }} />
                                   <span>{preset.name}</span>
                                 </div>
                               </SelectItem>
                             ))}
                             <SelectItem value="custom">
                               <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full border border-slate-200 bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
+                                <div className="w-4 h-4 rounded-full border border-[var(--tm-border)] bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
                                 <span>Custom Color</span>
                               </div>
                             </SelectItem>
@@ -2926,7 +2928,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
                           '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
                         ].includes(field.value) && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-[8px] bg-slate-50">
+                            <div className="flex items-center gap-2 px-3 py-1.5 border border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-muted)]">
                               <input
                                 type="color"
                                 value={field.value || '#000000'}
@@ -2950,7 +2952,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             title="Business Benefit"
             icon={TrendingUp}
             headerAction={
-              <div className="flex items-center gap-2 shrink-0 border border-slate-200/80 rounded-[8px] px-2 py-1 bg-white">
+              <div className="flex items-center gap-2 shrink-0 border border-[var(--tm-border)]/80 rounded-[8px] px-2 py-1 bg-[var(--tm-surface)]">
                 <Controller
                   name="is_business_benefit_applicable"
                   control={form.control}
@@ -2964,7 +2966,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     />
                   )}
                 />
-                <Label htmlFor="benefit-section" className="text-xs font-medium text-slate-700 cursor-pointer">Business Benefit Applicable</Label>
+                <Label htmlFor="benefit-section" className="text-xs font-medium text-slate-200 cursor-pointer">Business Benefit Applicable</Label>
               </div>
             }
           >
@@ -3010,7 +3012,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       control={form.control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className={cn("h-10 rounded-[8px] border-slate-200/80 text-xs text-slate-900 shadow-sm transition-all", form.formState.errors.benefit_period ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")}>
+                            <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.benefit_period ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
                             <SelectValue placeholder="Select benefit period" />
                           </SelectTrigger>
                             <SelectContent className="rounded-[8px]">
@@ -3028,13 +3030,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <div className="space-y-1.5" id="form-group-estimated_benefit_amount">
                         <FieldLabel required>Estimated Benefit Amount</FieldLabel>
                         <FieldControl error={form.formState.errors.estimated_benefit_amount?.message}>
-                          <Input type="number" step="0.01" placeholder="" {...form.register('estimated_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-slate-200/80 text-xs text-slate-900 shadow-sm text-right transition-all", form.formState.errors.estimated_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={8} />
+                          <Input type="number" step="0.01" placeholder="" {...form.register('estimated_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.estimated_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
                         </FieldControl>
                       </div>
                       <div className="space-y-1.5" id="form-group-actual_benefit_amount">
                         <FieldLabel>Actual Benefit Amount</FieldLabel>
                         <FieldControl error={form.formState.errors.actual_benefit_amount?.message}>
-                          <Input type="number" step="0.01" placeholder="" {...form.register('actual_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-slate-200/80 text-xs text-slate-900 shadow-sm text-right transition-all", form.formState.errors.actual_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")} maxLength={8} />
+                          <Input type="number" step="0.01" placeholder="" {...form.register('actual_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.actual_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
                         </FieldControl>
                       </div>
                     </>
@@ -3042,7 +3044,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <div className="space-y-1.5 md:col-span-2" id="form-group-business_benefit_description">
                     <FieldLabel>Benefit Description</FieldLabel>
                     <FieldControl error={form.formState.errors.business_benefit_description?.message}>
-                      <Textarea placeholder="Enter business benefit description" {...form.register('business_benefit_description')} className={cn("min-h-[80px] rounded-[8px] border-slate-200/80 input-section text-xs text-slate-900 shadow-sm transition-all", form.formState.errors.business_benefit_description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#006699]/15 focus:border-[#006699]")} />
+                      <Textarea placeholder="Enter business benefit description" {...form.register('business_benefit_description')} className={cn("min-h-[80px] rounded-[8px] border-[var(--tm-border)]/80 input-section text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.business_benefit_description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} />
                     </FieldControl>
                   </div>
                 </div>
@@ -3062,24 +3064,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 type="button"
                 disabled={subtaskFields.length > 0}
                 onClick={() => appendSubtask({ id: Date.now().toString(), type_No: '', title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '', operTaskNo: 0 })}
-                className="rounded-[8px] font-medium border-[#006699]/40 text-[#006699] hover:bg-[#e8f3f8] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95 shrink-0 disabled:opacity-50"
+                className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95 shrink-0 disabled:opacity-50"
               >
-                <Plus size={12} className="text-[#006699]" /> Add Sub-Task
+                <Plus size={12} className="text-[#0EA5E9]" /> Add Sub-Task
               </Button>
             }
           >
             <div className="space-y-3">
               {form.formState.errors.sub_tasks && (
-                <div className="p-2.5 bg-red-50 border border-red-200 rounded-[8px] flex items-center gap-2">
-                  <AlertCircle size={14} className="text-red-600 shrink-0" />
-                  <span className="text-xs font-semibold text-red-600">
+                <div className="p-2.5 bg-red-500/10 border border-red-500/30 rounded-[8px] flex items-center gap-2">
+                  <AlertCircle size={14} className="text-red-400 shrink-0" />
+                  <span className="text-xs font-semibold text-red-400">
                     Please correct the highlighted errors in the sub-tasks before saving.
                   </span>
                 </div>
               )}
 
               {localSubtasks.length === 0 && subtaskFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-slate-200 rounded-[8px] bg-[#f8fbfd] flex flex-col items-center justify-center">
+                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center">
                   <p className="text-xs text-slate-500 font-medium">No sub-tasks added yet.</p>
                 </div>
               ) : (
@@ -3092,21 +3094,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           return (
                         <div
                           key={field.id}
-                          className="relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)] transition-all"
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
                         >
-                          <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                          <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                               {idx + 1}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">{task.title || 'Sub-Task'}</p>
+                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
                               <p className="text-[11px] text-slate-400 truncate mt-0.5">{task.status || 'Draft'}</p>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
+                              <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => removeSubtask(index)} title="Cancel">
                                 <X size={12} className="mr-1" /> Cancel
                               </Button>
-                              <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                              <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
                                 {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
                                 Save
                               </Button>
@@ -3193,7 +3195,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   {...form.register(`sub_tasks.${index}.completionRemark`)}
                                   placeholder="Remark..."
                                   rows={2}
-                                  className="border-slate-200 shadow-sm min-h-[40px] h-auto py-2 px-3 rounded-[8px] font-normal text-slate-700 placeholder:text-slate-400 text-xs transition-all duration-300 focus-visible:ring-[#006699]/20"
+                                  className="border-[var(--tm-border)] shadow-sm min-h-[40px] h-auto py-2 px-3 rounded-[8px] font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300 focus-visible:ring-[#0EA5E9]/20"
                                   maxLength={500}
                                 />
                               </div>
@@ -3207,22 +3209,22 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         return (
                       <div
                         key={task.taskNo}
-                        className="relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)] transition-all"
+                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
                       >
-                        <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                        <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                             {idx + 1}
                               </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 min-w-0">
-                              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">{task.title || 'Sub-Task'}</p>
+                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
                               {task.status ? (
                               <span className={cn(
                                   "shrink-0 px-2 py-0.5 rounded-full text-[9px] font-medium",
                                 task.status === 'Done' || task.status === 'Complete' ? "bg-green-100/80 text-green-800" :
                                   task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
                                     task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
-                                      "bg-slate-200/80 text-slate-800"
+                                      "bg-slate-200/80 text-slate-100"
                               )}>
                                 {task.status}
                               </span>
@@ -3233,11 +3235,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             ) : null}
                           </div>
                           <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-slate-300 text-slate-600 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit"><Edit2 size={12} /></Button>
+                                <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-[#3D4F66] text-slate-300 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit"><Edit2 size={12} /></Button>
                                 {task.taskNo > 0 && (
-                                  <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-slate-300 text-[#006699]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit"><ExternalLink size={12} /></Button>
+                                  <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-[#3D4F66] text-[#0EA5E9]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit"><ExternalLink size={12} /></Button>
                                 )}
-                                <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete"><Trash2 size={12} /></Button>
+                                <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-400" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete"><Trash2 size={12} /></Button>
                               </div>
                         </div>
 
@@ -3246,7 +3248,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             {showSubtaskType && (
                               <div className="space-y-1">
                                 <FieldLabel>Type</FieldLabel>
-                                <p className="text-xs font-medium text-slate-700 pt-2">{typeLabel}</p>
+                                <p className="text-xs font-medium text-slate-200 pt-2">{typeLabel}</p>
                               </div>
                             )}
                             <div className="space-y-1">
@@ -3255,20 +3257,20 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 {task.assignedDisplayName && task.assignedDisplayName !== '-' && (
                                   <UserAvatar loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined} displayName={task.assignedDisplayName} size="sm" />
                                 )}
-                                <span className="text-xs font-medium text-slate-700">{task.assignedDisplayName || '-'}</span>
+                                <span className="text-xs font-medium text-slate-200">{task.assignedDisplayName || '-'}</span>
                               </div>
                             </div>
                             <div className="space-y-1">
                               <FieldLabel>Due Date</FieldLabel>
-                              <p className="text-xs font-medium text-slate-700 pt-2">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</p>
+                              <p className="text-xs font-medium text-slate-200 pt-2">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</p>
                             </div>
                             <div className="space-y-1">
                               <FieldLabel>Completion Date</FieldLabel>
-                              <p className="text-xs font-medium text-slate-700 pt-2">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</p>
+                              <p className="text-xs font-medium text-slate-200 pt-2">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</p>
                             </div>
                             <div className="space-y-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
                               <FieldLabel>Completion Remark</FieldLabel>
-                              <p className="text-xs font-medium text-slate-700 pt-1 whitespace-pre-wrap break-words">{task.completionRemark || '-'}</p>
+                              <p className="text-xs font-medium text-slate-200 pt-1 whitespace-pre-wrap break-words">{task.completionRemark || '-'}</p>
                             </div>
                           </div>
                         </div>
@@ -3282,23 +3284,23 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         return (
                       <div
                         key={field.id}
-                        className="relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)] transition-all"
+                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
                       >
-                        <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                        <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                             {localSubtasks.length + index + 1}
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 min-w-0">
-                              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">{(watchedTitle || '').trim() || 'New Sub-Task'}</p>
-                              <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-medium bg-slate-200/80 text-slate-700">Draft</span>
+                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{(watchedTitle || '').trim() || 'New Sub-Task'}</p>
+                              <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-medium bg-slate-200/80 text-slate-200">Draft</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50" onClick={() => removeSubtask(index)} title="Cancel">
+                            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => removeSubtask(index)} title="Cancel">
                               <X size={12} />
                             </Button>
-                            <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                            <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
                               {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                             </Button>
                           </div>
@@ -3313,7 +3315,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   {...form.register(`sub_tasks.${index}.title`)}
                                   placeholder="Enter sub-task title"
                                   className={cn(
-                                    "h-10 rounded-[8px] border-slate-200 shadow-sm px-3 font-normal text-slate-700 placeholder:text-slate-400 text-xs transition-all duration-300",
+                                    "h-10 rounded-[8px] border-[var(--tm-border)] shadow-sm px-3 font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300",
                                     form.formState.errors.sub_tasks?.[index]?.title && "border-red-400"
                                   )}
                                   maxLength={200}
@@ -3398,7 +3400,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 {...form.register(`sub_tasks.${index}.completionRemark`)}
                                 placeholder="Enter remark"
                                 rows={2}
-                                className="border-slate-200 shadow-sm min-h-[40px] h-auto py-2 px-3 rounded-[8px] font-normal text-slate-700 placeholder:text-slate-400 text-xs transition-all duration-300"
+                                className="border-[var(--tm-border)] shadow-sm min-h-[40px] h-auto py-2 px-3 rounded-[8px] font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300"
                                 maxLength={500}
                               />
                             </div>
@@ -3421,9 +3423,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             headerAction={
               <div className="flex flex-wrap items-center gap-2">
                 {checklistFields.length > 0 && (
-                  <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#e8f3f8] px-2.5 py-1 text-[10px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                  <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--tm-tint)] px-2.5 py-1 text-[10px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                     {completedCount}/{checklistFields.length}
-                    <span className="text-[#006699]/70 font-medium">({progressPercent}%)</span>
+                    <span className="text-[#0EA5E9]/70 font-medium">({progressPercent}%)</span>
                   </span>
                 )}
               <Button
@@ -3431,25 +3433,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 size="sm"
                 type="button"
                 onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
-                  className="rounded-[8px] font-medium border-[#006699]/40 text-[#006699] hover:bg-[#e8f3f8] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+                  className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
               >
-                <Plus size={12} className="text-[#006699]" /> Add Checklist Item
+                <Plus size={12} className="text-[#0EA5E9]" /> Add Checklist Item
               </Button>
               </div>
             }
           >
             <div className="space-y-3">
               {checklistFields.length > 0 && (
-                <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-1.5 w-full rounded-full bg-[var(--tm-muted)] overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[#006699] transition-all duration-300"
+                    className="h-full rounded-full bg-[#0EA5E9] transition-all duration-300"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
               )}
 
               {checklistFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-slate-200 rounded-[8px] bg-[#f8fbfd] flex flex-col items-center justify-center gap-1">
+                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
                   <p className="text-xs text-slate-500 font-medium">No checklist items yet.</p>
                   <p className="text-[10px] text-slate-400 font-medium">Add items to track task completion.</p>
                 </div>
@@ -3465,11 +3467,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: Math.min(index * 0.04, 0.2) }}
                       className={cn(
-                          "relative rounded-[8px] border bg-white overflow-hidden transition-all",
+                          "relative rounded-[8px] border bg-[var(--tm-surface)] overflow-hidden transition-all",
                           "shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
                           isCompleted
-                            ? "border-slate-200/80 bg-slate-50/60"
-                            : "border-slate-200/80 hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)]",
+                            ? "border-[var(--tm-border)]/80 bg-[var(--tm-muted)]/60"
+                            : "border-[var(--tm-border)]/80 hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
                           descError && "border-red-300"
                         )}
                       >
@@ -3477,8 +3479,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <span className={cn(
                             "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[11px] font-semibold ring-1 mt-0.5",
                             isCompleted
-                              ? "bg-slate-100 text-slate-400 ring-slate-200"
-                              : "bg-[#e8f3f8] text-[#006699] ring-[#006699]/12"
+                              ? "bg-[var(--tm-muted)] text-slate-400 ring-[var(--tm-border)]"
+                              : "bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12"
                           )}>
                             {index + 1}
                           </span>
@@ -3493,8 +3495,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             className={cn(
                                   "mt-0.5 h-7 w-7 shrink-0 rounded-[7px] border-2 flex items-center justify-center transition-all duration-200",
                               checkField.value
-                                    ? "bg-[#006699] border-[#006699] text-white"
-                                    : "border-slate-300 text-transparent hover:border-[#006699] bg-white"
+                                    ? "bg-[#0EA5E9] border-[#0EA5E9] text-white"
+                                    : "border-[#3D4F66] text-transparent hover:border-[#0EA5E9] bg-[var(--tm-surface)]"
                             )}
                                 title={checkField.value ? "Mark incomplete" : "Mark complete"}
                           >
@@ -3510,8 +3512,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 {...form.register(`check_list.${index}.description`)}
                                 placeholder="Enter checklist item…"
                                 className={cn(
-                                  "rounded-[8px] h-10 text-xs border-slate-200 bg-white shadow-none",
-                                  isCompleted && "text-slate-400 line-through decoration-slate-300 bg-slate-50",
+                                  "rounded-[8px] h-10 text-xs border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none",
+                                  isCompleted && "text-slate-400 line-through decoration-slate-300 bg-[var(--tm-muted)]",
                                   descError && "border-red-400"
                                 )}
                               />
@@ -3521,7 +3523,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <button
                         type="button"
                         onClick={() => removeChecklist(index)}
-                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-100/80 transition-colors"
+                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                             title="Remove checklist item"
                       >
                             <Trash2 size={13} />
@@ -3544,7 +3546,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             headerAction={
               <div className="flex flex-wrap items-center gap-2">
                 {executionLogFields.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#006699] px-1.5 text-[10px] font-semibold text-white">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
                     {executionLogFields.length}
                   </span>
                 )}
@@ -3553,29 +3555,29 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 size="sm"
                 type="button"
                 onClick={() => appendExecutionLog({ id: Date.now().toString(), date: '', remark: '' })}
-                  className="rounded-[8px] font-medium border-[#006699]/40 text-[#006699] hover:bg-[#e8f3f8] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+                  className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
               >
-                <Plus size={12} className="text-[#006699]" /> Add Log
+                <Plus size={12} className="text-[#0EA5E9]" /> Add Log
               </Button>
               </div>
             }
           >
             <div className="space-y-3">
               {/* Log entries panel */}
-              <div className="rounded-[8px] border border-slate-200/80 bg-[#f8fbfd]/50 overflow-hidden">
-                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
+              <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 overflow-hidden">
+                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                       <History size={12} strokeWidth={1.75} />
                     </span>
-                    <p className="text-[11px] font-semibold text-slate-700 truncate">Log entries</p>
+                    <p className="text-[11px] font-semibold text-slate-200 truncate">Log entries</p>
                   </div>
                 </div>
 
                 <div className="p-3 space-y-2.5">
                   {executionLogFields.length === 0 ? (
                     <FieldControl
-                      className="text-center p-6 border border-dashed border-slate-200 rounded-[8px] bg-white flex flex-col items-center justify-center gap-1"
+                      className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center gap-1"
                       error={hasExecutionLogError ? (executionLogError as any).message : undefined}
                     >
                       <p className="text-xs text-slate-500 font-medium">No execution logs yet.</p>
@@ -3592,17 +3594,17 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <div
                             key={field.id}
                             className={cn(
-                              "relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden transition-all",
-                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)]",
+                              "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
+                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
                               (dateErr || remarkErr) && "border-red-300"
                             )}
                           >
-                            <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[11px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                            <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                 {index + 1}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="text-[12px] font-semibold text-slate-800 leading-snug">
+                                <p className="text-[12px] font-semibold text-slate-100 leading-snug">
                                   {logDate ? new Date(logDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : `Log entry ${index + 1}`}
                                 </p>
                                 <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
@@ -3612,7 +3614,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <button
                                 type="button"
                                 onClick={() => removeExecutionLog(index)}
-                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-100/80 transition-colors"
+                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                                 title="Remove log"
                               >
                                 <Trash2 size={13} />
@@ -3636,7 +3638,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     placeholder="Select date"
                                     hideTime
                                         className={cn(
-                                          "h-10 rounded-[8px] text-xs border-slate-200 w-full max-w-sm",
+                                          "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
                                           dateErr && "border-red-400"
                                         )}
                                       />
@@ -3652,7 +3654,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     placeholder="Enter remark"
                                     rows={4}
                                     className={cn(
-                                      "min-h-[100px] py-2.5 resize-none rounded-[8px] border-slate-200 text-xs text-slate-900 w-full",
+                                      "min-h-[100px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
                                       remarkErr && "border-red-400"
                                     )}
                                   />
@@ -3668,12 +3670,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               </div>
 
               {/* Completion panel */}
-              <div className="rounded-[8px] border border-slate-200/80 bg-white overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-                <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+              <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                     <CheckCircle size={12} strokeWidth={1.75} />
                   </span>
-                  <p className="text-[11px] font-semibold text-slate-700">Completion</p>
+                  <p className="text-[11px] font-semibold text-slate-200">Completion</p>
                 </div>
                 <div className="p-3.5 space-y-3.5">
                   <div className="space-y-1" id="form-group-completionDate">
@@ -3689,7 +3691,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
                         hideTime={isAllDay}
                             className={cn(
-                              "h-10 rounded-[8px] text-xs border-slate-200 w-full max-w-sm",
+                              "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
                               form.formState.errors.completionDate && "border-red-400"
                             )}
                       />
@@ -3707,7 +3709,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         maxLength={500}
                         rows={4}
                         className={cn(
-                          "min-h-[100px] resize-none rounded-[8px] border-slate-200 text-xs text-slate-900 w-full",
+                          "min-h-[100px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
                           form.formState.errors.completionRemark && "border-red-400"
                         )}
                       />
@@ -3727,7 +3729,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             headerAction={
               <div className="flex flex-wrap items-center gap-2">
                 {roadBlockFields.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#006699] px-1.5 text-[10px] font-semibold text-white">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
                     {roadBlockFields.length}
                   </span>
                 )}
@@ -3736,16 +3738,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 size="sm"
                 type="button"
                 onClick={() => appendRoadBlock({ id: Date.now().toString(), date: '', remark: '', proposedSolution: '', status_No: '' })}
-                  className="rounded-[8px] font-medium border-[#006699]/40 text-[#006699] hover:bg-[#e8f3f8] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+                  className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
               >
-                <Plus size={12} className="text-[#006699]" /> Add Challenges
+                <Plus size={12} className="text-[#0EA5E9]" /> Add Challenges
               </Button>
               </div>
             }
           >
             <div className="space-y-2.5">
               {roadBlockFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-slate-200 rounded-[8px] bg-[#f8fbfd] flex flex-col items-center justify-center gap-1">
+                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
                   <p className="text-xs text-slate-500 font-medium">No challenges added yet.</p>
                   <p className="text-[10px] text-slate-400 font-medium">Track blockers with date, remark, and status.</p>
                 </div>
@@ -3763,24 +3765,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       <div
                         key={field.id}
                         className={cn(
-                          "relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden transition-all",
-                          "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)]",
+                          "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
+                          "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
                           (dateErr || remarkErr || statusErr) && "border-red-300"
                         )}
                       >
-                        <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[11px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                        <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                             {index + 1}
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-[12px] font-semibold text-slate-800 leading-snug">
+                              <p className="text-[12px] font-semibold text-slate-100 leading-snug">
                                 {challengeDate
                                   ? new Date(challengeDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
                                   : `Challenge ${index + 1}`}
                               </p>
                               {statusLabel ? (
-                                <span className="inline-flex items-center rounded-[6px] bg-[#e8f3f8] px-1.5 py-0.5 text-[10px] font-semibold text-[#006699]">
+                                <span className="inline-flex items-center rounded-[6px] bg-[var(--tm-tint)] px-1.5 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
                                   {statusLabel}
                                 </span>
                               ) : null}
@@ -3792,7 +3794,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <button
                             type="button"
                             onClick={() => removeRoadBlock(index)}
-                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-100/80 transition-colors"
+                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                             title="Remove challenge"
                           >
                             <Trash2 size={13} />
@@ -3817,7 +3819,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     placeholder="Select date"
                                     hideTime
                                       className={cn(
-                                        "h-10 rounded-[8px] text-xs border-slate-200 w-full",
+                                        "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full",
                                         dateErr && "border-red-400"
                                       )}
                                     />
@@ -3840,7 +3842,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                       value={statusField.value}
                                     >
                                       <SelectTrigger className={cn(
-                                        "rounded-[8px] h-10 border-slate-200 text-xs bg-white shadow-none",
+                                        "rounded-[8px] h-10 border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none",
                                         statusErr && "border-red-400"
                                       )}>
                                       <SelectValue placeholder="Select status" />
@@ -3867,7 +3869,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 placeholder="Enter remark"
                                 rows={3}
                                 className={cn(
-                                  "min-h-[88px] py-2.5 resize-none rounded-[8px] border-slate-200 text-xs text-slate-900 w-full",
+                                  "min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
                                   remarkErr && "border-red-400"
                                 )}
                               />
@@ -3880,7 +3882,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               {...form.register(`road_block_remarks.${index}.proposedSolution`)}
                               placeholder="Enter proposed solution"
                               rows={3}
-                              className="min-h-[88px] py-2.5 resize-none rounded-[8px] border-slate-200 text-xs text-slate-900 w-full"
+                              className="min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full"
                             />
                           </div>
                         </div>
@@ -3935,7 +3937,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               type="button"
               variant="outline"
               onClick={() => setShowMoreDetails(v => !v)}
-              className="rounded-[8px] font-medium border-[#006699]/40 text-[#006699] hover:bg-[#e8f3f8] h-9 px-4 text-xs shadow-sm gap-1.5 transition-all active:scale-95"
+              className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-9 px-4 text-xs shadow-sm gap-1.5 transition-all active:scale-95"
             >
               {showMoreDetails ? (
                 <>Show less details <ChevronUp size={14} /></>
@@ -3948,15 +3950,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       </form>
 
       {/* Floating Sub-Task Actions */}
-      <div className="fixed bottom-5 right-5 z-40 flex flex-row items-center bg-white/95 backdrop-blur-md rounded-[10px] shadow-[0_8px_28px_-8px_rgba(15,23,42,0.28)] border border-slate-200/80 overflow-hidden">
+      <div className="fixed bottom-5 right-5 z-40 flex flex-row items-center bg-[var(--tm-surface)]/95 backdrop-blur-md rounded-[10px] shadow-[0_8px_28px_-8px_rgba(15,23,42,0.28)] border border-[var(--tm-border)]/80 overflow-hidden">
         <button
           type="button"
           disabled={(localSubtasks.length + subtaskFields.length) === 0}
           onClick={() => setIsSubtasksModalOpen(true)}
-          className="flex items-center gap-2 py-2.5 pl-3.5 pr-2.5 text-[13px] font-semibold text-[#005580] hover:bg-[#f4f9fc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          className="flex items-center gap-2 py-2.5 pl-3.5 pr-2.5 text-[13px] font-semibold text-[#0284C7] hover:bg-[var(--tm-page)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
         >
           Sub-Tasks
-          <span className="bg-[#006699] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center tracking-wide">
+          <span className="bg-[#0EA5E9] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center tracking-wide">
             {localSubtasks.length + subtaskFields.length}
           </span>
         </button>
@@ -3964,7 +3966,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         <button
           type="button"
           onClick={() => setIsStandaloneSubtaskModalOpen(true)}
-          className="flex items-center gap-1.5 pl-2.5 pr-3.5 py-2.5 text-[13px] font-semibold text-[#005580] hover:bg-[#f4f9fc] transition-colors"
+          className="flex items-center gap-1.5 pl-2.5 pr-3.5 py-2.5 text-[13px] font-semibold text-[#0284C7] hover:bg-[var(--tm-page)] transition-colors"
         >
           <Plus size={16} strokeWidth={2.5} /> Add
         </button>
@@ -3972,9 +3974,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       {/* Save/Update Confirmation Dialog */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl">
+        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
+            <DialogTitle className="text-base font-medium text-slate-100 tracking-tight flex items-center gap-0.5">
               Confirm {initialData ? "Update" : "Save"}
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
@@ -3982,7 +3984,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               variant="outline"
@@ -3990,7 +3992,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 setShowConfirm(false);
                 setFormDataToSave(null);
               }}
-              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-300 hover:bg-[var(--tm-muted)] border-transparent shadow-none"
             >
               No
             </Button>
@@ -4001,7 +4003,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   proceedSubmit(formDataToSave);
                 }
               }}
-              className="h-10 px-5 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs shadow-md shadow-[#006699]/10 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95"
+              className="h-10 px-5 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-medium text-xs shadow-md shadow-[#0EA5E9]/10 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95"
             >
               Yes
             </Button>
@@ -4010,24 +4012,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       </Dialog>
       {/* Deletion Confirmation Dialog */}
       <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
-        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl [&>button]:hidden">
+        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
+            <DialogTitle className="text-base font-medium text-slate-100 tracking-tight flex items-center gap-0.5">
               Remove Attachment
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-2">
               Do you want to delete?
-              {/* Are you sure <span className="font-medium text-slate-700">"{attachmentToDelete?.name}"</span>? */}
+              {/* Are you sure <span className="font-medium text-slate-200">"{attachmentToDelete?.name}"</span>? */}
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               variant="outline"
               disabled={isDeletingAttachment}
               onClick={() => setAttachmentToDelete(null)}
-              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-300 hover:bg-[var(--tm-muted)] border-transparent shadow-none"
             >
               No
             </Button>
@@ -4056,15 +4058,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           if (onComplete) onComplete();
         }
       }}>
-        <DialogContent className="rounded-3xl max-w-xs p-0 border-none shadow-2xl bg-white/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
+        <DialogContent className="rounded-3xl max-w-xs p-0 border-none shadow-2xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
           <div className="p-6 flex flex-col items-center text-center">
-            <div className="w-14 h-14 bg-emerald-50 rounded-full border border-emerald-100/80 flex items-center justify-center mb-4 shadow-sm relative">
+            <div className="w-14 h-14 bg-emerald-500/15 rounded-full border border-emerald-500/30 flex items-center justify-center mb-4 shadow-sm relative">
               {/* Inner glowing pulse ring */}
               <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping"></div>
-              <CheckCircle className="w-7 h-7 text-emerald-600 relative z-10" />
+              <CheckCircle className="w-7 h-7 text-emerald-400 relative z-10" />
             </div>
 
-            <h3 className="text-lg font-medium text-slate-800 tracking-tight mb-1">
+            <h3 className="text-lg font-medium text-slate-100 tracking-tight mb-1">
               Success
             </h3>
 
@@ -4073,14 +4075,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </p>
           </div>
 
-          <div className="p-4 bg-slate-50/80 border-t border-slate-100/50 flex justify-center">
+          <div className="p-4 bg-[var(--tm-muted)]/80 border-t border-[var(--tm-border)]/50 flex justify-center">
             <Button
               type="button"
               onClick={() => {
                 setShowSuccessAlert(false);
                 if (onComplete) onComplete();
               }}
-              className="w-full h-10 rounded-xl bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs shadow-md shadow-[#006699]/10 transition-all hover:scale-[1.01] active:scale-95"
+              className="w-full h-10 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-medium text-xs shadow-md shadow-[#0EA5E9]/10 transition-all hover:scale-[1.01] active:scale-95"
             >
               OK
             </Button>
@@ -4090,14 +4092,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       {/* Criteria Warning Dialog */}
       <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
-        <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-2xl bg-white/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
+        <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-2xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
           <div className="p-6 pb-4">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-100 shadow-sm animate-pulse shrink-0">
+              <div className="h-12 w-12 bg-amber-500/15 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-500/30 shadow-sm animate-pulse shrink-0">
                 <Info size={24} />
               </div>
               <div>
-                <DialogTitle className="text-base font-medium text-slate-800 tracking-tight">
+                <DialogTitle className="text-base font-medium text-slate-100 tracking-tight">
                   File Upload Blocked
                 </DialogTitle>
                 <DialogDescription className="text-xs font-medium text-slate-500 mt-0.5">
@@ -4107,12 +4109,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </div>
 
             {/* List of failed files */}
-            <div className="mt-4 max-h-[160px] overflow-y-auto space-y-0 border border-slate-100/80 rounded-2xl p-3 bg-slate-50/50">
+            <div className="mt-4 max-h-[160px] overflow-y-auto space-y-0 border border-[var(--tm-border)]/80 rounded-2xl p-3 bg-[var(--tm-muted)]/50">
               {invalidFiles.map((file, idx) => (
                 <div key={idx} className="flex items-start gap-0.5 text-xs">
                   <span className="text-red-500 font-medium shrink-0 mt-0.5">✕</span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-slate-700 truncate leading-tight">{file.name}</p>
+                    <p className="font-medium text-slate-200 truncate leading-tight">{file.name}</p>
                     <p className="text-[10px] font-medium text-red-500 leading-none mt-0.5">{file.reason}</p>
                   </div>
                   <span className="text-[10px] font-medium text-slate-400 shrink-0 self-center">
@@ -4128,21 +4130,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 Attachment Criteria Requirements
               </h4>
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100/60 shadow-sm">
+                <div className="p-3.5 rounded-2xl bg-[var(--tm-muted)]/80 border border-[var(--tm-border)]/60 shadow-sm">
                   <p className="text-[10px] font-medium text-slate-400 leading-none mb-1.5">Allowed Types</p>
-                  <p className="text-xs font-medium text-slate-700">PDF & Images</p>
+                  <p className="text-xs font-medium text-slate-200">PDF & Images</p>
                   <p className="text-[9px] font-medium text-slate-400 mt-1">.pdf, .jpg, .jpeg, .png, .gif, .webp</p>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100/60 shadow-sm">
+                <div className="p-3.5 rounded-2xl bg-[var(--tm-muted)]/80 border border-[var(--tm-border)]/60 shadow-sm">
                   <p className="text-[10px] font-medium text-slate-400 leading-none mb-1.5">Maximum Size</p>
-                  <p className="text-xs font-medium text-slate-700">10 MB</p>
+                  <p className="text-xs font-medium text-slate-200">10 MB</p>
                   <p className="text-[9px] font-medium text-slate-400 mt-1">Per individual file</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               onClick={() => setShowWarningDialog(false)}
@@ -4156,11 +4158,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       {/* Subtask Deletion Confirmation Dialog */}
       <Dialog open={!!subtaskToDelete} onOpenChange={(open) => !open && !isDeletingSubtask && setSubtaskToDelete(null)}>
-        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl [&>button]:hidden">
+        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
+            <DialogTitle className="text-base font-medium text-slate-100 tracking-tight flex items-center gap-0.5">
               <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-                <Trash2 size={16} className="text-red-600" />
+                <Trash2 size={16} className="text-red-400" />
               </div>
               Do you want to delete?
             </DialogTitle>
@@ -4168,13 +4170,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               Are you sure you want to delete this sub-task? This action cannot be undone.
             </DialogDescription> */}
           </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button
               type="button"
               variant="ghost"
               onClick={() => setSubtaskToDelete(null)}
               disabled={isDeletingSubtask}
-              className="rounded-xl text-xs font-medium h-9 px-4 text-slate-600 hover:bg-slate-200/50 transition-colors"
+              className="rounded-xl text-xs font-medium h-9 px-4 text-slate-300 hover:bg-slate-200/50 transition-colors"
             >
               Cancel
             </Button>
@@ -4195,14 +4197,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       {/* Sub-Tasks Modal */}
       <Dialog open={isSubtasksModalOpen} onOpenChange={setIsSubtasksModalOpen}>
-        <DialogContent className="rounded-[12px] w-[95vw] max-w-4xl p-0 border border-slate-200/80 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.35)] bg-white overflow-hidden flex flex-col min-h-[40vh] max-h-[92vh] gap-0 [&>button]:hidden">
-          <DialogHeader className="px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-[#f4f9fc] to-white flex flex-row items-center gap-3 shrink-0 space-y-0 text-left">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+        <DialogContent className="rounded-[12px] w-[95vw] max-w-4xl p-0 border border-[var(--tm-border)]/80 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.35)] bg-[var(--tm-surface)] overflow-hidden flex flex-col min-h-[40vh] max-h-[92vh] gap-0 [&>button]:hidden">
+          <DialogHeader className="px-5 py-3.5 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] flex flex-row items-center gap-3 shrink-0 space-y-0 text-left">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
               <FileText size={16} strokeWidth={1.75} />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <DialogTitle className="text-[15px] font-semibold text-slate-800 tracking-tight">
+                <DialogTitle className="text-[15px] font-semibold text-slate-100 tracking-tight">
                 Manage Sub-Tasks
               </DialogTitle>
                 {(() => {
@@ -4211,7 +4213,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     subtaskFields.filter((sf) => !localSubtasks.some((st: any) => st.taskNo === sf.operTaskNo)).length;
                   if (count <= 0) return null;
                   return (
-                    <span className="inline-flex items-center rounded-[6px] bg-[#e8f3f8] px-2 py-0.5 text-[11px] font-medium text-[#006699] ring-1 ring-[#006699]/12">
+                    <span className="inline-flex items-center rounded-[6px] bg-[var(--tm-tint)] px-2 py-0.5 text-[11px] font-medium text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                       {count} {count === 1 ? 'sub-task' : 'sub-tasks'}
                     </span>
                   );
@@ -4225,7 +4227,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               type="button"
               variant="ghost"
               onClick={() => setIsSubtasksModalOpen(false)}
-              className="h-8 w-8 p-0 rounded-[8px] shrink-0 text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+              className="h-8 w-8 p-0 rounded-[8px] shrink-0 text-slate-400 hover:text-slate-300 hover:bg-[var(--tm-muted)]"
               aria-label="Close"
             >
               <X size={15} strokeWidth={1.75} />
@@ -4235,16 +4237,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           <div className="px-5 py-4 overflow-y-auto flex-1 scrollbar-hide">
             <div className="space-y-3">
               {form.formState.errors.sub_tasks && (
-                <div className="p-2.5 bg-red-50 border border-red-200 rounded-[8px] flex items-center gap-2">
-                  <AlertCircle size={14} className="text-red-600 shrink-0" />
-                  <span className="text-xs font-semibold text-red-600">
+                <div className="p-2.5 bg-red-500/10 border border-red-500/30 rounded-[8px] flex items-center gap-2">
+                  <AlertCircle size={14} className="text-red-400 shrink-0" />
+                  <span className="text-xs font-semibold text-red-400">
                     Please correct the highlighted errors in the sub-tasks before saving.
                   </span>
                 </div>
               )}
 
               {localSubtasks.length === 0 && subtaskFields.length === 0 ? (
-                <div className="text-center p-10 border border-dashed border-slate-200 rounded-[8px] bg-[#f8fbfd] flex flex-col items-center justify-center gap-1">
+                <div className="text-center p-10 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
                   <p className="text-xs text-slate-500 font-medium">No sub-tasks yet.</p>
                   <p className="text-[10px] text-slate-400 font-medium">Use Add on the floating action to create one.</p>
                 </div>
@@ -4259,21 +4261,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           return (
                         <div
                           key={field.id}
-                          className="relative rounded-[8px] border border-[#006699]/25 bg-white overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+                          className="relative rounded-[8px] border border-[#0EA5E9]/25 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
                         >
-                          <div className="relative flex items-center gap-3 pl-4 pr-3 py-2.5 bg-gradient-to-r from-[#e8f3f8] to-white border-b border-slate-100">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-white text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/15">
+                          <div className="relative flex items-center gap-3 pl-4 pr-3 py-2.5 bg-gradient-to-r from-[var(--tm-tint)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/15">
                               {idx + 1}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">{task.title || 'Sub-Task'}</p>
+                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
                               <p className="text-[11px] text-slate-400 mt-0.5">{task.status || 'Draft'} · Editing</p>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-[11px] font-medium border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-[8px]" onClick={() => removeSubtask(index)} title="Cancel">
+                              <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-[11px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10 rounded-[8px]" onClick={() => removeSubtask(index)} title="Cancel">
                                 <X size={12} className="mr-1" /> Cancel
                               </Button>
-                              <Button type="button" size="sm" className="h-8 px-2.5 text-[11px] font-medium bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50 rounded-[8px]" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                              <Button type="button" size="sm" className="h-8 px-2.5 text-[11px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50 rounded-[8px]" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
                                 {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
                                 Save
                               </Button>
@@ -4301,7 +4303,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             )}
                             <div className="space-y-1 sm:col-span-2">
                               <FieldLabel>Sub-Task Title</FieldLabel>
-                              <p className="text-xs font-medium text-slate-800 break-words rounded-[8px] border border-slate-100 bg-slate-50 px-3 py-2.5">
+                              <p className="text-xs font-medium text-slate-100 break-words rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-muted)] px-3 py-2.5">
                                 {task.title}
                               </p>
                                   </div>
@@ -4340,7 +4342,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
                                       placeholder="Select date"
                                       hideTime={true}
-                                    className="h-10 rounded-[8px] text-xs border-slate-200"
+                                    className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
                                     />
                                   )}
                                 />
@@ -4356,7 +4358,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
                                       placeholder="Select date"
                                       hideTime={true}
-                                    className="h-10 rounded-[8px] text-xs border-slate-200"
+                                    className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
                                     />
                                   )}
                                 />
@@ -4367,7 +4369,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 {...form.register(`sub_tasks.${index}.completionRemark`)}
                                 placeholder="Enter remark"
                                 rows={3}
-                                className="min-h-[80px] resize-none rounded-[8px] border-slate-200 text-xs"
+                                className="min-h-[80px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs"
                                 maxLength={500}
                               />
                             </div>
@@ -4383,21 +4385,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         return (
                       <div
                         key={task.taskNo}
-                        className="relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)] transition-all"
+                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
                       >
-                        <div className="flex items-start gap-3 px-4 py-3 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                        <div className="flex items-start gap-3 px-4 py-3 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                             {idx + 1}
                               </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-semibold text-slate-800 break-words leading-snug">{task.title}</p>
+                            <p className="text-[13px] font-semibold text-slate-100 break-words leading-snug">{task.title}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-1.5">
                               <span className={cn(
                                 "px-2 py-0.5 rounded-[6px] text-[10px] font-semibold",
-                                task.status === 'Done' || task.status === 'Complete' ? "bg-emerald-50 text-emerald-700" :
-                                  task.status === 'In Progress' ? "bg-sky-50 text-sky-700" :
-                                    task.status === 'In Review' ? "bg-violet-50 text-violet-700" :
-                                      "bg-slate-100 text-slate-600"
+                                task.status === 'Done' || task.status === 'Complete' ? "bg-emerald-500/15 text-emerald-400" :
+                                  task.status === 'In Progress' ? "bg-sky-500/15 text-sky-400" :
+                                    task.status === 'In Review' ? "bg-violet-500/15 text-violet-400" :
+                                      "bg-[var(--tm-muted)] text-slate-300"
                               )}>
                                 {task.status || 'Draft'}
                               </span>
@@ -4410,15 +4412,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-slate-200 text-slate-600 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit">
+                            <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-[var(--tm-border)] text-slate-300 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit">
                               <Edit2 size={13} />
                             </Button>
                                 {task.taskNo > 0 && (
-                              <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-slate-200 text-[#006699]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit">
+                              <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-[var(--tm-border)] text-[#0EA5E9]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit">
                                 <ExternalLink size={13} />
                               </Button>
                                 )}
-                            <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-red-200 text-red-500 hover:bg-red-50" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete">
+                            <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-red-500/30 text-red-500 hover:bg-red-500/10" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete">
                               <Trash2 size={13} />
                             </Button>
                               </div>
@@ -4431,20 +4433,20 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               {task.assignedDisplayName && task.assignedDisplayName !== '-' && (
                                 <UserAvatar loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined} displayName={task.assignedDisplayName} size="sm" />
                               )}
-                              <span className="text-xs font-medium text-slate-700 break-words">{task.assignedDisplayName || '-'}</span>
+                              <span className="text-xs font-medium text-slate-200 break-words">{task.assignedDisplayName || '-'}</span>
                             </div>
                           </div>
                           <div>
                             <p className="text-[10px] font-medium text-slate-400 mb-1">Due Date</p>
-                            <p className="text-xs font-medium text-slate-700">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</p>
+                            <p className="text-xs font-medium text-slate-200">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</p>
                           </div>
                           <div>
                             <p className="text-[10px] font-medium text-slate-400 mb-1">Completion Date</p>
-                            <p className="text-xs font-medium text-slate-700">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</p>
+                            <p className="text-xs font-medium text-slate-200">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</p>
                           </div>
                           <div className="sm:col-span-2 min-w-0">
                             <p className="text-[10px] font-medium text-slate-400 mb-1">Completion Remark</p>
-                            <p className="text-xs font-medium text-slate-700 break-words whitespace-pre-wrap">{task.completionRemark || '-'}</p>
+                            <p className="text-xs font-medium text-slate-200 break-words whitespace-pre-wrap">{task.completionRemark || '-'}</p>
                           </div>
                         </div>
                       </div>
@@ -4458,21 +4460,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         return (
                       <div
                         key={field.id}
-                        className="relative rounded-[8px] border border-[#006699]/25 bg-white overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+                        className="relative rounded-[8px] border border-[#0EA5E9]/25 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
                       >
-                        <div className="relative flex items-center gap-3 pl-4 pr-3 py-2.5 bg-gradient-to-r from-[#e8f3f8] to-white border-b border-slate-100">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-white text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/15">
+                        <div className="relative flex items-center gap-3 pl-4 pr-3 py-2.5 bg-gradient-to-r from-[var(--tm-tint)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/15">
                             {localSubtasks.length + index + 1}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-semibold text-slate-800 leading-tight">New sub-task</p>
+                            <p className="text-[13px] font-semibold text-slate-100 leading-tight">New sub-task</p>
                             <p className="text-[11px] text-slate-400 mt-0.5">Draft · Editing</p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-[11px] font-medium border-slate-300 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-[8px]" onClick={() => removeSubtask(index)} title="Cancel">
+                            <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-[11px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10 rounded-[8px]" onClick={() => removeSubtask(index)} title="Cancel">
                               <X size={12} className="mr-1" /> Cancel
                             </Button>
-                            <Button type="button" size="sm" className="h-8 px-2.5 text-[11px] font-medium bg-[#006699] hover:bg-[#005580] text-white disabled:opacity-50 rounded-[8px]" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                            <Button type="button" size="sm" className="h-8 px-2.5 text-[11px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50 rounded-[8px]" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
                               {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
                               Save
                             </Button>
@@ -4504,7 +4506,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <Input
                                 {...form.register(`sub_tasks.${index}.title`)}
                                 placeholder="Enter task title"
-                                className={cn("rounded-[8px] h-10 text-xs border-slate-200", titleErr && "border-red-400")}
+                                className={cn("rounded-[8px] h-10 text-xs border-[var(--tm-border)]", titleErr && "border-red-400")}
                                 maxLength={200}
                               />
                             </FieldControl>
@@ -4544,7 +4546,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
                                     placeholder="Select date"
                                     hideTime={true}
-                                  className="h-10 rounded-[8px] text-xs border-slate-200"
+                                  className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
                                   />
                                 )}
                               />
@@ -4560,7 +4562,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
                                     placeholder="Select date"
                                     hideTime={true}
-                                  className="h-10 rounded-[8px] text-xs border-slate-200"
+                                  className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
                                   />
                                 )}
                               />
@@ -4571,7 +4573,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               {...form.register(`sub_tasks.${index}.completionRemark`)}
                               placeholder="Enter remark"
                               rows={3}
-                              className="min-h-[80px] resize-none rounded-[8px] border-slate-200 text-xs"
+                              className="min-h-[80px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs"
                               maxLength={500}
                             />
                           </div>
@@ -4584,11 +4586,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </div>
           </div>
 
-          <DialogFooter className="px-5 py-3.5 bg-[#f8fbfd] border-t border-slate-100 shrink-0">
+          <DialogFooter className="px-5 py-3.5 bg-[var(--tm-elevated)] border-t border-[var(--tm-border)] shrink-0">
             <Button
               type="button"
               onClick={() => setIsSubtasksModalOpen(false)}
-              className="h-9 px-5 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-white font-medium text-xs shadow-sm"
+              className="h-9 px-5 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-medium text-xs shadow-sm"
             >
               Done
             </Button>
@@ -4617,7 +4619,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <Button variant="outline" onClick={() => { setShowDraftRestore(false); clearDraft(); }}>
               Discard
             </Button>
-            <Button onClick={handleRestoreDraft} className="bg-[#006699] hover:bg-[#005580]">
+            <Button onClick={handleRestoreDraft} className="bg-[#0EA5E9] hover:bg-[#0284C7]">
               Restore Draft
             </Button>
           </DialogFooter>
@@ -4626,21 +4628,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       {/* Navigation Blocker Dialog */}
       <Dialog open={blocker.state === 'blocked'} onOpenChange={(open) => !open && blocker.state === 'blocked' ? blocker.reset?.() : null}>
-        <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-3xl border-slate-200">
+        <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-3xl border-[var(--tm-border)]">
           <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500" />
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-0.5 text-xl font-medium text-slate-800">
-              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+            <DialogTitle className="flex items-center gap-0.5 text-xl font-medium text-slate-100">
+              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-400">
                 <AlertCircle size={18} strokeWidth={3} />
               </div>
               Unsaved Changes
             </DialogTitle>
-            <DialogDescription className="text-slate-600 pt-2 font-medium">
+            <DialogDescription className="text-slate-300 pt-2 font-medium">
               You have unsaved changes in this task. Are you sure you want to leave this page? Your unsaved changes might be lost (though a draft is usually saved).
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 flex gap-3">
-            <Button type="button" variant="outline" className="flex-1 rounded-xl font-medium border-slate-200 text-slate-600 hover:bg-slate-50" onClick={() => blocker.reset?.()}>
+            <Button type="button" variant="outline" className="flex-1 rounded-xl font-medium border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)]" onClick={() => blocker.reset?.()}>
               Stay on Page
             </Button>
             <Button type="button" variant="default" className="flex-1 rounded-xl font-medium bg-yellow-500 hover:bg-yellow-600 text-white shadow-md hover:shadow-lg" onClick={() => blocker.proceed?.()}>
@@ -4651,10 +4653,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       </Dialog>
       {isCameraModalOpen && (
       <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
-        <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-white overflow-hidden flex flex-col max-h-[90vh]">
-          <DialogHeader className="p-5 pb-3 border-b border-slate-100">
-            <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
-              <Camera size={18} className="text-[#006699]" />
+        <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden flex flex-col max-h-[90vh]">
+          <DialogHeader className="p-5 pb-3 border-b border-[var(--tm-border)]">
+            <DialogTitle className="text-base font-black text-slate-100 tracking-tight flex items-center gap-2">
+              <Camera size={18} className="text-[#0EA5E9]" />
               Capture Attachment
             </DialogTitle>
             <DialogDescription className="text-xs font-semibold text-slate-500">
@@ -4672,7 +4674,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               companyNo={authCompanies?.[0]?.HeadOfficeNo || authCompanies?.[0]?.headOfficeNo || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
               formNo={1547}
               fileNamePrefix="task-capture"
-              className="border-slate-100 shadow-none"
+              className="border-[var(--tm-border)] shadow-none"
               onUploaded={handleCameraAttachmentUploaded}
               onCancel={() => setIsCameraModalOpen(false)}
             />
@@ -4683,13 +4685,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       )}
       {/* Standalone Sub-Task Form Modal */}
       <Dialog open={isStandaloneSubtaskModalOpen} onOpenChange={setIsStandaloneSubtaskModalOpen}>
-        <DialogContent className="rounded-[12px] w-[95vw] max-w-3xl p-0 border border-slate-200/80 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.35)] bg-white flex flex-col max-h-[92vh] overflow-hidden gap-0 [&>button]:hidden">
-          <DialogHeader className="px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-[#f4f9fc] to-white flex flex-row items-center gap-3 shrink-0 space-y-0 text-left">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+        <DialogContent className="rounded-[12px] w-[95vw] max-w-3xl p-0 border border-[var(--tm-border)]/80 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.35)] bg-[var(--tm-surface)] flex flex-col max-h-[92vh] overflow-hidden gap-0 [&>button]:hidden">
+          <DialogHeader className="px-5 py-3.5 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] flex flex-row items-center gap-3 shrink-0 space-y-0 text-left">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
               <FileText size={16} strokeWidth={1.75} />
             </span>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="text-[15px] font-semibold text-slate-800 tracking-tight">
+              <DialogTitle className="text-[15px] font-semibold text-slate-100 tracking-tight">
                 Add Sub-Task
               </DialogTitle>
               <DialogDescription className="text-[12px] font-medium text-slate-500 mt-0.5">
@@ -4700,7 +4702,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               type="button"
               variant="ghost"
               onClick={() => setIsStandaloneSubtaskModalOpen(false)}
-              className="h-8 w-8 p-0 rounded-[8px] shrink-0 text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+              className="h-8 w-8 p-0 rounded-[8px] shrink-0 text-slate-400 hover:text-slate-300 hover:bg-[var(--tm-muted)]"
               aria-label="Close"
             >
               <X size={15} strokeWidth={1.75} />
@@ -4761,7 +4763,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <Input
                     {...standaloneSubtaskForm.register("title")}
                       className={cn(
-                        "w-full text-xs rounded-[8px] h-10 border-slate-200 font-medium",
+                        "w-full text-xs rounded-[8px] h-10 border-[var(--tm-border)] font-medium",
                         standaloneSubtaskForm.formState.errors.title && "border-red-400"
                       )}
                     placeholder="Enter sub-task title..."
@@ -4782,7 +4784,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             value={field.value}
                             onChange={field.onChange}
                             placeholder="Select Type"
-                            className="w-full text-xs rounded-[8px] h-10 border-slate-200"
+                            className="w-full text-xs rounded-[8px] h-10 border-[var(--tm-border)]"
                           />
                         )}
                       />
@@ -4806,7 +4808,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           placeholder="Select Assign To"
                           modal={true}
                             className={cn(
-                              "w-full text-xs rounded-[8px] h-10 border-slate-200",
+                              "w-full text-xs rounded-[8px] h-10 border-[var(--tm-border)]",
                               standaloneSubtaskForm.formState.errors.ownerLoginNo && "border-red-400"
                             )}
                           />
@@ -4855,7 +4857,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <FieldLabel>Completion Remark</FieldLabel>
                   <Textarea
                     {...standaloneSubtaskForm.register("completionRemark")}
-                    className="w-full text-xs rounded-[8px] min-h-[88px] border-slate-200 resize-none"
+                    className="w-full text-xs rounded-[8px] min-h-[88px] border-[var(--tm-border)] resize-none"
                     placeholder="Enter completion remarks..."
                   />
                 </div>
@@ -4863,19 +4865,19 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               </form>
             </FormProvider>
           </div>
-          <DialogFooter className="px-5 py-3.5 bg-[#f8fbfd] border-t border-slate-100 shrink-0 gap-2 sm:gap-2">
+          <DialogFooter className="px-5 py-3.5 bg-[var(--tm-elevated)] border-t border-[var(--tm-border)] shrink-0 gap-2 sm:gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsStandaloneSubtaskModalOpen(false)}
-              className="rounded-[8px] h-9 text-xs font-medium border-slate-200 text-slate-600 hover:bg-white"
+              className="rounded-[8px] h-9 text-xs font-medium border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-surface)]"
             >
               Close
             </Button>
             <Button
               type="submit"
               form="standaloneSubtaskForm"
-              className="rounded-[8px] h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white gap-1.5"
+              className="rounded-[8px] h-9 text-xs font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white gap-1.5"
             >
               <Check size={14} /> Add Sub-Task
             </Button>

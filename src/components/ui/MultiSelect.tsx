@@ -112,36 +112,36 @@ export function MultiSelect({
           disabled={disabled}
           className={cn(
             "w-full justify-between font-medium text-sm min-h-[36px] h-auto shadow-sm transition-all border relative pr-8 py-1.5",
-            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[#f8fbfd] disabled:hover:bg-[#f8fbfd]",
+            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[var(--tm-elevated)] disabled:hover:bg-[var(--tm-elevated)]",
             className,
             FIELD_TEXT_STYLE,
             value.length === 0 && "text-slate-400",
-            "rounded-[8px] border-[#a8afb7]",
-            !(typeof className === "string" && /border-red/.test(className)) && "!border-[#a8afb7]"
+            "rounded-[8px] border-[var(--tm-border)]",
+            !(typeof className === "string" && /border-red/.test(className)) && "!border-[var(--tm-border)]"
           )}
         >
           <div ref={containerRef} className="relative flex flex-1 min-w-0 flex-nowrap gap-1 pr-2 overflow-hidden">
             {selectedOptions.length > 0 ? (
                 <>
                   {selectedOptions.slice(0, effectiveVisible).map(opt => (
-                      <span key={opt.value} className="bg-slate-100 text-slate-800 text-[11px] px-2 py-0.5 rounded-md truncate max-w-[160px] shrink-0">
+                      <span key={opt.value} className="bg-[var(--tm-muted)] text-slate-100 text-[11px] px-2 py-0.5 rounded-md truncate max-w-[160px] shrink-0">
                           {opt.label}
                       </span>
                   ))}
                   {selectedOptions.length > effectiveVisible && (
-                      <span className="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-md font-medium shrink-0">
+                      <span className="bg-[var(--tm-muted)] text-slate-300 text-[11px] px-2 py-0.5 rounded-md font-medium shrink-0">
                           +{selectedOptions.length - effectiveVisible} more
                       </span>
                   )}
                   {/* Hidden measuring clones: same markup as the visible chips, used to compute how many actually fit. */}
                   <div ref={measureRef} className="absolute left-0 top-0 flex gap-1" style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
                     {selectedOptions.map(opt => (
-                      <span key={opt.value} className="bg-slate-100 text-slate-800 text-[11px] px-2 py-0.5 rounded-md truncate max-w-[160px] shrink-0">
+                      <span key={opt.value} className="bg-[var(--tm-muted)] text-slate-100 text-[11px] px-2 py-0.5 rounded-md truncate max-w-[160px] shrink-0">
                         {opt.label}
                       </span>
                     ))}
                   </div>
-                  <span ref={moreRef} className="absolute left-0 top-0 bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-md font-medium" style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
+                  <span ref={moreRef} className="absolute left-0 top-0 bg-[var(--tm-muted)] text-slate-300 text-[11px] px-2 py-0.5 rounded-md font-medium" style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
                     +99 more
                   </span>
                 </>
@@ -156,7 +156,7 @@ export function MultiSelect({
                   e.stopPropagation();
                   onChange([]);
                 }}
-                className="p-0.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 <X className="h-3 w-3" />
               </span>
@@ -169,7 +169,7 @@ export function MultiSelect({
           className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
           align="start"
         >
-        <Command className="rounded-xl border-slate-200">
+        <Command className="rounded-xl border-[var(--tm-border)]">
           <CommandInput autoFocus placeholder={searchPlaceholder} className="h-9 border-none focus:ring-0" />
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
@@ -192,7 +192,7 @@ export function MultiSelect({
                     {option.label}
                     <Check
                       className={cn(
-                        "ml-auto h-4 w-4 text-[#006699]",
+                        "ml-auto h-4 w-4 text-[#0EA5E9]",
                         isSelected ? "opacity-100" : "opacity-0"
                       )}
                     />

@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { applyBrandToDocument } from '@/config/brandConfig'
+import { initTheme } from '@/store/useThemeStore'
 
-// Apply SteelMont logo / title / favicon (temporary client branding)
+// Theme first (avoids flash), then brand chrome
+initTheme()
 applyBrandToDocument()
 
 // Register Custom Service Worker for PWA

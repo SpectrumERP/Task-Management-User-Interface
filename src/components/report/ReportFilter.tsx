@@ -8,6 +8,7 @@ import { UserCombobox } from '@/components/ui/UserCombobox';
 import { MultiUserCombobox } from '@/components/ui/MultiUserCombobox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SlidersHorizontal, RotateCcw, FileBarChart2 } from 'lucide-react';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettings } from '@/hooks/useSettings';
@@ -42,7 +43,7 @@ function FieldLabel({
   required?: boolean;
 }) {
   return (
-    <label className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600">
+    <label className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300">
       <span>{children}</span>
       {required ? (
         <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
@@ -96,19 +97,20 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
   };
 
   return (
-    <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
+    <section data-page-tour="report-filters" className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <SlidersHorizontal size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Report Filters</h2>
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Report Filters</h2>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
               Refine criteria and generate the task overview
             </p>
           </div>
         </div>
+        <PageGuideButton guideKey="task-report" />
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-5 space-y-4">
@@ -324,22 +326,22 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[var(--tm-border)]">
           <Controller
             name="showSubTasks"
             control={control}
             render={({ field }) => (
               <label
                 htmlFor="showSubTasks"
-                className="inline-flex items-center gap-2.5 rounded-[8px] border border-slate-200/80 bg-[#f8fbfd] px-3 py-2 cursor-pointer hover:border-[#006699]/30 transition-colors"
+                className="inline-flex items-center gap-2.5 rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)] px-3 py-2 cursor-pointer hover:border-[#0EA5E9]/30 transition-colors"
               >
                 <Checkbox
                   id="showSubTasks"
                   checked={field.value}
                   onCheckedChange={field.onChange}
-                  className="data-[state=checked]:bg-[#006699] data-[state=checked]:border-[#006699]"
+                  className="data-[state=checked]:bg-[#0EA5E9] data-[state=checked]:border-[#0EA5E9]"
                 />
-                <span className="text-[12px] font-medium text-slate-700">Show Sub-tasks</span>
+                <span className="text-[12px] font-medium text-slate-200">Show Sub-tasks</span>
               </label>
             )}
           />
@@ -348,15 +350,17 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
             <Button
               type="button"
               variant="outline"
+              data-page-tour="report-reset"
               onClick={() => reset()}
-              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none"
+              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
             >
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
               Reset
             </Button>
             <Button
               type="submit"
-              className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#006699] hover:bg-[#005580] text-white shadow-sm shadow-[#006699]/20"
+              data-page-tour="report-apply"
+              className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20"
             >
               <FileBarChart2 className="h-3.5 w-3.5 mr-1.5" />
               Generate Report

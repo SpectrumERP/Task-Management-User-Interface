@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Info } from 'lucide-react';
+import { Info, Lightbulb } from 'lucide-react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { cn } from '@/lib/utils';
 
@@ -9,8 +9,8 @@ interface InfoTooltipProps {
 }
 
 /**
- * Hover-triggered field help tip.
- * Portals out of overflow/whitespace ancestors and flips on collision.
+ * Theme-aware field help tip (hover / focus / click).
+ * Portals out of overflow ancestors and flips on collision.
  */
 export function InfoTooltip({ text, className }: InfoTooltipProps) {
   const [open, setOpen] = React.useState(false);
@@ -36,10 +36,15 @@ export function InfoTooltip({ text, className }: InfoTooltipProps) {
           type="button"
           aria-label="Field information"
           className={cn(
-            'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px]',
-            'bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/15',
-            'transition-all hover:bg-[#006699] hover:text-white hover:ring-[#006699]/40',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006699]/35',
+            'tm-info-tip-trigger inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
+            'bg-[color-mix(in_srgb,var(--tm-tint)_55%,var(--tm-surface))] text-[#0EA5E9]',
+            'border border-[color-mix(in_srgb,#0EA5E9_22%,var(--tm-border))]',
+            'shadow-[var(--tm-shadow-sm)]',
+            'transition-all duration-150',
+            'hover:bg-[#0EA5E9] hover:text-white hover:border-[#0EA5E9]',
+            'hover:shadow-[0_0_0_3px_var(--tm-glow)]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--tm-surface)]',
+            'active:scale-95',
             className
           )}
           onMouseEnter={() => setOpen(true)}
@@ -55,38 +60,67 @@ export function InfoTooltip({ text, className }: InfoTooltipProps) {
           <Info size={13} strokeWidth={2.25} />
         </button>
       </PopoverPrimitive.Trigger>
+
       <PopoverPrimitive.Portal container={container || document.body}>
         <PopoverPrimitive.Content
           side="top"
           align="end"
-          sideOffset={8}
+          sideOffset={10}
           collisionPadding={12}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={() => setOpen(false)}
           className={cn(
-            'z-[100] w-[min(280px,calc(100vw-24px))] whitespace-normal break-words',
-            'rounded-[8px] border border-slate-200/80 bg-white p-0',
-            'shadow-[0_12px_32px_-12px_rgba(15,23,42,0.28)]',
-            'pointer-events-auto',
+            'tm-info-tip z-[100] w-[min(300px,calc(100vw-24px))] whitespace-normal break-words',
+            'rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] p-0',
+            'shadow-[var(--tm-shadow),0_16px_40px_-18px_rgba(15,23,42,0.35)]',
+            'pointer-events-auto overflow-visible',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95'
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            'data-[side=top]:slide-in-from-bottom-1 data-[side=bottom]:slide-in-from-top-1'
           )}
         >
-          <div className="flex items-center gap-1.5 border-b border-slate-100 bg-[#f8fbfd] px-3 py-1.5 rounded-t-[8px]">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-[5px] bg-[#e8f3f8] text-[#006699]">
-              <Info size={11} strokeWidth={2.25} />
-            </span>
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#006699]/80">
-              Tip
-            </span>
+          <div className="overflow-hidden rounded-xl">
+            <div
+              className={cn(
+                'flex items-center gap-2 px-3 py-2',
+                'border-b border-[var(--tm-border)]',
+                'bg-[color-mix(in_srgb,var(--tm-tint)_42%,var(--tm-elevated))]'
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-flex h-6 w-6 items-center justify-center rounded-lg',
+                  'bg-[color-mix(in_srgb,var(--tm-tint)_70%,var(--tm-surface))]',
+                  'border border-[color-mix(in_srgb,#0EA5E9_20%,var(--tm-border))]',
+                  'text-[#0EA5E9]'
+                )}
+              >
+                <Lightbulb size={12} strokeWidth={2.25} />
+              </span>
+              <div className="min-w-0 leading-tight">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0EA5E9]">
+                  Tip
+                </span>
+                <span className="block text-[9px] font-medium text-slate-500 dark:text-slate-400">
+                  Field help
+                </span>
+              </div>
+            </div>
+
+            <p className="px-3.5 py-3 text-[12px] font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+              {text}
+            </p>
           </div>
-          <p className="px-3 py-2.5 text-[11px] font-medium leading-relaxed text-slate-600">
-            {text}
-          </p>
-          <PopoverPrimitive.Arrow className="fill-white drop-shadow-sm" width={12} height={6} />
+
+          {/* Arrow matches panel surface — not hard-coded white */}
+          <PopoverPrimitive.Arrow
+            width={14}
+            height={7}
+            className="tm-info-tip-arrow fill-[var(--tm-surface)] drop-shadow-[0_1px_0_var(--tm-border)]"
+          />
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
@@ -117,10 +151,7 @@ export function FieldInfoControl({
 
   return (
     <div id={id} className={cn('relative', className)}>
-      <div
-        className="absolute z-20"
-        style={{ top: 37, right: 7 }}
-      >
+      <div className="absolute z-20" style={{ top: 37, right: 7 }}>
         <InfoTooltip text={info} />
       </div>
       {children}

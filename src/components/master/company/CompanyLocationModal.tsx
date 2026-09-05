@@ -75,19 +75,19 @@ export function CompanyLocationModal({
         className={cn(
           'w-[calc(100vw-1.5rem)] max-w-3xl p-0 gap-0 overflow-hidden',
           'max-h-[min(90dvh,900px)] flex flex-col',
-          'rounded-[12px] border border-slate-200/80 shadow-xl bg-white select-none'
+          'rounded-[12px] border border-[var(--tm-border)]/80 shadow-xl bg-[var(--tm-surface)] select-none'
         )}
       >
-        <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-slate-100 bg-[#f8fbfd]">
-          <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight flex items-center gap-2 pr-6">
-            <MapPin size={16} className="text-[#006699] shrink-0" />
+        <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+          <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight flex items-center gap-2 pr-6">
+            <MapPin size={16} className="text-[#0EA5E9] shrink-0" />
             {editingIndex !== null ? 'Edit Location Address' : 'Add Location Address'}
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 space-y-3.5 scrollbar-thin">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-slate-600">
+            <label className="text-[11px] font-medium text-slate-300">
               Location Type <span className="text-red-500">*</span>
             </label>
             <Combobox
@@ -109,7 +109,7 @@ export function CompanyLocationModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-slate-600">
+            <label className="text-[11px] font-medium text-slate-300">
               Address <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -121,8 +121,8 @@ export function CompanyLocationModal({
                 if (locErrors.address) setLocErrors((prev) => ({ ...prev, address: '' }));
               }}
               className={cn(
-                'w-full rounded-[8px] border border-[#a8afb7] bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-none resize-none min-h-[56px]',
-                'focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]',
+                'w-full rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] px-3 py-2 text-xs font-medium text-slate-200 shadow-none resize-none min-h-[56px]',
+                'focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9]',
                 locErrors.address && 'border-red-400 focus:ring-red-500/10 focus:border-red-400'
               )}
             />
@@ -133,7 +133,7 @@ export function CompanyLocationModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">Country</label>
+              <label className="text-[11px] font-medium text-slate-300">Country</label>
               <Combobox
                 options={countries.map((c: any) => ({
                   label: c.countryName,
@@ -150,7 +150,7 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">State</label>
+              <label className="text-[11px] font-medium text-slate-300">State</label>
               <Combobox
                 options={statesList.map((s: any) => ({
                   label: s.stateName,
@@ -167,7 +167,7 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">City</label>
+              <label className="text-[11px] font-medium text-slate-300">City</label>
               <Combobox
                 options={citiesList.map((ci: any) => ({
                   label: ci.cityName,
@@ -187,7 +187,7 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">PIN / ZIP Code</label>
+              <label className="text-[11px] font-medium text-slate-300">PIN / ZIP Code</label>
               <Input
                 placeholder="Enter PIN / ZIP Code"
                 value={locPin}
@@ -204,7 +204,7 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
-              <label className="text-[11px] font-medium text-slate-600">Map URL</label>
+              <label className="text-[11px] font-medium text-slate-300">Map URL</label>
               <Input
                 placeholder="Enter Map URL"
                 value={locMapUrl}
@@ -215,7 +215,7 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">Latitude</label>
+              <label className="text-[11px] font-medium text-slate-300">Latitude</label>
               <Input
                 placeholder="Enter Latitude"
                 value={locLatitude}
@@ -226,7 +226,7 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">Longitude</label>
+              <label className="text-[11px] font-medium text-slate-300">Longitude</label>
               <Input
                 placeholder="Enter Longitude"
                 value={locLongitude}
@@ -238,19 +238,19 @@ export function CompanyLocationModal({
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 px-4 sm:px-5 py-3 border-t border-slate-100 bg-[#f8fbfd] flex flex-row justify-end gap-2 rounded-b-[12px]">
+        <DialogFooter className="shrink-0 px-4 sm:px-5 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] flex flex-row justify-end gap-2 rounded-b-[12px]">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-[8px] h-9 text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none"
+            className="rounded-[8px] h-9 text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
           >
             Cancel
           </Button>
           <Button
             type="button"
             onClick={onSave}
-            className="rounded-[8px] h-9 text-xs font-semibold bg-[#006699] hover:bg-[#005580] text-white shadow-sm"
+            className="rounded-[8px] h-9 text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
           >
             {editingIndex !== null ? 'Save Changes' : 'Add Location'}
           </Button>

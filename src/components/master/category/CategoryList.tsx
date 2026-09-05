@@ -102,13 +102,13 @@ export function CategoryList() {
             render: (item) => {
               const chips = [
                 item.isApprovalApplicable && (
-                  <span key="approval" className="text-[9px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-[6px] border border-emerald-100">Approval</span>
+                  <span key="approval" className="text-[9px] font-medium text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-[6px] border border-emerald-500/30">Approval</span>
                 ),
                 item.isInReviewRequired && (
-                  <span key="review" className="text-[9px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-[6px] border border-amber-100">Review</span>
+                  <span key="review" className="text-[9px] font-medium text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-[6px] border border-amber-500/30">Review</span>
                 ),
                 item.isBusinessBenefitApplicable && (
-                  <span key="benefit" className="text-[9px] font-medium text-sky-700 bg-sky-50 px-2 py-0.5 rounded-[6px] border border-sky-100">Benefit</span>
+                  <span key="benefit" className="text-[9px] font-medium text-sky-400 bg-sky-500/15 px-2 py-0.5 rounded-[6px] border border-sky-500/30">Benefit</span>
                 ),
               ].filter(Boolean);
 

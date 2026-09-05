@@ -739,43 +739,49 @@ export function CompanyForm({ id }: CompanyFormProps) {
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
       <div className="space-y-4 pb-4">
-        <CompanyHeaderFields
-          code={editingId ? `BE-${editingId}` : ''}
-          editingId={editingId}
-          name={name}
-          setName={setName}
-          companyType={companyType}
-          setCompanyType={setCompanyType}
-          companyTimeZoneNo={companyTimeZoneNo}
-          setCompanyTimeZoneNo={setCompanyTimeZoneNo}
-          creditLimit={creditLimit}
-          setCreditLimit={setCreditLimit}
-          creditInsuranceCompanyName={creditInsuranceCompanyName}
-          setCreditInsuranceCompanyName={setCreditInsuranceCompanyName}
-          companyVatGst={companyVatGst}
-          setCompanyVatGst={setCompanyVatGst}
-          businessEntityTypes={businessEntityTypes}
-          timeZones={timeZones}
-          errors={errors}
-          setErrors={setErrors}
-          onOpenCamera={() => setIsCameraModalOpen(true)}
-        />
+        <div data-page-tour="company-header">
+          <CompanyHeaderFields
+            code={editingId ? `BE-${editingId}` : ''}
+            editingId={editingId}
+            name={name}
+            setName={setName}
+            companyType={companyType}
+            setCompanyType={setCompanyType}
+            companyTimeZoneNo={companyTimeZoneNo}
+            setCompanyTimeZoneNo={setCompanyTimeZoneNo}
+            creditLimit={creditLimit}
+            setCreditLimit={setCreditLimit}
+            creditInsuranceCompanyName={creditInsuranceCompanyName}
+            setCreditInsuranceCompanyName={setCreditInsuranceCompanyName}
+            companyVatGst={companyVatGst}
+            setCompanyVatGst={setCompanyVatGst}
+            businessEntityTypes={businessEntityTypes}
+            timeZones={timeZones}
+            errors={errors}
+            setErrors={setErrors}
+            onOpenCamera={() => setIsCameraModalOpen(true)}
+          />
+        </div>
 
-        <CompanyLocationsSection
-          locations={companyLocations}
-          getLocationTypeName={getLocationTypeName}
-          onAdd={openAddLocationModal}
-          onEdit={handleEditLocation}
-          onRemove={removeCompanyLocation}
-          error={errors.companyLocations}
-        />
+        <div data-page-tour="company-locations">
+          <CompanyLocationsSection
+            locations={companyLocations}
+            getLocationTypeName={getLocationTypeName}
+            onAdd={openAddLocationModal}
+            onEdit={handleEditLocation}
+            onRemove={removeCompanyLocation}
+            error={errors.companyLocations}
+          />
+        </div>
 
-        <CompanyContactsSection
-          contacts={companyContacts}
-          onAdd={openAddContactModal}
-          onEdit={handleEditContact}
-          onRemove={removeCompanyContact}
-        />
+        <div data-page-tour="company-contacts">
+          <CompanyContactsSection
+            contacts={companyContacts}
+            onAdd={openAddContactModal}
+            onEdit={handleEditContact}
+            onRemove={removeCompanyContact}
+          />
+        </div>
 
         <CompanyPortsSection
           ports={companyPorts}
@@ -786,16 +792,17 @@ export function CompanyForm({ id }: CompanyFormProps) {
           onRemove={removeCompanyPort}
         />
 
-        <CompanyAttachmentsSection
-          attachments={companyAttachments}
-          onFileUpload={handleFileUpload}
-          onOpenCamera={() => setIsCameraModalOpen(true)}
-          onAnalyze={handleAnalyzeAttachment}
-          onRemove={removeCompanyAttachment}
-          analyzedAttachmentIds={analyzedAttachmentIds}
-          error={errors.attachments}
-        />
-
+        <div data-page-tour="company-attachments">
+          <CompanyAttachmentsSection
+            attachments={companyAttachments}
+            onFileUpload={handleFileUpload}
+            onOpenCamera={() => setIsCameraModalOpen(true)}
+            onAnalyze={handleAnalyzeAttachment}
+            onRemove={removeCompanyAttachment}
+            analyzedAttachmentIds={analyzedAttachmentIds}
+            error={errors.attachments}
+          />
+        </div>
         <CompanyNotesSection notes={followUpNotes} onChange={setFollowUpNotes} />
 
         {isCameraModalOpen && (
@@ -810,12 +817,12 @@ export function CompanyForm({ id }: CompanyFormProps) {
             className={cn(
               'w-[calc(100vw-1.5rem)] max-w-4xl p-0 gap-0 overflow-hidden',
               'max-h-[min(90dvh,900px)] flex flex-col',
-              'rounded-[12px] border border-slate-200/80 shadow-xl bg-white select-none'
+              'rounded-[12px] border border-[var(--tm-border)]/80 shadow-xl bg-[var(--tm-surface)] select-none'
             )}
           >
-            <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-slate-100 bg-[#f8fbfd]">
-              <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight flex items-center gap-2 pr-6">
-                <CameraIcon size={16} className="text-[#006699] shrink-0" />
+            <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+              <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight flex items-center gap-2 pr-6">
+                <CameraIcon size={16} className="text-[#0EA5E9] shrink-0" />
                 {analyzeFile ? 'Analyze Attachment' : 'Capture Attachment'}
               </DialogTitle>
               <DialogDescription className="text-[11px] font-medium text-slate-500 mt-0.5">
@@ -828,7 +835,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
               <Suspense
                 fallback={
                   <div className="flex flex-1 items-center justify-center py-20 text-slate-500 text-sm font-medium">
-                    <Loader2 className="h-5 w-5 animate-spin mr-2 text-[#006699]" />
+                    <Loader2 className="h-5 w-5 animate-spin mr-2 text-[#0EA5E9]" />
                     Loading camera…
                   </div>
                 }

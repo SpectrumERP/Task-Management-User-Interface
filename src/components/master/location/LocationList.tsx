@@ -117,7 +117,7 @@ export function LocationList() {
             className: 'w-[100px]',
             render: (item) =>
               item.type ? (
-                <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-slate-200/80 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[var(--tm-border)]/80 bg-[var(--tm-muted)] px-2 py-0.5 text-[10px] font-semibold text-slate-300">
                   {item.type}
                 </span>
               ) : (
@@ -149,7 +149,7 @@ export function LocationList() {
             header: 'Region',
             className: 'w-[110px]',
             render: (item) => (
-              <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[#006699]/15 bg-[#e8f3f8] px-2 py-0.5 text-[10px] font-semibold text-[#006699]">
+              <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[#0EA5E9]/15 bg-[var(--tm-tint)] px-2 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
                 {item.locationRegion || 'Central'}
               </span>
             ),

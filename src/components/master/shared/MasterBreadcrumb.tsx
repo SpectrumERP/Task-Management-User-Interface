@@ -37,7 +37,7 @@ export function MasterBreadcrumb({ items, className }: MasterBreadcrumbProps) {
               <button
                 type="button"
                 onClick={() => navigate(item.href!)}
-                className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded truncate"
+                className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded truncate"
               >
                 {item.label}
               </button>
@@ -46,7 +46,7 @@ export function MasterBreadcrumb({ items, className }: MasterBreadcrumbProps) {
                 className={cn(
                   'truncate',
                   isCurrent
-                    ? 'text-slate-900 font-bold tracking-tight'
+                    ? 'text-slate-50 font-bold tracking-tight'
                     : 'text-slate-500'
                 )}
                 aria-current={isCurrent ? 'page' : undefined}

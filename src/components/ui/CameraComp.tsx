@@ -459,7 +459,7 @@ export function CameraComp({
   const showPermissionHelp = status === 'denied' || status === 'error';
 
   return (
-    <div className={cn('w-full h-full flex flex-col min-h-0 bg-white', className)}>
+    <div className={cn('w-full h-full flex flex-col min-h-0 bg-[var(--tm-surface)]', className)}>
       <div
         className={cn(
           'flex flex-col flex-1 min-h-0 w-full',
@@ -471,7 +471,7 @@ export function CameraComp({
           className={cn(
             'relative overflow-hidden bg-[#f1f5f8] flex flex-col items-center justify-center w-full',
             status === 'parsed'
-              ? 'md:w-1/2 shrink-0 rounded-[10px] border border-slate-200/80 min-h-[240px] md:min-h-0'
+              ? 'md:w-1/2 shrink-0 rounded-[10px] border border-[var(--tm-border)]/80 min-h-[240px] md:min-h-0'
               : 'flex-1 min-h-[min(52vh,420px)] border-0 rounded-none'
           )}
         >
@@ -559,7 +559,7 @@ export function CameraComp({
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="shadow-md bg-white/95 hover:bg-white text-slate-800 rounded-[8px]"
+                    className="shadow-md bg-[var(--tm-surface)]/95 hover:bg-[var(--tm-surface)] text-slate-100 rounded-[8px]"
                     onClick={() => setIsLogoModalOpen(true)}
                   >
                     <ImagePlus className="w-4 h-4 mr-1.5" />
@@ -571,12 +571,12 @@ export function CameraComp({
           )}
 
           {(status === 'idle' || showPermissionHelp) && (
-            <div className="flex w-full h-full min-h-[min(52vh,420px)] flex-col items-center justify-center gap-3.5 bg-[linear-gradient(160deg,#f8fbfd_0%,#eef3f7_55%,#e8eef3_100%)] p-6 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#006699] shadow-sm ring-1 ring-slate-200/80">
+            <div className="flex w-full h-full min-h-[min(52vh,420px)] flex-col items-center justify-center gap-3.5 bg-[linear-gradient(160deg,var(--tm-elevated)_0%,#eef3f7_55%,#e8eef3_100%)] p-6 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--tm-surface)] text-[#0EA5E9] shadow-sm ring-1 ring-[var(--tm-border)]/80">
                 <Camera className="h-6 w-6" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-800 tracking-tight">
+                <p className="text-sm font-semibold text-slate-100 tracking-tight">
                   {showPermissionHelp ? 'Camera access blocked' : 'Camera access is required'}
                 </p>
                 <p className="max-w-sm text-[11px] font-medium text-slate-500 leading-relaxed">
@@ -632,8 +632,8 @@ export function CameraComp({
         </div>
 
         {status === 'parsed' && parsedData && (
-          <div className="rounded-[10px] border border-slate-200/80 bg-[#f8fbfd] p-3.5 md:w-1/2 flex flex-col justify-start overflow-y-auto min-h-0">
-            <h3 className="mb-2 text-sm font-semibold text-slate-800 tracking-tight">
+          <div className="rounded-[10px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)] p-3.5 md:w-1/2 flex flex-col justify-start overflow-y-auto min-h-0">
+            <h3 className="mb-2 text-sm font-semibold text-slate-100 tracking-tight">
               Review Scanned Details
             </h3>
             <CardReviewForm
@@ -645,18 +645,18 @@ export function CameraComp({
       </div>
 
       {errorMessage && (
-        <div className="mx-4 sm:mx-5 mb-2 rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+        <div className="mx-4 sm:mx-5 mb-2 rounded-[8px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
           {errorMessage}
         </div>
       )}
 
-      <div className="shrink-0 border-t border-slate-100 bg-[#f8fbfd] px-4 sm:px-5 py-3 flex flex-wrap items-center justify-end gap-2">
+      <div className="shrink-0 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] px-4 sm:px-5 py-3 flex flex-wrap items-center justify-end gap-2">
         {(status === 'idle' || showPermissionHelp) && (
           <Button
             type="button"
             onClick={requestCameraPermission}
             disabled={!isCvReady}
-            className="bg-[#006699] hover:bg-[#005580] text-white rounded-[8px]"
+            className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
           >
             {!isCvReady ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -692,7 +692,7 @@ export function CameraComp({
                 onClick={() =>
                   handleAutoCapture(detectionResult.detected ? detectionResult : undefined)
                 }
-                className="bg-[#006699] hover:bg-[#005580] text-white rounded-[8px]"
+                className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
               >
                 <Camera className="mr-1.5 h-4 w-4" />
                 Capture Manually
@@ -719,7 +719,7 @@ export function CameraComp({
             <Button
               type="button"
               onClick={uploadCapture}
-              className="bg-[#006699] hover:bg-[#005580] text-white rounded-[8px]"
+              className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
             >
               <Check className="mr-1.5 h-4 w-4" />
               Upload Image
@@ -745,7 +745,7 @@ export function CameraComp({
               type="button"
               onClick={uploadCapture}
               disabled={status === 'uploading'}
-              className="bg-[#006699] hover:bg-[#005580] text-white rounded-[8px]"
+              className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
             >
               {status === 'uploading' ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />

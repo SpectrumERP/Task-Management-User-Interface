@@ -58,7 +58,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600"
+      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
     >
       <span>{children}</span>
       {required ? (
@@ -231,13 +231,13 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
       showSuccessAlert={showSuccessAlert}
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
-      <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <Users size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Group Details</h2>
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Group Details</h2>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
               Define the user group name and description
             </p>
@@ -254,7 +254,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                 value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
                 className={cn(
                   fieldClass,
-                  'bg-[#f8fbfd] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-slate-200/80'
+                  'bg-[var(--tm-elevated)] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-[var(--tm-border)]/80'
                 )}
               />
             </div>
@@ -309,15 +309,15 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
 
       <section
         id="form-group-members"
-        className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible"
+        className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible"
       >
-        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
               <UserPlus size={15} strokeWidth={1.75} />
             </span>
             <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-slate-800 tracking-tight inline-flex items-center gap-1">
+              <h2 className="text-sm font-semibold text-slate-100 tracking-tight inline-flex items-center gap-1">
                 Group Members
                 <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
                   *
@@ -334,7 +334,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
           <Button
             type="button"
             onClick={addGridUser}
-            className="h-8 px-3 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-white text-[11px] font-semibold gap-1.5 shrink-0 shadow-sm shadow-[#006699]/20"
+            className="h-8 px-3 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-[11px] font-semibold gap-1.5 shrink-0 shadow-sm shadow-[#0EA5E9]/20"
           >
             <UserPlus size={13} strokeWidth={2.5} />
             Add
@@ -344,14 +344,14 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
         <div className="p-4 sm:p-5 space-y-2">
           <div
             className={cn(
-              'rounded-[8px] border border-slate-200/80 overflow-hidden bg-white',
+              'rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden bg-[var(--tm-surface)]',
               errors.selectedUsers && 'border-red-400 ring-2 ring-red-500/10'
             )}
           >
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px] border-collapse table-fixed">
+              <table className="tm-data-table w-full text-left text-[11px] border-collapse table-fixed">
                 <thead>
-                  <tr className="bg-[#f8fbfd] border-b border-slate-100">
+                  <tr className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
                     <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
                       User Name
                     </th>
@@ -364,15 +364,16 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                     <th className="px-2 py-2.5 w-10" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[var(--tm-border)]">
                   {selectedUsers.map((field, index) => {
                     const isDuplicate = !!field.loginNo && duplicateLoginNos.has(field.loginNo);
                     return (
                       <tr
                         key={index}
+                        data-row-alert={isDuplicate ? true : undefined}
                         className={cn(
                           'group transition-colors',
-                          isDuplicate ? 'bg-red-50/70 hover:bg-red-50' : 'hover:bg-[#f8fbfd]/80'
+                          isDuplicate ? 'hover:bg-red-500/10' : 'hover:bg-[var(--tm-elevated)]/80'
                         )}
                       >
                         <td className="px-2 py-1.5">
@@ -380,7 +381,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             value={field.userName}
                             onChange={(user) => updateGridUser(index, user)}
                             placeholder="Select user"
-                            className="h-8 rounded-[8px] border-[#a8afb7] group-hover:border-[#006699]/30 focus:border-[#006699] text-[11px] bg-white shadow-none px-2"
+                            className="h-8 rounded-[8px] border-[var(--tm-border)] group-hover:border-[#0EA5E9]/30 focus:border-[#0EA5E9] text-[11px] bg-[var(--tm-surface)] shadow-none px-2"
                             initialLabel={field.userName}
                             error={isDuplicate}
                           />
@@ -390,7 +391,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             disabled
                             value={field.displayName}
                             placeholder="—"
-                            className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-700"
+                            className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-200"
                           />
                         </td>
                         <td className="px-2 py-1.5">
@@ -398,14 +399,14 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             disabled
                             value={field.email}
                             placeholder="—"
-                            className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-700"
+                            className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-200"
                           />
                         </td>
                         <td className="px-1 py-1.5 text-center">
                           <button
                             type="button"
                             onClick={() => removeGridUser(index)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                             aria-label="Remove member"
                           >
                             <Trash2 size={13} />

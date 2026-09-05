@@ -70,15 +70,15 @@ export default function ReportPage() {
   };
 
   return (
-    <div className="page-shell-scroll bg-[#eef4f8]">
+    <div className="page-shell-scroll bg-[var(--tm-page)]">
       <div className="shrink-0">
         <ReportFilter onApply={handleApplyFilters} />
       </div>
       <div className="relative flex min-h-[280px] flex-1 basis-0 flex-col overflow-hidden">
         <ReportTable data={reportData} />
         {isLoading ? (
-          <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-[8px] bg-white/75 backdrop-blur-[1px] text-slate-500 text-sm font-medium">
-            <Loader2 className="h-4 w-4 animate-spin text-[#006699]" />
+          <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-[8px] bg-[var(--tm-surface)]/75 backdrop-blur-[1px] text-slate-500 text-sm font-medium">
+            <Loader2 className="h-4 w-4 animate-spin text-[#0EA5E9]" />
             Loading report...
           </div>
         ) : null}

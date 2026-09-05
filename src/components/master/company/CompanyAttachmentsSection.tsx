@@ -37,8 +37,8 @@ export function CompanyAttachmentsSection({
         <div className="flex flex-col gap-2">
           <div
             className={cn(
-              'border border-dashed border-slate-200 bg-[#f8fbfd] hover:bg-[#eef5f9] rounded-[8px] p-5 text-center cursor-pointer transition-colors relative flex flex-col items-center justify-center min-h-[110px]',
-              error && 'border-red-300 bg-red-50/30 hover:bg-red-50/40'
+              'border border-dashed border-[var(--tm-border)] bg-[var(--tm-elevated)] hover:bg-[#eef5f9] rounded-[8px] p-5 text-center cursor-pointer transition-colors relative flex flex-col items-center justify-center min-h-[110px]',
+              error && 'border-red-300 bg-red-500/10 hover:bg-red-500/10'
             )}
           >
             <input
@@ -48,7 +48,7 @@ export function CompanyAttachmentsSection({
               title="Choose file to attach"
             />
             <UploadCloud size={24} className={cn('text-slate-400 mb-1.5', error && 'text-red-400')} strokeWidth={1.75} />
-            <p className="text-xs font-semibold text-slate-700">Upload Attachment</p>
+            <p className="text-xs font-semibold text-slate-200">Upload Attachment</p>
             <p className="text-[9px] text-slate-400 font-medium mt-0.5">PDF, DOCX or XLSX up to 10MB</p>
           </div>
           <Button
@@ -56,8 +56,8 @@ export function CompanyAttachmentsSection({
             variant="outline"
             onClick={onOpenCamera}
             className={cn(
-              'h-10 w-full rounded-[8px] border-[#a8afb7] bg-white text-[#006699] hover:bg-[#e8f3f8] hover:text-[#005580] gap-1.5 text-xs font-semibold shadow-none',
-              error && 'border-red-300 text-red-500 hover:bg-red-50'
+              'h-10 w-full rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-[#0EA5E9] hover:bg-[var(--tm-tint)] hover:text-[#0284C7] gap-1.5 text-xs font-semibold shadow-none',
+              error && 'border-red-300 text-red-500 hover:bg-red-500/10'
             )}
             title="Capture attachment with camera"
           >
@@ -70,8 +70,8 @@ export function CompanyAttachmentsSection({
           {attachments.length === 0 ? (
             <div
               className={cn(
-                'flex h-[158px] items-center justify-center border border-slate-200/80 rounded-[8px] bg-[#f8fbfd] text-slate-400 text-xs font-medium px-4 text-center',
-                error && 'border-red-200 bg-red-50/20 text-red-400'
+                'flex h-[158px] items-center justify-center border border-[var(--tm-border)]/80 rounded-[8px] bg-[var(--tm-elevated)] text-slate-400 text-xs font-medium px-4 text-center',
+                error && 'border-red-500/30 bg-red-500/10 text-red-400'
               )}
             >
               At least one attachment is mandatory to save.
@@ -81,15 +81,15 @@ export function CompanyAttachmentsSection({
               {attachments.map((att, idx) => (
                 <div
                   key={idx}
-                  className="bg-white border border-slate-200/70 rounded-[8px] p-3 flex items-center justify-between gap-3 hover:border-[#006699]/30 transition-colors"
+                  className="bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-[8px] p-3 flex items-center justify-between gap-3 hover:border-[#0EA5E9]/30 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 bg-[#f8fbfd] border border-slate-200/80 rounded-[8px] text-[#006699] shrink-0">
+                    <div className="p-2 bg-[var(--tm-elevated)] border border-[var(--tm-border)]/80 rounded-[8px] text-[#0EA5E9] shrink-0">
                       <FileText size={15} strokeWidth={1.75} />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-baseline gap-1.5 mb-0.5 min-w-0">
-                        <p className="text-xs font-semibold text-slate-700 truncate leading-snug">
+                        <p className="text-xs font-semibold text-slate-200 truncate leading-snug">
                           {att.fileName}
                         </p>
                         <span className="text-[10px] text-slate-400 font-medium font-mono shrink-0">
@@ -106,7 +106,7 @@ export function CompanyAttachmentsSection({
                                 att.fileName || 'document'
                               )
                             }
-                            className="text-[9px] font-semibold text-[#006699] hover:underline"
+                            className="text-[9px] font-semibold text-[#0EA5E9] hover:underline"
                           >
                             View document
                           </button>
@@ -121,7 +121,7 @@ export function CompanyAttachmentsSection({
                               <button
                                 type="button"
                                 onClick={() => onAnalyze(att)}
-                                className="text-[9px] font-semibold text-emerald-600 hover:underline"
+                                className="text-[9px] font-semibold text-emerald-400 hover:underline"
                               >
                                 Analyze Image
                               </button>
@@ -133,7 +133,7 @@ export function CompanyAttachmentsSection({
                   <button
                     type="button"
                     onClick={() => onRemove(idx)}
-                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
                     title="Remove Attachment"
                   >
                     <X size={14} strokeWidth={2.5} />

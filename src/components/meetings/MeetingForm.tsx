@@ -13,6 +13,7 @@ import { EmployeeCombobox } from '@/components/meetings/EmployeeCombobox';
 import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityCombobox';
 import { DocumentCombobox } from '@/components/meetings/DocumentCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
@@ -91,7 +92,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className={cn('inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600', className)}
+      className={cn('inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300', className)}
     >
       <span>{children}</span>
       {required ? (
@@ -103,17 +104,17 @@ function FieldLabel({
   );
 }
 
-function FormSection({ title, icon: Icon, children, headerAction }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode }) {
+function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
   return (
-    <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
+    <section data-page-tour={tourId} className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
         <div className="flex items-center gap-2.5 min-w-0">
           {Icon && (
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
               <Icon size={15} strokeWidth={1.75} />
             </span>
           )}
-          {title && <h3 className="text-sm font-semibold text-slate-800 tracking-tight truncate">{title}</h3>}
+          {title && <h3 className="text-sm font-semibold text-slate-100 tracking-tight truncate">{title}</h3>}
         </div>
         {headerAction}
       </div>
@@ -485,43 +486,44 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   if (isLoadingOptions || isFetchingData) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center h-full gap-4 text-slate-500">
-        <div className="w-8 h-8 border-4 border-[#006699] border-t-transparent rounded-lg animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-[#0EA5E9] border-t-transparent rounded-lg animate-spin"></div>
         <div className="font-semibold">{isFetchingData ? 'Loading meeting details...' : 'Loading options...'}</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[#eef4f8] absolute inset-0">
+    <div className="flex flex-col h-full overflow-hidden bg-[var(--tm-page)] absolute inset-0">
       {/* Header & Breadcrumb */}
-      <div className="shrink-0 sticky top-0 z-50 bg-white border-b border-slate-200/70 px-4 py-2.5 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
+      <div className="shrink-0 sticky top-0 z-50 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-2.5 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
         <nav className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={() => navigate('/meetings')}
-            className="shrink-0 text-sm font-medium text-[#006699] underline decoration-[#006699]/40 underline-offset-[3px] hover:decoration-[#006699] hover:text-[#005580] cursor-pointer transition-colors bg-transparent p-0 border-0"
+            className="shrink-0 text-sm font-medium text-[#0EA5E9] underline decoration-[#0EA5E9]/40 underline-offset-[3px] hover:decoration-[#0EA5E9] hover:text-[#0284C7] cursor-pointer transition-colors bg-transparent p-0 border-0"
           >
             Meeting Notes
           </button>
           <span className="text-slate-300 text-sm font-light leading-none select-none" aria-hidden>
             /
           </span>
-          <span className="text-sm font-semibold text-slate-800 truncate">
+          <span className="text-sm font-semibold text-slate-100 truncate">
             {meetingNotesNo || initialData?.meetingNotesNo ? 'Edit Meeting Note' : 'Create Meeting Note'}
           </span>
         </nav>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] font-medium border-slate-200/80 text-xs px-4" onClick={() => navigate('/meetings')}>Cancel</Button>
+        <div className="flex items-center gap-2 self-end sm:self-auto" data-page-tour="meeting-form-actions">
+          <PageGuideButton guideKey="meeting-form" />
+          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] font-medium border-[var(--tm-border)]/80 text-xs px-4" onClick={() => navigate('/meetings')}>Cancel</Button>
           {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
-            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-white font-semibold shadow-[0_8px_20px_-6px_rgba(0,102,153,0.45)] text-xs px-5" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
+            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] text-xs px-5" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
               {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-[#eef4f8]">
+      <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
         <div className="w-full mx-auto p-4">
           <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))} className="space-y-3">
 
@@ -529,6 +531,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <FormSection
                 title="Meeting Detail"
                 icon={Clock}
+                tourId="meeting-form-detail"
                 headerAction={
                   <Controller
                     control={form.control}
@@ -538,7 +541,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                         value={field.value?.toString()}
                         onValueChange={(val) => field.onChange(parseInt(val))}
                       >
-                        <SelectTrigger className="h-9 rounded-[8px] bg-white border-slate-200/80 text-xs w-[140px] font-medium">
+                        <SelectTrigger className="h-9 rounded-[8px] bg-[var(--tm-surface)] border-[var(--tm-border)]/80 text-xs w-[140px] font-medium">
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -685,12 +688,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-medium text-slate-600">Meeting Duration (In Minutes)</label>
-                    <Input value={form.watch('durationMinutes') || 0} readOnly placeholder="0" className="h-10 rounded-[8px] bg-slate-50/50 text-xs text-slate-500 text-right" />
+                    <label className="text-[11px] font-medium text-slate-300">Meeting Duration (In Minutes)</label>
+                    <Input value={form.watch('durationMinutes') || 0} readOnly placeholder="0" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500 text-right" />
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
-                    <label className="text-[11px] font-medium text-slate-600">Meeting Link (URL)</label>
+                    <label className="text-[11px] font-medium text-slate-300">Meeting Link (URL)</label>
                     <FieldControl error={form.formState.errors.meetingMinutesUrl?.message}>
                       <Input {...form.register('meetingMinutesUrl')} placeholder="https://..." className={cn("h-10 rounded-[8px]", form.formState.errors.meetingMinutesUrl && "border-red-400")} />
                     </FieldControl>
@@ -702,15 +705,16 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <FormSection
                 title="Participants"
                 icon={Users}
+                tourId="meeting-form-participants"
                 headerAction={
-                  <Button type="button" onClick={() => appendParticipant({ participantType: 1 })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#006699]/25 text-[#006699] hover:bg-[#e8f3f8]">
+                  <Button type="button" onClick={() => appendParticipant({ participantType: 1 })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                     <Plus size={14} className="mr-1" /> Add Participant
                   </Button>
                 }
               >
                 {participantFields.length === 0 ? (
                   <FieldControl
-                    className="text-center p-8 border border-dashed border-slate-200 rounded-[8px] bg-[#f8fbfd] flex flex-col items-center justify-center"
+                    className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center"
                     error={
                       (form.formState.errors.participants?.message ||
                         form.formState.errors.participants?.root?.message) as
@@ -738,18 +742,18 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       return (
                         <div
                           key={field.id}
-                          className="relative rounded-[8px] border border-slate-200/80 bg-white overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)] transition-all"
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
                         >
-                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                               {index + 1}
                             </span>
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/10">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
                               <TypeIcon size={14} strokeWidth={1.75} />
                             </span>
                             <div className="min-w-0 flex-1">
                               {summaryName ? (
-                                <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">{summaryName}</p>
+                                <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{summaryName}</p>
                               ) : null}
                               {summaryEmail ? (
                                 <p className="text-[11px] text-slate-400 truncate mt-0.5">{summaryEmail}</p>
@@ -764,7 +768,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   summaryName || `Participant ${index + 1}`
                                 )
                               }
-                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-100/80 transition-colors"
+                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                               title="Remove participant"
                             >
                               <Trash2 size={14} />
@@ -782,7 +786,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                 name={`participants.${index}.participantType`}
                                 render={({ field }) => (
                                   <Select value={field.value.toString()} onValueChange={(v) => field.onChange(parseInt(v))}>
-                                    <SelectTrigger className="h-10 rounded-[8px] bg-white text-xs min-w-[150px]">
+                                    <SelectTrigger className="h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs min-w-[150px]">
                                       <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -825,8 +829,8 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   />
                                 </div>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[11px] font-medium text-slate-600">Display Name</label>
-                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Display Name" className="h-10 rounded-[8px] bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[11px] font-medium text-slate-300">Display Name</label>
+                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Display Name" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                               </>
                             )}
@@ -861,12 +865,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   />
                                 </div>
                                 <div className="space-y-1 sm:col-span-1 lg:col-span-1">
-                                  <label className="text-[11px] font-medium text-slate-600">Employee Code</label>
-                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Employee Code" className="h-10 rounded-[8px] bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[11px] font-medium text-slate-300">Employee Code</label>
+                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Employee Code" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                                 <div className="space-y-1 sm:col-span-2 lg:col-span-2">
-                                  <label className="text-[11px] font-medium text-slate-600">Email</label>
-                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-10 w-full rounded-[8px] bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[11px] font-medium text-slate-300">Email</label>
+                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-10 w-full rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                               </>
                             )}
@@ -877,31 +881,31 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                 <div className="space-y-1">
                                   <FieldLabel required>Name</FieldLabel>
                                   <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
-                                    <Input {...form.register(`participants.${index}.participantName`)} placeholder="Name" className={cn("h-10 rounded-[8px] bg-white text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")} maxLength={100} />
+                                    <Input {...form.register(`participants.${index}.participantName`)} placeholder="Name" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")} maxLength={100} />
                                   </FieldControl>
                                 </div>
                                 <div className="space-y-1">
                                   <FieldLabel required>Company</FieldLabel>
                                   <FieldControl error={form.formState.errors.participants?.[index]?.companyName?.message}>
-                                    <Input {...form.register(`participants.${index}.companyName`)} placeholder="Company" className={cn("h-10 rounded-[8px] bg-white text-xs", form.formState.errors.participants?.[index]?.companyName && "border-red-400")} maxLength={100} />
+                                    <Input {...form.register(`participants.${index}.companyName`)} placeholder="Company" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.companyName && "border-red-400")} maxLength={100} />
                                   </FieldControl>
                                 </div>
                                 <div className="space-y-1 col-start-1 sm:col-span-2 lg:col-span-2">
                                   <FieldLabel required>Email</FieldLabel>
                                   <FieldControl error={form.formState.errors.participants?.[index]?.email?.message}>
-                                    <Input {...form.register(`participants.${index}.email`)} placeholder="Email" className={cn("h-10 rounded-[8px] bg-white text-xs", form.formState.errors.participants?.[index]?.email && "border-red-400")} maxLength={100} />
+                                    <Input {...form.register(`participants.${index}.email`)} placeholder="Email" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.email && "border-red-400")} maxLength={100} />
                                   </FieldControl>
                                 </div>
                                 <div className="space-y-1">
                                   <FieldLabel required>Designation</FieldLabel>
                                   <FieldControl error={form.formState.errors.participants?.[index]?.designation?.message}>
-                                    <Input {...form.register(`participants.${index}.designation`)} placeholder="Designation" className={cn("h-10 rounded-[8px] bg-white text-xs", form.formState.errors.participants?.[index]?.designation && "border-red-400")} maxLength={100} />
+                                    <Input {...form.register(`participants.${index}.designation`)} placeholder="Designation" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.designation && "border-red-400")} maxLength={100} />
                                   </FieldControl>
                                 </div>
                                 <div className="space-y-1">
                                   <FieldLabel required>Contact No</FieldLabel>
                                   <FieldControl error={form.formState.errors.participants?.[index]?.contactNo?.message}>
-                                    <Input {...form.register(`participants.${index}.contactNo`)} placeholder="Contact No" className={cn("h-10 rounded-[8px] bg-white text-xs", form.formState.errors.participants?.[index]?.contactNo && "border-red-400")} maxLength={20} />
+                                    <Input {...form.register(`participants.${index}.contactNo`)} placeholder="Contact No" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.contactNo && "border-red-400")} maxLength={20} />
                                   </FieldControl>
                                 </div>
                               </>
@@ -944,20 +948,20 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-slate-600">Business Entity</label>
-                                  <Input value={form.watch(`participants.${index}.companyName`) || ''} disabled placeholder="Business Entity" className="h-10 rounded-[8px] bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[11px] font-medium text-slate-300">Business Entity</label>
+                                  <Input value={form.watch(`participants.${index}.companyName`) || ''} disabled placeholder="Business Entity" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-slate-600">Designation</label>
-                                  <Input value={form.watch(`participants.${index}.designation`) || ''} disabled placeholder="Designation" className="h-10 rounded-[8px] bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[11px] font-medium text-slate-300">Designation</label>
+                                  <Input value={form.watch(`participants.${index}.designation`) || ''} disabled placeholder="Designation" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-slate-600">Department</label>
-                                  <Input value={(form.watch(`participants.${index}` as any)?.department) || ''} disabled placeholder="Department" className="h-10 rounded-[8px] bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[11px] font-medium text-slate-300">Department</label>
+                                  <Input value={(form.watch(`participants.${index}` as any)?.department) || ''} disabled placeholder="Department" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                                 <div className="space-y-1 col-start-1 sm:col-span-2 lg:col-span-3 xl:col-span-3">
-                                  <label className="text-[11px] font-medium text-slate-600">Email</label>
-                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-10 w-full rounded-[8px] bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[11px] font-medium text-slate-300">Email</label>
+                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-10 w-full rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                               </>
                             )}
@@ -974,14 +978,15 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <FormSection
                 title="Discussions & Outcomes"
                 icon={MessageSquare}
+                tourId="meeting-form-discussions"
                 headerAction={
-                  <Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#006699]/25 text-[#006699] hover:bg-[#e8f3f8]">
+                  <Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                     <Plus size={14} className="mr-1" /> Add Discussion Point
                   </Button>
                 }
               >
                 {discussionFields.length === 0 ? (
-                  <div className="text-center p-8 border border-dashed border-slate-200 rounded-[8px] bg-[#f8fbfd]">
+                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
                     <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
                   </div>
                 ) : (
@@ -992,18 +997,18 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       return (
                         <div
                           key={field.id}
-                          className="relative rounded-[8px] border border-slate-200/80 bg-white overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)] transition-all"
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
                         >
-                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                               {index + 1}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">
+                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
                                 {topicValue || 'Discussion point'}
                               </p>
                               {isActionRequired ? (
-                                <p className="text-[11px] text-[#006699] font-medium mt-0.5">Action required</p>
+                                <p className="text-[11px] text-[#0EA5E9] font-medium mt-0.5">Action required</p>
                               ) : (
                                 <p className="text-[11px] text-slate-400 mt-0.5">Discussion only</p>
                               )}
@@ -1017,7 +1022,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   topicValue || `Discussion ${index + 1}`
                                 )
                               }
-                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-100/80 transition-colors"
+                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                               title="Remove discussion"
                             >
                               <Trash2 size={14} />
@@ -1028,14 +1033,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             <div className="space-y-1">
                               <FieldLabel required>Topic / Agenda</FieldLabel>
                               <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
-                                <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-10 rounded-[8px] text-xs font-medium bg-white", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
+                                <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-10 rounded-[8px] text-xs font-medium bg-[var(--tm-surface)]", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
                               </FieldControl>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div className="space-y-1">
                                 <div className="flex items-center justify-between gap-2">
-                                  <label className="text-[11px] font-medium text-slate-600">Discussion Summary</label>
+                                  <label className="text-[11px] font-medium text-slate-300">Discussion Summary</label>
                                   <span className="text-[10px] text-slate-400 tabular-nums">
                                     {(form.watch(`discussions.${index}.discussionSummary`) || '').length}/700
                                   </span>
@@ -1049,14 +1054,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                       onChange={field.onChange}
                                       placeholder="Details..."
                                       maxLength={700}
-                                      className="min-h-[120px] rounded-[8px] text-xs bg-white border-slate-200/80 resize-none focus-visible:ring-[#006699]/30"
+                                      className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
                                     />
                                   )}
                                 />
                               </div>
                               <div className="space-y-1">
                                 <div className="flex items-center justify-between gap-2">
-                                  <label className="text-[11px] font-medium text-slate-600">Decision Remarks</label>
+                                  <label className="text-[11px] font-medium text-slate-300">Decision Remarks</label>
                                   <span className="text-[10px] text-slate-400 tabular-nums">
                                     {(form.watch(`discussions.${index}.decisionRemarks`) || '').length}/300
                                   </span>
@@ -1070,7 +1075,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                       onChange={field.onChange}
                                       placeholder="Final decision..."
                                       maxLength={300}
-                                      className="min-h-[120px] rounded-[8px] text-xs bg-white border-slate-200/80 resize-none focus-visible:ring-[#006699]/30"
+                                      className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
                                     />
                                   )}
                                 />
@@ -1085,14 +1090,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   className={cn(
                                     'w-full flex items-center gap-3 rounded-[10px] border px-3.5 py-3 transition-all duration-200',
                                     field.value
-                                      ? 'border-[#006699]/30 bg-gradient-to-r from-[#e8f3f8] via-[#f3f9fc] to-white shadow-[0_8px_20px_-12px_rgba(0,102,153,0.35)]'
-                                      : 'border-slate-200/80 bg-[#f8fbfd]'
+                                      ? 'border-[#0EA5E9]/30 bg-gradient-to-r from-[var(--tm-tint)] via-[#f3f9fc] to-[var(--tm-surface)] shadow-[0_8px_20px_-12px_rgba(14,165,233,0.35)]'
+                                      : 'border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]'
                                   )}
                                 >
                                   <div className="min-w-0 flex-1">
                                     <p className={cn(
                                       'text-[12px] font-semibold leading-tight transition-colors',
-                                      field.value ? 'text-[#005580]' : 'text-slate-700'
+                                      field.value ? 'text-[#0284C7]' : 'text-slate-200'
                                     )}>
                                       Action required
                                     </p>
@@ -1107,12 +1112,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                     aria-checked={!!field.value}
                                     aria-label="Action required"
                                     onClick={() => field.onChange(!field.value)}
-                                    className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006699]/30"
+                                    className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
                                   >
                                     <span
                                       className={cn(
                                         'text-[10px] font-semibold tracking-wide transition-colors',
-                                        field.value ? 'text-[#006699]' : 'text-slate-400'
+                                        field.value ? 'text-[#0EA5E9]' : 'text-slate-400'
                                       )}
                                     >
                                       {field.value ? 'ON' : 'OFF'}
@@ -1122,13 +1127,13 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                       className={cn(
                                         'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
                                         field.value
-                                          ? 'bg-[#006699] shadow-[inset_0_0_0_1px_rgba(0,102,153,0.2)]'
+                                          ? 'bg-[#0EA5E9] shadow-[inset_0_0_0_1px_rgba(14,165,233,0.2)]'
                                           : 'bg-slate-200'
                                       )}
                                     >
                                       <span
                                         className={cn(
-                                          'absolute h-5 w-5 rounded-full bg-white shadow-[0_1px_3px_rgba(15,23,42,0.25)] transition-transform duration-200',
+                                          'absolute h-5 w-5 rounded-full bg-[var(--tm-surface)] shadow-[0_1px_3px_rgba(15,23,42,0.25)] transition-transform duration-200',
                                           field.value ? 'translate-x-[22px]' : 'translate-x-[2px]'
                                         )}
                                       />
@@ -1139,8 +1144,8 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             />
 
                             {isActionRequired && (
-                              <div className="rounded-[8px] border border-[#d7e8f2] bg-[#f8fbff] p-3 space-y-3">
-                                <p className="text-[11px] font-semibold text-[#006699] uppercase tracking-wide">Task details</p>
+                              <div className="rounded-[8px] border border-[#d7e8f2] bg-[var(--tm-elevated)] p-3 space-y-3">
+                                <p className="text-[11px] font-semibold text-[#0EA5E9] uppercase tracking-wide">Task details</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                                   <div className="space-y-1">
                                     <FieldLabel required>Task Category</FieldLabel>
@@ -1191,7 +1196,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                     </FieldControl>
                                   </div>
                                   <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-slate-600">Folder</label>
+                                    <label className="text-[11px] font-medium text-slate-300">Folder</label>
                                     <Controller
                                       control={form.control}
                                       name={`discussions.${index}.taskFolderNo`}
@@ -1205,7 +1210,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                     />
                                   </div>
                                   <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-slate-600">Task Assign By</label>
+                                    <label className="text-[11px] font-medium text-slate-300">Task Assign By</label>
                                     <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
                                       <Controller
                                         control={form.control}
@@ -1277,7 +1282,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 rounded-[8px] border-[#006699]/25 text-[#006699] hover:bg-[#e8f3f8] font-medium text-xs px-3"
+                    className="h-9 rounded-[8px] border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] font-medium text-xs px-3"
                     onClick={() => appendDocument({ documentType: 0, documentNo: 0 })}
                   >
                     <Plus size={14} className="mr-1.5" />
@@ -1286,7 +1291,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                 }
               >
                 {documentFields.length === 0 ? (
-                  <div className="text-center p-8 border border-dashed border-slate-200 rounded-[8px] bg-[#f8fbfd]">
+                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
                     <p className="text-xs text-slate-500 font-medium">No documents added yet.</p>
                   </div>
                 ) : (
@@ -1304,18 +1309,18 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       return (
                         <div
                           key={field.id}
-                          className="relative rounded-[8px] border border-slate-200/80 bg-white overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)] transition-all"
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
                         >
-                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100 rounded-t-[8px]">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[12px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                               {index + 1}
                             </span>
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/10">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
                               <FileText size={14} strokeWidth={1.75} />
                             </span>
                             <div className="min-w-0 flex-1">
                               {summaryLabel ? (
-                                <p className="text-[13px] font-semibold text-slate-800 truncate leading-tight">
+                                <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
                                   {summaryLabel}
                                 </p>
                               ) : (
@@ -1336,7 +1341,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   summaryLabel || `Document ${index + 1}`
                                 )
                               }
-                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-50 hover:text-red-600 hover:bg-red-100 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-100/80 transition-colors"
+                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                               title="Remove document"
                             >
                               <Trash2 size={14} />
@@ -1392,7 +1397,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                         >
                                           <SelectTrigger
                                             className={cn(
-                                              'h-10 rounded-[8px] bg-white text-xs shadow-none border-slate-200/80',
+                                              'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
                                               selectedType === '__none__' && 'text-slate-400',
                                               form.formState.errors.documents?.[index]
                                                 ?.documentType && 'border-red-400'
@@ -1485,10 +1490,10 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                         }
                                         disabled={!(Number(docType) > 0)}
                                         className={cn(
-                                          'h-10 rounded-[8px] bg-white text-xs shadow-none border-slate-200/80',
+                                          'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
                                           form.formState.errors.documents?.[index]?.documentNo &&
                                             'border-red-400',
-                                          !(Number(docType) > 0) && 'bg-slate-50/80 text-slate-400'
+                                          !(Number(docType) > 0) && 'bg-[var(--tm-muted)]/80 text-slate-400'
                                         )}
                                       />
                                     )}
@@ -1505,7 +1510,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               </FormSection>
 
               {/* SECTION 5: Attachments */}
-              <FormSection title="Attachments" icon={Paperclip}>
+              <FormSection title="Attachments" icon={Paperclip} tourId="meeting-form-attachments">
                 <div className="space-y-3">
                   <div
                     onClick={() => fileInputRef.current?.click()}
@@ -1519,7 +1524,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       const files = e.dataTransfer?.files;
                       if (files?.length) processFiles(Array.from(files));
                     }}
-                    className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#006699]/25 bg-gradient-to-r from-[#f4f9fc] to-white px-3.5 py-3 cursor-pointer transition-all hover:border-[#006699]/45 hover:shadow-[0_8px_24px_-16px_rgba(0,102,153,0.35)]"
+                    className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#0EA5E9]/25 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] px-3.5 py-3 cursor-pointer transition-all hover:border-[#0EA5E9]/45 hover:shadow-[0_8px_24px_-16px_rgba(14,165,233,0.35)]"
                   >
                     <input
                       ref={fileInputRef}
@@ -1529,13 +1534,13 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       onChange={handleFileSelection}
                       className="hidden"
                     />
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-white text-[#006699] ring-1 ring-[#006699]/12 shadow-sm group-hover:bg-[#e8f3f8] transition-colors">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12 shadow-sm group-hover:bg-[var(--tm-tint)] transition-colors">
                       <UploadCloud size={18} strokeWidth={1.75} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-semibold text-slate-800 leading-tight">
+                      <p className="text-[12px] font-semibold text-slate-100 leading-tight">
                         Drop files here or{' '}
-                        <span className="text-[#006699] underline decoration-[#006699]/30 underline-offset-2">
+                        <span className="text-[#0EA5E9] underline decoration-[#0EA5E9]/30 underline-offset-2">
                           browse
                         </span>
                       </p>
@@ -1543,7 +1548,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                         PDF &amp; Images · Max 10MB each
                       </p>
                     </div>
-                    <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#006699] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#006699]/20 group-hover:bg-[#005580] transition-colors">
+                    <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
                       Upload
                     </span>
                   </div>
@@ -1558,7 +1563,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                           {uploadingFiles.length}
                         </span>
                       </div>
-                      <div className="rounded-[8px] border border-slate-200/80 overflow-hidden divide-y divide-slate-100 bg-white">
+                      <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
                         {uploadingFiles.map((file) => (
                           <motion.div
                             key={file.tempId}
@@ -1567,15 +1572,15 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             exit={{ opacity: 0, y: -6 }}
                             className={cn(
                               'flex items-center gap-2.5 px-2.5 py-2',
-                              file.status === 'failed' ? 'bg-red-50/60' : 'bg-white'
+                              file.status === 'failed' ? 'bg-red-500/10' : 'bg-[var(--tm-surface)]'
                             )}
                           >
                             <span
                               className={cn(
                                 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
                                 file.status === 'failed'
-                                  ? 'bg-red-50 text-red-600 ring-red-200'
-                                  : 'bg-[#e8f3f8] text-[#006699] ring-[#006699]/12'
+                                  ? 'bg-red-500/10 text-red-400 ring-red-500/30'
+                                  : 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
                               )}
                             >
                               {file.status !== 'failed' ? (
@@ -1587,13 +1592,13 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                               )}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">
+                              <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
                                 {file.name}
                               </p>
                               <p
                                 className={cn(
                                   'text-[10px] font-medium mt-0.5',
-                                  file.status === 'failed' ? 'text-red-600' : 'text-slate-400'
+                                  file.status === 'failed' ? 'text-red-400' : 'text-slate-400'
                                 )}
                               >
                                 {file.status === 'failed' ? 'Upload failed' : file.status}
@@ -1606,7 +1611,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   size="icon"
                                   variant="ghost"
                                   onClick={() => handleRetryUpload(file.tempId)}
-                                  className="h-7 w-7 rounded-[7px] text-red-600 hover:bg-red-50"
+                                  className="h-7 w-7 rounded-[7px] text-red-400 hover:bg-red-500/10"
                                 >
                                   <RefreshCw size={12} />
                                 </Button>
@@ -1616,7 +1621,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => handleRemoveUploading(file.tempId)}
-                                className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-slate-300 hover:bg-[var(--tm-muted)]"
                               >
                                 <X size={12} />
                               </Button>
@@ -1636,11 +1641,11 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                           <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                             Attached
                           </h4>
-                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e8f3f8] px-1.5 text-[10px] font-semibold text-[#006699] tabular-nums">
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
                             {attachments.length}
                           </span>
                         </div>
-                        <div className="rounded-[8px] border border-slate-200/80 overflow-hidden divide-y divide-slate-100 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                        <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
                           {attachments.map((file: any) => {
                             const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
                             return (
@@ -1648,21 +1653,21 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                 key={file.id}
                                 initial={{ opacity: 0, y: 4 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[#f8fbfd] transition-colors"
+                                className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
                               >
                                 <span
                                   className={cn(
                                     'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
                                     isPdf
-                                      ? 'bg-[#e8f3f8] text-[#006699] ring-[#006699]/12'
-                                      : 'bg-violet-50 text-violet-600 ring-violet-200/70'
+                                      ? 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
+                                      : 'bg-violet-500/15 text-violet-400 ring-violet-500/30'
                                   )}
                                 >
                                   {isPdf ? <FileText size={14} /> : <ImageIcon size={14} />}
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5 min-w-0">
-                                    <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">
+                                    <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
                                       {file.name}
                                     </p>
                                     {file.size ? (
@@ -1676,7 +1681,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                     onClick={() =>
                                       attachmentService.downloadAttachment(file.id, file.name)
                                     }
-                                    className="mt-0.5 text-[10px] font-semibold text-[#006699] hover:underline underline-offset-2"
+                                    className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
                                   >
                                     View
                                   </button>
@@ -1686,7 +1691,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   size="icon"
                                   variant="ghost"
                                   onClick={() => handleRemoveAttachment(file.id, file.name)}
-                                  className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-600 hover:bg-red-50 transition-all"
+                                  className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
                                 >
                                   <Trash size={12} />
                                 </Button>
@@ -1705,7 +1710,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       </div>
 
       <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-white overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-[2%]">
+        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-[2%]">
           {itemToDelete && (
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 8 }}
@@ -1717,11 +1722,11 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   initial={{ scale: 0.6, rotate: -12 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }}
-                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500 ring-8 ring-red-50/60"
+                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 ring-8 ring-red-500/10"
                 >
                   <Trash2 size={22} strokeWidth={1.75} />
                 </motion.div>
-                <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight">
+                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">
                   {itemToDelete.type === 'participant'
                     ? 'Remove participant?'
                     : itemToDelete.type === 'discussion'
@@ -1729,16 +1734,16 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       : 'Remove document?'}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
-                  <span className="font-medium text-slate-700">“{itemToDelete.label}”</span>
+                  <span className="font-medium text-slate-200">“{itemToDelete.label}”</span>
                   {' '}will be removed from this meeting note. This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter className="p-4 pt-2 bg-slate-50/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
+              <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setItemToDelete(null)}
-                  className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none"
+                  className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
                 >
                   Cancel
                 </Button>
@@ -1756,7 +1761,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       </Dialog>
 
       <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
-        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-white overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95">
+        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95">
           {attachmentToDelete && (
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 8 }}
@@ -1768,18 +1773,18 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   initial={{ scale: 0.6, rotate: -12 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }}
-                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500 ring-8 ring-red-50/60"
+                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 ring-8 ring-red-500/10"
                 >
                   <Trash2 size={22} strokeWidth={1.75} />
                 </motion.div>
-                <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight">Remove attachment?</DialogTitle>
+                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">Remove attachment?</DialogTitle>
                 <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
-                  <span className="font-medium text-slate-700">“{attachmentToDelete.name}”</span>
+                  <span className="font-medium text-slate-200">“{attachmentToDelete.name}”</span>
                   {' '}will be deleted. This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter className="p-4 pt-2 bg-slate-50/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
-                <Button type="button" variant="outline" disabled={isDeletingAttachment} onClick={() => setAttachmentToDelete(null)} className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none">Cancel</Button>
+              <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
+                <Button type="button" variant="outline" disabled={isDeletingAttachment} onClick={() => setAttachmentToDelete(null)} className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none">Cancel</Button>
                 <Button disabled={isDeletingAttachment} onClick={confirmRemoveAttachment} className="h-10 px-5 rounded-[8px] bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/20 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95">
                   {isDeletingAttachment ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
                   Delete
@@ -1791,22 +1796,22 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       </Dialog>
 
       <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
-        <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl">
+        <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-800 flex items-center gap-2"><AlertCircle size={18} className="text-amber-500" /> Invalid Files Skipped</DialogTitle>
+            <DialogTitle className="text-base font-medium text-slate-100 flex items-center gap-2"><AlertCircle size={18} className="text-amber-500" /> Invalid Files Skipped</DialogTitle>
             <DialogDescription className="text-xs text-slate-500 mt-2">Some files were skipped due to validation errors.</DialogDescription>
           </DialogHeader>
           <div className="px-6 py-2 max-h-[300px] overflow-y-auto">
             <ul className="space-y-3">
               {invalidFiles.map((f, i) => (
-                <li key={i} className="bg-amber-50 rounded-[8px] p-3 border border-amber-100 flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-slate-700 truncate">{f.name} <span className="text-slate-400 font-medium">{f.size}</span></span>
-                  <span className="text-[10px] text-amber-600 font-medium">{f.reason}</span>
+                <li key={i} className="bg-amber-500/15 rounded-[8px] p-3 border border-amber-500/30 flex flex-col gap-1">
+                  <span className="text-xs font-semibold text-slate-200 truncate">{f.name} <span className="text-slate-400 font-medium">{f.size}</span></span>
+                  <span className="text-[10px] text-amber-400 font-medium">{f.reason}</span>
                 </li>
               ))}
             </ul>
           </div>
-          <DialogFooter className="p-4 pt-2 mt-4 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
+          <DialogFooter className="p-4 pt-2 mt-4 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
             <Button type="button" onClick={() => setShowWarningDialog(false)} className="h-10 px-5 rounded-[8px] bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium">Got it</Button>
           </DialogFooter>
         </DialogContent>
@@ -1814,13 +1819,13 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
       {/* Category Modal */}
       <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
-        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-white select-none">
-          <DialogHeader className="pb-3 border-b border-slate-150">
-            <DialogTitle className="text-base font-medium text-slate-800">Add Meeting Category</DialogTitle>
+        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-[var(--tm-surface)] select-none">
+          <DialogHeader className="pb-3 border-b border-[var(--tm-border)]">
+            <DialogTitle className="text-base font-medium text-slate-100">Add Meeting Category</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <FieldLabel required className="text-xs font-semibold text-slate-700">Category Name</FieldLabel>
+              <FieldLabel required className="text-xs font-semibold text-slate-200">Category Name</FieldLabel>
               <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Enter category name" className="h-10 rounded-[8px]" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
@@ -1857,13 +1862,13 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
       {/* Type Modal */}
       <Dialog open={typeModalOpen} onOpenChange={setTypeModalOpen}>
-        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-white select-none">
-          <DialogHeader className="pb-3 border-b border-slate-150">
-            <DialogTitle className="text-base font-medium text-slate-800">Add Meeting Type</DialogTitle>
+        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-[var(--tm-surface)] select-none">
+          <DialogHeader className="pb-3 border-b border-[var(--tm-border)]">
+            <DialogTitle className="text-base font-medium text-slate-100">Add Meeting Type</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <FieldLabel required className="text-xs font-semibold text-slate-700">Type Name</FieldLabel>
+              <FieldLabel required className="text-xs font-semibold text-slate-200">Type Name</FieldLabel>
               <Input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Enter type name" className="h-10 rounded-[8px]" />
             </div>
             <div className="flex justify-end gap-2 mt-4">

@@ -83,12 +83,12 @@ export function CompanyContactModal({
         className={cn(
           'w-[calc(100vw-1.5rem)] max-w-3xl p-0 gap-0 overflow-hidden',
           'max-h-[min(90dvh,900px)] flex flex-col',
-          'rounded-[12px] border border-slate-200/80 shadow-xl bg-white select-none'
+          'rounded-[12px] border border-[var(--tm-border)]/80 shadow-xl bg-[var(--tm-surface)] select-none'
         )}
       >
-        <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-slate-100 bg-[#f8fbfd]">
-          <DialogTitle className="text-base font-semibold text-slate-800 tracking-tight flex items-center gap-2 pr-6">
-            <User size={16} className="text-[#006699] shrink-0" />
+        <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+          <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight flex items-center gap-2 pr-6">
+            <User size={16} className="text-[#0EA5E9] shrink-0" />
             {editingIndex !== null ? 'Edit Contact Person' : 'Add Contact Person'}
           </DialogTitle>
         </DialogHeader>
@@ -96,7 +96,7 @@ export function CompanyContactModal({
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 scrollbar-thin">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
-              <label className="text-[11px] font-medium text-slate-600">Contact Person Name</label>
+              <label className="text-[11px] font-medium text-slate-300">Contact Person Name</label>
               <Input
                 placeholder="Enter contact person name"
                 value={contactName}
@@ -112,7 +112,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">Designation</label>
+              <label className="text-[11px] font-medium text-slate-300">Designation</label>
               <Input
                 placeholder="Enter designation"
                 value={contactDesignation}
@@ -130,7 +130,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">Department</label>
+              <label className="text-[11px] font-medium text-slate-300">Department</label>
               <Input
                 placeholder="Enter department"
                 value={contactDepartment}
@@ -148,7 +148,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">Phone</label>
+              <label className="text-[11px] font-medium text-slate-300">Phone</label>
               <Input
                 placeholder="Enter phone"
                 value={contactPhone}
@@ -165,7 +165,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">Email</label>
+              <label className="text-[11px] font-medium text-slate-300">Email</label>
               <Input
                 placeholder="Enter email"
                 value={contactEmail}
@@ -182,7 +182,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
-              <label className="text-[11px] font-medium text-slate-600">Address</label>
+              <label className="text-[11px] font-medium text-slate-300">Address</label>
               <Input
                 placeholder="Enter address"
                 value={contactAddress}
@@ -192,7 +192,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">Country</label>
+              <label className="text-[11px] font-medium text-slate-300">Country</label>
               <Combobox
                 options={countries.map((c: any) => ({
                   label: c.countryName,
@@ -209,7 +209,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">State</label>
+              <label className="text-[11px] font-medium text-slate-300">State</label>
               <Combobox
                 options={statesList.map((s: any) => ({
                   label: s.stateName,
@@ -226,7 +226,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">City</label>
+              <label className="text-[11px] font-medium text-slate-300">City</label>
               <Combobox
                 options={citiesList.map((ci: any) => ({
                   label: ci.cityName,
@@ -246,7 +246,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-600">PIN/Zip Code</label>
+              <label className="text-[11px] font-medium text-slate-300">PIN/Zip Code</label>
               <Input
                 placeholder="Enter PIN/Zip Code"
                 value={contactPinCode}
@@ -265,7 +265,7 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0 sm:col-span-2 sm:max-w-xs">
-              <label className="text-[11px] font-medium text-slate-600">Status</label>
+              <label className="text-[11px] font-medium text-slate-300">Status</label>
               <Combobox
                 options={[
                   { label: 'Active', value: 'Active' },
@@ -280,19 +280,19 @@ export function CompanyContactModal({
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 px-4 sm:px-5 py-3 border-t border-slate-100 bg-[#f8fbfd] flex flex-row justify-end gap-2 rounded-b-[12px]">
+        <DialogFooter className="shrink-0 px-4 sm:px-5 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] flex flex-row justify-end gap-2 rounded-b-[12px]">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-[8px] h-9 text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none"
+            className="rounded-[8px] h-9 text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
           >
             Cancel
           </Button>
           <Button
             type="button"
             onClick={onSave}
-            className="rounded-[8px] h-9 text-xs font-semibold bg-[#006699] hover:bg-[#005580] text-white shadow-sm"
+            className="rounded-[8px] h-9 text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
           >
             {editingIndex !== null ? 'Save Changes' : 'Add Contact'}
           </Button>

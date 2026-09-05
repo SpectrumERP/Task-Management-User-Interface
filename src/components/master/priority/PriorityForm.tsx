@@ -58,7 +58,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600"
+      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
     >
       <span>{children}</span>
       {required ? (
@@ -176,13 +176,13 @@ export function PriorityForm({ id }: PriorityFormProps) {
       showSuccessAlert={showSuccessAlert}
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
-      <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <Flag size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Priority Details</h2>
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Priority Details</h2>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
               Set priority name, estimation defaults, and display sequence
             </p>
@@ -199,7 +199,7 @@ export function PriorityForm({ id }: PriorityFormProps) {
                 value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
                 className={cn(
                   fieldClass,
-                  'bg-[#f8fbfd] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-slate-200/80'
+                  'bg-[var(--tm-elevated)] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-[var(--tm-border)]/80'
                 )}
               />
             </div>

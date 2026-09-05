@@ -25,21 +25,21 @@ export function DatePicker({ date, onChange, placeholder = "Pick a date", classN
           variant={"outline"}
           disabled={disabled}
           className={cn(
-            "w-full justify-start text-left font-bold h-11 bg-white shadow-sm text-xs transition-all text-slate-700 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15 border",
+            "w-full justify-start text-left font-bold h-11 bg-[var(--tm-surface)] shadow-sm text-xs transition-all text-slate-200 hover:bg-[var(--tm-muted)] focus:ring-2 focus:ring-[#0EA5E9]/15 border",
             !date && "text-slate-400 font-medium",
             className,
-            "rounded-[8px] border-[#a8afb7]"
+            "rounded-[8px] border-[var(--tm-border)]"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 shrink-0" />
           {date ? (
-            <span className="text-slate-700 font-bold text-xs">{format(date, "MMM dd, yyyy")}</span>
+            <span className="text-slate-200 font-bold text-xs">{format(date, "MMM dd, yyyy")}</span>
           ) : (
             <span className="text-slate-400 font-medium text-xs">{placeholder}</span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 rounded-2xl border-slate-100 shadow-2xl z-[150]" align="start">
+      <PopoverContent className="w-auto p-0 rounded-2xl border-[var(--tm-border)] shadow-2xl z-[150]" align="start">
         <Calendar
           mode="single"
           selected={date}

@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Column } from './Column';
 import { TaskStatus, Task } from '@/types/task';
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 
 interface BoardProps {
   onAddTask: (status?: string) => void;
@@ -75,8 +75,7 @@ export function Board({ onAddTask, onTaskClick }: BoardProps) {
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3">
-        <Loader2 className="h-8 w-8 text-[#006699] animate-spin" />
-        <p className="text-slate-500 font-medium text-xs">Loading board…</p>
+        <BrandLoader size="md" message="Loading board" />
       </div>
     );
   }

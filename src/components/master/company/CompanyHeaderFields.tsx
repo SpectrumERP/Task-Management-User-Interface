@@ -71,7 +71,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600"
+      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
     >
       <span>{children}</span>
       {required ? (
@@ -175,7 +175,7 @@ export function CompanyHeaderFields({
           type="button"
           variant="outline"
           onClick={onOpenCamera}
-          className="h-8 px-3 rounded-[8px] text-xs font-semibold text-[#006699] border-[#006699]/30 bg-white hover:bg-[#e8f3f8] gap-1.5 shadow-none"
+          className="h-8 px-3 rounded-[8px] text-xs font-semibold text-[#0EA5E9] border-[#0EA5E9]/30 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none"
         >
           <CameraIcon size={14} />
           Capture Attachment
@@ -191,7 +191,7 @@ export function CompanyHeaderFields({
             value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
             className={cn(
               fieldClass,
-              'bg-[#f8fbfd] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-slate-200/80'
+              'bg-[var(--tm-elevated)] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-[var(--tm-border)]/80'
             )}
           />
         </div>
@@ -250,13 +250,13 @@ export function CompanyHeaderFields({
               )}
             />
             {showBeSuggestions && visibleSuggestions.length > 0 ? (
-              <div className="absolute z-[100] left-0 right-0 top-full mt-1 bg-white rounded-[8px] border border-slate-200 shadow-lg max-h-48 overflow-auto">
+              <div className="absolute z-[100] left-0 right-0 top-full mt-1 bg-[var(--tm-surface)] rounded-[8px] border border-[var(--tm-border)] shadow-lg max-h-48 overflow-auto">
                 {visibleSuggestions.map((be, idx) => (
                   <div
                     key={idx}
                     className={cn(
-                      'px-3 py-2 text-xs cursor-pointer text-slate-700',
-                      idx === highlightedIndex ? 'bg-[#f8fbfd]' : 'hover:bg-[#f8fbfd]'
+                      'px-3 py-2 text-xs cursor-pointer text-slate-200',
+                      idx === highlightedIndex ? 'bg-[var(--tm-elevated)]' : 'hover:bg-[var(--tm-elevated)]'
                     )}
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     onMouseDown={(e) => {

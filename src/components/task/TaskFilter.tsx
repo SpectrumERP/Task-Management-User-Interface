@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar as CalendarIcon, Clipboard, Folder, ArrowUpDown, ChevronDown, Plus, LayoutGrid, List as ListIcon, X, User, type LucideIcon } from 'lucide-react';
+import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar as CalendarIcon, Clipboard, Folder, ArrowUpDown, ChevronDown, Plus, LayoutGrid, List as ListIcon, X, User, CircleHelp, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_TEXT_STYLE } from '@/lib/fieldStyles';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
@@ -22,9 +22,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/hooks/useSettings';
+import { forceStartPageGuide } from '@/components/layout/InternalPageGuideTour';
 
 const filterControlClass =
-  'h-10 rounded-[8px] border border-[#a8afb7] bg-white shadow-none text-xs text-slate-700 focus:ring-2 focus:ring-[#006699]/15';
+  'h-10 rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none text-xs text-slate-200 focus:ring-2 focus:ring-[#0EA5E9]/15';
 
 function FilterFieldLabel({
   icon: Icon,
@@ -36,9 +37,9 @@ function FilterFieldLabel({
   required?: boolean;
 }) {
   return (
-    <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-600 mb-1">
+    <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-300 mb-1">
       {Icon ? (
-        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] bg-[#e8f3f8] text-[#006699]">
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] bg-[var(--tm-tint)] text-[#0EA5E9]">
           <Icon size={11} strokeWidth={1.75} />
         </span>
       ) : null}
@@ -62,14 +63,14 @@ function FilterPanel({
   cols?: 1 | 2 | 3;
 }) {
   return (
-    <div className={cn('rounded-[8px] border border-slate-200/80 bg-white overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)] min-w-0', className)}>
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-[#f4f9fc] to-white border-b border-slate-100">
+    <div className={cn('rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)] min-w-0', className)}>
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
         {Icon ? (
-          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
             <Icon size={12} strokeWidth={1.75} />
           </span>
         ) : null}
-        <p className="text-[12px] font-semibold text-slate-800">{title}</p>
+        <p className="text-[12px] font-semibold text-slate-100">{title}</p>
       </div>
       <div
         className={cn(
@@ -292,10 +293,10 @@ export function TaskFilter({
           "absolute left-0 right-0 top-0 transition-all duration-300 ease-out origin-top z-[100] transform scale-100 opacity-100 translate-y-0",
           !isFiltersOpen && "scale-95 opacity-0 pointer-events-none -translate-y-2 hidden"
         )}>
-          <Card className="border border-slate-200/80 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.2)] bg-white rounded-[12px] p-0 w-full max-h-[80vh] flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-[#f4f9fc] to-white flex items-center justify-between shrink-0">
-              <span className="text-[13px] font-semibold text-slate-800 normal-case flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+          <Card className="border border-[var(--tm-border)]/80 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.2)] bg-[var(--tm-surface)] rounded-[12px] p-0 w-full max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] flex items-center justify-between shrink-0">
+              <span className="text-[13px] font-semibold text-slate-100 normal-case flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                   <SlidersHorizontal size={14} strokeWidth={1.75} />
                 </span>
                 Filters & Sorting
@@ -304,7 +305,7 @@ export function TaskFilter({
                 type="button"
                 variant="ghost"
                 onClick={toggleFilters}
-                className="h-8 w-8 p-0 rounded-[8px] hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"
+                className="h-8 w-8 p-0 rounded-[8px] hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors"
               >
                 <X size={15} strokeWidth={1.75} />
               </Button>
@@ -324,7 +325,7 @@ export function TaskFilter({
                           <SelectTrigger className={filterControlClass}>
                             <SelectValue placeholder="All Status" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-[8px] border-slate-200/80">
+                          <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
                             {fillValues?.status.map(s => (
                               <SelectItem key={s.StatusNo} value={s.StatusNo.toString()}>{s.Status}</SelectItem>
                             ))}
@@ -344,7 +345,7 @@ export function TaskFilter({
                           <SelectTrigger className={filterControlClass}>
                             <SelectValue placeholder="All Priority" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-[8px] border-slate-200/80">
+                          <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
                             {fillValues?.priority.map(p => (
                               <SelectItem key={p.OperTaskPriorityNo} value={p.OperTaskPriorityNo.toString()}>{p.Priority}</SelectItem>
                             ))}
@@ -360,7 +361,7 @@ export function TaskFilter({
                       name="taskCode"
                       control={control}
                       render={({ field }) => (
-                        <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
+                        <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
                       )}
                     />
                   </div>
@@ -376,7 +377,7 @@ export function TaskFilter({
                             <SelectTrigger className={filterControlClass}>
                               <SelectValue placeholder="All Categories" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-[8px] border-slate-200/80">
+                            <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
                               {fillValues?.category.map(c => (
                                 <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()}>{c.Category}</SelectItem>
                               ))}
@@ -398,7 +399,7 @@ export function TaskFilter({
                             <SelectTrigger className={filterControlClass}>
                               <SelectValue placeholder="All Types" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-[8px] border-slate-200/80">
+                            <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
                               {fillValues?.type.map(t => (
                                 <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()}>{t["Task Type"]}</SelectItem>
                               ))}
@@ -419,7 +420,7 @@ export function TaskFilter({
                           <SelectTrigger className={filterControlClass}>
                             <SelectValue placeholder="All Locations" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-[8px] border-slate-200/80">
+                          <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
                             {fillValues?.location.map(l => (
                               <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()}>{l.Location}</SelectItem>
                             ))}
@@ -576,18 +577,18 @@ export function TaskFilter({
                 </FilterPanel>
               </div>
 
-              <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-100 bg-[#f8fbfd] shrink-0">
+              <div className="flex justify-end gap-2 px-4 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleReset}
-                  className="h-9 px-4 rounded-[8px] border-slate-200 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-white transition-colors"
+                  className="h-9 px-4 rounded-[8px] border-[var(--tm-border)] text-xs font-medium text-slate-300 hover:text-slate-100 hover:bg-[var(--tm-surface)] transition-colors"
                 >
                   Reset
                 </Button>
                 <Button
                   type="submit"
-                  className="h-9 px-5 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-xs font-semibold text-white shadow-sm transition-colors"
+                  className="h-9 px-5 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-xs font-semibold text-white shadow-sm transition-colors"
                 >
                   Apply Filters
                 </Button>
@@ -610,9 +611,9 @@ export function TaskFilter({
     <div className={cn("relative w-full z-40", className)}>
       <form onSubmit={handleSubmit(onSubmit)}>
         {/* Dynamic unified top search & trigger row inside a beautiful Card */}
-        <Card className="border border-slate-200/70 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] bg-white rounded-[16px] p-3 mb-2">
+        <Card className="theme-filter-bar border border-[var(--tm-border)]/70 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] bg-[var(--tm-surface)] rounded-[16px] p-3 mb-2">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
-            <div className="relative flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0" data-page-tour="task-search">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400/90 pointer-events-none" size={15} strokeWidth={1.75} />
               <Controller
                 name="title"
@@ -621,7 +622,7 @@ export function TaskFilter({
                   <Input
                     {...field}
                     placeholder="Search task"
-                    className="pl-10 h-11 rounded-[8px] border-[#a8afb7] bg-white text-slate-700 placeholder:text-slate-400 w-full shadow-none hover:border-slate-300/80 focus-visible:ring-2 focus-visible:ring-[#006699]/12 focus-visible:border-[#006699]/35 transition-all duration-200"
+                    className="pl-10 h-11 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200 placeholder:text-slate-400 w-full shadow-none hover:border-[#3D4F66]/80 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/12 focus-visible:border-[#0EA5E9]/35 transition-all duration-200"
                     onChange={(e) => {
                       field.onChange(e);
                       setSearchKeyword(e.target.value);
@@ -638,24 +639,27 @@ export function TaskFilter({
                   name="isAllFolder"
                   control={control}
                   render={({ field }) => (
-                    <label className="flex items-center gap-1.5 cursor-pointer px-2.5 h-11 rounded-[14px] hover:bg-[#f7fafc] border border-transparent hover:border-slate-200/70 transition-colors shrink-0">
+                    <label className="flex items-center gap-1.5 cursor-pointer px-2.5 h-11 rounded-[14px] hover:bg-[var(--tm-elevated)] border border-transparent hover:border-[var(--tm-border)]/70 transition-colors shrink-0">
                       <Checkbox checked={field.value} onCheckedChange={(val) => {
                         field.onChange(val);
                         setTimeout(() => handleSubmit(onSubmit)(), 0);
-                      }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#006699] data-[state=checked]:border-[#006699]" />
-                      <span className="text-[11px] sm:text-xs text-slate-600 font-medium whitespace-nowrap">Search all folders</span>
+                      }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#0EA5E9] data-[state=checked]:border-[#0EA5E9]" />
+                      <span className="text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">Search all folders</span>
                     </label>
                   )}
                 />
               )}
 
-              <div className="flex items-center gap-1.5 rounded-[16px] border border-slate-200/70 bg-[#f7fafc]/80 p-1 shrink-0 flex-1 sm:flex-initial">
+              <div
+                className="flex items-center gap-1.5 rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)]/80 p-1 shrink-0 flex-1 sm:flex-initial"
+                data-page-tour="task-filters"
+              >
                 <Button
                   type="button"
                   onClick={() => toggleFilters()}
                   className={cn(
-                    "h-9 px-3 rounded-xl border-0 bg-transparent text-slate-600 font-medium text-xs normal-case transition-all duration-200 gap-1.5 shadow-none shrink-0 flex-1 sm:flex-initial justify-center hover:bg-white hover:text-slate-800 hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)]",
-                    isFiltersOpen && "bg-white text-[#006699] shadow-[0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-[#006699]/15 hover:bg-white hover:text-[#006699]"
+                    "h-9 px-3 rounded-xl border-0 bg-transparent text-slate-300 font-medium text-xs normal-case transition-all duration-200 gap-1.5 shadow-none shrink-0 flex-1 sm:flex-initial justify-center hover:bg-[var(--tm-surface)] hover:text-slate-100 hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)]",
+                    isFiltersOpen && "bg-[var(--tm-surface)] text-[#0EA5E9] shadow-[0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-[#0EA5E9]/15 hover:bg-[var(--tm-surface)] hover:text-[#0EA5E9]"
                   )}
                 >
                   <SlidersHorizontal size={14} strokeWidth={1.75} className={cn("transition-transform duration-300", isFiltersOpen && "rotate-180")} />
@@ -667,7 +671,7 @@ export function TaskFilter({
                   variant="ghost"
                   onClick={handleReset}
                   title="Reset filters"
-                  className="h-9 w-9 p-0 rounded-xl border-0 text-slate-400 hover:text-slate-700 bg-transparent hover:bg-white hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)] shadow-none transition-all active:rotate-180 duration-500 shrink-0 flex items-center justify-center"
+                  className="h-9 w-9 p-0 rounded-xl border-0 text-slate-400 hover:text-slate-200 bg-transparent hover:bg-[var(--tm-surface)] hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)] shadow-none transition-all active:rotate-180 duration-500 shrink-0 flex items-center justify-center"
                 >
                   <RotateCcw size={14} strokeWidth={1.75} />
                 </Button>
@@ -675,7 +679,7 @@ export function TaskFilter({
                 <Button
                   type="submit"
                   variant="ghost"
-                  className="h-9 px-3 rounded-xl border-0 bg-white text-[#006699] font-semibold text-xs normal-case shadow-[0_1px_3px_rgba(15,23,42,0.06)] ring-1 ring-[#006699]/12 hover:bg-[#e8f3f8] hover:ring-[#006699]/20 transition-all duration-200 gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center"
+                  className="h-9 px-3 rounded-xl border-0 bg-[var(--tm-surface)] text-[#0EA5E9] font-semibold text-xs normal-case shadow-[0_1px_3px_rgba(15,23,42,0.06)] ring-1 ring-[#0EA5E9]/12 hover:bg-[var(--tm-tint)] hover:ring-[#0EA5E9]/20 transition-all duration-200 gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center"
                 >
                   <Search size={14} strokeWidth={2.1} />
                   <span className="hidden sm:inline">Search</span>
@@ -689,15 +693,16 @@ export function TaskFilter({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 px-3 rounded-[14px] border border-slate-200/70 bg-white hover:bg-[#f7fafc] hover:border-slate-300/80 font-medium text-slate-600 shadow-none gap-1.5 transition-all duration-200 flex items-center justify-between text-xs shrink-0 flex-1 sm:flex-initial"
+                      data-page-tour="task-view-mode"
+                      className="h-11 px-3 rounded-[14px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] hover:bg-[var(--tm-elevated)] hover:border-[#3D4F66]/80 font-medium text-slate-300 shadow-none gap-1.5 transition-all duration-200 flex items-center justify-between text-xs shrink-0 flex-1 sm:flex-initial"
                     >
                       <span className="flex items-center gap-1.5">
                         {currentViewMode === 'list' ? (
-                          <ListIcon size={14} className="text-[#006699]" strokeWidth={1.75} />
+                          <ListIcon size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
                         ) : currentViewMode === 'board' ? (
-                          <LayoutGrid size={14} className="text-[#006699]" strokeWidth={1.75} />
+                          <LayoutGrid size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
                         ) : (
-                          <CalendarIcon size={14} className="text-[#006699]" strokeWidth={1.75} />
+                          <CalendarIcon size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
                         )}
                         <span className="hidden sm:inline">
                           {currentViewMode === 'list' ? 'List' : currentViewMode === 'board' ? 'Board' : 'Calendar'}
@@ -706,12 +711,12 @@ export function TaskFilter({
                       <ChevronDown size={13} strokeWidth={1.75} className="text-slate-400" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-xl border border-slate-200/70 p-1.5 min-w-[156px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.22)] bg-white">
+                  <DropdownMenuContent align="end" className="rounded-xl border border-[var(--tm-border)]/70 p-1.5 min-w-[156px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.22)] bg-[var(--tm-surface)]">
                     <DropdownMenuItem
                       onClick={() => onViewModeChange('list')}
                       className={cn(
                         "rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                        currentViewMode === 'list' ? "bg-[#e8f3f8] text-[#006699]" : "text-slate-600 focus:bg-slate-50"
+                        currentViewMode === 'list' ? "bg-[var(--tm-tint)] text-[#0EA5E9]" : "text-slate-300 focus:bg-[var(--tm-muted)]"
                       )}
                     >
                       <ListIcon size={14} />
@@ -721,7 +726,7 @@ export function TaskFilter({
                       onClick={() => onViewModeChange('board')}
                       className={cn(
                         "rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                        currentViewMode === 'board' ? "bg-[#e8f3f8] text-[#006699]" : "text-slate-600 focus:bg-slate-50"
+                        currentViewMode === 'board' ? "bg-[var(--tm-tint)] text-[#0EA5E9]" : "text-slate-300 focus:bg-[var(--tm-muted)]"
                       )}
                     >
                       <LayoutGrid size={14} />
@@ -731,7 +736,7 @@ export function TaskFilter({
                       onClick={() => onViewModeChange('calendar')}
                       className={cn(
                         "rounded-lg text-xs font-medium px-3 py-2 cursor-pointer flex items-center gap-2 transition-colors",
-                        currentViewMode === 'calendar' ? "bg-[#e8f3f8] text-[#006699]" : "text-slate-600 focus:bg-slate-50"
+                        currentViewMode === 'calendar' ? "bg-[var(--tm-tint)] text-[#0EA5E9]" : "text-slate-300 focus:bg-[var(--tm-muted)]"
                       )}
                     >
                       <CalendarIcon size={14} />
@@ -746,18 +751,30 @@ export function TaskFilter({
                 <Button
                   type="button"
                   onClick={onCreateTask}
-                  className="h-11 px-4 sm:px-5 rounded-[14px] bg-[#006699] hover:bg-[#005580] font-semibold text-xs normal-case text-white shadow-[0_8px_20px_-6px_rgba(0,102,153,0.45)] hover:shadow-[0_10px_24px_-6px_rgba(0,102,153,0.5)] transition-all duration-200 gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center"
+                  data-page-tour="task-create"
+                  className="h-11 px-4 sm:px-5 rounded-[14px] bg-[#0EA5E9] hover:bg-[#0284C7] font-semibold text-xs normal-case text-white shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] hover:shadow-[0_10px_24px_-6px_rgba(14,165,233,0.5)] transition-all duration-200 gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center"
                 >
                   <Plus size={15} strokeWidth={2.4} />
                   <span className="hidden sm:inline">Create</span>
                 </Button>
               )}
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => forceStartPageGuide('tasks')}
+                title="Tasks Guide — is page ka walkthrough"
+                aria-label="Start Tasks Guide"
+                className="h-11 w-11 p-0 rounded-[14px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 text-[#0EA5E9] hover:bg-[#0EA5E9]/20 shadow-none shrink-0"
+              >
+                <CircleHelp size={16} />
+              </Button>
             </div>
           </div>
         </Card>
 
         {/* Status Filter Buttons */}
-        <div className="flex flex-wrap items-center gap-2 mt-4 mb-2 px-0.5">
+        <div className="flex flex-wrap items-center gap-2 mt-4 mb-2 px-0.5" data-page-tour="task-status-pills">
           {['Pending', 'Open', 'Draft', 'In-Progress', 'In-Review', 'Reopen', 'Complete', 'Close'].map(statusName => {
             const s = fillValues?.status?.find(st =>
               st.Status === statusName ||
@@ -786,23 +803,23 @@ export function TaskFilter({
             // If a status is selected, ONLY show the active ones
             if (anyActive && !isActive) return null;
 
-            const baseClass = "rounded-full h-7 px-3 text-[11px] font-medium transition-all duration-200 border bg-white/90 shadow-none hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)]";
+            const baseClass = "theme-status-pill rounded-full h-7 px-3 text-[11px] font-semibold transition-all duration-200 border bg-[var(--tm-surface)] hover:shadow-md";
             const colorClass =
               statusName === 'Complete' || statusName === 'Close'
                 ? isActive
                   ? "border-green-500 bg-green-500 text-white shadow-[0_4px_12px_-4px_rgba(34,197,94,0.45)]"
-                  : "border-green-200/80 text-green-700 hover:bg-green-50"
+                  : "border-green-500/30 text-green-400 hover:bg-green-500/10"
                 : statusName === 'In-Progress' || statusName === 'In-Review'
                   ? isActive
                     ? "border-blue-500 bg-blue-500 text-white shadow-[0_4px_12px_-4px_rgba(59,130,246,0.45)]"
-                    : "border-blue-200/80 text-blue-700 hover:bg-blue-50"
+                    : "border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                   : statusName === 'Pending' || statusName === 'Open' || statusName === 'Draft' || statusName === 'Reopen'
                     ? isActive
-                      ? "border-orange-500 bg-orange-500 text-white shadow-[0_4px_12px_-4px_rgba(249,115,22,0.45)]"
-                      : "border-orange-200/80 text-orange-700 hover:bg-orange-50"
+                      ? "border-[#F59E0B] bg-[#F59E0B] text-[#0B1220] shadow-[0_4px_12px_-4px_rgba(245,158,11,0.45)]"
+                      : "border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10"
                     : isActive
-                      ? "border-[#006699] bg-[#e8f3f8] text-[#006699]"
-                      : "border-slate-200/80 text-slate-600 hover:bg-slate-50";
+                      ? "border-[#0EA5E9] bg-[var(--tm-tint)] text-[#0EA5E9]"
+                      : "border-[var(--tm-border)]/80 text-slate-300 hover:bg-[var(--tm-muted)]";
 
             return (
               <Button
@@ -834,10 +851,10 @@ export function TaskFilter({
           "absolute left-0 right-0 top-full mt-2 transition-all duration-300 ease-out origin-top z-[100] transform scale-100 opacity-100 translate-y-0",
           !isFiltersOpen && "scale-95 opacity-0 pointer-events-none -translate-y-2 hidden"
         )}>
-          <Card className="border border-slate-200/80 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.2)] bg-white rounded-[12px] p-0 w-full max-h-[calc(100vh-220px)] flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-[#f4f9fc] to-white flex items-center justify-between shrink-0">
-              <span className="text-[13px] font-semibold text-slate-800 normal-case flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699] ring-1 ring-[#006699]/12">
+          <Card className="border border-[var(--tm-border)]/80 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.2)] bg-[var(--tm-surface)] rounded-[12px] p-0 w-full max-h-[calc(100vh-220px)] flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] flex items-center justify-between shrink-0">
+              <span className="text-[13px] font-semibold text-slate-100 normal-case flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                   <SlidersHorizontal size={14} strokeWidth={1.75} />
                 </span>
                 Filters & Sorting
@@ -846,7 +863,7 @@ export function TaskFilter({
                 type="button"
                 variant="ghost"
                 onClick={toggleFilters}
-                className="h-8 w-8 p-0 rounded-[8px] hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"
+                className="h-8 w-8 p-0 rounded-[8px] hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors"
               >
                 <X size={15} strokeWidth={1.75} />
               </Button>
@@ -894,7 +911,7 @@ export function TaskFilter({
                     name="taskCode"
                     control={control}
                     render={({ field }) => (
-                      <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
+                      <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
                     )}
                   />
                 </div>
@@ -1092,18 +1109,18 @@ export function TaskFilter({
               </FilterPanel>
             </div>
 
-            <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-100 bg-[#f8fbfd] shrink-0">
+            <div className="flex justify-end gap-2 px-4 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleReset}
-                className="h-9 px-4 rounded-[8px] border-slate-200 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-white transition-colors"
+                className="h-9 px-4 rounded-[8px] border-[var(--tm-border)] text-xs font-medium text-slate-300 hover:text-slate-100 hover:bg-[var(--tm-surface)] transition-colors"
               >
                 Reset
               </Button>
               <Button
                 type="submit"
-                className="h-9 px-5 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-xs font-semibold text-white shadow-sm transition-colors"
+                className="h-9 px-5 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-xs font-semibold text-white shadow-sm transition-colors"
               >
                 Apply Filters
               </Button>

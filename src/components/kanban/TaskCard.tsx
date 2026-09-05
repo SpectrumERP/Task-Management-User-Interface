@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Task } from '@/types/task';
 import { MessageSquare, Clock, AlertCircle, AlertTriangle, Info, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getPriorityBadgeClass } from '@/lib/priorityStyles';
 import { useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
@@ -22,9 +23,9 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
   const { isHideType } = useSettings();
 
   const getContrastColor = (hexColor?: string) => {
-    if (!hexColor) return '#1e293b';
+    if (!hexColor) return '#E2E8F0';
     const hex = hexColor.replace('#', '');
-    if (hex.length !== 6 && hex.length !== 3) return '#1e293b';
+    if (hex.length !== 6 && hex.length !== 3) return '#E2E8F0';
     
     let r = 0, g = 0, b = 0;
     if (hex.length === 6) {
@@ -43,7 +44,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
 
   const PriorityIcon = {
     4: () => <AlertCircle className="text-red-500 fill-red-500/10" size={18} />, // Urgent
-    3: () => <AlertTriangle className="text-orange-500" size={18} />, // High
+    3: () => <AlertTriangle className="text-[#F59E0B]" size={18} />, // High
     2: () => <Info className="text-blue-500" size={18} />, // Medium
     1: () => null, // Low
   }[task.priority_No] || (() => null);
@@ -71,8 +72,8 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
           )}
         >
           <Card className={cn(
-            "border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-[#006699]/30 hover:shadow-[0_8px_24px_-12px_rgba(0,102,153,0.18)] transition-all duration-200 rounded-[8px] overflow-hidden active:scale-[0.98] bg-white",
-            snapshot.isDragging ? "rotate-1 scale-[1.02] shadow-xl border-[#006699]/30" : ""
+            "theme-task-card border border-[var(--tm-border)] shadow-sm hover:border-[#0EA5E9]/40 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.22)] transition-all duration-200 rounded-[8px] overflow-hidden active:scale-[0.98] bg-[var(--tm-surface)]",
+            snapshot.isDragging ? "rotate-1 scale-[1.02] shadow-xl border-[#0EA5E9]/30" : ""
           )}>
             <CardContent className="p-3 space-y-2">
               <div className="flex justify-between items-start gap-2">
@@ -84,7 +85,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                       e.stopPropagation();
                       navigate(taskUrl(task.taskNo, task.categoryName));
                     }}
-                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-[6px] text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8] flex items-center justify-center cursor-pointer"
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] flex items-center justify-center cursor-pointer"
                   >
                     <Edit2 size={12} strokeWidth={2.25} />
                   </button>
@@ -93,13 +94,13 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
               </div>
 
               <div className="space-y-1.5">
-                <h4 className="text-[13px] font-semibold text-slate-800 leading-snug group-hover:text-[#006699] transition-colors line-clamp-2">
+                <h4 className="text-[13px] font-semibold text-slate-100 leading-snug group-hover:text-[#0EA5E9] transition-colors line-clamp-2">
                   {task.title}
                 </h4>
 
                 <div className="flex flex-wrap gap-1">
                   {task.typeName && !isHideType && (
-                    <span className="bg-slate-100 text-slate-600 text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
+                    <span className="bg-[var(--tm-muted)] text-slate-300 text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
                       {task.typeName}
                     </span>
                   )}
@@ -107,7 +108,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                     const catObj = fillValues?.category?.find(
                       c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
                     );
-                    const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || '#e2e8f0';
+                    const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || 'var(--tm-border)';
                     const textColor = getContrastColor(bgColor);
                     return (
                       <span
@@ -120,7 +121,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                   })()}
                   <span className={cn(
                     "text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]",
-                    task.priority_No >= 3 ? "bg-orange-50 text-orange-700" : "bg-slate-100 text-slate-600"
+                    getPriorityBadgeClass(task.priority, task.priority_No, 'soft')
                   )}>
                     {task.priority}
                   </span>
@@ -133,7 +134,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                 ) : null}
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+              <div className="flex items-center justify-between pt-1 border-t border-[var(--tm-border)]">
                 <div className="flex -space-x-1.5 items-center">
                   <UserAvatar
                     loginNo={task.owner_user_No}
@@ -142,7 +143,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                     className="border border-white shadow-sm"
                   />
                   {task.collaborators && task.collaborators.length > 0 && (
-                    <div className="h-5 w-5 rounded-full border border-white bg-slate-100 flex items-center justify-center text-[8px] font-semibold text-slate-600">
+                    <div className="h-5 w-5 rounded-full border border-white bg-[var(--tm-muted)] flex items-center justify-center text-[8px] font-semibold text-slate-300">
                       +{task.collaborators.length}
                     </div>
                   )}
@@ -151,23 +152,23 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                 <div className="flex items-center gap-2">
                   {task.task_comments && task.task_comments.length > 0 && (
                     <div className="flex items-center gap-1 text-slate-500 font-semibold">
-                      <MessageSquare size={12} className="text-[#006699]" />
+                      <MessageSquare size={12} className="text-[#0EA5E9]" />
                       <span className="text-[10px]">{task.task_comments.length}</span>
                     </div>
                   )}
                   {task.priority_No >= 3 && (
                     <div className="flex items-center gap-1 text-slate-500 font-semibold">
-                      <Clock size={12} className="text-[#006699]" />
+                      <Clock size={12} className="text-[#F59E0B]" />
                       <span className="text-[10px]">2h</span>
                     </div>
                   )}
                   {task.status === 'In Progress' && (
-                    <div className="bg-[#e8f3f8] text-[#006699] text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
+                    <div className="bg-[var(--tm-tint)] text-[#0EA5E9] text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
                       65%
                     </div>
                   )}
                   {task.status === 'In Review' && (
-                    <div className="bg-red-50 text-red-600 text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
+                    <div className="bg-red-500/10 text-red-400 text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
                       Needs Fix
                     </div>
                   )}

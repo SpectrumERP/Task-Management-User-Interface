@@ -33,7 +33,7 @@ export function CompanyLocationsSection({
         <Button
           type="button"
           onClick={onAdd}
-          className="h-8 rounded-[8px] px-3 bg-[#006699] hover:bg-[#005580] text-white font-semibold text-xs gap-1.5 shadow-sm shadow-[#006699]/20"
+          className="h-8 rounded-[8px] px-3 bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold text-xs gap-1.5 shadow-sm shadow-[#0EA5E9]/20"
         >
           <Plus size={14} strokeWidth={2.5} />
           Add Location
@@ -54,13 +54,13 @@ export function CompanyLocationsSection({
           {locations.map((loc, idx) => (
             <div
               key={idx}
-              className="bg-[#f8fbfd] border border-slate-200/70 rounded-[8px] p-3.5 relative group hover:border-[#006699]/35 transition-colors"
+              className="bg-[var(--tm-elevated)] border border-[var(--tm-border)]/70 rounded-[8px] p-3.5 relative group hover:border-[#0EA5E9]/35 transition-colors"
             >
               <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                 <button
                   type="button"
                   onClick={() => onEdit(idx)}
-                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8] transition-colors"
+                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
                   title="Edit Location"
                 >
                   <Edit size={13} />
@@ -68,7 +68,7 @@ export function CompanyLocationsSection({
                 <button
                   type="button"
                   onClick={() => onRemove(idx)}
-                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                   title="Remove Location"
                 >
                   <Trash2 size={13} />
@@ -76,7 +76,7 @@ export function CompanyLocationsSection({
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-white border border-slate-200/80 rounded-[8px] text-[#006699] shrink-0">
+                <div className="p-2 bg-[var(--tm-surface)] border border-[var(--tm-border)]/80 rounded-[8px] text-[#0EA5E9] shrink-0">
                   <Building size={15} strokeWidth={1.75} />
                 </div>
                 <div className="space-y-1 pr-12 min-w-0">
@@ -84,15 +84,15 @@ export function CompanyLocationsSection({
                     className={cn(
                       'inline-flex px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border',
                       getLocationTypeName(loc.type) === 'Office'
-                        ? 'bg-sky-50 text-sky-700 border-sky-100'
+                        ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
                         : getLocationTypeName(loc.type) === 'Warehouse'
-                          ? 'bg-amber-50 text-amber-700 border-amber-100'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                          ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                          : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                     )}
                   >
                     {getLocationTypeName(loc.type)}
                   </span>
-                  <p className="text-xs font-semibold text-slate-800 leading-snug">{loc.address}</p>
+                  <p className="text-xs font-semibold text-slate-100 leading-snug">{loc.address}</p>
                   <div className="text-[10px] text-slate-500 font-medium flex flex-wrap items-center gap-1">
                     <span>{loc.city}</span>
                     <span className="text-slate-300">•</span>

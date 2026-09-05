@@ -48,7 +48,7 @@ export function ClipboardDrawer() {
       <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
         <SheetHeader className="mb-4">
           <SheetTitle className="flex items-center gap-2">
-            <Clipboard className="w-5 h-5 text-slate-700" />
+            <Clipboard className="w-5 h-5 text-slate-200" />
             Business Card Clipboard
           </SheetTitle>
           <SheetDescription>
@@ -82,10 +82,10 @@ export function ClipboardDrawer() {
               </div>
             ) : (
               filteredEntries.map(entry => (
-                <div key={entry.id} className="border rounded-lg p-4 bg-slate-50 relative group">
+                <div key={entry.id} className="border rounded-lg p-4 bg-[var(--tm-muted)] relative group">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h4 className="font-semibold text-slate-800">{entry.data.name || 'Unknown Name'}</h4>
+                      <h4 className="font-semibold text-slate-100">{entry.data.name || 'Unknown Name'}</h4>
                       <p className="text-sm text-slate-500">{entry.data.company || entry.data.designation}</p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -105,7 +105,7 @@ export function ClipboardDrawer() {
                   </div>
                   <textarea
                     readOnly
-                    className="w-full h-32 text-xs p-2 rounded border border-slate-200 bg-white font-mono mt-2 resize-none focus:outline-none focus:ring-1 focus:ring-slate-300"
+                    className="w-full h-32 text-xs p-2 rounded border border-[var(--tm-border)] bg-[var(--tm-surface)] font-mono mt-2 resize-none focus:outline-none focus:ring-1 focus:ring-slate-300"
                     value={entry.formattedText}
                   />
                 </div>
