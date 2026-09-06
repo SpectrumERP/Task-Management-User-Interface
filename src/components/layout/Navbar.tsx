@@ -285,203 +285,203 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
         </div>
       ) : (
         <>
-      {/* Mobile: menu + logo */}
-      <div className="flex lg:hidden items-center gap-2.5 min-w-0 pl-4">
-        {onMenuClick && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onMenuClick}
-            className="w-10 rounded-xl hover:bg-[var(--tm-muted)] flex items-center justify-center shrink-0 border border-[var(--tm-border)]/80"
-          >
-            <Menu size={20} className="text-slate-300" />
-          </Button>
-        )}
-        <BrandLogo maxHeight={44} maxWidth={200} className="min-w-0" />
-      </div>
+          {/* Mobile: menu + logo */}
+          <div className="flex lg:hidden items-center gap-2.5 min-w-0 pl-4">
+            {onMenuClick && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onMenuClick}
+                className="w-10 rounded-xl hover:bg-[var(--tm-muted)] flex items-center justify-center shrink-0 border border-[var(--tm-border)]/80"
+              >
+                <Menu size={20} className="text-slate-300" />
+              </Button>
+            )}
+            <BrandLogo maxHeight={44} maxWidth={200} className="min-w-0" />
+          </div>
 
-      {/* Desktop brand rail
+          {/* Desktop brand rail
           - Expanded: full logo in rail, collapse arrow on vertical divider
           - Collapsed: expand arrow centered in rail (fills the icon column),
             full logo alone after divider (no twin-logo clash) */}
-      <div
-        className={cn(
-          "theme-header-rail relative hidden lg:flex h-full items-center shrink-0 overflow-visible border-r border-[var(--tm-chrome-border)] transition-[width] duration-300",
-          isSidebarCollapsed ? "w-[80px] justify-center px-1.5" : "w-56 pl-3 pr-4"
-        )}
-      >
-        {!isSidebarCollapsed && (
-          <BrandLogo maxHeight={44} maxWidth={148} className="min-w-0" />
-        )}
-
-        {onToggleSidebar && (
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            title={isSidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
-            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          <div
             className={cn(
-              'theme-sidebar-edge-toggle z-50 inline-flex items-center justify-center',
-              'rounded-md border border-white/10',
-              'bg-[#2A303C] text-slate-300 shadow-[0_2px_8px_rgba(0,0,0,0.35)]',
-              'hover:bg-[#353B4A] hover:text-white',
-              'transition-colors duration-200',
-              isSidebarCollapsed
-                ? 'relative h-9 w-9'
-                : 'absolute top-1/2 -translate-y-1/2 -right-[9px] h-8 w-[18px]'
+              "theme-header-rail relative hidden lg:flex h-full items-center shrink-0 overflow-visible border-r border-[var(--tm-chrome-border)] transition-[width] duration-300",
+              isSidebarCollapsed ? "w-[80px] justify-center px-1.5" : "w-56 pl-3 pr-4"
             )}
-            data-tour="sidebar-toggle"
           >
-            {isSidebarCollapsed ? (
-              <ChevronRight size={16} strokeWidth={2.25} />
-            ) : (
-              <ChevronLeft size={14} strokeWidth={2.25} />
+            {!isSidebarCollapsed && (
+              <BrandLogo maxHeight={44} maxWidth={148} className="min-w-0" />
             )}
-          </button>
-        )}
-      </div>
 
-      {/* Collapsed: one clear logo after the rail — not next to a twin control */}
-      {isSidebarCollapsed && (
-        <div className="hidden lg:flex items-center pl-4 min-w-0">
-          <BrandLogo maxHeight={44} maxWidth={200} className="min-w-0" />
-        </div>
-      )}
-      <div className="flex flex-1 items-center justify-end gap-2 min-w-0 px-4 sm:px-5">
-        {!isHideFolder && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2.5 px-3.5 h-9 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] hover:border-[#0EA5E9]/25 transition-all font-semibold text-xs text-slate-200 shadow-sm"
-              >
-                <div className="flex w-6 h-6 shrink-0 items-center justify-center rounded-lg bg-[#0EA5E9]/10 text-[#0EA5E9]">
-                  <Folder size={14} className="fill-[#0EA5E9]/20" />
-                </div>
-                <span className="max-w-[150px] truncate text-slate-200 font-semibold text-[11px]">
-                  {selectedFolder ? selectedFolder["Folder Name"] : "Select Folder..."}
-                </span>
-                <ChevronDown size={14} className="text-slate-400" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-72 rounded-xl p-1 shadow-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] max-h-[60vh] flex flex-col" align="end">
-              <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2 shrink-0">
-                Select Workspace Folder
-              </DropdownMenuLabel>
-
-              <div className="px-2 pb-2 shrink-0">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                  <Input
-                    placeholder="Search folders..."
-                    value={folderSearch}
-                    onChange={(e) => setFolderSearch(e.target.value)}
-                    className="h-8 pl-8 text-xs bg-[var(--tm-muted)] border-[var(--tm-border)] focus-visible:ring-1 focus-visible:ring-[#0EA5E9]/30"
-                    onKeyDown={(e) => e.stopPropagation()}
-                  />
-                </div>
-              </div>
-
-              <DropdownMenuSeparator className="my-0 bg-[var(--tm-muted)] shrink-0" />
-
-              <div className="overflow-y-auto overflow-x-hidden p-1 flex-1">
-                {filteredFolders.length > 0 ? (
-                  filteredFolders.map((folder: any) => {
-                    const isSelected = selectedFolder?.TaskFolderNo === folder.TaskFolderNo;
-                    return (
-                      <DropdownMenuItem
-                        key={folder.TaskFolderNo}
-                        onClick={() => handleFolderChange(folder)}
-                        className={`flex items-center justify-between rounded-lg px-3 py-2.5 cursor-pointer text-xs font-bold transition-all ${isSelected
-                          ? "bg-[#0EA5E9]/5 text-[#0EA5E9]"
-                          : "text-slate-300 hover:bg-[var(--tm-muted)]"
-                          }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${isSelected ? "bg-[#0EA5E9]/10 text-[#0EA5E9]" : "bg-[var(--tm-muted)] text-slate-400"
-                            }`}>
-                            <Folder size={12} className={isSelected ? "fill-[#0EA5E9]/20" : ""} />
-                          </div>
-                          <span className="truncate">{folder["Folder Name"]}</span>
-                        </div>
-                        {isSelected && <Check size={14} className="text-[#0EA5E9] stroke-[3]" />}
-                      </DropdownMenuItem>
-                    );
-                  })
-                ) : (
-                  <div className="px-3 py-4 text-center text-xs font-medium text-slate-400">
-                    No folders found
-                  </div>
+            {onToggleSidebar && (
+              <button
+                type="button"
+                onClick={onToggleSidebar}
+                title={isSidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+                aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                className={cn(
+                  'theme-sidebar-edge-toggle z-50 inline-flex items-center justify-center',
+                  'rounded-md border border-white/10',
+                  'bg-[#2A303C] text-slate-300 shadow-[0_2px_8px_rgba(0,0,0,0.35)]',
+                  'hover:bg-[#353B4A] hover:text-white',
+                  'transition-colors duration-200',
+                  isSidebarCollapsed
+                    ? 'relative h-9 w-9'
+                    : 'absolute top-1/2 -translate-y-1/2 -right-[9px] h-8 w-[18px]'
                 )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+                data-tour="sidebar-toggle"
+              >
+                {isSidebarCollapsed ? (
+                  <ChevronRight size={16} strokeWidth={2.25} />
+                ) : (
+                  <ChevronLeft size={14} strokeWidth={2.25} />
+                )}
+              </button>
+            )}
+          </div>
 
-        <ClipboardDrawer />
+          {/* Collapsed: one clear logo after the rail — not next to a twin control */}
+          {isSidebarCollapsed && (
+            <div className="hidden lg:flex items-center pl-4 min-w-0">
+              <BrandLogo maxHeight={44} maxWidth={200} className="min-w-0" />
+            </div>
+          )}
+          <div className="flex flex-1 items-center justify-end gap-2 min-w-0 px-4 sm:px-5">
+            {!isHideFolder && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2.5 px-3.5 h-9 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] hover:border-[#0EA5E9]/25 transition-all font-semibold text-xs text-slate-200 shadow-sm"
+                  >
+                    <div className="flex w-6 h-6 shrink-0 items-center justify-center rounded-lg bg-[#0EA5E9]/10 text-[#0EA5E9]">
+                      <Folder size={14} className="fill-[#0EA5E9]/20" />
+                    </div>
+                    <span className="max-w-[150px] truncate text-slate-200 font-semibold text-[11px]">
+                      {selectedFolder ? selectedFolder["Folder Name"] : "Select Folder..."}
+                    </span>
+                    <ChevronDown size={14} className="text-slate-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-72 rounded-xl p-1 shadow-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] max-h-[60vh] flex flex-col" align="end">
+                  <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2 shrink-0">
+                    Select Workspace Folder
+                  </DropdownMenuLabel>
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={toggleFocusMode}
-          title={isFocusMode ? 'Exit full screen' : 'Full screen'}
-          aria-label={isFocusMode ? 'Exit full screen' : 'Full screen'}
-          data-tour="fullscreen"
-          className="h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
-        >
-          {isFocusMode ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-        </Button>
+                  <div className="px-2 pb-2 shrink-0">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                      <Input
+                        placeholder="Search folders..."
+                        value={folderSearch}
+                        onChange={(e) => setFolderSearch(e.target.value)}
+                        className="h-8 pl-8 text-xs bg-[var(--tm-muted)] border-[var(--tm-border)] focus-visible:ring-1 focus-visible:ring-[#0EA5E9]/30"
+                        onKeyDown={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  </div>
 
-        <FullscreenHelpGuide autoOpenOnce={false} />
+                  <DropdownMenuSeparator className="my-0 bg-[var(--tm-muted)] shrink-0" />
 
-        <ThemeToggle variant="chip" size="md" />
+                  <div className="overflow-y-auto overflow-x-hidden p-1 flex-1">
+                    {filteredFolders.length > 0 ? (
+                      filteredFolders.map((folder: any) => {
+                        const isSelected = selectedFolder?.TaskFolderNo === folder.TaskFolderNo;
+                        return (
+                          <DropdownMenuItem
+                            key={folder.TaskFolderNo}
+                            onClick={() => handleFolderChange(folder)}
+                            className={`flex items-center justify-between rounded-lg px-3 py-2.5 cursor-pointer text-xs font-bold transition-all ${isSelected
+                              ? "bg-[#0EA5E9]/5 text-[#0EA5E9]"
+                              : "text-slate-300 hover:bg-[var(--tm-muted)]"
+                              }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${isSelected ? "bg-[#0EA5E9]/10 text-[#0EA5E9]" : "bg-[var(--tm-muted)] text-slate-400"
+                                }`}>
+                                <Folder size={12} className={isSelected ? "fill-[#0EA5E9]/20" : ""} />
+                              </div>
+                              <span className="truncate">{folder["Folder Name"]}</span>
+                            </div>
+                            {isSelected && <Check size={14} className="text-[#0EA5E9] stroke-[3]" />}
+                          </DropdownMenuItem>
+                        );
+                      })
+                    ) : (
+                      <div className="px-3 py-4 text-center text-xs font-medium text-slate-400">
+                        No folders found
+                      </div>
+                    )}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+            <ClipboardDrawer />
+
             <Button
-              variant="ghost"
-              data-tour="profile"
-              title={`${printingName} (@${loginId})`}
-              aria-label={`Account menu for ${printingName}`}
-              className={cn(
-                "group h-9 gap-2 rounded-[8px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 pl-1 pr-2.5",
-                "hover:bg-[#0EA5E9]/20 data-[state=open]:bg-[#0EA5E9]/20",
-                "transition-colors shadow-none"
-              )}
+              type="button"
+              variant="outline"
+              onClick={toggleFocusMode}
+              title={isFocusMode ? 'Exit full screen' : 'Full screen'}
+              aria-label={isFocusMode ? 'Exit full screen' : 'Full screen'}
+              data-tour="fullscreen"
+              className="h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
             >
-              <span className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center">
-                <Avatar className="h-7 w-7">
-                  <AvatarFallback className="bg-[#0EA5E9] text-white text-[12px] font-semibold">
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--tm-chrome)] bg-emerald-500" />
-              </span>
-              <div className="hidden sm:flex items-center gap-1.5 min-w-0 text-left">
-                <span className="text-[12px] font-semibold text-slate-100 truncate max-w-[90px]">
-                  {printingName}
-                </span>
-                <span className="text-[11px] font-medium text-[#0EA5E9]/80 truncate max-w-[80px]">
-                  @{loginId}
-                </span>
-              </div>
-              <ChevronDown
-                size={13}
-                strokeWidth={2.2}
-                className="hidden sm:block text-slate-400 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180"
-              />
+              {isFocusMode ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-[272px] rounded-2xl p-0 overflow-hidden border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)]"
-            align="end"
-            sideOffset={10}
-            forceMount
-          >
-            {profileMenuBody}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+
+            <FullscreenHelpGuide autoOpenOnce={false} />
+
+            <ThemeToggle variant="chip" size="md" />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  data-tour="profile"
+                  title={`${printingName} (@${loginId})`}
+                  aria-label={`Account menu for ${printingName}`}
+                  className={cn(
+                    "group h-9 gap-2 rounded-[8px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 pl-1 pr-2.5",
+                    "hover:bg-[#0EA5E9]/20 data-[state=open]:bg-[#0EA5E9]/20",
+                    "transition-colors shadow-none"
+                  )}
+                >
+                  <span className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center">
+                    <Avatar className="h-7 w-7">
+                      <AvatarFallback className="bg-[#0EA5E9] text-white text-[12px] font-semibold">
+                        {initial}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--tm-chrome)] bg-emerald-500" />
+                  </span>
+                  <div className="hidden sm:flex items-center gap-1.5 min-w-0 text-left">
+                    <span className="text-[12px] font-semibold text-slate-100 truncate max-w-[90px]">
+                      {printingName}
+                    </span>
+                    <span className="text-[11px] font-medium text-[#0EA5E9]/80 truncate max-w-[80px]">
+                      @{loginId}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    size={13}
+                    strokeWidth={2.2}
+                    className="hidden sm:block text-slate-400 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                  />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-[272px] rounded-2xl p-0 overflow-hidden border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)]"
+                align="end"
+                sideOffset={10}
+                forceMount
+              >
+                {profileMenuBody}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </>
       )}
     </header>

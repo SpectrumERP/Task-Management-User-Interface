@@ -169,7 +169,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className,
           FIELD_TEXT_STYLE,
           "rounded-[8px]",
-          !(typeof className === "string" && /border-red/.test(className)) && "!border-[var(--tm-border)]"
+          // Skip force-border when caller sets error or an explicit !border-* color
+          !(typeof className === "string" && (/border-red/.test(className) || /!border-/.test(className))) &&
+            "!border-[var(--tm-border)]"
         )}
         ref={ref}
         onWheel={handleWheel}
