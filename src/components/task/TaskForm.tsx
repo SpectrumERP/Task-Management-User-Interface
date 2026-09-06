@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- TaskForm maps loosely-typed API payloads throughout */
-import { useForm, Controller, useFieldArray, FormProvider } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, FormProvider, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card } from '@/components/ui/card';
@@ -629,6 +629,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
   });
 
+  const standaloneAssignedDisplayName = useWatch({
+    control: standaloneSubtaskForm.control,
+    name: "assignedDisplayName",
+  });
+
   const executionChallengeDefaults = splitExecutionChallenges(initialData?.executionChallenges);
 
   const form = useForm({
@@ -784,7 +789,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       return () => clearTimeout(timer);
     });
     return () => subscription.unsubscribe();
-  }, [form.watch, form.formState.isDirty, saveDraft]);
+  }, [form, form.watch, form.formState.isDirty, saveDraft, isRestoringRef]);
 
   // Also auto-save when localSubtasks change manually (e.g., delete subtask)
   useEffect(() => {
@@ -796,7 +801,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       });
     }, 3000);
     return () => clearTimeout(timer);
-  }, [localSubtasks, form.formState.isDirty, saveDraft]);
+  }, [localSubtasks, form, form.formState.isDirty, saveDraft, isRestoringRef]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -1243,14 +1248,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       fetchCategoryMetadata();
     }
-  }, [initialData, form, authCompanies]);
+  }, [initialData, form, authCompanies, selectedFolder?.TaskFolderNo]);
 
   // Dynamically default the folder field to the navbar's selected workspace folder on task creation
   useEffect(() => {
     if (!initialData && selectedFolder && !form.getValues('folder_No')) {
       form.setValue('folder_No', selectedFolder.TaskFolderNo.toString());
     }
-  }, [selectedFolder, initialData, form]);
+  }, [selectedFolder, selectedFolder?.TaskFolderNo, initialData, form]);
 
   const handleTeamSelection = async (groupNo: string, type: 'collaborator' | 'inform') => {
     const group = fillValues?.userGroup.find(g => g.UserGroupNo.toString() === groupNo);
@@ -4787,9 +4792,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         </FieldControl>
                       )}
                     />
-                    {standaloneSubtaskForm.watch("assignedDisplayName") ? (
+                    {standaloneAssignedDisplayName ? (
                       <p className="text-[11px] text-slate-500 break-words pt-0.5">
-                        {standaloneSubtaskForm.watch("assignedDisplayName")}
+                        {standaloneAssignedDisplayName}
                       </p>
                     ) : null}
                   </div>
