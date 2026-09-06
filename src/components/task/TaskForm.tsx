@@ -397,6 +397,21 @@ const resolveCompanyValue = (company: any, authCompanies: any[] | null): string 
   return matched?.companyNo?.toString() || matched?.CompanyNo?.toString() || extractedVal;
 };
 
+/** Session-local IDs for optimistic UI (avoid Date.now/Math.random for React Compiler purity). */
+let taskFormClientIdSeq = 0;
+const nextClientId = () => {
+  taskFormClientIdSeq += 1;
+  return `c-${taskFormClientIdSeq}`;
+};
+const nextFakeTaskNo = () => {
+  taskFormClientIdSeq += 1;
+  return -taskFormClientIdSeq;
+};
+const nextClientTaskNo = () => {
+  taskFormClientIdSeq += 1;
+  return 100 + taskFormClientIdSeq;
+};
+
 export function TaskForm({ initialStatus, initialData, parentTask: parentTaskProp, onComplete, onRefreshData, onSaveStateChange }: TaskFormProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -411,79 +426,53 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const { addTask, updateTask, fetchFillValues, selectedFolder, tasks } = useTaskStore();
   const [localParentTask, setLocalParentTask] = useState<Task | null>(null);
   const parentTask = parentTaskProp || tasks.find(t => t.taskNo === parentTaskNo) || localParentTask;
-  const [localSubtasks, setLocalSubtasks] = useState<any[]>(() => {
-    if (initialData?.subTasks && initialData.subTasks.length > 0) {
-      return initialData.subTasks.map((st: any) => ({
-        taskNo: st.operTaskNo || st.taskNo,
-        code: st.code,
-        title: st.title,
-        status: st.status?.statusName || st.status || 'Draft',
-        start_date: st.startDate || st.start_date,
-        categoryName: st.category?.categoryName || st.categoryName,
-        typeName: st.type?.typeName || st.typeName,
-        priority: st.priority?.priorityName || st.priority,
-        assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
-        ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
-        endDate: st.endDate || st.end_date || '',
-        completionDate: st.completionDate || '',
-        completionRemark: st.completionRemark || '',
-        type_No: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
-        operTaskTypeNo: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
-        category_No: st.category?.operTaskCategoryNo || st.operTaskCategoryNo || '',
-        priority_No: st.priority?.operTaskPriorityNo || st.operTaskPriorityNo || '',
-        status_No: st.status?.operTaskStatusNo || st.operTaskStatusNo || ''
-      }));
-    }
-    return initialData?.taskNo ? tasks.filter(t => t.parent_task_No === initialData.taskNo) : [];
-  });
 
-  useEffect(() => {
-    if (initialData?.subTasks && initialData.subTasks.length > 0) {
-      setLocalSubtasks(initialData.subTasks.map((st: any) => ({
-        taskNo: st.operTaskNo || st.taskNo,
-        code: st.code,
-        title: st.title,
-        status: st.status?.statusName || st.status || 'Draft',
-        start_date: st.startDate || st.start_date,
-        categoryName: st.category?.categoryName || st.categoryName,
-        typeName: st.type?.typeName || st.typeName,
-        priority: st.priority?.priorityName || st.priority,
-        assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
-        ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
-        endDate: st.endDate || st.end_date || '',
-        completionDate: st.completionDate || '',
-        completionRemark: st.completionRemark || '',
-        type_No: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
-        operTaskTypeNo: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
-        category_No: st.category?.operTaskCategoryNo || st.operTaskCategoryNo || '',
-        priority_No: st.priority?.operTaskPriorityNo || st.priority_No || '',
-        status_No: st.status?.operTaskStatusNo || st.status_No || ''
-      })));
-    } else {
-      setLocalSubtasks(initialData?.taskNo ? tasks.filter(t => t.parent_task_No === initialData.taskNo) : []);
+  const mapApiSubtasks = (subTasks: any[]) =>
+    subTasks.map((st: any) => ({
+      taskNo: st.operTaskNo || st.taskNo,
+      code: st.code,
+      title: st.title,
+      status: st.status?.statusName || st.status || 'Draft',
+      start_date: st.startDate || st.start_date,
+      categoryName: st.category?.categoryName || st.categoryName,
+      typeName: st.type?.typeName || st.typeName,
+      priority: st.priority?.priorityName || st.priority,
+      assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
+      ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
+      endDate: st.endDate || st.end_date || '',
+      completionDate: st.completionDate || '',
+      completionRemark: st.completionRemark || '',
+      type_No: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
+      operTaskTypeNo: st.type?.operTaskTypeNo || st.operTaskTypeNo || '',
+      category_No: st.category?.operTaskCategoryNo || st.operTaskCategoryNo || '',
+      priority_No: st.priority?.operTaskPriorityNo || st.operTaskPriorityNo || st.priority_No || '',
+      status_No: st.status?.operTaskStatusNo || st.operTaskStatusNo || st.status_No || '',
+    }));
+
+  const buildLocalSubtasks = (data: typeof initialData, storeTasks: typeof tasks) => {
+    if (data?.subTasks && data.subTasks.length > 0) {
+      return mapApiSubtasks(data.subTasks);
     }
-  }, [initialData, tasks]);
+    return data?.taskNo ? storeTasks.filter((t) => t.parent_task_No === data.taskNo) : [];
+  };
+
+  const [localSubtasks, setLocalSubtasks] = useState<any[]>(() => buildLocalSubtasks(initialData, tasks));
+  const subtasksSyncKey =
+    initialData?.subTasks && initialData.subTasks.length > 0
+      ? `api:${initialData.taskNo}:${initialData.subTasks.length}`
+      : `store:${initialData?.taskNo ?? 'new'}:${initialData?.taskNo ? tasks.filter((t) => t.parent_task_No === initialData.taskNo).length : 0}`;
+  const [prevSubtasksSyncKey, setPrevSubtasksSyncKey] = useState(subtasksSyncKey);
+  if (subtasksSyncKey !== prevSubtasksSyncKey) {
+    setPrevSubtasksSyncKey(subtasksSyncKey);
+    setLocalSubtasks(buildLocalSubtasks(initialData, tasks));
+  }
 
   const fetchSubtasksSilent = async () => {
     if (!initialData?.taskNo) return;
     try {
       const response = await apiService.get<{ success: boolean; data: any; message?: string }>(`/api/crm/tasks/load-data/${initialData.taskNo}`);
       if (response.success && response.data?.subTasks) {
-        setLocalSubtasks(response.data.subTasks.map((st: any) => ({
-          taskNo: st.operTaskNo || st.taskNo,
-          code: st.code,
-          title: st.title,
-          status: st.status?.statusName || st.status || 'Draft',
-          start_date: st.startDate || st.start_date,
-          categoryName: st.category?.categoryName || st.categoryName,
-          typeName: st.type?.typeName || st.typeName,
-          priority: st.priority?.priorityName || st.priority,
-          assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
-          ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
-          endDate: st.endDate || st.end_date || '',
-          completionDate: st.completionDate || '',
-          completionRemark: st.completionRemark || ''
-        })));
+        setLocalSubtasks(mapApiSubtasks(response.data.subTasks));
       }
     } catch (err) {
       console.error("Failed to silently refresh subtasks", err);
@@ -491,8 +480,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   };
 
   const { company: authCompanies, user: authUser } = useAuthStore();
-  const [selectedCollabTeam, setSelectedCollabTeam] = useState<string>("");
-  const [selectedInformTeam, setSelectedInformTeam] = useState<string>("");
+  const [selectedCollabTeam, setSelectedCollabTeam] = useState<string>(
+    () => initialData?.collaboratorUserGroupNo?.toString() || ""
+  );
+  const [selectedInformTeam, setSelectedInformTeam] = useState<string>(
+    () => initialData?.infromToUserGroupNo?.toString() || ""
+  );
+  const collabTeamKey = initialData?.collaboratorUserGroupNo?.toString() || "";
+  const informTeamKey = initialData?.infromToUserGroupNo?.toString() || "";
+  const [prevCollabTeamKey, setPrevCollabTeamKey] = useState(collabTeamKey);
+  const [prevInformTeamKey, setPrevInformTeamKey] = useState(informTeamKey);
+  if (collabTeamKey !== prevCollabTeamKey) {
+    setPrevCollabTeamKey(collabTeamKey);
+    setSelectedCollabTeam(collabTeamKey);
+  }
+  if (informTeamKey !== prevInformTeamKey) {
+    setPrevInformTeamKey(informTeamKey);
+    setSelectedInformTeam(informTeamKey);
+  }
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
@@ -969,7 +974,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const handleInlineEdit = (st: any) => {
     appendSubtask({
-      id: Date.now().toString(),
+      id: nextClientId(),
       operTaskNo: st.taskNo,
       type_No: st.type_No?.toString() || st.operTaskTypeNo?.toString() || '',
       title: st.title || '',
@@ -1212,12 +1217,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           relativePath: a.relativePath || a.storedFilePath || ''
         })),
       });
-      if (initialData.collaboratorUserGroupNo) {
-        setSelectedCollabTeam(initialData.collaboratorUserGroupNo.toString());
-      }
-      if (initialData.infromToUserGroupNo) {
-        setSelectedInformTeam(initialData.infromToUserGroupNo.toString());
-      }
+      // Collab / inform team selects sync from initialData during render (see collabTeamKey above)
 
       // Fetch category metadata to enrich custom fields with displayColumn and cascadedColumn
       const fetchCategoryMetadata = async () => {
@@ -1690,7 +1690,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         addTask({
           ...data,
           parent_task_No: parentTaskNo || undefined,
-          taskNo: response?.data?.operTaskNo || Math.floor(Math.random() * 1000) + 100
+          taskNo: response?.data?.operTaskNo || nextClientTaskNo()
         });
       }
       clearDraft();
@@ -4690,7 +4690,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <FormProvider {...standaloneSubtaskForm}>
               <form id="standaloneSubtaskForm" onSubmit={standaloneSubtaskForm.handleSubmit(async (data) => {
                 if (!initialData?.taskNo) {
-                  const newFakeTaskNo = -Date.now();
+                  const newFakeTaskNo = nextFakeTaskNo();
                   const savedTask = {
                     taskNo: newFakeTaskNo,
                     code: '',
