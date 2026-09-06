@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { apiService } from '@/services/apiService';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, ShieldCheck } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { cn } from '@/lib/utils';
 
 interface UserAvatarProps {
@@ -113,9 +114,8 @@ export function UserAvatar({
         onClick={(e) => e.stopPropagation()}
       >
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-8 gap-2">
-            <Loader2 className="h-6 w-6 text-[#0EA5E9] animate-spin" />
-            <span className="text-[11px] font-medium text-slate-400">Loading profile…</span>
+          <div className="flex flex-col items-center justify-center py-8">
+            <BrandLoader size="sm" message="Loading profile" />
           </div>
         ) : error ? (
           <div className="text-center py-6 px-4 space-y-1">

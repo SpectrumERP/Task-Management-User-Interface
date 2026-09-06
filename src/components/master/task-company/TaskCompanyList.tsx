@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function TaskCompanyList() {
 
   const [apiTaskCompanies, setApiTaskCompanies] = useState<TaskCompanyMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchTaskCompanies = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/crm/task-companies/search-data`);
       if (response) {
@@ -56,6 +60,7 @@ export function TaskCompanyList() {
       }
     } catch (error) {
       console.error('Failed to fetch API task companies:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +84,9 @@ export function TaskCompanyList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -88,9 +94,16 @@ export function TaskCompanyList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/crm/task-companies/delete', {
       params: { operTaskCompanyNo: deleteTargetId }
-    }).then(() => fetchTaskCompanies()).catch(err => console.error('Failed to delete task company:', err));
+    }).then(() => {
+      toast.success('Record deleted');
+      fetchTaskCompanies();
+    }).catch(err => {
+      console.error('Failed to delete task company:', err);
+      toast.error('Failed to delete record');
+    });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -121,6 +134,8 @@ export function TaskCompanyList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchTaskCompanies}
         emptyIcon={Building2}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -145,6 +160,7 @@ export function TaskCompanyList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
+        recordName={deleteTargetLabel}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function StateList() {
 
   const [apiStates, setApiStates] = useState<StateMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchStates = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/states/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -48,6 +52,7 @@ export function StateList() {
       }
     } catch (error) {
       console.error('Failed to fetch API states:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -67,8 +72,9 @@ export function StateList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -76,9 +82,10 @@ export function StateList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/states/delete', {
       params: { stateNo: deleteTargetId }
-    }).then(() => fetchStates()).catch(err => console.error('Failed to delete state:', err));
+    }).then(() => { toast.success('Record deleted'); fetchStates(); }).catch(err => { console.error('Failed to delete state:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -101,6 +108,8 @@ export function StateList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchStates}
         emptyIcon={MapPin}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -125,7 +134,8 @@ export function StateList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

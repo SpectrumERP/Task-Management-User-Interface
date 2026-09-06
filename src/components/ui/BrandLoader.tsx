@@ -13,9 +13,30 @@ interface BrandLoaderProps {
 }
 
 const SIZE = {
-  sm: { wrap: 'h-16 w-16', mark: 'h-9 w-9 text-xs', ring: 'inset-0' },
-  md: { wrap: 'h-24 w-24', mark: 'h-14 w-14 text-lg', ring: 'inset-0' },
-  lg: { wrap: 'h-28 w-28', mark: 'h-16 w-16 text-xl', ring: 'inset-0' },
+  sm: {
+    wrap: 'h-10 w-10',
+    mark: 'h-5 w-5 text-[8px]',
+    mid: 'inset-[3px]',
+    inner: 'inset-[5px]',
+    gap: 'gap-2',
+    msg: 'text-[10px] tracking-[0.12em]',
+  },
+  md: {
+    wrap: 'h-14 w-14',
+    mark: 'h-7 w-7 text-[10px]',
+    mid: 'inset-[4px]',
+    inner: 'inset-2',
+    gap: 'gap-2.5',
+    msg: 'text-[10px] tracking-[0.14em]',
+  },
+  lg: {
+    wrap: 'h-24 w-24',
+    mark: 'h-14 w-14 text-lg',
+    mid: 'inset-[6px]',
+    inner: 'inset-3',
+    gap: 'gap-3',
+    msg: 'text-[11px] tracking-[0.16em]',
+  },
 } as const;
 
 /**
@@ -26,14 +47,15 @@ export function BrandLoader({
   fullScreen = false,
   message,
   className,
-  size = 'md',
+  size,
 }: BrandLoaderProps) {
   const brand = useMemo(() => getBrand(), []);
   const initials = useMemo(() => getBrandInitials(brand.brandName), [brand.brandName]);
-  const dims = SIZE[size];
+  const resolvedSize = size ?? (fullScreen ? 'lg' : 'sm');
+  const dims = SIZE[resolvedSize];
 
   const content = (
-    <div className={cn('relative flex flex-col items-center gap-3', className)}>
+    <div className={cn('relative flex flex-col items-center', dims.gap, className)}>
       <div className={cn('relative flex items-center justify-center', dims.wrap)}>
         <span
           aria-hidden
@@ -41,11 +63,17 @@ export function BrandLoader({
         />
         <span
           aria-hidden
-          className="brand-loader-orbit-ccw absolute inset-[6px] rounded-full border-2 border-transparent border-b-[#F59E0B] border-l-[#F59E0B]/50"
+          className={cn(
+            'brand-loader-orbit-ccw absolute rounded-full border-2 border-transparent border-b-[#F59E0B] border-l-[#F59E0B]/50',
+            dims.mid
+          )}
         />
         <span
           aria-hidden
-          className="brand-loader-orbit-cw-slow absolute inset-3 rounded-full border-2 border-transparent border-t-[#38BDF8]/90 border-r-emerald-400/50"
+          className={cn(
+            'brand-loader-orbit-cw-slow absolute rounded-full border-2 border-transparent border-t-[#38BDF8]/90 border-r-emerald-400/50',
+            dims.inner
+          )}
         />
 
         <div
@@ -61,7 +89,7 @@ export function BrandLoader({
       </div>
 
       {message ? (
-        <p className="brand-loader-msg text-[11px] font-semibold uppercase tracking-[0.16em] animate-pulse">
+        <p className={cn('brand-loader-msg font-semibold uppercase animate-pulse', dims.msg)}>
           {message}
         </p>
       ) : (

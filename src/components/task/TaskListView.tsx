@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Task } from '@/types/task';
-import { ClipboardList, Settings2, Edit2, Search } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { ClipboardList, Settings2, Edit2, Search, Eye, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -24,7 +26,10 @@ import { useTaskStore } from '@/store/useTaskStore';
 interface TaskListViewProps {
   tasks: Task[];
   isLoading?: boolean;
+  loadError?: boolean;
+  onRetryLoad?: () => void;
   onTaskClick?: (taskId: number) => void;
+  onCreateTask?: () => void;
   hideCategoryColumn?: boolean;
 }
 type ColumnKey = 'code' | 'status' | 'title' | 'category' | 'type' | 'priority' | 'dueDate' | 'completionDate' | 'folder' | 'createdBy' | 'createdDate' | 'owner' | 'originator' | 'companyName' | 'location' | 'actions';
@@ -54,7 +59,7 @@ const COLUMNS: ColumnDef[] = [
   { key: 'actions', label: '', defaultVisible: true }, // Actions shouldn't typically be hidden but we can allow it
 ];
 
-export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn = false }: TaskListViewProps) {
+export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskClick, onCreateTask, hideCategoryColumn = false }: TaskListViewProps) {
   const navigate = useNavigate();
   const { isUpdate } = useFormRights(1547);
   const { fillValues } = useTaskStore();
@@ -148,33 +153,139 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
     return yiq >= 140 ? '#0f172a' : '#ffffff';
   };
 
-  if (isLoading) {
+  // Full loader only on first load (no rows yet). Refetch / view-switch keeps existing rows.
+  if (isLoading && tasks.length === 0) {
     return (
-      <div className="h-full space-y-3 p-3">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-14 w-full bg-[var(--tm-muted)] animate-pulse rounded-xl border border-[var(--tm-border)]" />
-        ))}
+      <div className="h-full min-h-[200px] flex items-center justify-center">
+        <BrandLoader size="sm" message="Loading tasks" />
       </div>
+    );
+  }
+
+  if (loadError && tasks.length === 0) {
+    return (
+      <LoadErrorState
+        title="Failed to load tasks"
+        description="Could not load the task list. Retry uses the same filters — nothing else changes."
+        onRetry={onRetryLoad}
+        className="h-full"
+      />
     );
   }
 
   if (tasks.length === 0) {
     return (
-      <div className="h-full min-h-0 flex flex-col items-center justify-center px-6">
-        <div className="h-14 w-14 rounded-2xl bg-[var(--tm-tint)] flex items-center justify-center mb-2.5">
+      <div className="h-full min-h-0 flex flex-col items-center justify-center px-6 py-10">
+        <div className="h-14 w-14 rounded-2xl bg-[var(--tm-tint)] flex items-center justify-center mb-3 ring-1 ring-[#0EA5E9]/15">
           <ClipboardList className="text-[#0EA5E9]" size={26} strokeWidth={1.75} />
         </div>
         <h3 className="text-base font-semibold text-slate-100 tracking-tight">No tasks found</h3>
-        <p className="text-slate-500 text-sm font-medium mt-0.5 max-w-sm text-center">
-          Try adjusting your filters or create a new task.
+        <p className="text-slate-500 text-sm font-medium mt-1 max-w-sm text-center">
+          Try clearing filters, or create a new task to get started.
         </p>
+        {onCreateTask ? (
+          <Button
+            type="button"
+            onClick={onCreateTask}
+            className="mt-4 h-9 px-4 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold gap-1.5"
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            Create task
+          </Button>
+        ) : null}
       </div>
     );
   }
 
+  const openTask = (task: Task) => {
+    if (onTaskClick) onTaskClick(task.taskNo);
+    else navigate(taskUrl(task.taskNo, task.categoryName));
+  };
+
   return (
     <div className="h-full min-h-0 overflow-auto" data-page-tour="task-table">
-      <table className="tm-data-table w-full text-sm text-left">
+      {/* Mobile / tablet cards */}
+      <div className="md:hidden flex flex-col gap-2 p-2 sm:p-3">
+        {tasks.map((task) => (
+          <div
+            key={task.taskNo}
+            role="button"
+            tabIndex={0}
+            onClick={() => openTask(task)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openTask(task);
+              }
+            }}
+            className="w-full text-left rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/60 px-3 py-2.5 shadow-sm active:bg-[var(--tm-muted)] transition-colors cursor-pointer"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                  <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                    {task.code || `CP-${100 + task.taskNo}`}
+                  </span>
+                  {task.status ? (
+                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-[var(--tm-muted)] text-slate-200">
+                      {task.status}
+                    </span>
+                  ) : null}
+                  {task.priority ? (
+                    <span
+                      className={cn(
+                        'text-[9px] font-medium px-1.5 py-0.5 rounded-md',
+                        getPriorityBadgeClass(task.priority, task.priority_No, 'solid')
+                      )}
+                    >
+                      {task.priority}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-sm font-semibold text-slate-100 leading-snug line-clamp-2">{task.title}</p>
+                <p className="mt-1 text-[11px] text-slate-400 truncate">
+                  {task.assignedDisplayName || 'Unassigned'}
+                  {task.end_date
+                    ? ` · Due ${format(new Date(task.end_date), 'MMM dd')}`
+                    : ''}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="View"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openTask(task);
+                  }}
+                  className="h-8 w-8 rounded-lg text-slate-400"
+                >
+                  <Eye size={14} strokeWidth={2.25} />
+                </Button>
+                {isUpdate ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Edit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(taskUrl(task.taskNo, task.categoryName));
+                    }}
+                    className="h-8 w-8 rounded-lg text-slate-400"
+                  >
+                    <Edit2 size={14} strokeWidth={2.5} />
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block min-w-0">
+      <table className="tm-data-table w-full text-sm text-left min-w-[720px]">
         <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold text-xs tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
           <tr>
             {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
@@ -279,13 +390,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
             {tasks.map((task) => (
               <tr
                 key={task.taskNo}
-                onClick={() => {
-                  if (onTaskClick) {
-                    onTaskClick(task.taskNo);
-                  } else {
-                    navigate(taskUrl(task.taskNo, task.categoryName));
-                  }
-                }}
+                onClick={() => openTask(task)}
                 className="group transition-colors cursor-pointer"
               >
                 {/* Code */}
@@ -455,19 +560,35 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                 {/* Actions */}
                 {visibleColumns.has('actions') && (
                   <td className="px-1.5 py-1 align-middle text-right sticky right-0 z-10 tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
-                    {isUpdate && (
+                    <div className="inline-flex items-center justify-end gap-0.5 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                       <Button
                         variant="ghost"
                         size="icon"
+                        title="View"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(taskUrl(task.taskNo, task.categoryName));
+                          if (onTaskClick) onTaskClick(task.taskNo);
+                          else navigate(taskUrl(task.taskNo, task.categoryName));
                         }}
-                        className="h-6 w-6 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)] flex items-center justify-center transition-all duration-200"
+                        className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
                       >
-                        <Edit2 size={14} strokeWidth={2.5} />
+                        <Eye size={14} strokeWidth={2.25} />
                       </Button>
-                    )}
+                      {isUpdate && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(taskUrl(task.taskNo, task.categoryName));
+                          }}
+                          className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+                        >
+                          <Edit2 size={14} strokeWidth={2.5} />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 )}
 
@@ -475,6 +596,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
             ))}
           </tbody>
         </table>
+      </div>
     </div>
   );
 }

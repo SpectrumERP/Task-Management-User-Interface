@@ -7,6 +7,7 @@ import { TaskActivity } from './TaskActivity';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import {
   Edit,
   Calendar,
@@ -16,7 +17,6 @@ import {
   Layers,
   AlertCircle,
   Coins,
-  Loader2,
   CheckSquare,
   FileText,
   Paperclip,
@@ -414,9 +414,8 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
         {/* Body */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {isLoading && !task ? (
-            <div className="h-full min-h-[320px] flex flex-col items-center justify-center gap-3 py-20">
-              <Loader2 className="h-9 w-9 text-[#0EA5E9] animate-spin" />
-              <p className="text-slate-400 font-medium text-xs">Loading task details…</p>
+            <div className="h-full min-h-[320px] flex flex-col items-center justify-center py-20">
+              <BrandLoader size="sm" message="Loading task details" />
             </div>
           ) : task ? (
             <div className="p-4 sm:p-5">

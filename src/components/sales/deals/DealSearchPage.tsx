@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { AlertCircle, ChevronRight, Edit, FileText, Loader2, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Button } from '@/components/ui/button';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { Card } from '@/components/ui/card';
@@ -18,6 +19,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
 import { DealRecord, DealSearchFilters } from '@/types/deal';
 import { DealOption, deleteDeal, fetchDivisionsByCompany, searchDeals } from './dealApi';
+import { toast } from 'sonner';
+import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 
 export function DealSearchPage() {
   const navigate = useNavigate();
@@ -41,14 +45,21 @@ export function DealSearchPage() {
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DealRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchDeals = async (nextFilters = filters) => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const data = await searchDeals(nextFilters);
       setDeals(data);
     } catch (error) {
       console.error('Failed to search sales deals:', error);
+      setLoadError(true);
+      setDeals([]);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to load sales deals'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -80,6 +91,9 @@ export function DealSearchPage() {
       } catch (error) {
         console.error('Failed to load divisions:', error);
         setDivisionOptions([]);
+        if (shouldToastCaughtError(error)) {
+          toast.error(getUserErrorMessage(error, 'Failed to load divisions'));
+        }
       } finally {
         setIsLoadingDivisions(false);
       }
@@ -112,6 +126,7 @@ export function DealSearchPage() {
     const editId = deal.id || deal.raw?.dealEntryNo || deal.raw?.DealEntryNo;
     if (!editId) {
       console.error('Sales deal edit failed: missing record id', deal.raw || deal);
+      toast.error('Cannot open this deal — record id is missing');
       return;
     }
     navigate(`/sales/deals/${editId}`);
@@ -124,9 +139,13 @@ export function DealSearchPage() {
       const response = await deleteDeal(deleteTarget.id);
       if (response?.success === false) return;
       setDeleteTarget(null);
+      toast.success('Sales deal deleted');
       fetchDeals(filters);
     } catch (error) {
       console.error('Failed to delete sales deal:', error);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to delete sales deal'));
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -224,13 +243,22 @@ export function DealSearchPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
-                {isLoading ? (
+                {isLoading && deals.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-16 text-center">
-                      <div className="flex items-center justify-center gap-0.5 text-xs font-medium text-slate-500">
-                        <Loader2 size={16} className="animate-spin text-[#0EA5E9]" />
-                        Loading sales deals...
+                      <div className="flex items-center justify-center">
+                        <BrandLoader size="sm" message="Loading sales deals" />
                       </div>
+                    </td>
+                  </tr>
+                ) : loadError && deals.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center">
+                      <LoadErrorState
+                        title="Failed to load sales deals"
+                        onRetry={() => fetchDeals(filters)}
+                        compact
+                      />
                     </td>
                   </tr>
                 ) : deals.length === 0 ? (

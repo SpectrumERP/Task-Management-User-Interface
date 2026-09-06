@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight, CheckCircle, Loader2, Save, X } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Button } from '@/components/ui/button';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -16,11 +17,9 @@ import { DealOption, fetchDivisionsByCompany, loadDeal, saveDeal } from './dealA
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 
 const dealSchema = z.object({
   companyNo: z.string().min(1, 'Company is required'),
@@ -46,8 +45,6 @@ export function DealForm() {
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [isFetching, setIsFetching] = useState(isEdit);
   const [isSaving, setIsSaving] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [pendingValues, setPendingValues] = useState<DealFormValues | null>(null);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
   const form = useForm<DealFormValues>({
@@ -86,6 +83,9 @@ export function DealForm() {
       } catch (error) {
         console.error('Failed to load divisions:', error);
         setDivisionOptions([]);
+        if (shouldToastCaughtError(error)) {
+          toast.error(getUserErrorMessage(error, 'Failed to load divisions'));
+        }
       } finally {
         setIsLoadingDivisions(false);
       }
@@ -109,9 +109,14 @@ export function DealForm() {
             documentDate: deal.documentDate ? new Date(deal.documentDate) : undefined,
             description: deal.description,
           });
+        } else {
+          toast.error('Sales deal not found');
         }
       } catch (error) {
         console.error('Failed to load sales deal:', error);
+        if (shouldToastCaughtError(error)) {
+          toast.error(getUserErrorMessage(error, 'Failed to load sales deal'));
+        }
       } finally {
         setIsFetching(false);
       }
@@ -120,21 +125,20 @@ export function DealForm() {
     fetchDeal();
   }, [defaultCompanyNo, form, id]);
 
-  const submitForm = (values: DealFormValues) => {
-    setPendingValues(values);
-    setShowConfirm(true);
-  };
-
-  const confirmSave = async () => {
-    if (!pendingValues) return;
+  const submitForm = async (values: DealFormValues) => {
     setIsSaving(true);
     try {
-      const response = await saveDeal(pendingValues, existingDeal);
-      if (response?.success === false) return;
-      setShowConfirm(false);
+      const response = await saveDeal(values, existingDeal);
+      if (response?.success === false) {
+        // apiService already toasted the server message when present
+        return;
+      }
       setShowSuccessAlert(true);
     } catch (error) {
       console.error('Failed to save sales deal:', error);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to save sales deal'));
+      }
     } finally {
       setIsSaving(false);
     }
@@ -143,7 +147,7 @@ export function DealForm() {
   return (
     <div className="flex-1 w-full flex flex-col overflow-hidden">
       <div className="w-full px-2 sm:px-4 py-1 z-20">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 flex-col sm:flex-row">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <button
               type="button"
@@ -186,9 +190,8 @@ export function DealForm() {
       <div className="flex-1 overflow-y-auto px-3 sm:px-8">
         <div data-page-tour="deal-form-fields" className=" mx-auto bg-[var(--tm-surface)] rounded-[16px] sm:rounded-[24px] p-4 sm:p-8 shadow-xl shadow-black/40/40 border border-[var(--tm-border)]">
           {isFetching ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-20">
-              <Loader2 className="h-10 w-10 text-[#0EA5E9] animate-spin" />
-              <p className="text-slate-500 font-medium text-sm normal-case">Loading Sales Deal...</p>
+            <div className="flex flex-col items-center justify-center py-20">
+              <BrandLoader size="sm" message="Loading sales deal" />
             </div>
           ) : (
             <form id="sales-deal-form" onSubmit={form.handleSubmit(submitForm)} className="space-y-5">
@@ -251,28 +254,6 @@ export function DealForm() {
           )}
         </div>
       </div>
-
-      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-100 tracking-tight">
-              Confirm {isEdit ? 'Update' : 'Save'}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-slate-500 mt-2">
-              Do you want to {isEdit ? 'update' : 'save'}?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
-            <Button type="button" variant="outline" disabled={isSaving} onClick={() => setShowConfirm(false)} className="h-10 px-4 rounded-xl text-xs font-medium">
-              No
-            </Button>
-            <Button type="button" disabled={isSaving} onClick={confirmSave} className="h-10 px-5 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-medium text-xs normal-case gap-0.5">
-              {isSaving && <Loader2 size={14} className="animate-spin" />}
-              Yes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={showSuccessAlert} onOpenChange={setShowSuccessAlert}>
         <DialogContent className="rounded-3xl max-w-xs p-0 border-none shadow-2xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">

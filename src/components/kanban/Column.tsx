@@ -138,7 +138,7 @@ export function Column({ status, tasks, onAddTask, onTaskClick }: ColumnProps) {
   }
 
   return (
-    <div className="flex flex-col w-[85vw] sm:w-[320px] min-w-[260px] sm:min-w-[320px] h-full rounded-[12px] theme-kanban-column bg-[var(--tm-surface)] border border-[var(--tm-border)] shadow-[var(--tm-shadow)] overflow-hidden">
+    <div className="flex flex-col w-[85vw] sm:w-[320px] min-w-[260px] sm:min-w-[320px] h-full rounded-[12px] theme-kanban-column bg-[var(--tm-surface)] border border-[var(--tm-border)] shadow-[var(--tm-shadow)] overflow-hidden snap-center shrink-0">
       <div className={cn('relative px-3.5 py-3 border-b border-[var(--tm-border)] bg-[var(--tm-surface)]', accent.top)}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">

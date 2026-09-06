@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Task, TaskStatus } from '@/types/task';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getPriorityBadgeClass } from '@/lib/priorityStyles';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import {
   ChevronLeft,
   ChevronRight,
@@ -85,7 +86,22 @@ export function TaskCalendarView({
   onViewModeChange
 }: TaskCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
+  const [viewMode, setViewMode] = useState<CalendarViewMode>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches ? 'agenda' : 'month'
+  );
+
+  // Prefer agenda on narrow phones (month/week grids are too cramped)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const sync = () => {
+      if (mq.matches) {
+        setViewMode((prev) => (prev === 'month' || prev === 'week' ? 'agenda' : prev));
+      }
+    };
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   // State for "More Tasks" popover/dialog in Month view
   const [selectedDayTasks, setSelectedDayTasks] = useState<{ date: Date; tasks: Task[] } | null>(null);
@@ -221,20 +237,23 @@ export function TaskCalendarView({
     }
 
     const weekdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const weekdaysShort = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return (
-      <div className="flex flex-col min-h-[640px] h-full bg-[var(--tm-surface)] overflow-hidden animate-in fade-in duration-300">
+      <div className="flex flex-col min-h-[420px] sm:min-h-[640px] h-full bg-[var(--tm-surface)] overflow-x-auto overflow-y-hidden animate-in fade-in duration-300">
+        <div className="min-w-[560px] flex flex-col flex-1 min-h-0">
         {/* Weekday headers */}
         <div className="grid grid-cols-7 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] shrink-0">
-          {weekdays.map(day => (
-            <div key={day} className="py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 border-r last:border-r-0 border-[var(--tm-border)]">
-              {day}
+          {weekdays.map((day, i) => (
+            <div key={day} className="py-2 sm:py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 border-r last:border-r-0 border-[var(--tm-border)]">
+              <span className="sm:hidden">{weekdaysShort[i]}</span>
+              <span className="hidden sm:inline">{day}</span>
             </div>
           ))}
         </div>
 
         {/* Days grid */}
-        <div className="grid grid-cols-7 grid-rows-6 flex-1 min-h-[560px]">
+        <div className="grid grid-cols-7 grid-rows-6 flex-1 min-h-[360px] sm:min-h-[560px]">
           {totalSlots.map((date, index) => {
             const isCurrentMonth = date.getMonth() === month;
             const isToday = new Date().toDateString() === date.toDateString();
@@ -336,6 +355,7 @@ export function TaskCalendarView({
             );
           })}
         </div>
+        </div>
       </div>
     );
   };
@@ -433,7 +453,8 @@ export function TaskCalendarView({
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
     return (
-      <div className="flex flex-col h-full bg-[var(--tm-surface)] overflow-hidden animate-in fade-in duration-300">
+      <div className="flex flex-col h-full bg-[var(--tm-surface)] overflow-x-auto overflow-y-hidden animate-in fade-in duration-300">
+        <div className="min-w-[720px] flex flex-col flex-1 min-h-0">
         {/* Headers */}
         <div className="grid grid-cols-8 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] sticky top-0 z-10">
           <div className="py-3 border-r border-[var(--tm-border)] flex items-center justify-center">
@@ -569,6 +590,7 @@ export function TaskCalendarView({
               );
             })}
           </div>
+        </div>
         </div>
       </div>
     );
@@ -977,10 +999,9 @@ export function TaskCalendarView({
 
       {/* Main Calendar Body */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative bg-[var(--tm-elevated)]/40">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-28 gap-2.5">
-            <span className="w-7 h-7 rounded-full border-[2.5px] border-[#0EA5E9] border-t-transparent animate-spin" />
-            <p className="text-[11px] font-medium text-slate-400">Updating schedule…</p>
+        {isLoading && tasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-28">
+            <BrandLoader size="sm" message="Loading schedule" />
           </div>
         ) : (
           <>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function CategoryList() {
 
   const [apiCategories, setApiCategories] = useState<CategoryMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchCategories = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/task-categories/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -50,6 +54,7 @@ export function CategoryList() {
       }
     } catch (error) {
       console.error('Failed to fetch API categories:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -69,8 +74,9 @@ export function CategoryList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -78,9 +84,10 @@ export function CategoryList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-categories/delete', {
       params: { operTaskCategoryNo: deleteTargetId }
-    }).then(() => fetchCategories()).catch(err => console.error('Failed to delete category:', err));
+    }).then(() => { toast.success('Record deleted'); fetchCategories(); }).catch(err => { console.error('Failed to delete category:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -134,6 +141,8 @@ export function CategoryList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchCategories}
         emptyIcon={Layers}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -158,7 +167,8 @@ export function CategoryList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

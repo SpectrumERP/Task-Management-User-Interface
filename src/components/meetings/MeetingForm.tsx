@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Loader2, Clock, UserRound, IdCard, Building2, UserPlus, X } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Combobox } from '@/components/ui/Combobox';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { EmployeeCombobox } from '@/components/meetings/EmployeeCombobox';
@@ -16,6 +17,7 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
@@ -290,7 +292,27 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
     }
   }, [startDateTime, endDateTime, form]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (form.formState.isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [form.formState.isDirty]);
 
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      form.formState.isDirty &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  const requestLeave = () => {
+    navigate('/meetings');
+  };
 
   const startUpload = async (tempId: string, file: File) => {
     try {
@@ -477,17 +499,23 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
       await apiService.post(url, cleanEmptyStrings(payload));
       toast.success(isUpdate ? "Meeting Notes Updated Successfully" : "Meeting Notes Saved Successfully");
+      form.reset(form.getValues());
       if (onComplete) onComplete();
     } catch (error) {
       console.error(error);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to save meeting notes. Please try again.'));
+      }
     }
   };
 
   if (isLoadingOptions || isFetchingData) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center h-full gap-4 text-slate-500">
-        <div className="w-8 h-8 border-4 border-[#0EA5E9] border-t-transparent rounded-lg animate-spin"></div>
-        <div className="font-semibold">{isFetchingData ? 'Loading meeting details...' : 'Loading options...'}</div>
+      <div className="flex-1 flex flex-col items-center justify-center h-full">
+        <BrandLoader
+          size="sm"
+          message={isFetchingData ? 'Loading meeting details' : 'Loading options'}
+        />
       </div>
     );
   }
@@ -499,7 +527,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         <nav className="flex items-center gap-2 min-w-0">
           <button
             type="button"
-            onClick={() => navigate('/meetings')}
+            onClick={requestLeave}
             className="shrink-0 text-sm font-medium text-[#0EA5E9] underline decoration-[#0EA5E9]/40 underline-offset-[3px] hover:decoration-[#0EA5E9] hover:text-[#0284C7] cursor-pointer transition-colors bg-transparent p-0 border-0"
           >
             Meeting Notes
@@ -514,7 +542,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
         <div className="flex items-center gap-2 self-end sm:self-auto" data-page-tour="meeting-form-actions">
           <PageGuideButton guideKey="meeting-form" />
-          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] font-medium border-[var(--tm-border)]/80 text-xs px-4" onClick={() => navigate('/meetings')}>Cancel</Button>
+          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] font-medium border-[var(--tm-border)]/80 text-xs px-4" onClick={requestLeave}>Cancel</Button>
           {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
             <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] text-xs px-5" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
               {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
@@ -1900,6 +1928,40 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={blocker.state === 'blocked'} onOpenChange={(open) => !open && blocker.state === 'blocked' ? blocker.reset?.() : null}>
+        <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-2xl border border-[var(--tm-border)] bg-[var(--tm-surface)]">
+          <div className="absolute top-0 left-0 w-full h-1 bg-[#F59E0B]" />
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold text-slate-100">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F59E0B]/15 text-[#F59E0B] ring-1 ring-[#F59E0B]/25">
+                <AlertCircle size={16} strokeWidth={2.5} />
+              </div>
+              Unsaved Changes
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm font-medium leading-relaxed text-slate-400">
+              You have unsaved edits on this meeting note. Leave now? Your changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl font-semibold border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)] hover:text-slate-100"
+              onClick={() => blocker.proceed?.()}
+            >
+              Leave
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
+              onClick={() => blocker.reset?.()}
+            >
+              Keep editing
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

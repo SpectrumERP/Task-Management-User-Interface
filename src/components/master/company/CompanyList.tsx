@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -43,6 +44,7 @@ export function CompanyList() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const loadedRanges = useRef<{ min: number; max: number }>({ min: 999999, max: 0 });
   const isLoadingRef = useRef(false);
@@ -442,8 +444,9 @@ export function CompanyList() {
 
   const handleAddClick = () => navigate(toMasterNewPath('company'));
   const handleEditClick = (company: any) => navigate(toMasterEditPath('company', company.id));
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -452,13 +455,16 @@ export function CompanyList() {
     apiService.delete('/api/master/business-entities/delete', {
       params: { businessEntityNo: deleteTargetId }
     }).then(() => {
+      toast.success('Record deleted');
       fetchCompanies();
     }).catch(err => {
       console.error('Failed to delete company via API:', err);
+      toast.error('Failed to delete record');
       fetchCompanies();
     });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   const viewModes: { id: CompanyViewMode; label: string; icon: ComponentType<{ size?: number }> }[] = [
@@ -638,7 +644,7 @@ export function CompanyList() {
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => handleDeleteClick(company.id)}
+                                    onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)}
                                     className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                                   >
                                     <Trash2 size={13} />
@@ -685,7 +691,7 @@ export function CompanyList() {
                                     </Button>
                                   )}
                                   {isDelete && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(company.id)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
+                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
                                       <Trash2 size={11} />
                                     </Button>
                                   )}
@@ -1001,6 +1007,7 @@ export function CompanyList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
+        recordName={deleteTargetLabel}
       />
     </div>
   );

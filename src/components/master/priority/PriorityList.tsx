@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
@@ -24,11 +25,13 @@ export function PriorityList() {
 
   const [apiPriorities, setApiPriorities] = useState<PriorityMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const getFrequencyName = (no: string | number) => {
     if (!fillValues?.frequency) return no;
@@ -38,6 +41,7 @@ export function PriorityList() {
 
   const fetchPriorities = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/task-priorities/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -56,6 +60,7 @@ export function PriorityList() {
       }
     } catch (error) {
       console.error('Failed to fetch API priorities:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -78,8 +83,9 @@ export function PriorityList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -87,9 +93,10 @@ export function PriorityList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-priorities/delete', {
       params: { operTaskPriorityNo: deleteTargetId }
-    }).then(() => fetchPriorities()).catch(err => console.error('Failed to delete priority:', err));
+    }).then(() => { toast.success('Record deleted'); fetchPriorities(); }).catch(err => { console.error('Failed to delete priority:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -130,6 +137,8 @@ export function PriorityList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchPriorities}
         emptyIcon={Flag}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -154,7 +163,8 @@ export function PriorityList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

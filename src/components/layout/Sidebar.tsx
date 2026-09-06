@@ -112,9 +112,9 @@ function SectionFlyoutMenu({
           className={isSectionActive ? "text-[#0EA5E9]" : "text-slate-400 group-hover:text-slate-500"}
         />
         <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
-          <div className="relative rounded-lg border border-[#0EA5E9]/12 bg-[var(--tm-surface)] px-2.5 py-1.5 text-[11px] font-semibold tracking-[-0.01em] text-[#0EA5E9] whitespace-nowrap shadow-[0_8px_24px_-8px_rgba(15,23,42,0.28)]">
+          <div className="tm-sidebar-tip">
             {title}
-            <span className="absolute left-0 top-1/2 -translate-x-[5px] -translate-y-1/2 h-2.5 w-2.5 rotate-45 border-l border-b border-[#0EA5E9]/12 bg-[var(--tm-surface)]" />
+            <span className="tm-sidebar-tip-arrow" aria-hidden />
           </div>
         </div>
       </button>
@@ -197,9 +197,9 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
 
         {isCollapsed && (
           <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
-            <div className="relative rounded-lg border border-[#0EA5E9]/12 bg-[var(--tm-surface)] px-2.5 py-1.5 text-[11px] font-semibold tracking-[-0.01em] text-[#0EA5E9] whitespace-nowrap shadow-[0_8px_24px_-8px_rgba(15,23,42,0.28)]">
+            <div className="tm-sidebar-tip">
               {item.label}
-              <span className="absolute left-0 top-1/2 -translate-x-[5px] -translate-y-1/2 h-2.5 w-2.5 rotate-45 border-l border-b border-[#0EA5E9]/12 bg-[var(--tm-surface)]" />
+              <span className="tm-sidebar-tip-arrow" aria-hidden />
             </div>
           </div>
         )}

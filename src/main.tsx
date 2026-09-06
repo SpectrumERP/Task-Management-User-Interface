@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { applyBrandToDocument } from '@/config/brandConfig'
 import { initTheme } from '@/store/useThemeStore'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 
 // Theme first (avoids flash), then brand chrome
 initTheme()
@@ -34,6 +35,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary label="root">
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

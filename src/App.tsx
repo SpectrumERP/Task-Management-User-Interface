@@ -35,6 +35,9 @@ import { DealManager } from '@/components/sales/deals/DealManager';
 import { cleanupExpiredDrafts } from '@/utils/draftCleanup';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { AppErrorListeners } from '@/components/ui/AppErrorListeners';
+import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
 
 function Dashboard() {
   const { isSave } = useFormRights(1547);
@@ -56,6 +59,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const { fetchTasks, fetchFillValues, isLoading } = useTaskStore();
   const tasks = useTaskStore((state) => state.tasks);
+  const fetchError = useTaskStore((state) => state.fetchError);
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
 
   const authCompanies = useAuthStore((state) => state.company);
@@ -198,18 +202,33 @@ function Dashboard() {
         {viewMode === 'list' ? (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
             <div className="flex-1 min-h-0 overflow-hidden">
-              <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
+              <TaskListView
+                tasks={tasks}
+                isLoading={isLoading}
+                loadError={Boolean(fetchError)}
+                onRetryLoad={() => {
+                  if (currentFilters) {
+                    fetchTasks({
+                      ...currentFilters,
+                      pageSize,
+                      pageNo,
+                    } as FilterParams);
+                  }
+                }}
+                onTaskClick={handleTaskClick}
+                onCreateTask={handleCreateTask}
+              />
             </div>
 
             {/* Pagination — only when more than 9 records (or past page 1) */}
             {tasks.length > 9 || pageNo > 1 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0 select-none">
-                <div className="text-[11px] text-slate-500 font-semibold justify-self-start min-w-0 truncate tabular-nums">
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0 select-none">
+                <div className="text-[11px] text-slate-500 font-semibold justify-self-center sm:justify-self-start min-w-0 truncate tabular-nums order-1 sm:order-none">
                   Showing <span className="text-slate-100 font-bold">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
                   <span className="text-slate-100 font-bold">{((pageNo - 1) * pageSize) + tasks.length}</span> records
                 </div>
 
-                <div className="flex items-center gap-2 justify-self-center">
+                <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">Per Page:</span>
                   <div className="flex items-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)]">
                     {[10, 25, 50, 100].map((size) => (
@@ -233,7 +252,7 @@ function Dashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 justify-self-end">
+                <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -536,6 +555,7 @@ const router = createBrowserRouter([
         <Outlet />
       </SessionTimeoutGuard>
     ),
+    errorElement: <RouteErrorFallback />,
     children: [
       { path: "/login", element: <Login /> },
       {
@@ -729,7 +749,10 @@ function App() {
 
   return (
     <>
-      <RouterProvider router={router} />
+      <AppErrorListeners />
+      <ErrorBoundary label="router">
+        <RouterProvider router={router} />
+      </ErrorBoundary>
       <PWAInstallBanner />
       <Toaster position="top-right" richColors closeButton />
     </>

@@ -147,6 +147,7 @@ export function TaskFilter({
   const isGeneralUser = Number(authUser?.UserType || authUser?.userType) === UserType.General;
 
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
+  const [personLabels, setPersonLabels] = useState<Record<string, string>>({});
   const { fetchFillValues, setSearchKeyword } = useTaskStore();
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
   const { isHideType, isHideFolder } = useSettings();
@@ -187,7 +188,7 @@ export function TaskFilter({
 
 
   // State to track the actually applied filters (only updated on Submit/Reset/Badge Clear)
-  const [, setAppliedFilters] = useState<FilterFormValues>({
+  const [appliedFilters, setAppliedFilters] = useState<FilterFormValues>({
     companyNo,
     filterType: 'All',
     loginNo: isGeneralUser ? (authUser?.loginNo || authUser?.LoginNo || '').toString() : '',
@@ -197,6 +198,148 @@ export function TaskFilter({
 
   const isFiltersOpen = showFilters !== undefined ? showFilters : showFiltersOnMobile;
   const toggleFilters = onToggleFilters || (() => setShowFiltersOnMobile(!showFiltersOnMobile));
+
+  const watchedTitle = watch('title');
+  const watchedStatus = watch('operTaskStatusNo');
+  const watchedAllFolder = watch('isAllFolder');
+
+  const activeFilterChips = useMemo(() => {
+    type Chip = { id: string; label: string };
+    const chips: Chip[] = [];
+
+    const resolveStatusLabel = (raw: string) => {
+      if (raw === 'PendingGroup') return 'Pending';
+      const match = fillValues?.status?.find((s) => String(s.StatusNo) === raw);
+      return match?.Status || raw;
+    };
+
+    const titleVal = (watchedTitle || '').trim();
+    if (titleVal) {
+      chips.push({ id: 'title', label: `Search: ${titleVal}` });
+    }
+
+    const statusStr = String(watchedStatus || appliedFilters.operTaskStatusNo || '');
+    if (statusStr) {
+      statusStr.split(',').filter(Boolean).forEach((statusNo) => {
+        chips.push({
+          id: `status:${statusNo}`,
+          label: `Status: ${resolveStatusLabel(statusNo)}`,
+        });
+      });
+    }
+
+    if (watchedAllFolder) {
+      chips.push({ id: 'all-folders', label: 'All folders' });
+    }
+
+    const applied = appliedFilters;
+
+    if (applied.taskCode) {
+      chips.push({ id: 'taskCode', label: `Code: ${applied.taskCode}` });
+    }
+
+    if (applied.operTaskCategoryNo && !hideCategoryFilter) {
+      const cat = fillValues?.category?.find(
+        (c) => String(c.OperTaskCategoryNo) === String(applied.operTaskCategoryNo)
+      );
+      chips.push({
+        id: 'category',
+        label: `Category: ${cat?.Category || applied.operTaskCategoryNo}`,
+      });
+    }
+
+    if (applied.operTaskPriorityNo) {
+      const pri = fillValues?.priority?.find(
+        (p) => String(p.OperTaskPriorityNo) === String(applied.operTaskPriorityNo)
+      );
+      chips.push({
+        id: 'priority',
+        label: `Priority: ${pri?.Priority || applied.operTaskPriorityNo}`,
+      });
+    }
+
+    if (applied.operTaskTypeNo && !isHideType) {
+      const typ = fillValues?.type?.find(
+        (t) => String(t.OperTaskTypeNo) === String(applied.operTaskTypeNo)
+      );
+      chips.push({
+        id: 'type',
+        label: `Type: ${(typ as any)?.['Task Type'] || (typ as any)?.Type || applied.operTaskTypeNo}`,
+      });
+    }
+
+    if (applied.operTaskLocationNo) {
+      const loc = fillValues?.location?.find(
+        (l) => String(l.OperLocationNo) === String(applied.operTaskLocationNo)
+      );
+      chips.push({
+        id: 'location',
+        label: `Location: ${loc?.Location || applied.operTaskLocationNo}`,
+      });
+    }
+
+    if (applied.ownerLoginNo) {
+      const name = personLabels[String(applied.ownerLoginNo)];
+      chips.push({
+        id: 'owner',
+        label: `Assign To: ${name || `#${applied.ownerLoginNo}`}`,
+      });
+    }
+
+    if (applied.loginNo && !isGeneralUser) {
+      const name = personLabels[String(applied.loginNo)];
+      chips.push({
+        id: 'loginNo',
+        label: `User: ${name || `#${applied.loginNo}`}`,
+      });
+    }
+
+    if (applied.filterType && applied.filterType !== 'All') {
+      chips.push({ id: 'filterType', label: `Scope: ${applied.filterType}` });
+    }
+
+    if (applied.fromDueDate || applied.toDueDate) {
+      const from = applied.fromDueDate
+        ? new Date(applied.fromDueDate).toLocaleDateString()
+        : '…';
+      const to = applied.toDueDate
+        ? new Date(applied.toDueDate).toLocaleDateString()
+        : '…';
+      chips.push({ id: 'due-range', label: `Due: ${from} – ${to}` });
+    }
+
+    if (applied.fromCreatedDate || applied.toCreatedDate) {
+      const from = applied.fromCreatedDate
+        ? new Date(applied.fromCreatedDate).toLocaleDateString()
+        : '…';
+      const to = applied.toCreatedDate
+        ? new Date(applied.toCreatedDate).toLocaleDateString()
+        : '…';
+      chips.push({ id: 'created-range', label: `Created: ${from} – ${to}` });
+    }
+
+    if (applied.sortingColumnName) {
+      const col = sortingColumnOptions.find((o) => o.value === applied.sortingColumnName);
+      const dir = applied.sortingType === 'DESC' ? '↓' : '↑';
+      chips.push({
+        id: 'sort',
+        label: `Sort: ${col?.label || applied.sortingColumnName} ${dir}`,
+      });
+    }
+
+    return chips;
+  }, [
+    appliedFilters,
+    watchedTitle,
+    watchedStatus,
+    watchedAllFolder,
+    fillValues,
+    hideCategoryFilter,
+    isHideType,
+    isGeneralUser,
+    personLabels,
+    sortingColumnOptions,
+  ]);
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -281,6 +424,71 @@ export function TaskFilter({
     onFilter(cleanFilters);
     if (isFiltersOpen) {
       toggleFilters();
+    }
+  };
+
+  const clearFilterChip = (chipId: string) => {
+    if (chipId === 'title') {
+      setValue('title', '');
+      setSearchKeyword('');
+      setAppliedFilters((prev) => ({ ...prev, title: '' }));
+      return;
+    }
+
+    if (chipId.startsWith('status:')) {
+      const statusNo = chipId.slice('status:'.length);
+      const statusStr = String(watch('operTaskStatusNo') || '');
+      const next = statusStr
+        .split(',')
+        .filter((x) => x && x !== statusNo)
+        .join(',');
+      setValue('operTaskStatusNo', next);
+      setTimeout(() => handleSubmit(onSubmit)(), 0);
+      return;
+    }
+
+    if (chipId === 'all-folders') {
+      setValue('isAllFolder', false);
+      setTimeout(() => handleSubmit(onSubmit)(), 0);
+      return;
+    }
+
+    if (chipId === 'due-range') {
+      setValue('fromDueDate', undefined);
+      setValue('toDueDate', undefined);
+      setTimeout(() => handleSubmit(onSubmit)(), 0);
+      return;
+    }
+
+    if (chipId === 'created-range') {
+      setValue('fromCreatedDate', undefined);
+      setValue('toCreatedDate', undefined);
+      setTimeout(() => handleSubmit(onSubmit)(), 0);
+      return;
+    }
+
+    if (chipId === 'sort') {
+      setValue('sortingColumnName', '');
+      setValue('sortingType', '');
+      setTimeout(() => handleSubmit(onSubmit)(), 0);
+      return;
+    }
+
+    const fieldMap: Record<string, keyof FilterFormValues> = {
+      taskCode: 'taskCode',
+      category: 'operTaskCategoryNo',
+      priority: 'operTaskPriorityNo',
+      type: 'operTaskTypeNo',
+      location: 'operTaskLocationNo',
+      owner: 'ownerLoginNo',
+      loginNo: 'loginNo',
+      filterType: 'filterType',
+    };
+
+    const field = fieldMap[chipId];
+    if (field) {
+      setValue(field, field === 'filterType' ? 'All' : '');
+      setTimeout(() => handleSubmit(onSubmit)(), 0);
     }
   };
 
@@ -469,6 +677,10 @@ export function TaskFilter({
                           render={({ field }) => (
                             <UserCombobox value={field.value} onChange={(user) => {
                               field.onChange(user.loginNo.toString());
+                              setPersonLabels((prev) => ({
+                                ...prev,
+                                [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
+                              }));
                               trigger('filterType');
                             }}
                               placeholder="Search user..."
@@ -515,7 +727,13 @@ export function TaskFilter({
                       name="ownerLoginNo"
                       control={control}
                       render={({ field }) => (
-                        <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
+                        <UserCombobox value={field.value} onChange={(user) => {
+                          field.onChange(user.loginNo.toString());
+                          setPersonLabels((prev) => ({
+                            ...prev,
+                            [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
+                          }));
+                        }}
                           placeholder="Search assign to..."
                           className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE)}
                         />
@@ -773,8 +991,42 @@ export function TaskFilter({
           </div>
         </Card>
 
+        {activeFilterChips.length > 0 && (
+          <div
+            className="flex flex-nowrap sm:flex-wrap items-center gap-1.5 mt-2 mb-1 px-0.5 overflow-x-auto pb-0.5"
+            data-page-tour="task-filter-chips"
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mr-0.5">
+              Active
+            </span>
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => clearFilterChip(chip.id)}
+                title={`Remove ${chip.label}`}
+                className={cn(
+                  'inline-flex items-center gap-1 max-w-[240px] h-7 px-2.5 rounded-full',
+                  'border border-[#0EA5E9]/25 bg-[var(--tm-tint)]/50 text-[#0EA5E9]',
+                  'text-[11px] font-semibold hover:bg-[#0EA5E9]/15 transition-colors'
+                )}
+              >
+                <span className="truncate">{chip.label}</span>
+                <X size={12} className="shrink-0 opacity-80" />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={handleReset}
+              className="h-7 px-2.5 rounded-full text-[11px] font-semibold text-slate-400 hover:text-slate-200 hover:bg-[var(--tm-muted)] transition-colors"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
         {/* Status Filter Buttons */}
-        <div className="flex flex-wrap items-center gap-2 mt-4 mb-2 px-0.5" data-page-tour="task-status-pills">
+        <div className="flex flex-nowrap sm:flex-wrap items-center gap-1.5 mt-4 mb-2 px-0.5 overflow-x-auto scrollbar-thin pb-1" data-page-tour="task-status-pills">
           {['Pending', 'Open', 'Draft', 'In-Progress', 'In-Review', 'Reopen', 'Complete', 'Close'].map(statusName => {
             const s = fillValues?.status?.find(st =>
               st.Status === statusName ||
@@ -1001,6 +1253,10 @@ export function TaskFilter({
                         render={({ field }) => (
                           <UserCombobox value={field.value} onChange={(user) => {
                             field.onChange(user.loginNo.toString());
+                            setPersonLabels((prev) => ({
+                              ...prev,
+                              [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
+                            }));
                             trigger('filterType');
                           }}
                             placeholder="Search user..."
@@ -1047,7 +1303,13 @@ export function TaskFilter({
                     name="ownerLoginNo"
                     control={control}
                     render={({ field }) => (
-                      <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
+                      <UserCombobox value={field.value} onChange={(user) => {
+                        field.onChange(user.loginNo.toString());
+                        setPersonLabels((prev) => ({
+                          ...prev,
+                          [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
+                        }));
+                      }}
                         placeholder="Search assign to..."
                         className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE)}
                       />

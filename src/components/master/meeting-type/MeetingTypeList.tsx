@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function MeetingTypeList() {
 
   const [apiMeetingTypes, setApiMeetingTypes] = useState<MeetingTypeMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchMeetingTypes = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(
         `/api/master/meeting-types/search-data?CompanyNo=${companyNo}`
@@ -51,6 +55,7 @@ export function MeetingTypeList() {
       }
     } catch (error) {
       console.error('Failed to fetch API meeting types:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +77,9 @@ export function MeetingTypeList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -83,10 +89,17 @@ export function MeetingTypeList() {
       .delete('/api/master/meeting-types/delete', {
         params: { meetingTypeNo: deleteTargetId },
       })
-      .then(() => fetchMeetingTypes())
-      .catch((err) => console.error('Failed to delete meeting type:', err));
+      .then(() => {
+        toast.success('Record deleted');
+        fetchMeetingTypes();
+      })
+      .catch((err) => {
+        console.error('Failed to delete meeting type:', err);
+        toast.error('Failed to delete record');
+      });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -112,6 +125,8 @@ export function MeetingTypeList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchMeetingTypes}
         emptyIcon={SlidersHorizontal}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -136,7 +151,8 @@ export function MeetingTypeList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

@@ -10,9 +10,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, type LucideIcon } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
+import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { useTaskStore } from '@/store/useTaskStore';
 
 import { useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
@@ -493,11 +495,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const [selectedInformTeam, setSelectedInformTeam] = useState<string>("");
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [formDataToSave, setFormDataToSave] = useState<any>(null);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: number; name: string } | null>(null);
   const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
-  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<Array<{
     tempId: string;
     name: string;
@@ -1536,14 +1536,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       toast.error("Please wait for all attachments to finish uploading before saving the task.");
       return;
     }
-    console.log('onSubmit triggered with data:', data);
-    setFormDataToSave(data);
-    setShowConfirm(true);
+    await proceedSubmit(data);
   };
 
   const proceedSubmit = async (data: any) => {
     console.log('proceedSubmit triggered with data:', data);
-    setShowConfirm(false); // Close confirmation immediately
 
     // (effort frequency mapping handled by form value directly)
 
@@ -1697,6 +1694,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     } catch (error: any) {
       console.error('Failed to save task:', error);
 
+      let mappedFieldError = false;
       if (error && error.data && typeof error.data === 'object') {
         const backendData = error.data;
         if (backendData.errors && Array.isArray(backendData.errors)) {
@@ -1725,6 +1723,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             else if (prop === 'EstimatedEffortsFrequencyNo' || prop === 'estimatedEffortsFrequencyNo' || prop === 'EstimatedEffortsFequencyNo' || prop === 'estimatedEffortsFequencyNo') formKey = 'estimated_effort_unit';
 
             if (formKey) {
+              mappedFieldError = true;
               form.setError(formKey, {
                 type: 'manual',
                 message: message
@@ -1732,6 +1731,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             }
           });
         }
+      }
+      if (!mappedFieldError && shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to save task. Please try again.'));
       }
     } finally {
       if (onSaveStateChange) onSaveStateChange(false);
@@ -1792,9 +1794,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   if (isLoadingOptions) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="h-10 w-10 text-[#0EA5E9] animate-spin" />
-        <p className="text-slate-500 font-medium text-sm animate-pulse">Synchronizing Application Data...</p>
+      <div className="flex flex-col items-center justify-center py-20">
+        <BrandLoader size="sm" message="Loading application data" />
       </div>
     );
   }
@@ -3972,44 +3973,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         </button>
       </div>
 
-      {/* Save/Update Confirmation Dialog */}
-      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-100 tracking-tight flex items-center gap-0.5">
-              Confirm {initialData ? "Update" : "Save"}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-slate-500 mt-2">
-              Do you want to {initialData ? "update" : "save"}?
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowConfirm(false);
-                setFormDataToSave(null);
-              }}
-              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-300 hover:bg-[var(--tm-muted)] border-transparent shadow-none"
-            >
-              No
-            </Button>
-            <Button
-              onClick={() => {
-                if (formDataToSave) {
-                  setShowConfirm(false);
-                  proceedSubmit(formDataToSave);
-                }
-              }}
-              className="h-10 px-5 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-medium text-xs shadow-md shadow-[#0EA5E9]/10 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95"
-            >
-              Yes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       {/* Deletion Confirmation Dialog */}
       <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
         <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden">
@@ -4628,25 +4591,34 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
       {/* Navigation Blocker Dialog */}
       <Dialog open={blocker.state === 'blocked'} onOpenChange={(open) => !open && blocker.state === 'blocked' ? blocker.reset?.() : null}>
-        <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-3xl border-[var(--tm-border)]">
-          <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500" />
+        <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-2xl border border-[var(--tm-border)] bg-[var(--tm-surface)]">
+          <div className="absolute top-0 left-0 w-full h-1 bg-[#F59E0B]" />
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-0.5 text-xl font-medium text-slate-100">
-              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-400">
-                <AlertCircle size={18} strokeWidth={3} />
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold text-slate-100">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F59E0B]/15 text-[#F59E0B] ring-1 ring-[#F59E0B]/25">
+                <AlertCircle size={16} strokeWidth={2.5} />
               </div>
               Unsaved Changes
             </DialogTitle>
-            <DialogDescription className="text-slate-300 pt-2 font-medium">
-              You have unsaved changes in this task. Are you sure you want to leave this page? Your unsaved changes might be lost (though a draft is usually saved).
+            <DialogDescription className="pt-2 text-sm font-medium leading-relaxed text-slate-400">
+              You have unsaved edits on this task. Leave now? A draft will be kept so you can restore it later.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-6 flex gap-3">
-            <Button type="button" variant="outline" className="flex-1 rounded-xl font-medium border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)]" onClick={() => blocker.reset?.()}>
-              Stay on Page
+          <DialogFooter className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl font-semibold border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)] hover:text-slate-100"
+              onClick={() => blocker.proceed?.()}
+            >
+              Leave
             </Button>
-            <Button type="button" variant="default" className="flex-1 rounded-xl font-medium bg-yellow-500 hover:bg-yellow-600 text-white shadow-md hover:shadow-lg" onClick={() => blocker.proceed?.()}>
-              Leave Page
+            <Button
+              type="button"
+              className="rounded-xl font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
+              onClick={() => blocker.reset?.()}
+            >
+              Keep editing
             </Button>
           </DialogFooter>
         </DialogContent>

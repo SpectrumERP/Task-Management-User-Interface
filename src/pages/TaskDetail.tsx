@@ -3,12 +3,14 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { TaskForm } from '@/components/task/TaskForm';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { useState, useEffect, useCallback } from 'react';
 import { useFormRights } from '@/hooks/useFormRights';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -80,13 +82,14 @@ export default function TaskDetail() {
       );
       if (response.success) {
         setIsDeleteDialogOpen(false);
+        toast.success('Task deleted');
         handleGoBack();
       } else {
-        alert(response.message || "Failed to delete task. Please try again.");
+        toast.error(response.message || 'Failed to delete task. Please try again.');
       }
     } catch (error) {
-      console.error("Failed to delete task:", error);
-      alert("An error occurred while deleting the task.");
+      console.error('Failed to delete task:', error);
+      toast.error('An error occurred while deleting the task.');
     } finally {
       setIsDeleting(false);
     }
@@ -326,9 +329,8 @@ export default function TaskDetail() {
         <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
           <div className="w-full max-w-none px-3 py-3 sm:px-4 lg:px-5">
             {isFetching ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] py-16 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
-                <Loader2 className="h-8 w-8 text-[#0EA5E9] animate-spin" />
-                <p className="text-slate-500 font-medium text-sm">Loading task...</p>
+              <div className="flex flex-col items-center justify-center rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] py-16 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
+                <BrandLoader size="sm" message="Loading task" />
               </div>
             ) : (
               <TaskForm

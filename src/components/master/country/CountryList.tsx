@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function CountryList() {
 
   const [apiCountries, setApiCountries] = useState<CountryMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchCountries = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/countries/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -45,6 +49,7 @@ export function CountryList() {
       }
     } catch (error) {
       console.error('Failed to fetch API countries:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -64,8 +69,9 @@ export function CountryList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -73,9 +79,10 @@ export function CountryList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/countries/delete', {
       params: { countryNo: deleteTargetId }
-    }).then(() => fetchCountries()).catch(err => console.error('Failed to delete country:', err));
+    }).then(() => { toast.success('Record deleted'); fetchCountries(); }).catch(err => { console.error('Failed to delete country:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -98,6 +105,8 @@ export function CountryList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchCountries}
         emptyIcon={Globe}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -122,7 +131,8 @@ export function CountryList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

@@ -174,10 +174,13 @@ export default function Login() {
               <div className="relative z-10 flex h-[60px] min-w-0 items-center justify-between gap-2">
                 {/* Fixed logo slot — any client logo fits without breaking layout */}
                 <div className="flex h-11 w-[14rem] shrink min-w-0 items-center overflow-hidden">
+                  {/* Header strip is --tm-surface: light = white (keep dark logo), dark = invert to white */}
                   <BrandLogo
                     maxHeight={44}
                     maxWidth={224}
-                    imgClassName={brand.invertMaskLogo ? 'brightness-0 invert' : undefined}
+                    imgClassName={
+                      brand.invertMaskLogo ? 'dark:brightness-0 dark:invert' : undefined
+                    }
                   />
                 </div>
                 <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#0EA5E9]/20 bg-[#0EA5E9]/8 px-2 py-0.5 max-w-[8.75rem]">

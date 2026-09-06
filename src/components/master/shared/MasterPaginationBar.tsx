@@ -35,11 +35,11 @@ export function MasterPaginationBar({
 
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 py-2.5 bg-[var(--tm-elevated)] border-t border-[var(--tm-border)] select-none shrink-0"
+      className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 bg-[var(--tm-elevated)] border-t border-[var(--tm-border)] select-none shrink-0"
       data-page-tour="master-pagination"
     >
       {/* Left — fixed column, won't move when right side changes */}
-      <div className="text-[11px] text-slate-500 font-medium justify-self-start min-w-0 truncate">
+      <div className="text-[11px] text-slate-500 font-medium justify-self-center sm:justify-self-start min-w-0 truncate order-1 sm:order-none">
         Showing{' '}
         <span className="text-slate-100 font-semibold tabular-nums">
           {totalItems === 0 ? 0 : startIndex + 1}
@@ -49,7 +49,7 @@ export function MasterPaginationBar({
       </div>
 
       {/* Center — stays centered in middle track */}
-      <div className="flex items-center gap-2 justify-self-center">
+      <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
         <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">Per page</span>
         <div className="flex items-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-[8px] border border-[var(--tm-border)]/80">
           {[10, 25, 50].map((size) => (
@@ -71,7 +71,7 @@ export function MasterPaginationBar({
       </div>
 
       {/* Right — pinned to end of third column */}
-      <div className="flex items-center gap-1 justify-self-end">
+      <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
         <Button
           type="button"
           variant="ghost"
