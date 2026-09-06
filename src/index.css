@@ -422,7 +422,7 @@ html:not(.dark) [class*="shadow-[0_1px_2px"] {
   box-shadow: var(--tm-shadow);
 }
 
-html:not(.dark) .text-[#38BDF8] {
+html:not(.dark) .text-\[\#38BDF8\] {
   color: #0284c7;
 }
 
