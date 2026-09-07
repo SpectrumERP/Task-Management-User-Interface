@@ -89,18 +89,18 @@
     --ring: 199 89% 48%;
 
     --tm-page: #0B1220;
-    --tm-surface: #121A2B;
-    --tm-elevated: #151D2E;
+    --tm-surface: #0C4A6E;
+    --tm-elevated: #182234;
     --tm-muted: #1A2438;
-    --tm-border: #2A3548;
+    --tm-border: #3A4B63;
     --tm-tint: #0C3D56;
-    --tm-input: #121A2B;
+    --tm-input: #1A2438;
     --tm-input-fg: #E2E8F0;
-    --tm-chrome: #121A2B;
+    --tm-chrome: #0C4A6E;
     --tm-chrome-end: #0B1220;
     --tm-chrome-border: #2A3548;
     --tm-chrome-muted: #1A2438;
-    --tm-sidebar: #121A2B;
+    --tm-sidebar: #0C4A6E;
     --tm-sidebar-end: #0B1220;
     --tm-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.45);
     --tm-shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.35);
@@ -188,7 +188,7 @@
 }
 
 .glass-morphism {
-  background: rgba(18, 26, 43, 0.72);
+  background: rgba(12, 74, 110, 0.72);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(56, 189, 248, 0.12);
 }
@@ -332,6 +332,42 @@ button[role='combobox'] {
 input::placeholder,
 textarea::placeholder {
   color: #64748B !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Login — beat global input chrome so fields read like light-mode wells */
+.login-page .login-field {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html.dark .login-page .login-field {
+  background-color: #1B2738 !important;
+  border-color: #4A5D73 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .login-page .login-field::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.dark .login-page .login-field:hover {
+  border-color: #67b8dc !important;
+}
+
+html.dark .login-page .login-field:focus,
+html.dark .login-page .login-field:focus-visible {
+  border-color: #38bdf8 !important;
+  background-color: #203044 !important;
+}
+
+.login-page .login-field[class*='border-red'] {
+  border-color: #ef4444 !important;
 }
 
 /* Keep validation error borders visible */
@@ -512,10 +548,22 @@ html:not(.dark) header .border-\[var\(--tm-border\)\]\/60 {
   border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-/* Theme toggle on dark chrome */
+/* Theme toggle on dark chrome (light hybrid header) */
 html:not(.dark) header .theme-toggle {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(14, 165, 233, 0.16) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  color: #7dd3fc !important;
+}
+
+html:not(.dark) header .theme-toggle:hover {
+  background: rgba(14, 165, 233, 0.28) !important;
+  color: #fff !important;
+}
+
+html.dark header .theme-toggle {
+  background: rgba(14, 165, 233, 0.16) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  color: #7dd3fc !important;
 }
 
 /* Dark chrome (dark theme + light hybrid shell): force light logo */

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 export type ThemeMode = 'dark' | 'light';
 
 const STORAGE_KEY = 'steelmont-theme';
+const DEFAULT_THEME: ThemeMode = 'light';
 
 function applyThemeClass(theme: ThemeMode) {
   if (typeof document === 'undefined') return;
@@ -14,14 +15,25 @@ function applyThemeClass(theme: ThemeMode) {
   if (meta) meta.setAttribute('content', theme === 'dark' ? '#0B1220' : '#F5F7F9');
 }
 
-function readStoredTheme(): ThemeMode {
+export function isLoginPath(pathname = typeof location !== 'undefined' ? location.pathname : ''): boolean {
+  const path = (pathname || '/').replace(/\/+$/, '') || '/';
+  return path === '/login';
+}
+
+export function getStoredTheme(): ThemeMode {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === 'light' || stored === 'dark') return stored;
   } catch {
     /* ignore */
   }
-  return 'dark';
+  return DEFAULT_THEME;
+}
+
+/** Paint a theme without writing localStorage (login first-view). */
+export function previewTheme(theme: ThemeMode) {
+  applyThemeClass(theme);
+  useThemeStore.setState({ theme });
 }
 
 interface ThemeState {
@@ -31,7 +43,7 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  theme: 'dark',
+  theme: DEFAULT_THEME,
   setTheme: (theme) => {
     try {
       localStorage.setItem(STORAGE_KEY, theme);
@@ -49,7 +61,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
 /** Call once at app boot (before paint if possible). */
 export function initTheme(): ThemeMode {
-  const theme = readStoredTheme();
+  const theme = isLoginPath() ? DEFAULT_THEME : getStoredTheme();
   applyThemeClass(theme);
   useThemeStore.setState({ theme });
   return theme;

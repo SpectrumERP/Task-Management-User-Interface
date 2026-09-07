@@ -14,6 +14,7 @@ import { getBrand } from '@/config/brandConfig';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { markOnboardingPending } from '@/components/layout/OnboardingSpotlightTour';
+import { getStoredTheme, previewTheme } from '@/store/useThemeStore';
 
 const FEATURE_ICONS = {
   boards: LayoutDashboard,
@@ -56,6 +57,13 @@ export default function Login() {
   }, [checkAuth]);
 
   useEffect(() => {
+    previewTheme('light');
+    return () => {
+      previewTheme(getStoredTheme());
+    };
+  }, []);
+
+  useEffect(() => {
     if (isAuthenticated) {
       navigate(from, { replace: true });
     }
@@ -95,12 +103,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-[var(--tm-page)] dark:bg-[#070B14]">
-      <div className="absolute right-3 top-3 z-20 sm:right-5 sm:top-5">
-        <ThemeToggle variant="chip" size="md" />
-      </div>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(14,165,233,0.14),_transparent_55%)] pointer-events-none dark:opacity-90" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(14,165,233,0.08),_transparent_55%)] pointer-events-none dark:opacity-60 opacity-70" />
+    <div className="login-page min-h-screen w-full relative overflow-hidden bg-[var(--tm-page)]">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(14,165,233,0.14),_transparent_55%)] pointer-events-none dark:opacity-50" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(14,165,233,0.08),_transparent_55%)] pointer-events-none dark:opacity-40 opacity-70" />
       <svg
         className="absolute inset-x-0 bottom-0 h-[48vh] w-full opacity-[0.22] dark:opacity-[0.12] pointer-events-none"
         viewBox="0 0 1200 500"
@@ -119,7 +124,7 @@ export default function Login() {
           initial={{ opacity: 0, y: 28, rotateX: 8 }}
           animate={{ opacity: 1, y: 0, rotateX: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[42rem] max-h-[calc(100vh-1.5rem)] grid grid-cols-1 lg:grid-cols-[20rem_minmax(0,1fr)] overflow-hidden border border-sky-400/25 dark:border-[#334155] bg-white dark:bg-[#111827] shadow-[0_28px_60px_rgba(0,0,0,0.35)] dark:shadow-[0_28px_60px_rgba(0,0,0,0.65)] rounded-tl-none rounded-br-none rounded-tr-[1.75rem] rounded-bl-[1.75rem] [transform-style:preserve-3d]"
+          className="w-full max-w-[42rem] max-h-[calc(100vh-1.5rem)] grid grid-cols-1 lg:grid-cols-[20rem_minmax(0,1fr)] overflow-hidden border border-sky-400/25 dark:border-white/10 bg-white dark:bg-[var(--tm-surface)] shadow-[0_28px_60px_rgba(0,0,0,0.35)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.55)] rounded-tl-none rounded-br-none rounded-tr-[1.75rem] rounded-bl-[1.75rem] [transform-style:preserve-3d]"
         >
           {/* Left brand — cyan panel, theme-independent */}
           <div className="relative hidden lg:flex flex-col overflow-hidden bg-[#0EA5E9] text-white">
@@ -141,16 +146,27 @@ export default function Login() {
               aria-hidden="true"
             />
 
-            {/* Always-white header strip — logo stays readable in dark theme */}
+            {/* Light: white strip. Dark: navy/cyan strip (not white) */}
             <div
-              className="absolute top-0 inset-x-0 z-[5] h-[80px] bg-[#003d5c]/25"
+              className="absolute top-0 inset-x-0 z-[5] h-[80px] bg-[#003d5c]/25 dark:hidden"
               style={{ clipPath: 'polygon(0 0, 100% 0, 100% 48%, 78% 100%, 0 68%)' }}
             />
             <div
-              className="absolute top-0 inset-x-0 z-[6] h-[76px] bg-white shadow-[0_10px_28px_rgba(0,40,70,0.12)]"
+              className="absolute top-0 inset-x-0 z-[6] h-[76px] bg-white shadow-[0_10px_28px_rgba(0,40,70,0.12)] dark:hidden"
               style={{ clipPath: 'polygon(0 0, 100% 0, 100% 52%, 82% 100%, 0 72%)' }}
             />
-            <div className="absolute top-0 right-0 z-[6] h-[48px] w-8 bg-white" aria-hidden="true" />
+            <div className="absolute top-0 right-0 z-[6] h-[48px] w-8 bg-white dark:hidden" aria-hidden="true" />
+            <div
+              className="absolute top-0 inset-x-0 z-[5] hidden h-[80px] dark:block bg-[#003d5c]/25"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 48%, 78% 100%, 0 68%)' }}
+              aria-hidden="true"
+            />
+            <div
+              className="absolute top-0 inset-x-0 z-[6] hidden h-[76px] dark:block bg-[#0C4A6E] shadow-[0_10px_28px_rgba(0,20,40,0.28)]"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 52%, 82% 100%, 0 72%)' }}
+              aria-hidden="true"
+            />
+            <div className="absolute top-0 right-0 z-[6] hidden h-[48px] w-8 dark:block bg-[#0C4A6E]" aria-hidden="true" />
 
             <motion.img
               src={brand.maskLogoSrc}
@@ -166,11 +182,11 @@ export default function Login() {
             <div className="relative z-10 flex h-full flex-col px-5 pb-5 pt-0">
               <div className="relative z-10 flex h-[60px] min-w-0 items-center justify-between gap-2">
                 <div className="flex h-11 w-[14rem] shrink min-w-0 items-center overflow-hidden">
-                  <BrandLogo maxHeight={44} maxWidth={224} />
+                  <BrandLogo maxHeight={44} maxWidth={224} imgClassName="dark:brightness-0 dark:invert" />
                 </div>
-                <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#0EA5E9]/25 bg-[#E0F2FE] px-2 py-0.5 max-w-[8.75rem]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="text-[8px] font-semibold uppercase tracking-wider text-[#0284C7] truncate">
+                <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#0EA5E9]/25 bg-[#E0F2FE] px-2 py-0.5 max-w-[8.75rem] dark:border-white/25 dark:bg-white/15">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0 dark:bg-emerald-400" />
+                  <span className="text-[8px] font-semibold uppercase tracking-wider text-[#0284C7] truncate dark:text-white">
                     {brand.productName}
                   </span>
                 </div>
@@ -227,14 +243,14 @@ export default function Login() {
           </div>
 
           {/* Right form */}
-          <div className="relative bg-white dark:bg-[#0F172A] px-6 py-6 sm:px-7 sm:py-8 flex flex-col justify-center overflow-visible">
+          <div className="relative bg-white dark:bg-[var(--tm-surface)] px-6 py-6 sm:px-7 sm:py-8 flex flex-col justify-center overflow-visible">
             <div
-              className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 bg-[#0EA5E9]/5 dark:bg-[#0EA5E9]/10"
+              className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 bg-[#0EA5E9]/5 dark:bg-[#0EA5E9]/12"
               style={{ clipPath: 'polygon(30% 0, 100% 0, 100% 70%, 0 100%)' }}
               aria-hidden="true"
             />
             <div
-              className="pointer-events-none absolute bottom-0 inset-x-0 h-16 opacity-[0.07] dark:opacity-[0.12]"
+              className="pointer-events-none absolute bottom-0 inset-x-0 h-16 opacity-[0.07] dark:hidden"
               style={{
                 backgroundImage:
                   'repeating-linear-gradient(90deg, #0EA5E9 0, #0EA5E9 1px, transparent 1px, transparent 28px)',
@@ -242,46 +258,60 @@ export default function Login() {
               }}
               aria-hidden="true"
             />
+            <div
+              className="pointer-events-none absolute bottom-0 inset-x-0 hidden h-16 dark:block opacity-[0.04]"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(90deg, #7DD3FC 0, #7DD3FC 1px, transparent 1px, transparent 28px)',
+                clipPath: 'polygon(0 55%, 100% 0, 100% 100%, 0 100%)',
+              }}
+              aria-hidden="true"
+            />
 
             <div className="relative z-10 mb-6 flex flex-col items-center lg:items-start gap-2.5">
-              <BrandLogo
-                maxHeight={44}
-                maxWidth={240}
-                className="lg:hidden"
-                imgClassName="dark:brightness-0 dark:invert"
-              />
-              <span className="inline-flex items-center rounded-full bg-[#0EA5E9]/10 dark:bg-[#0EA5E9]/20 px-3 py-1 text-[11px] font-semibold tracking-wide text-[#0284C7] dark:text-[#7DD3FC] lg:hidden">
+              <div className="flex w-full items-center justify-between gap-3 lg:hidden">
+                <BrandLogo
+                  maxHeight={44}
+                  maxWidth={240}
+                  imgClassName="dark:brightness-0 dark:invert"
+                />
+                <ThemeToggle variant="chip" size="md" />
+              </div>
+              <span className="inline-flex items-center rounded-full bg-[#0EA5E9]/10 dark:bg-sky-400/15 px-3 py-1 text-[11px] font-semibold tracking-wide text-[#0284C7] dark:text-sky-300 lg:hidden">
                 {brand.productName}
               </span>
-              <div className="text-center lg:text-left space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0284C7] dark:text-[#7DD3FC]">
-                  Sign in
-                </p>
-                <h2 className="text-xl font-semibold tracking-tight text-slate-800 dark:text-white">Welcome Back</h2>
-                <p className="text-slate-500 dark:text-slate-200 text-sm font-medium">
-                  Enter your credentials to continue
-                </p>
+              <div className="flex w-full items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 text-center lg:text-left space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#0284C7] dark:text-sky-300">
+                    Sign in
+                  </p>
+                  <h2 className="text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-50">Welcome Back</h2>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+                    Enter your credentials to continue
+                  </p>
+                </div>
+                <ThemeToggle variant="chip" size="md" className="mt-0.5 hidden shrink-0 lg:inline-flex" />
               </div>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="relative z-10 space-y-5 max-w-md mx-auto lg:mx-0 w-full overflow-visible">
               <div className="space-y-1.5">
-                <Label htmlFor="loginId" className="inline-flex items-start gap-0.5 text-slate-700 dark:text-white font-semibold text-sm">
+                <Label htmlFor="loginId" className="inline-flex items-start gap-0.5 text-slate-700 dark:text-slate-200 font-semibold text-sm">
                   User name
-                  <span className="text-red-500 leading-none" aria-hidden="true">*</span>
+                  <span className="text-red-500 dark:text-red-400 leading-none" aria-hidden="true">*</span>
                 </Label>
                 <div className="relative min-w-0">
-                  <User className="absolute left-3 top-1/2 z-[1] -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-200 pointer-events-none" />
+                  <User className="absolute left-3 top-1/2 z-[1] -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                   <Input
                     id="loginId"
                     placeholder="Enter user name"
                     autoFocus
                     autoComplete="username"
                     aria-invalid={!!errors.loginId}
-                    className={`pl-10 h-11 !rounded-[10px] text-slate-800 dark:!text-white !bg-slate-50 dark:!bg-[#243447] placeholder:!text-slate-400 dark:placeholder:!text-slate-200 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[#0F172A] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${
+                    className={`login-field pl-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${
                       errors.loginId
                         ? '!border-2 !border-red-500 focus:!border-red-500'
-                        : '!border !border-slate-200 dark:!border-[#94A3B8] focus:!border-[#0EA5E9] dark:hover:!border-[#CBD5E1]'
+                        : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
                     }`}
                     {...register('loginId', {
                       onChange: () => setServerError(''),
@@ -300,22 +330,22 @@ export default function Login() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="inline-flex items-start gap-0.5 text-slate-700 dark:text-white font-semibold text-sm">
+                <Label htmlFor="password" className="inline-flex items-start gap-0.5 text-slate-700 dark:text-slate-200 font-semibold text-sm">
                   Password
-                  <span className="text-red-500 leading-none" aria-hidden="true">*</span>
+                  <span className="text-red-500 dark:text-red-400 leading-none" aria-hidden="true">*</span>
                 </Label>
                 <div className="relative min-w-0">
-                  <Lock className="absolute left-3 top-1/2 z-[1] -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-200 pointer-events-none" />
+                  <Lock className="absolute left-3 top-1/2 z-[1] -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter password"
                     autoComplete="current-password"
                     aria-invalid={!!errors.password}
-                    className={`pl-10 pr-10 h-11 !rounded-[10px] text-slate-800 dark:!text-white !bg-slate-50 dark:!bg-[#243447] placeholder:!text-slate-400 dark:placeholder:!text-slate-200 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[#0F172A] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${
+                    className={`login-field pl-10 pr-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${
                       errors.password
                         ? '!border-2 !border-red-500 focus:!border-red-500'
-                        : '!border !border-slate-200 dark:!border-[#94A3B8] focus:!border-[#0EA5E9] dark:hover:!border-[#CBD5E1]'
+                        : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
                     }`}
                     {...register('password', {
                       onChange: () => setServerError(''),
@@ -334,7 +364,7 @@ export default function Login() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-200 dark:hover:text-white"
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -345,16 +375,16 @@ export default function Login() {
                 <motion.p
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="text-xs text-red-300 font-medium bg-red-500/15 px-3 py-2.5 rounded-xl border border-red-400/40 flex items-center gap-2"
+                  className="text-xs text-red-600 dark:text-red-300 font-medium bg-red-50 dark:bg-red-500/15 px-3 py-2.5 rounded-xl border border-red-200 dark:border-red-400/40 flex items-center gap-2"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 dark:bg-red-400 flex-shrink-0" />
                   {serverError}
                 </motion.p>
               )}
 
               <Button
                 type="submit"
-                className="w-full h-11 mt-1 bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-[0_10px_24px_rgba(14,165,233,0.28)] dark:shadow-[0_12px_32px_rgba(14,165,233,0.45)] transition-all hover:translate-y-[-1px] active:translate-y-0 rounded-xl font-semibold"
+                className="w-full h-11 mt-1 bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-[0_10px_24px_rgba(14,165,233,0.28)] dark:shadow-[0_8px_22px_rgba(14,165,233,0.28)] transition-all hover:translate-y-[-1px] active:translate-y-0 rounded-xl font-semibold"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -370,7 +400,7 @@ export default function Login() {
               </Button>
             </form>
 
-            <p className="relative z-10 mt-5 text-center lg:text-left text-xs text-slate-400 dark:text-slate-300 font-medium">
+            <p className="relative z-10 mt-5 text-center lg:text-left text-xs text-slate-400 dark:text-slate-500 font-medium">
               © {new Date().getFullYear()} {brand.brandName} · {brand.copyrightSuffix}
             </p>
           </div>
