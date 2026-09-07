@@ -23,9 +23,9 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
   const { isHideType } = useSettings();
 
   const getContrastColor = (hexColor?: string) => {
-    if (!hexColor) return '#E2E8F0';
+    if (!hexColor) return 'var(--tm-input-fg)';
     const hex = hexColor.replace('#', '');
-    if (hex.length !== 6 && hex.length !== 3) return '#E2E8F0';
+    if (hex.length !== 6 && hex.length !== 3) return 'var(--tm-input-fg)';
     
     let r = 0, g = 0, b = 0;
     if (hex.length === 6) {

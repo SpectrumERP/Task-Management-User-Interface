@@ -146,7 +146,7 @@ export default function TaskDetail() {
 
         // Map actual efforts
         const mappedEfforts = (d.effortLogs || []).map((e: any) => ({
-          operTaskEffortLogDetailNo: e.operTaskEffortLogDetailNo || 0,
+          operTaskEffortLogDetailNo: e.operTaskEffortLogDetailNo || null,
           date: e.effortDate || e.logDate || '',
           hours: e.effortHours || e.efforts || null,
           description: e.effortDescription || e.description || '',
@@ -164,7 +164,7 @@ export default function TaskDetail() {
           type_No: d.type?.operTaskTypeNo || null,
           project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || null,
           parent_task_No: d.parentTask?.operTaskNo || d.parentTaskNo || null,
-          parentTask: d.parentTask ? { operTaskNo: d.parentTask.operTaskNo, title: d.parentTask.title } : undefined,
+          parentTask: d.parentTask ? { operTaskNo: d.parentTask.operTaskNo, title: d.parentTask.title, code: d.parentTask.code || '' } : undefined,
           tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
           originator_user_No: d.originator?.id || 1,
           owner_user_No: d.owner?.id || null,

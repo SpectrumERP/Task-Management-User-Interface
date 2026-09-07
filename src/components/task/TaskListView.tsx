@@ -134,9 +134,9 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   };
 
   const getContrastColor = (hexColor?: string) => {
-    if (!hexColor) return '#E2E8F0';
+    if (!hexColor) return 'var(--tm-input-fg)';
     const hex = hexColor.replace('#', '');
-    if (hex.length !== 6 && hex.length !== 3) return '#E2E8F0';
+    if (hex.length !== 6 && hex.length !== 3) return 'var(--tm-input-fg)';
 
     let r = 0, g = 0, b = 0;
     if (hex.length === 6) {
@@ -285,107 +285,107 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
       {/* Desktop table */}
       <div className="hidden md:block min-w-0">
-      <table className="tm-data-table w-full text-sm text-left min-w-[720px]">
-        <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold text-xs tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
-          <tr>
-            {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
-              <th
-                key={col.key}
-                className={cn(
-                  "px-1.5 py-1 whitespace-nowrap relative group/th",
-                  col.key === 'actions' && "w-[50px] text-center p-1 sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]"
-                )}
-                style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : {}}
-              >
-                {col.key === 'actions' ? (
-                  <div className="flex justify-center">
-                    <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 px-1 flex items-center gap-1 text-slate-400 hover:text-slate-100 hover:bg-[var(--tm-muted)]">
-                          <Settings2 size={14} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className={cn(
-                          'w-56 p-0 overflow-hidden flex flex-col',
-                          'max-h-[min(360px,var(--radix-dropdown-menu-content-available-height))]',
-                          'rounded-xl border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-lg'
-                        )}
-                        onInteractOutside={() => setDropdownOpen(false)}
-                      >
-                        <div className="shrink-0 px-3 pt-2.5 pb-2 space-y-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
-                          <DropdownMenuLabel className="p-0 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
-                            Toggle Columns
-                          </DropdownMenuLabel>
-                          <div className="relative">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                            <Input
-                              placeholder="Search columns..."
-                              value={columnSearchQuery}
-                              onChange={(e) => setColumnSearchQuery(e.target.value)}
-                              className="h-8 w-full pl-8 text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]"
-                            />
+        <table className="tm-data-table w-full text-sm text-left min-w-[720px]">
+          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold text-xs tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
+            <tr>
+              {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
+                <th
+                  key={col.key}
+                  className={cn(
+                    "px-1.5 py-1 whitespace-nowrap relative group/th",
+                    col.key === 'actions' && "w-[50px] text-center p-1 sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]"
+                  )}
+                  style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : {}}
+                >
+                  {col.key === 'actions' ? (
+                    <div className="flex justify-center">
+                      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 px-1 flex items-center gap-1 text-slate-400 hover:text-slate-100 hover:bg-[var(--tm-muted)]">
+                            <Settings2 size={14} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className={cn(
+                            'w-56 p-0 overflow-hidden flex flex-col',
+                            'max-h-[min(360px,var(--radix-dropdown-menu-content-available-height))]',
+                            'rounded-xl border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-lg'
+                          )}
+                          onInteractOutside={() => setDropdownOpen(false)}
+                        >
+                          <div className="shrink-0 px-3 pt-2.5 pb-2 space-y-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+                            <DropdownMenuLabel className="p-0 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                              Toggle Columns
+                            </DropdownMenuLabel>
+                            <div className="relative">
+                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                              <Input
+                                placeholder="Search columns..."
+                                value={columnSearchQuery}
+                                onChange={(e) => setColumnSearchQuery(e.target.value)}
+                                className="h-8 w-full pl-8 text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]"
+                              />
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
-                          {COLUMNS.filter(
-                            (c) =>
-                              isColumnAllowed(c.key) &&
-                              (c.label || 'Actions')
-                                .toLowerCase()
-                                .includes(columnSearchQuery.toLowerCase())
-                          ).map((c) => (
-                            <DropdownMenuCheckboxItem
-                              key={c.key}
-                              checked={pendingColumns.has(c.key)}
-                              onSelect={(e) => e.preventDefault()}
-                              onCheckedChange={() => togglePendingColumn(c.key)}
-                              disabled={c.key === 'title' || c.key === 'actions'}
-                              className="text-xs"
+                          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
+                            {COLUMNS.filter(
+                              (c) =>
+                                isColumnAllowed(c.key) &&
+                                (c.label || 'Actions')
+                                  .toLowerCase()
+                                  .includes(columnSearchQuery.toLowerCase())
+                            ).map((c) => (
+                              <DropdownMenuCheckboxItem
+                                key={c.key}
+                                checked={pendingColumns.has(c.key)}
+                                onSelect={(e) => e.preventDefault()}
+                                onCheckedChange={() => togglePendingColumn(c.key)}
+                                disabled={c.key === 'title' || c.key === 'actions'}
+                                className="text-xs"
+                              >
+                                {c.label || 'Actions'}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </div>
+
+                          <div className="shrink-0 flex justify-end gap-2 px-2.5 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => setDropdownOpen(false)}
                             >
-                              {c.label || 'Actions'}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </div>
-
-                        <div className="shrink-0 flex justify-end gap-2 px-2.5 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)]">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => setDropdownOpen(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="h-7 text-xs bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
-                            onClick={() => {
-                              setVisibleColumns(pendingColumns);
-                              setDropdownOpen(false);
-                            }}
-                          >
-                            Apply
-                          </Button>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ) : (
-                  <div className="flex items-center w-full h-full pr-2">
-                    <span className="truncate">{col.label}</span>
-                    <div
-                      className="w-1.5 h-full absolute right-0 top-0 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500 opacity-0 group-hover/th:opacity-100 transition-opacity z-10"
-                      onMouseDown={(e) => handleResizeStart(e, col.key)}
-                    />
-                  </div>
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+                              onClick={() => {
+                                setVisibleColumns(pendingColumns);
+                                setDropdownOpen(false);
+                              }}
+                            >
+                              Apply
+                            </Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  ) : (
+                    <div className="flex items-center w-full h-full pr-2">
+                      <span className="truncate">{col.label}</span>
+                      <div
+                        className="w-1.5 h-full absolute right-0 top-0 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500 opacity-0 group-hover/th:opacity-100 transition-opacity z-10"
+                        onMouseDown={(e) => handleResizeStart(e, col.key)}
+                      />
+                    </div>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
           <tbody className="divide-y divide-[var(--tm-border)]">
             {tasks.map((task) => (
               <tr

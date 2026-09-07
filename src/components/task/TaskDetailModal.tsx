@@ -6,7 +6,7 @@ import { Task } from '@/types/task';
 import { TaskActivity } from './TaskActivity';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import {
   Edit,
@@ -14,6 +14,7 @@ import {
   MapPin,
   Building2,
   FolderClosed,
+  X,
   Layers,
   AlertCircle,
   Coins,
@@ -189,9 +190,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
   const [isLoading, setIsLoading] = useState(false);
 
   const getContrastColor = (hexColor?: string) => {
-    if (!hexColor) return '#E2E8F0';
+    if (!hexColor) return 'var(--tm-input-fg)';
     const hex = hexColor.replace('#', '');
-    if (hex.length !== 6 && hex.length !== 3) return '#E2E8F0';
+    if (hex.length !== 6 && hex.length !== 3) return 'var(--tm-input-fg)';
 
     let r = 0, g = 0, b = 0;
     if (hex.length === 6) {
@@ -359,7 +360,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         data-page-guide="task-detail-modal"
-        className="w-full h-full sm:h-[90vh] sm:w-[96vw] sm:max-w-6xl p-0 rounded-none sm:rounded-2xl overflow-hidden border-none sm:border border-[var(--tm-border)] shadow-2xl flex flex-col gap-0 bg-[var(--tm-page)] [&>button]:right-4 [&>button]:top-4 [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-lg [&>button]:bg-[var(--tm-muted)] [&>button]:opacity-100 [&>button]:text-slate-300 [&>button]:hover:text-slate-100 [&>button]:hover:bg-[var(--tm-elevated)] [&>button]:ring-offset-0"
+        className="w-full h-full sm:h-[90vh] sm:w-[96vw] sm:max-w-6xl p-0 rounded-none sm:rounded-2xl overflow-hidden border-none sm:border border-[var(--tm-border)] shadow-2xl flex flex-col gap-0 bg-[var(--tm-page)] [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:right-4 [&>button]:top-4 [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-lg [&>button]:bg-transparent [&>button]:opacity-100 [&>button]:text-slate-500 [&>button]:hover:text-slate-900 [&>button]:hover:bg-slate-100 [&>button]:ring-offset-0"
       >
         <DialogTitle className="sr-only">
           {task?.title || 'Task Details'}
@@ -369,7 +370,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
         </DialogDescription>
 
         {/* Header */}
-        <header className="shrink-0 px-4 sm:px-5 py-3.5 bg-[var(--tm-surface)] border-b border-[var(--tm-border)] flex items-center justify-between gap-3">
+        <div className="shrink-0 px-4 sm:px-5 py-3.5 bg-[var(--tm-surface)] border-b border-[var(--tm-border)] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0 flex-wrap" data-page-tour="tdm-header">
             <span className="inline-flex items-center text-[11px] font-semibold tabular-nums text-[#0EA5E9] bg-[var(--tm-tint)]/50 border border-[#0EA5E9]/20 px-2.5 py-1 rounded-lg">
               {task?.code || (task ? `CP-${100 + task.taskNo}` : '…')}
@@ -409,7 +410,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
               </Button>
             )}
           </div>
-        </header>
+        </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -625,7 +626,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                 </div>
 
                 {/* Sidebar */}
-                <aside className="lg:col-span-4 space-y-4 order-2 lg:sticky lg:top-0">
+                <div className="lg:col-span-4 space-y-4 order-2 lg:sticky lg:top-0">
                   <SectionCard title="Details" icon={Layers} tourId="tdm-details">
                     {/* Assignee */}
                     <div className="mb-3 flex items-center gap-3 rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-tint)_35%,var(--tm-muted))] px-3 py-2.5">
@@ -651,17 +652,17 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         const companyLabel =
                           typeof task.company === 'object' && task.company
                             ? (task.company as any).companyName ||
-                              (task.company as any).CompanyName ||
-                              (task.company as any).name ||
-                              ''
+                            (task.company as any).CompanyName ||
+                            (task.company as any).name ||
+                            ''
                             : task.companyName || '';
 
                         const catObj = task.categoryName
                           ? fillValues?.category?.find(
-                              (c) =>
-                                c.OperTaskCategoryNo === task.category_No ||
-                                c.Category === task.categoryName
-                            )
+                            (c) =>
+                              c.OperTaskCategoryNo === task.category_No ||
+                              c.Category === task.categoryName
+                          )
                           : undefined;
                         const bgColor =
                           catObj?.ColorCoding ||
@@ -716,9 +717,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                               <span className="text-[11px] tabular-nums">
                                 {task.start_date
                                   ? format(
-                                      new Date(task.start_date),
-                                      task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a'
-                                    )
+                                    new Date(task.start_date),
+                                    task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a'
+                                  )
                                   : 'No date'}
                               </span>
                             </SpecRow>
@@ -727,9 +728,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                               <span className="text-[11px] tabular-nums">
                                 {task.end_date
                                   ? format(
-                                      new Date(task.end_date),
-                                      task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a'
-                                    )
+                                    new Date(task.end_date),
+                                    task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a'
+                                  )
                                   : 'No date'}
                               </span>
                             </SpecRow>
@@ -872,7 +873,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                       </div>
                     </SectionCard>
                   )}
-                </aside>
+                </div>
               </div>
             </div>
           ) : (

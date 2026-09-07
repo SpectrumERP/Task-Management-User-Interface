@@ -159,7 +159,20 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     id: z.string(),
     description: z.string().min(1, 'Description is required'),
     completed: z.boolean()
-  })).optional().default([]),
+  })).superRefine((items, ctx) => {
+    const seen = new Set();
+    items.forEach((item, index) => {
+      const desc = item.description.trim().toLowerCase();
+      if (desc && seen.has(desc)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Duplicate checklist items are not allowed",
+          path: [index, 'description']
+        });
+      }
+      seen.add(desc);
+    });
+  }).optional().default([]),
   sub_tasks: z.array(z.object({
     id: z.string(),
     title: z.string().min(1, 'Title is required'),
@@ -191,14 +204,7 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
       });
     }
   }
-  const executionLogDates = (data.execution_logs || []).map((r: any) => r.date).filter(Boolean);
-  if (new Set(executionLogDates).size !== executionLogDates.length) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Duplicate dates are not allowed in Task Execution Log',
-      path: ['execution_logs'],
-    });
-  }
+
   if (data.is_business_benefit_applicable) {
     if (!data.business_benefit_type_No || data.business_benefit_type_No === '') {
       ctx.addIssue({
@@ -418,6 +424,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const parentTaskNoQuery = searchParams.get('parentTaskNo');
   const parentTaskNo = parentTaskNoQuery ? parseInt(parentTaskNoQuery) : (initialData?.parent_task_No || null);
   const isSubTask = parentTaskNo !== null && parentTaskNo > 0;
+  const isDealMonitorContext = initialData?.categoryName?.toLowerCase() === 'deal monitor' || searchParams.get('category')?.toLowerCase() === 'deal monitor';
   const { isHideType, isHideFolder, categoryFieldCaption, typeFieldCaption, tagCaption, isHideDetailSection } = useSettings();
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const formRights = useAuthStore(state => state.formRights) || {};
@@ -501,6 +508,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingSaveData, setPendingSaveData] = useState<any>(null);
   const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: number; name: string } | null>(null);
   const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<Array<{
@@ -554,6 +563,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         } else if (activeMasterType === 'location' && updatedValues?.location) {
           const matched = updatedValues.location.find(l => l.Location.toLowerCase() === label.toLowerCase());
           if (matched) resolvedId = matched.OperLocationNo.toString();
+        } else if (activeMasterType === 'benefit-type' && updatedValues?.benefitType) {
+          const matched = updatedValues.benefitType.find((b: any) => {
+            const bName = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || '';
+            return bName.toLowerCase() === label.toLowerCase();
+          });
+          if (matched) resolvedId = (matched.BusinessBenefitTypeNo || matched.businessBenefitTypeNo || matched.id || '').toString();
         }
       }
 
@@ -570,6 +585,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           form.setValue('folder_No', resolvedId);
         } else if (activeMasterType === 'location') {
           form.setValue('location_No', resolvedId);
+        } else if (activeMasterType === 'benefit-type') {
+          form.setValue('business_benefit_type_No', resolvedId);
+          form.clearErrors('business_benefit_type_No');
         }
         toast.success(`${label} created and selected successfully.`);
       }
@@ -1326,20 +1344,41 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       'business_benefit_description'
     ];
 
+    const hiddenFields = [
+      'start_date',
+      'end_date',
+      'estimated_effort_value',
+      'business_benefit_type_No',
+      'benefit_period',
+      'estimated_benefit_amount',
+      'actual_benefit_amount',
+      'business_benefit_description'
+    ];
+
     const firstErrorField = fieldOrder.find(field => errors[field]);
     if (firstErrorField) {
       console.log('Focusing first error field:', firstErrorField);
-      const element = document.getElementById(`form-group-${firstErrorField}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Try focusing actual input or custom triggers
-        setTimeout(() => {
-          const focusable = element.querySelector('button, input:not([type="hidden"]), select, textarea') as HTMLElement;
-          if (focusable) {
-            focusable.focus();
-          }
-        }, 150); // slight delay to allow scroll to complete
+
+      // If the field is inside the hidden 'Show More' section, expand it first
+      const isFieldHidden = isHideDetailSection && !showMoreDetails && hiddenFields.includes(firstErrorField);
+      if (isFieldHidden) {
+        setShowMoreDetails(true);
       }
+
+      // Add a slight delay to allow React to render the expanded section if it was hidden
+      setTimeout(() => {
+        const element = document.getElementById(`form-group-${firstErrorField}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Try focusing actual input or custom triggers
+          setTimeout(() => {
+            const focusable = element.querySelector('button, input:not([type="hidden"]), select, textarea') as HTMLElement;
+            if (focusable) {
+              focusable.focus();
+            }
+          }, 150); // slight delay to allow scroll to complete
+        }
+      }, isFieldHidden ? 100 : 0);
     }
   };
 
@@ -1541,7 +1580,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       toast.error("Please wait for all attachments to finish uploading before saving the task.");
       return;
     }
-    await proceedSubmit(data);
+    setPendingSaveData(data);
+    setShowConfirmDialog(true);
   };
 
   const proceedSubmit = async (data: any) => {
@@ -1664,7 +1704,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       })),
       comments: [],
       effortLogs: data.actual_efforts.map((effort: any) => ({
-        LoginNo: effort.createdBy?.loginNo || 0,
+        LoginNo: effort.createdBy?.loginNo || null,
         effortDate: effort.date ? new Date(effort.date).toISOString() : null,
         efforts: parseFloat(effort.hours) || null,
         description: effort.description || null
@@ -1882,25 +1922,25 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               <div className="relative flex items-center gap-0.5 sm:gap-3 bg-[var(--tm-muted)]/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-[8px] border border-[var(--tm-border)]/60 shadow-sm">
                 <FieldLabel required className="text-[10px] text-slate-200">Status</FieldLabel>
                 <FieldControl error={form.formState.errors.status?.message}>
-                <Controller
-                  name="status"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                  <Controller
+                    name="status"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger className="rounded-[8px] h-8 border-transparent bg-transparent text-slate-50 shadow-none hover:bg-[var(--tm-muted)] w-[120px] sm:w-[160px]">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
                         <SelectContent className="rounded-[8px]">
-                        {filteredStatuses.map(s => (
-                          <SelectItem key={s.StatusNo} value={s.Status}>{s.Status}</SelectItem>
-                        ))}
-                        {filteredStatuses.length === 0 && (
-                          <SelectItem value={currentStatus} disabled>{currentStatus}</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+                          {filteredStatuses.map(s => (
+                            <SelectItem key={s.StatusNo} value={s.Status}>{s.Status}</SelectItem>
+                          ))}
+                          {filteredStatuses.length === 0 && (
+                            <SelectItem value={currentStatus} disabled>{currentStatus}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </FieldControl>
               </div>
             </div>
@@ -1912,7 +1952,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <ExternalLink size={12} className="text-blue-400" />
                 <span className="text-[11px] text-slate-300 font-medium">Parent Task:</span>
                 <Link to={taskUrl(initialData.parentTask.operTaskNo, isDealMonitorCategory ? 'deal monitor' : undefined)} className="text-[11px] font-semibold text-blue-400 hover:text-blue-800 hover:underline transition-colors">
-                  {initialData.parentTask.title}
+                  {initialData.parentTask.title} ({initialData.parentTask.code})
                 </Link>
               </div>
             )}
@@ -1971,53 +2011,54 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               <FieldInfoControl info={categoryFieldCaption} className="space-y-1.5" id="form-group-category_No">
                 <FieldLabel required>Category</FieldLabel>
                 <FieldControl error={form.formState.errors.category_No ? 'Category is required' : undefined}>
-                <Controller
-                  name="category_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox disabled={isSubTask} options={fillValues?.category.filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
-                      .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
-                      value={field.value}
-                      onChange={(val) => {
-                        field.onChange(val);
-                        handleCategoryChange(val);
-                      }}
-                      placeholder="Select category"
-                      className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      isClearable={false}
-                      onAddNew={formRights[1561]?.isSave ? () => {
-                        setActiveMasterType('category');
-                        setIsMasterCreateOpen(true);
-                      } : undefined}
-                      addNewLabel="Add New Category"
-                    />
-                  )}
-                />
-                </FieldControl>
-              </FieldInfoControl>
-              {
-                !isHideType && 
-                <FieldInfoControl info={typeFieldCaption} className="space-y-1.5" id="form-group-type_No">
-                  <FieldLabel>Type</FieldLabel>
-                  <FieldControl error={form.formState.errors.type_No ? 'Type is required' : undefined}>
                   <Controller
-                    name="type_No"
+                    name="category_No"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox disabled={isSubTask} options={fillValues?.type.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
-                        .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
+                      <Combobox disabled={isSubTask || isDealMonitorContext} options={fillValues?.category.filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
+                        .filter(c => isDealMonitorContext || c.Category.toLowerCase() !== 'deal monitor')
+                        .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
                         value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select type"
-                        className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        onAddNew={formRights[1560]?.isSave ? () => {
-                          setActiveMasterType('type');
+                        onChange={(val) => {
+                          field.onChange(val);
+                          handleCategoryChange(val);
+                        }}
+                        placeholder="Select category"
+                        className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        isClearable={false}
+                        onAddNew={formRights[1561]?.isSave ? () => {
+                          setActiveMasterType('category');
                           setIsMasterCreateOpen(true);
                         } : undefined}
-                        addNewLabel="Add New Type"
+                        addNewLabel="Add New Category"
                       />
                     )}
                   />
+                </FieldControl>
+              </FieldInfoControl>
+              {
+                !isHideType &&
+                <FieldInfoControl info={typeFieldCaption} className="space-y-1.5" id="form-group-type_No">
+                  <FieldLabel>Type</FieldLabel>
+                  <FieldControl error={form.formState.errors.type_No ? 'Type is required' : undefined}>
+                    <Controller
+                      name="type_No"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Combobox disabled={isSubTask} options={fillValues?.type.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
+                          .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select type"
+                          className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                          onAddNew={formRights[1560]?.isSave ? () => {
+                            setActiveMasterType('type');
+                            setIsMasterCreateOpen(true);
+                          } : undefined}
+                          addNewLabel="Add New Type"
+                        />
+                      )}
+                    />
                   </FieldControl>
                 </FieldInfoControl>
               }
@@ -2026,48 +2067,48 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <div className="space-y-1.5" id="form-group-folder_No">
                   <FieldLabel>Folder</FieldLabel>
                   <FieldControl error={form.formState.errors.folder_No ? 'Folder is required' : undefined}>
-                  <Controller
-                    name="folder_No"
-                    control={form.control}
-                    render={({ field }) => (
-                      <Combobox disabled={isSubTask} options={fillValues?.folder.map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select folder"
-                        className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        isClearable={false}
-                        onAddNew={formRights[1542]?.isSave ? () => {
-                          setActiveMasterType('folder');
-                          setIsMasterCreateOpen(true);
-                        } : undefined}
-                        addNewLabel="Add New Folder"
-                      />
-                    )}
-                  />
+                    <Controller
+                      name="folder_No"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Combobox disabled={isSubTask} options={fillValues?.folder.map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select folder"
+                          className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                          isClearable={false}
+                          onAddNew={formRights[1542]?.isSave ? () => {
+                            setActiveMasterType('folder');
+                            setIsMasterCreateOpen(true);
+                          } : undefined}
+                          addNewLabel="Add New Folder"
+                        />
+                      )}
+                    />
                   </FieldControl>
                 </div>
               }
               <div className="space-y-1.5" id="form-group-priority_No">
                 <FieldLabel required>Priority</FieldLabel>
                 <FieldControl error={form.formState.errors.priority_No ? 'Priority is required' : undefined}>
-                <Controller
-                  name="priority_No"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Combobox disabled={isSubTask} options={fillValues?.priority.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
-                      .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select priority"
-                      className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      onAddNew={formRights[1543]?.isSave ? () => {
-                        setActiveMasterType('priority');
-                        setIsMasterCreateOpen(true);
-                      } : undefined}
-                      addNewLabel="Add New Priority"
-                    />
-                  )}
-                />
+                  <Controller
+                    name="priority_No"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Combobox disabled={isSubTask} options={fillValues?.priority.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
+                        .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select priority"
+                        className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                        onAddNew={formRights[1543]?.isSave ? () => {
+                          setActiveMasterType('priority');
+                          setIsMasterCreateOpen(true);
+                        } : undefined}
+                        addNewLabel="Add New Priority"
+                      />
+                    )}
+                  />
                 </FieldControl>
               </div>
             </div>
@@ -2083,10 +2124,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <div className="space-y-1.5" id="form-group-company">
                   <FieldLabel required>Company</FieldLabel>
                   <FieldControl error={form.formState.errors.company?.message}>
-                  <Controller
-                    name="company"
-                    control={form.control}
-                    render={({ field }) => (
+                    <Controller
+                      name="company"
+                      control={form.control}
+                      render={({ field }) => (
                         <Combobox
                           disabled={isSubTask}
                           options={companyOptions}
@@ -2095,71 +2136,71 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           placeholder="Select company"
                           className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                           onAddNew={formRights[1565]?.isSave ? () => {
-                        setActiveMasterType('task-company');
-                        setIsMasterCreateOpen(true);
-                      } : undefined}
-                        addNewLabel="Add New Company"
-                      />
-                    )}
-                  />
+                            setActiveMasterType('task-company');
+                            setIsMasterCreateOpen(true);
+                          } : undefined}
+                          addNewLabel="Add New Company"
+                        />
+                      )}
+                    />
                   </FieldControl>
                 </div>
                 <div className="space-y-1.5" id="form-group-location_No">
-                  <FieldLabel required>Business location</FieldLabel>
+                  <FieldLabel required>Task Location</FieldLabel>
                   <FieldControl error={form.formState.errors.location_No?.message}>
-                  <Controller
-                    name="location_No"
-                    control={form.control}
-                    render={({ field }) => (
-                      <LocationCombobox
-                        disabled={isSubTask}
-                        value={field.value}
-                        onChange={(location) => field.onChange(location.operLocationNo ? location.operLocationNo.toString() : '')}
-                        initialLabel={initialData?.locationName || undefined}
-                        placeholder="Select location"
-                        error={!!form.formState.errors.location_No}
-                        onAddNew={formRights[1541]?.isSave ? () => {
-                          setActiveMasterType('location');
-                          setIsMasterCreateOpen(true);
-                        } : undefined}
-                        addNewLabel="Add New Location"
-                      />
-                    )}
-                  />
+                    <Controller
+                      name="location_No"
+                      control={form.control}
+                      render={({ field }) => (
+                        <LocationCombobox
+                          disabled={isSubTask}
+                          value={field.value}
+                          onChange={(location) => field.onChange(location.operLocationNo ? location.operLocationNo.toString() : '')}
+                          initialLabel={initialData?.locationName || undefined}
+                          placeholder="Select location"
+                          error={!!form.formState.errors.location_No}
+                          onAddNew={formRights[1541]?.isSave ? () => {
+                            setActiveMasterType('location');
+                            setIsMasterCreateOpen(true);
+                          } : undefined}
+                          addNewLabel="Add New Location"
+                        />
+                      )}
+                    />
                   </FieldControl>
                 </div>
                 <div className="space-y-1.5" id="form-group-owner_user_No">
                   <FieldLabel required>Task Assign To</FieldLabel>
                   <FieldControl error={form.formState.errors.owner_user_No?.message}>
-                  <Controller
-                    name="owner_user_No"
-                    control={form.control}
-                    render={({ field }) => (
-                      <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
-                        placeholder="Select Assign To"
-                        initialLabel={initialData?.assignedDisplayName || undefined}
-                        className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        disabled={isPrivateTask}
-                      />
-                    )}
-                  />
+                    <Controller
+                      name="owner_user_No"
+                      control={form.control}
+                      render={({ field }) => (
+                        <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
+                          placeholder="Select Assign To"
+                          initialLabel={initialData?.assignedDisplayName || undefined}
+                          className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                          disabled={isPrivateTask}
+                        />
+                      )}
+                    />
                   </FieldControl>
                 </div>
                 <div className="space-y-1.5" id="form-group-originator_user_No">
                   <FieldLabel required>Task Assign By</FieldLabel>
                   <FieldControl error={form.formState.errors.originator_user_No?.message}>
-                  <Controller
-                    name="originator_user_No"
-                    control={form.control}
-                    render={({ field }) => (
-                      <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
-                        placeholder="Select Assign By"
-                        initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
-                        className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        isClearable={false}
-                      />
-                    )}
-                  />
+                    <Controller
+                      name="originator_user_No"
+                      control={form.control}
+                      render={({ field }) => (
+                        <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
+                          placeholder="Select Assign By"
+                          initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
+                          className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                          isClearable={false}
+                        />
+                      )}
+                    />
                   </FieldControl>
                 </div>
               </div>
@@ -2193,35 +2234,35 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <div className="flex items-center gap-1.5">
                       <FieldLabel className="text-[10px] shrink-0">Team</FieldLabel>
-                          <div className="relative flex items-center">
-                            <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
+                      <div className="relative flex items-center">
+                        <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
                           <SelectTrigger className={cn("rounded-[8px] h-8 border-[var(--tm-border)] text-[11px] w-[148px] bg-[var(--tm-surface)] shadow-none", selectedCollabTeam && "[&>span]:pr-5")}>
-                                <SelectValue placeholder="Select team" />
-                              </SelectTrigger>
+                            <SelectValue placeholder="Select team" />
+                          </SelectTrigger>
                           <SelectContent className="rounded-[8px]">
-                                {fillValues?.userGroup.map(group => (
+                            {fillValues?.userGroup.map(group => (
                               <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-xs">{group.UserGroupName}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {selectedCollabTeam && (
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {selectedCollabTeam && (
                           <button
                             type="button"
                             className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 z-10"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSelectedCollabTeam('');
-                                  const current = form.getValues('collaborators') || [];
-                                  replaceCollab(current.filter(c => !c.isFromTeam));
-                                }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelectedCollabTeam('');
+                              const current = form.getValues('collaborators') || [];
+                              replaceCollab(current.filter(c => !c.isFromTeam));
+                            }}
                             title="Clear team"
-                              >
-                                <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
+                          >
+                            <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
                           </button>
-                            )}
-                          </div>
-                        </div>
+                        )}
+                      </div>
+                    </div>
                     <Button
                       type="button"
                       onClick={() => appendCollab({ userName: '', displayName: '', email: '' })}
@@ -2230,8 +2271,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
                     >
                       <Plus size={12} /> Add
-                      </Button>
-                    </div>
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
@@ -2314,14 +2355,26 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             <div className="p-4 space-y-3">
                               <div className="space-y-1">
                                 <FieldLabel required>User Name</FieldLabel>
-                                    <Controller
-                                      name={`collaborators.${index}.userName`}
-                                      control={form.control}
-                                      render={({ field: nameField }) => (
+                                <Controller
+                                  name={`collaborators.${index}.userName`}
+                                  control={form.control}
+                                  render={({ field: nameField }) => (
                                     <FieldControl error={userErr}>
                                       <UserCombobox
                                         value={nameField.value}
                                         onChange={(user) => {
+                                          const currentCollaborators = form.getValues('collaborators') || [];
+                                          const currentInformed = form.getValues('informed_to') || [];
+
+                                          if (
+                                            currentCollaborators.some((c, i) => i !== index && c.loginNo === user.loginNo) ||
+                                            currentInformed.some((c) => c.loginNo === user.loginNo)
+                                          ) {
+                                            toast.error('This user is already added as a collaborator or report to.');
+                                            nameField.onChange(''); // Clear the selection
+                                            return;
+                                          }
+
                                           nameField.onChange(user.loginId);
                                           form.setValue(`collaborators.${index}.displayName`, user.printingName);
                                           form.setValue(`collaborators.${index}.email`, user.email || '');
@@ -2329,14 +2382,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                           form.clearErrors(`collaborators.${index}.userName`);
                                           form.clearErrors(`collaborators.${index}.displayName`);
                                         }}
-                                          placeholder="Select username"
+                                        placeholder="Select username"
                                         className={cn("rounded-[8px] h-10 text-xs w-full", userErr && "border-red-400")}
-                                          initialLabel={nameField.value}
+                                        initialLabel={nameField.value}
                                       />
                                     </FieldControl>
                                   )}
                                 />
-                        </div>
+                              </div>
                               <div className="space-y-1">
                                 <FieldLabel required>Display Name</FieldLabel>
                                 <FieldControl error={nameErr}>
@@ -2347,7 +2400,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     className={cn("h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
                                   />
                                 </FieldControl>
-                      </div>
+                              </div>
                               <div className="space-y-1">
                                 <FieldLabel>Email</FieldLabel>
                                 <Input
@@ -2364,7 +2417,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     </FieldControl>
                   )}
                 </div>
-                  </div>
+              </div>
 
               {/* Report To */}
               <div
@@ -2388,35 +2441,35 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <div className="flex items-center gap-1.5">
                       <FieldLabel className="text-[10px] shrink-0">Team</FieldLabel>
-                          <div className="relative flex items-center">
-                            <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
+                      <div className="relative flex items-center">
+                        <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
                           <SelectTrigger className={cn("rounded-[8px] h-8 border-[var(--tm-border)] text-[11px] w-[148px] bg-[var(--tm-surface)] shadow-none", selectedInformTeam && "[&>span]:pr-5")}>
-                                <SelectValue placeholder="Select team" />
-                              </SelectTrigger>
+                            <SelectValue placeholder="Select team" />
+                          </SelectTrigger>
                           <SelectContent className="rounded-[8px]">
-                                {fillValues?.userGroup.map(group => (
+                            {fillValues?.userGroup.map(group => (
                               <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-xs">{group.UserGroupName}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {selectedInformTeam && (
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {selectedInformTeam && (
                           <button
                             type="button"
                             className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 z-10"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSelectedInformTeam('');
-                                  const current = form.getValues('informed_to') || [];
-                                  replaceInform(current.filter(i => !i.isFromTeam));
-                                }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelectedInformTeam('');
+                              const current = form.getValues('informed_to') || [];
+                              replaceInform(current.filter(i => !i.isFromTeam));
+                            }}
                             title="Clear team"
-                              >
-                                <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
+                          >
+                            <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
                           </button>
-                            )}
-                          </div>
-                        </div>
+                        )}
+                      </div>
+                    </div>
                     <Button
                       type="button"
                       onClick={() => appendInform({ userName: '', displayName: '', email: '' })}
@@ -2425,8 +2478,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
                     >
                       <Plus size={12} /> Add
-                      </Button>
-                    </div>
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
@@ -2509,14 +2562,26 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             <div className="p-4 space-y-3">
                               <div className="space-y-1">
                                 <FieldLabel required>User Name</FieldLabel>
-                                    <Controller
-                                      name={`informed_to.${index}.userName`}
-                                      control={form.control}
-                                      render={({ field: nameField }) => (
+                                <Controller
+                                  name={`informed_to.${index}.userName`}
+                                  control={form.control}
+                                  render={({ field: nameField }) => (
                                     <FieldControl error={userErr}>
                                       <UserCombobox
                                         value={nameField.value}
                                         onChange={(user) => {
+                                          const currentCollaborators = form.getValues('collaborators') || [];
+                                          const currentInformed = form.getValues('informed_to') || [];
+
+                                          if (
+                                            currentInformed.some((c, i) => i !== index && c.loginNo === user.loginNo) ||
+                                            currentCollaborators.some((c) => c.loginNo === user.loginNo)
+                                          ) {
+                                            toast.error('This user is already added as a collaborator or report to.');
+                                            nameField.onChange(''); // Clear the selection
+                                            return;
+                                          }
+
                                           nameField.onChange(user.loginId);
                                           form.setValue(`informed_to.${index}.displayName`, user.printingName);
                                           form.setValue(`informed_to.${index}.email`, user.email || '');
@@ -2524,14 +2589,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                           form.clearErrors(`informed_to.${index}.userName`);
                                           form.clearErrors(`informed_to.${index}.displayName`);
                                         }}
-                                          placeholder="Select username"
+                                        placeholder="Select username"
                                         className={cn("rounded-[8px] h-10 text-xs w-full", userErr && "border-red-400")}
-                                          initialLabel={nameField.value}
+                                        initialLabel={nameField.value}
                                       />
                                     </FieldControl>
                                   )}
                                 />
-                        </div>
+                              </div>
                               <div className="space-y-1">
                                 <FieldLabel required>Display Name</FieldLabel>
                                 <FieldControl error={nameErr}>
@@ -2542,7 +2607,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     className={cn("h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
                                   />
                                 </FieldControl>
-                      </div>
+                              </div>
                               <div className="space-y-1">
                                 <FieldLabel>Email</FieldLabel>
                                 <Input
@@ -2551,13 +2616,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   placeholder="Email"
                                   className="h-10 rounded-[8px] text-xs disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
                                 />
-                  </div>
-                </div>
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
                     </FieldControl>
-              )}
+                  )}
                 </div>
               </div>
             </div>
@@ -2660,7 +2725,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           ) : (
                             <Loader2 size={14} className="animate-spin" />
                           )}
-                                </span>
+                        </span>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
                             {file.name}
@@ -2676,7 +2741,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             {file.status === 'verifying' && 'Uploading file payload...'}
                             {file.status === 'failed' && (file.errorMessage || 'Upload failed')}
                           </p>
-                          </div>
+                        </div>
                         <div className="flex items-center gap-0.5 shrink-0">
                           {file.status === 'failed' && (
                             <Button
@@ -2723,8 +2788,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       {attachments.map((file: any) => {
                         const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
                         return (
-                        <motion.div
-                          key={file.id}
+                          <motion.div
+                            key={file.id}
                             initial={{ opacity: 0, y: 4 }}
                             animate={{ opacity: 1, y: 0 }}
                             className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
@@ -2760,16 +2825,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 View
                               </button>
                             </div>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleRemoveAttachment(file.id, file.name)}
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRemoveAttachment(file.id, file.name)}
                               className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                          >
+                            >
                               <Trash size={12} />
-                          </Button>
-                        </motion.div>
+                            </Button>
+                          </motion.div>
                         );
                       })}
                     </div>
@@ -2781,828 +2846,999 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         )}
 
         {(!isHideDetailSection || showMoreDetails) && (
-        <>
-                {/* 3. Timeline */}
-                {!hiddenSections.includes('timeline') && (
-          <FormSection title="Timeline & Effort" icon={Clock} tourId="task-form-timeline">
-            <div className="space-y-2.5">
-              {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-end">
+          <>
+            {/* 3. Timeline */}
+            {!hiddenSections.includes('timeline') && (
+              <FormSection title="Timeline & Effort" icon={Clock} tourId="task-form-timeline">
+                <div className="space-y-2.5">
+                  {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-end">
 
-                <div className="space-y-1.5 flex flex-col justify-end">
-                  <Controller
-                    name="isAllDay"
-                    control={form.control}
-                    render={({ field }) => (
-                      <div className="flex items-center space-x-2 bg-[var(--tm-muted)]/70 border border-[var(--tm-border)]/80 px-4 rounded-[8px] shadow-sm transition-all hover:bg-[var(--tm-muted)]/30 h-10">
+                    <div className="space-y-1.5 flex flex-col justify-end">
+                      <Controller
+                        name="isAllDay"
+                        control={form.control}
+                        render={({ field }) => (
+                          <div className="flex items-center space-x-2 bg-[var(--tm-muted)]/70 border border-[var(--tm-border)]/80 px-4 rounded-[8px] shadow-sm transition-all hover:bg-[var(--tm-muted)]/30 h-10">
+                            <Checkbox
+                              id="isAllDay"
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              className="h-5 w-5 rounded-md border-[#3D4F66] focus-visible:ring-[#0EA5E9]"
+                            />
+                            <label htmlFor="isAllDay" className="text-sm font-semibold text-slate-200 cursor-pointer select-none">All-Day Task</label>
+                          </div>
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-1.5" id="form-group-start_date">
+                      <FieldLabel>Start Date</FieldLabel>
+                      <FieldControl error={form.formState.errors.start_date?.message}>
+                        <Controller
+                          name="start_date"
+                          control={form.control}
+                          render={({ field }) => (
+                            <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                              placeholder={isAllDay ? "Select start date" : "Select start date & time"}
+                              hideTime={isAllDay}
+                              className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                            />
+                          )}
+                        />
+                      </FieldControl>
+                    </div>
+
+                    <div className="space-y-1.5" id="form-group-end_date">
+                      <FieldLabel required={isSubTask}>Due Date</FieldLabel>
+                      <FieldControl error={form.formState.errors.end_date?.message}>
+                        <Controller
+                          name="end_date"
+                          control={form.control}
+                          render={({ field }) => (
+                            <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                              placeholder={isAllDay ? "Select due date" : "Select due date & time"}
+                              hideTime={isAllDay}
+                              className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                            />
+                          )}
+                        />
+                      </FieldControl>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Estimated Effort, Calendar Color */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-start">
+                    <div className="space-y-1.5 md:col-span-1" id="form-group-estimated_effort_value">
+                      <FieldLabel>Estimated Effort</FieldLabel>
+                      <FieldControl error={form.formState.errors.estimated_effort_value?.message || (!form.formState.errors.estimated_effort_value ? form.formState.errors.estimated_effort_unit?.message : undefined)}>
+                        <div className="flex gap-2">
+                          <div className="flex-1 min-w-0">
+                            <Input type="number" step="0" placeholder="" {...form.register('estimated_effort_value')} isDecimal={false} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right w-full transition-all", form.formState.errors.estimated_effort_value ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
+                          </div>
+                          <Controller
+                            name="estimated_effort_unit"
+                            control={form.control}
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm w-32 transition-all", form.formState.errors.estimated_effort_unit ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
+                                  <SelectValue placeholder="Select estimated effort unit" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-[8px] bg-[var(--tm-surface)] border border-[var(--tm-border)]">
+                                  {fillValues?.frequency?.map(f => (
+                                    <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
+                                      {f.FrequencyName || f.Frequency}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </div>
+                      </FieldControl>
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-1" id="form-group-calendarColor">
+                      <FieldLabel>Calendar Color</FieldLabel>
+                      <Controller
+                        name="calendarColor"
+                        control={form.control}
+                        render={({ field }) => (
+                          <div className="flex flex-wrap items-center gap-3">
+                            <Select
+                              value={
+                                !field.value || field.value === 'none' || field.value === '' ? 'none' :
+                                  [
+                                    '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
+                                    '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
+                                  ].includes(field.value) ? field.value : 'custom'
+                              }
+                              onValueChange={(val) => {
+                                if (val === 'none') field.onChange('');
+                                else if (val === 'custom') field.onChange('#000000'); // default custom
+                                else field.onChange(val);
+                              }}
+                            >
+                              <SelectTrigger className="w-full sm:w-[220px] h-10 bg-[var(--tm-surface)] border-[var(--tm-border)]/80 rounded-[8px] text-xs focus:ring-[#0EA5E9]/20">
+                                <SelectValue placeholder="Select color" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">
+                                  <div className="flex items-center gap-2">
+                                    <X size={14} className="text-slate-400" />
+                                    <span>None</span>
+                                  </div>
+                                </SelectItem>
+                                {[
+                                  { hex: '#93c5fd', name: 'Blue' },
+                                  { hex: '#fca5a5', name: 'Red' },
+                                  { hex: '#86efac', name: 'Green' },
+                                  { hex: '#fdba74', name: 'Orange' },
+                                  { hex: '#d8b4fe', name: 'Purple' },
+                                  { hex: '#f9a8d4', name: 'Pink' },
+                                  { hex: '#a5b4fc', name: 'Indigo' },
+                                  { hex: '#67e8f9', name: 'Cyan' },
+                                ].map((preset) => (
+                                  <SelectItem key={preset.hex} value={preset.hex}>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-4 h-4 rounded-full border border-[var(--tm-border)]" style={{ backgroundColor: preset.hex }} />
+                                      <span>{preset.name}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                                <SelectItem value="custom">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full border border-[var(--tm-border)] bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
+                                    <span>Custom Color</span>
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            {/* Custom Color Input */}
+                            {field.value && field.value !== 'none' && ![
+                              '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
+                              '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
+                            ].includes(field.value) && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 border border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-muted)]">
+                                  <input
+                                    type="color"
+                                    value={field.value || '#000000'}
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                    className="w-7 h-7 border-0 bg-transparent cursor-pointer rounded"
+                                  />
+                                  <span className="text-xs font-mono font-medium text-slate-500 uppercase">{field.value}</span>
+                                </div>
+                              )}
+                          </div>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </FormSection>
+            )}
+            {/* 4. Business Impact */}
+            {!hiddenSections.includes('business_benefit') && (
+              <FormSection
+                title="Business Benefit"
+                icon={TrendingUp}
+                headerAction={
+                  <div className="flex items-center gap-2 shrink-0 border border-[var(--tm-border)]/80 rounded-[8px] px-2 py-1 bg-[var(--tm-surface)]">
+                    <Controller
+                      name="is_business_benefit_applicable"
+                      control={form.control}
+                      render={({ field }) => (
                         <Checkbox
-                          id="isAllDay"
+                          id="benefit-section"
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                          className="h-5 w-5 rounded-md border-[#3D4F66] focus-visible:ring-[#0EA5E9]"
-                        />
-                        <label htmlFor="isAllDay" className="text-sm font-semibold text-slate-200 cursor-pointer select-none">All-Day Task</label>
-                      </div>
-                    )}
-                  />
-                </div>
-                <div className="space-y-1.5" id="form-group-start_date">
-                  <FieldLabel>Start Date</FieldLabel>
-                  <FieldControl error={form.formState.errors.start_date?.message}>
-                  <Controller
-                    name="start_date"
-                    control={form.control}
-                    render={({ field }) => (
-                      <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                        placeholder={isAllDay ? "Select start date" : "Select start date & time"}
-                        hideTime={isAllDay}
-                        className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      />
-                    )}
-                  />
-                  </FieldControl>
-                </div>
-
-                <div className="space-y-1.5" id="form-group-end_date">
-                  <FieldLabel required={isSubTask}>Due Date</FieldLabel>
-                  <FieldControl error={form.formState.errors.end_date?.message}>
-                  <Controller
-                    name="end_date"
-                    control={form.control}
-                    render={({ field }) => (
-                      <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                        placeholder={isAllDay ? "Select due date" : "Select due date & time"}
-                        hideTime={isAllDay}
-                        className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                      />
-                    )}
-                  />
-                  </FieldControl>
-                </div>
-              </div>
-
-              {/* Row 2: Estimated Effort, Calendar Color */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-start">
-                <div className="space-y-1.5 md:col-span-1" id="form-group-estimated_effort_value">
-                  <FieldLabel>Estimated Effort</FieldLabel>
-                  <FieldControl error={form.formState.errors.estimated_effort_value?.message || (!form.formState.errors.estimated_effort_value ? form.formState.errors.estimated_effort_unit?.message : undefined)}>
-                    <div className="flex gap-2">
-                      <div className="flex-1 min-w-0">
-                        <Input type="number" step="0" placeholder="" {...form.register('estimated_effort_value')} isDecimal={false} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right w-full transition-all", form.formState.errors.estimated_effort_value ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
-                    </div>
-                    <Controller
-                      name="estimated_effort_unit"
-                      control={form.control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm w-32 transition-all", form.formState.errors.estimated_effort_unit ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
-                            <SelectValue placeholder="Select estimated effort unit" />
-                          </SelectTrigger>
-                            <SelectContent className="rounded-[8px] bg-[var(--tm-surface)] border border-[var(--tm-border)]">
-                            {fillValues?.frequency?.map(f => (
-                              <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
-                                {f.FrequencyName || f.Frequency}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  </FieldControl>
-                </div>
-
-                <div className="space-y-1.5 md:col-span-1" id="form-group-calendarColor">
-                  <FieldLabel>Calendar Color</FieldLabel>
-                  <Controller
-                    name="calendarColor"
-                    control={form.control}
-                    render={({ field }) => (
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Select
-                          value={
-                            !field.value || field.value === 'none' || field.value === '' ? 'none' :
-                              [
-                                '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
-                                '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
-                              ].includes(field.value) ? field.value : 'custom'
-                          }
-                          onValueChange={(val) => {
-                            if (val === 'none') field.onChange('');
-                            else if (val === 'custom') field.onChange('#000000'); // default custom
-                            else field.onChange(val);
-                          }}
-                        >
-                          <SelectTrigger className="w-full sm:w-[220px] h-10 bg-[var(--tm-surface)] border-[var(--tm-border)]/80 rounded-[8px] text-xs focus:ring-[#0EA5E9]/20">
-                            <SelectValue placeholder="Select color" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              <div className="flex items-center gap-2">
-                                <X size={14} className="text-slate-400" />
-                                <span>None</span>
-                              </div>
-                            </SelectItem>
-                            {[
-                              { hex: '#93c5fd', name: 'Blue' },
-                              { hex: '#fca5a5', name: 'Red' },
-                              { hex: '#86efac', name: 'Green' },
-                              { hex: '#fdba74', name: 'Orange' },
-                              { hex: '#d8b4fe', name: 'Purple' },
-                              { hex: '#f9a8d4', name: 'Pink' },
-                              { hex: '#a5b4fc', name: 'Indigo' },
-                              { hex: '#67e8f9', name: 'Cyan' },
-                            ].map((preset) => (
-                              <SelectItem key={preset.hex} value={preset.hex}>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-4 h-4 rounded-full border border-[var(--tm-border)]" style={{ backgroundColor: preset.hex }} />
-                                  <span>{preset.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="custom">
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full border border-[var(--tm-border)] bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
-                                <span>Custom Color</span>
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        {/* Custom Color Input */}
-                        {field.value && field.value !== 'none' && ![
-                          '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
-                          '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
-                        ].includes(field.value) && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 border border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-muted)]">
-                              <input
-                                type="color"
-                                value={field.value || '#000000'}
-                                onChange={(e) => field.onChange(e.target.value)}
-                                className="w-7 h-7 border-0 bg-transparent cursor-pointer rounded"
-                              />
-                              <span className="text-xs font-mono font-medium text-slate-500 uppercase">{field.value}</span>
-                            </div>
-                          )}
-                      </div>
-                    )}
-                  />
-                </div>
-              </div>
-            </div>
-          </FormSection>
-        )}
-        {/* 4. Business Impact */}
-        {!hiddenSections.includes('business_benefit') && (
-          <FormSection
-            title="Business Benefit"
-            icon={TrendingUp}
-            headerAction={
-              <div className="flex items-center gap-2 shrink-0 border border-[var(--tm-border)]/80 rounded-[8px] px-2 py-1 bg-[var(--tm-surface)]">
-                <Controller
-                  name="is_business_benefit_applicable"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Checkbox
-                      id="benefit-section"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={isBenefitDisabled}
-                      className="h-4 w-4 rounded-md border-slate-400"
-                    />
-                  )}
-                />
-                <Label htmlFor="benefit-section" className="text-xs font-medium text-slate-200 cursor-pointer">Business Benefit Applicable</Label>
-              </div>
-            }
-          >
-            <div className="space-y-2.5">
-              {isBenefitApplicable && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-1.5" id="form-group-business_benefit_type_No">
-                    <FieldLabel required>Benefit Type</FieldLabel>
-                    <FieldControl error={form.formState.errors.business_benefit_type_No?.message}>
-                    <Controller
-                      name="business_benefit_type_No"
-                      control={form.control}
-                      render={({ field }) => (
-                        <Combobox options={(fillValues?.benefitType || []).filter((b: any) => {
-                          const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
-                          const lower = label.toLowerCase();
-                          return lower !== 'all' && lower !== '[all]';
-                        })
-                          .map((b: any) => {
-                            const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
-                            const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
-                            return { label, value: val };
-                          })
-                        }
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select business benefit type"
-                          className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          onAddNew={formRights[1545]?.isSave ? () => {
-                            setActiveMasterType('benefit-type');
-                            setIsMasterCreateOpen(true);
-                          } : undefined}
+                          disabled={isBenefitDisabled}
+                          className="h-4 w-4 rounded-md border-slate-400"
                         />
                       )}
                     />
-                    </FieldControl>
+                    <Label htmlFor="benefit-section" className="text-xs font-medium text-slate-200 cursor-pointer">Business Benefit Applicable</Label>
                   </div>
-                  <div className="space-y-1.5" id="form-group-benefit_period">
-                    <FieldLabel required>Benefit Period</FieldLabel>
-                    <FieldControl error={form.formState.errors.benefit_period?.message}>
-                    <Controller
-                      name="benefit_period"
-                      control={form.control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.benefit_period ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
-                            <SelectValue placeholder="Select benefit period" />
-                          </SelectTrigger>
-                            <SelectContent className="rounded-[8px]">
-                            <SelectItem value="One Time">One Time</SelectItem>
-                            <SelectItem value="Monthly">Monthly</SelectItem>
-                            <SelectItem value="Annually">Annually</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    </FieldControl>
-                  </div>
-                  {!shouldHideBenefitAmount && (
-                    <>
-                      <div className="space-y-1.5" id="form-group-estimated_benefit_amount">
-                        <FieldLabel required>Estimated Benefit Amount</FieldLabel>
-                        <FieldControl error={form.formState.errors.estimated_benefit_amount?.message}>
-                          <Input type="number" step="0.01" placeholder="" {...form.register('estimated_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.estimated_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
-                        </FieldControl>
-                      </div>
-                      <div className="space-y-1.5" id="form-group-actual_benefit_amount">
-                        <FieldLabel>Actual Benefit Amount</FieldLabel>
-                        <FieldControl error={form.formState.errors.actual_benefit_amount?.message}>
-                          <Input type="number" step="0.01" placeholder="" {...form.register('actual_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.actual_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
-                        </FieldControl>
-                      </div>
-                    </>
-                  )}
-                  <div className="space-y-1.5 md:col-span-2" id="form-group-business_benefit_description">
-                    <FieldLabel>Benefit Description</FieldLabel>
-                    <FieldControl error={form.formState.errors.business_benefit_description?.message}>
-                      <Textarea placeholder="Enter business benefit description" {...form.register('business_benefit_description')} className={cn("min-h-[80px] rounded-[8px] border-[var(--tm-border)]/80 input-section text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.business_benefit_description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} />
-                    </FieldControl>
-                  </div>
-                </div>
-              )}
-            </div>
-          </FormSection>
-        )}
-
-        {!isSubTask && !hiddenSections.includes('subtasks') && (
-          <FormSection
-            title='Sub Tasks'
-            icon={FileText}
-            headerAction={
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                disabled={subtaskFields.length > 0}
-                onClick={() => appendSubtask({ id: Date.now().toString(), type_No: '', title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '', operTaskNo: 0 })}
-                className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95 shrink-0 disabled:opacity-50"
+                }
               >
-                <Plus size={12} className="text-[#0EA5E9]" /> Add Sub-Task
-              </Button>
-            }
-          >
-            <div className="space-y-3">
-              {form.formState.errors.sub_tasks && (
-                <div className="p-2.5 bg-red-500/10 border border-red-500/30 rounded-[8px] flex items-center gap-2">
-                  <AlertCircle size={14} className="text-red-400 shrink-0" />
-                  <span className="text-xs font-semibold text-red-400">
-                    Please correct the highlighted errors in the sub-tasks before saving.
-                  </span>
+                <div className="space-y-2.5">
+                  {isBenefitApplicable && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-1.5" id="form-group-business_benefit_type_No">
+                        <FieldLabel required>Benefit Type</FieldLabel>
+                        <FieldControl error={form.formState.errors.business_benefit_type_No?.message}>
+                          <Controller
+                            name="business_benefit_type_No"
+                            control={form.control}
+                            render={({ field }) => (
+                              <Combobox options={(fillValues?.benefitType || []).filter((b: any) => {
+                                const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
+                                const lower = label.toLowerCase();
+                                return lower !== 'all' && lower !== '[all]';
+                              })
+                                .map((b: any) => {
+                                  const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
+                                  const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
+                                  return { label, value: val };
+                                })
+                              }
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="Select business benefit type"
+                                className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                                onAddNew={formRights[1545]?.isSave ? () => {
+                                  setActiveMasterType('benefit-type');
+                                  setIsMasterCreateOpen(true);
+                                } : undefined}
+                              />
+                            )}
+                          />
+                        </FieldControl>
+                      </div>
+                      <div className="space-y-1.5" id="form-group-benefit_period">
+                        <FieldLabel required>Benefit Period</FieldLabel>
+                        <FieldControl error={form.formState.errors.benefit_period?.message}>
+                          <Controller
+                            name="benefit_period"
+                            control={form.control}
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.benefit_period ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
+                                  <SelectValue placeholder="Select benefit period" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-[8px]">
+                                  <SelectItem value="One Time">One Time</SelectItem>
+                                  <SelectItem value="Monthly">Monthly</SelectItem>
+                                  <SelectItem value="Annually">Annually</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </FieldControl>
+                      </div>
+                      {!shouldHideBenefitAmount && (
+                        <>
+                          <div className="space-y-1.5" id="form-group-estimated_benefit_amount">
+                            <FieldLabel required>Estimated Benefit Amount</FieldLabel>
+                            <FieldControl error={form.formState.errors.estimated_benefit_amount?.message}>
+                              <Input type="number" step="0.01" placeholder="" {...form.register('estimated_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.estimated_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
+                            </FieldControl>
+                          </div>
+                          <div className="space-y-1.5" id="form-group-actual_benefit_amount">
+                            <FieldLabel>Actual Benefit Amount</FieldLabel>
+                            <FieldControl error={form.formState.errors.actual_benefit_amount?.message}>
+                              <Input type="number" step="0.01" placeholder="" {...form.register('actual_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.actual_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
+                            </FieldControl>
+                          </div>
+                        </>
+                      )}
+                      <div className="space-y-1.5 md:col-span-2" id="form-group-business_benefit_description">
+                        <FieldLabel>Benefit Description</FieldLabel>
+                        <FieldControl error={form.formState.errors.business_benefit_description?.message}>
+                          <Textarea placeholder="Enter business benefit description" {...form.register('business_benefit_description')} className={cn("min-h-[80px] rounded-[8px] border-[var(--tm-border)]/80 input-section text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.business_benefit_description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} />
+                        </FieldControl>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </FormSection>
+            )}
 
-              {localSubtasks.length === 0 && subtaskFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center">
-                  <p className="text-xs text-slate-500 font-medium">No sub-tasks added yet.</p>
-                </div>
-              ) : (
+            {!isSubTask && !hiddenSections.includes('subtasks') && (
+              <FormSection
+                title='Sub Tasks'
+                icon={FileText}
+                headerAction={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    disabled={subtaskFields.length > 0}
+                    onClick={() => appendSubtask({ id: Date.now().toString(), type_No: '', title: '', description: '', ownerLoginNo: '', endDate: '', completionRemark: '', completionDate: '', operTaskNo: 0 })}
+                    className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95 shrink-0 disabled:opacity-50"
+                  >
+                    <Plus size={12} className="text-[#0EA5E9]" /> Add Sub-Task
+                  </Button>
+                }
+              >
                 <div className="space-y-3">
+                  {form.formState.errors.sub_tasks && (
+                    <div className="p-2.5 bg-red-500/10 border border-red-500/30 rounded-[8px] flex items-center gap-2">
+                      <AlertCircle size={14} className="text-red-400 shrink-0" />
+                      <span className="text-xs font-semibold text-red-400">
+                        Please correct the highlighted errors in the sub-tasks before saving.
+                      </span>
+                    </div>
+                  )}
+
+                  {localSubtasks.length === 0 && subtaskFields.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center">
+                      <p className="text-xs text-slate-500 font-medium">No sub-tasks added yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
                       {localSubtasks.map((task: any, idx: number) => {
                         const editIndex = subtaskFields.findIndex(sf => sf.operTaskNo === task.taskNo);
                         if (editIndex !== -1) {
                           const field = subtaskFields[editIndex];
                           const index = editIndex;
                           return (
-                        <div
-                          key={field.id}
-                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                        >
-                          <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                              {idx + 1}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{task.status || 'Draft'}</p>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => removeSubtask(index)} title="Cancel">
-                                <X size={12} className="mr-1" /> Cancel
-                              </Button>
-                              <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
-                                {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
-                                Save
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="p-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                              {showSubtaskType && (
-                                <div className="space-y-1">
-                                  <FieldLabel>Type</FieldLabel>
-                                  <Controller
-                                    name={`sub_tasks.${index}.type_No`}
-                                    control={form.control}
-                                    render={({ field: subField }) => (
-                                      <Combobox
-                                        options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
-                                          value={subField.value || ''}
-                                          onChange={(val) => {
-                                            subField.onChange(val);
-                                          }}
-                                          placeholder="Select type"
-                                        />
-                                    )}
-                                  />
-                                  </div>
-                              )}
-                              <div className="space-y-1">
-                                <FieldLabel required>Task Assign To</FieldLabel>
-                                <Controller
-                                  name={`sub_tasks.${index}.ownerLoginNo`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
-                                    <FieldControl error={form.formState.errors.sub_tasks?.[index]?.ownerLoginNo?.message}>
-                                      <UserCombobox
-                                        className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && "border-red-400")}
-                                        value={subField.value || ''}
-                                        onChange={(user) => {
-                                        const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
-                                        subField.onChange(val);
-                                        form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
-                                        form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
-                                      }}
-                                        placeholder="Search owner"
-                                        error={!!form.formState.errors.sub_tasks?.[index]?.ownerLoginNo}
-                                      />
-                                    </FieldControl>
-                                  )}
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <FieldLabel>Due Date</FieldLabel>
-                                <Controller
-                                  name={`sub_tasks.${index}.endDate`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
-                                    <DateTimePicker
-                                      date={subField.value ? new Date(subField.value) : undefined}
-                                      onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                                      placeholder="Select date"
-                                      hideTime={true}
-                                    />
-                                  )}
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <FieldLabel>Completion Date</FieldLabel>
-                                <Controller
-                                  name={`sub_tasks.${index}.completionDate`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
-                                    <DateTimePicker
-                                      date={subField.value ? new Date(subField.value) : undefined}
-                                      onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                                      placeholder="Select date"
-                                      hideTime={true}
-                                    />
-                                  )}
-                                />
+                            <div
+                              key={field.id}
+                              className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                            >
+                              <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
+                                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{task.status || 'Draft'}</p>
                                 </div>
-                              <div className="space-y-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
-                                <FieldLabel>Completion Remark</FieldLabel>
-                                <Textarea
-                                  {...form.register(`sub_tasks.${index}.completionRemark`)}
-                                  placeholder="Remark..."
-                                  rows={2}
-                                  className="border-[var(--tm-border)] shadow-sm min-h-[40px] h-auto py-2 px-3 rounded-[8px] font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300 focus-visible:ring-[#0EA5E9]/20"
-                                  maxLength={500}
-                                />
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => removeSubtask(index)} title="Cancel">
+                                    <X size={12} className="mr-1" /> Cancel
+                                  </Button>
+                                  <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                                    {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <div className="p-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                  {showSubtaskType && (
+                                    <div className="space-y-1">
+                                      <FieldLabel>Type</FieldLabel>
+                                      <Controller
+                                        name={`sub_tasks.${index}.type_No`}
+                                        control={form.control}
+                                        render={({ field: subField }) => (
+                                          <Combobox
+                                            options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                            value={subField.value || ''}
+                                            onChange={(val) => {
+                                              subField.onChange(val);
+                                            }}
+                                            placeholder="Select type"
+                                          />
+                                        )}
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Task Assign To</FieldLabel>
+                                    <Controller
+                                      name={`sub_tasks.${index}.ownerLoginNo`}
+                                      control={form.control}
+                                      render={({ field: subField }) => (
+                                        <FieldControl error={form.formState.errors.sub_tasks?.[index]?.ownerLoginNo?.message}>
+                                          <UserCombobox
+                                            className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && "border-red-400")}
+                                            value={subField.value || ''}
+                                            onChange={(user) => {
+                                              const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                              subField.onChange(val);
+                                              form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
+                                              form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
+                                            }}
+                                            placeholder="Search owner"
+                                            error={!!form.formState.errors.sub_tasks?.[index]?.ownerLoginNo}
+                                          />
+                                        </FieldControl>
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <FieldLabel>Due Date</FieldLabel>
+                                    <Controller
+                                      name={`sub_tasks.${index}.endDate`}
+                                      control={form.control}
+                                      render={({ field: subField }) => (
+                                        <DateTimePicker
+                                          date={subField.value ? new Date(subField.value) : undefined}
+                                          onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                          placeholder="Select date"
+                                          hideTime={true}
+                                        />
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <FieldLabel>Completion Date</FieldLabel>
+                                    <Controller
+                                      name={`sub_tasks.${index}.completionDate`}
+                                      control={form.control}
+                                      render={({ field: subField }) => (
+                                        <DateTimePicker
+                                          date={subField.value ? new Date(subField.value) : undefined}
+                                          onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                          placeholder="Select date"
+                                          hideTime={true}
+                                        />
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="space-y-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                                    <FieldLabel>Completion Remark</FieldLabel>
+                                    <Textarea
+                                      {...form.register(`sub_tasks.${index}.completionRemark`)}
+                                      placeholder="Remark..."
+                                      rows={2}
+                                      className="border-[var(--tm-border)] shadow-sm min-h-[40px] h-auto py-2 px-3 rounded-[8px] font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300 focus-visible:ring-[#0EA5E9]/20"
+                                      maxLength={500}
+                                    />
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
-                      );
-                    }
+                          );
+                        }
 
-                    const typeLabel = fillValues?.type?.find(t => t.OperTaskTypeNo.toString() === task.type_No?.toString() || t.OperTaskTypeNo.toString() === task.operTaskTypeNo?.toString())?.["Task Type"] || '-';
+                        const typeLabel = fillValues?.type?.find(t => t.OperTaskTypeNo.toString() === task.type_No?.toString() || t.OperTaskTypeNo.toString() === task.operTaskTypeNo?.toString())?.["Task Type"] || '-';
                         return (
-                      <div
-                        key={task.taskNo}
-                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                      >
-                        <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                            {idx + 1}
+                          <div
+                            key={task.taskNo}
+                            className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                          >
+                            <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                {idx + 1}
                               </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
-                              {task.status ? (
-                              <span className={cn(
-                                  "shrink-0 px-2 py-0.5 rounded-full text-[9px] font-medium",
-                                task.status === 'Done' || task.status === 'Complete' ? "bg-green-100/80 text-green-800" :
-                                  task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
-                                    task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
-                                      "bg-slate-200/80 text-slate-100"
-                              )}>
-                                {task.status}
-                              </span>
-                              ) : null}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
+                                  {task.status ? (
+                                    <span className={cn(
+                                      "shrink-0 px-2 py-0.5 rounded-full text-[9px] font-medium",
+                                      task.status === 'Done' || task.status === 'Complete' ? "bg-green-100/80 text-green-800" :
+                                        task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
+                                          task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
+                                            "bg-slate-200/80 text-slate-100"
+                                    )}>
+                                      {task.status}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {task.code || task.taskNo > 0 ? (
+                                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{task.code || `${task.taskNo}`}</p>
+                                ) : null}
                               </div>
-                            {task.code || task.taskNo > 0 ? (
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{task.code || `${task.taskNo}`}</p>
-                            ) : null}
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-[#3D4F66] text-slate-300 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit"><Edit2 size={12} /></Button>
                                 {task.taskNo > 0 && (
                                   <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-[#3D4F66] text-[#0EA5E9]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit"><ExternalLink size={12} /></Button>
                                 )}
                                 <Button type="button" size="sm" variant="outline" className="h-7 w-7 p-0 border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-400" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete"><Trash2 size={12} /></Button>
                               </div>
-                        </div>
+                            </div>
 
-                        <div className="p-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                            {showSubtaskType && (
-                              <div className="space-y-1">
-                                <FieldLabel>Type</FieldLabel>
-                                <p className="text-xs font-medium text-slate-200 pt-2">{typeLabel}</p>
-                              </div>
-                            )}
-                            <div className="space-y-1">
-                              <FieldLabel>Task Assign To</FieldLabel>
-                              <div className="flex items-center gap-1.5 pt-1.5">
-                                {task.assignedDisplayName && task.assignedDisplayName !== '-' && (
-                                  <UserAvatar loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined} displayName={task.assignedDisplayName} size="sm" />
+                            <div className="p-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                {showSubtaskType && (
+                                  <div className="space-y-1">
+                                    <FieldLabel>Type</FieldLabel>
+                                    <p className="text-xs font-medium text-slate-200 pt-2">{typeLabel}</p>
+                                  </div>
                                 )}
-                                <span className="text-xs font-medium text-slate-200">{task.assignedDisplayName || '-'}</span>
+                                <div className="space-y-1">
+                                  <FieldLabel>Task Assign To</FieldLabel>
+                                  <div className="flex items-center gap-1.5 pt-1.5">
+                                    {task.assignedDisplayName && task.assignedDisplayName !== '-' && (
+                                      <UserAvatar loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined} displayName={task.assignedDisplayName} size="sm" />
+                                    )}
+                                    <span className="text-xs font-medium text-slate-200">{task.assignedDisplayName || '-'}</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <FieldLabel>Due Date</FieldLabel>
+                                  <p className="text-xs font-medium text-slate-200 pt-2">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <FieldLabel>Completion Date</FieldLabel>
+                                  <p className="text-xs font-medium text-slate-200 pt-2">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</p>
+                                </div>
+                                <div className="space-y-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                                  <FieldLabel>Completion Remark</FieldLabel>
+                                  <p className="text-xs font-medium text-slate-200 pt-1 whitespace-pre-wrap break-words">{task.completionRemark || '-'}</p>
+                                </div>
                               </div>
-                            </div>
-                            <div className="space-y-1">
-                              <FieldLabel>Due Date</FieldLabel>
-                              <p className="text-xs font-medium text-slate-200 pt-2">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</p>
-                            </div>
-                            <div className="space-y-1">
-                              <FieldLabel>Completion Date</FieldLabel>
-                              <p className="text-xs font-medium text-slate-200 pt-2">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</p>
-                            </div>
-                            <div className="space-y-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
-                              <FieldLabel>Completion Remark</FieldLabel>
-                              <p className="text-xs font-medium text-slate-200 pt-1 whitespace-pre-wrap break-words">{task.completionRemark || '-'}</p>
                             </div>
                           </div>
-                        </div>
-                      </div>
                         );
                       })}
 
                       {subtaskFields.map((field, index) => {
                         if (localSubtasks.some((st: any) => st.taskNo === field.operTaskNo)) return null;
-                    const watchedTitle = form.watch(`sub_tasks.${index}.title`);
+                        const watchedTitle = form.watch(`sub_tasks.${index}.title`);
                         return (
-                      <div
-                        key={field.id}
-                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                      >
-                        <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                            {localSubtasks.length + index + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{(watchedTitle || '').trim() || 'New Sub-Task'}</p>
-                              <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-medium bg-slate-200/80 text-slate-200">Draft</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => removeSubtask(index)} title="Cancel">
-                              <X size={12} />
-                            </Button>
-                            <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
-                              {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="p-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                            <div className="space-y-1">
-                              <FieldLabel required>Title</FieldLabel>
-                              <FieldControl error={form.formState.errors.sub_tasks?.[index]?.title?.message}>
-                                <Input
-                                  {...form.register(`sub_tasks.${index}.title`)}
-                                  placeholder="Enter sub-task title"
-                                  className={cn(
-                                    "h-10 rounded-[8px] border-[var(--tm-border)] shadow-sm px-3 font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300",
-                                    form.formState.errors.sub_tasks?.[index]?.title && "border-red-400"
-                                  )}
-                                  maxLength={200}
-                                />
-                              </FieldControl>
-                            </div>
-                            {showSubtaskType && (
-                              <div className="space-y-1">
-                                <FieldLabel>Type</FieldLabel>
-                                <Controller
-                                  name={`sub_tasks.${index}.type_No`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
-                                    <Combobox
-                                      options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
-                                        value={subField.value || ''}
-                                        onChange={(val) => {
-                                          subField.onChange(val);
-                                        }}
-                                        placeholder="Select type"
-                                      />
-                                  )}
-                                />
+                          <div
+                            key={field.id}
+                            className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                          >
+                            <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                {localSubtasks.length + index + 1}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{(watchedTitle || '').trim() || 'New Sub-Task'}</p>
+                                  <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-medium bg-slate-200/80 text-slate-200">Draft</span>
                                 </div>
-                            )}
-                            <div className="space-y-1">
-                              <FieldLabel required>Task Assign To</FieldLabel>
-                              <Controller
-                                name={`sub_tasks.${index}.ownerLoginNo`}
-                                control={form.control}
-                                render={({ field: subField }) => (
-                                  <FieldControl error={form.formState.errors.sub_tasks?.[index]?.ownerLoginNo?.message}>
-                                    <UserCombobox
-                                      className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && "border-red-400")}
-                                      value={subField.value || ''}
-                                      onChange={(user) => {
-                                      const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
-                                      subField.onChange(val);
-                                      form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
-                                      form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
-                                    }}
-                                      placeholder="Search owner..."
-                                      error={!!form.formState.errors.sub_tasks?.[index]?.ownerLoginNo}
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => removeSubtask(index)} title="Cancel">
+                                  <X size={12} />
+                                </Button>
+                                <Button type="button" size="sm" className="h-7 px-2 text-[10px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
+                                  {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="p-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                <div className="space-y-1">
+                                  <FieldLabel required>Title</FieldLabel>
+                                  <FieldControl error={form.formState.errors.sub_tasks?.[index]?.title?.message}>
+                                    <Input
+                                      {...form.register(`sub_tasks.${index}.title`)}
+                                      placeholder="Enter sub-task title"
+                                      className={cn(
+                                        "h-10 rounded-[8px] border-[var(--tm-border)] shadow-sm px-3 font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300",
+                                        form.formState.errors.sub_tasks?.[index]?.title && "border-red-400"
+                                      )}
+                                      maxLength={200}
                                     />
                                   </FieldControl>
+                                </div>
+                                {showSubtaskType && (
+                                  <div className="space-y-1">
+                                    <FieldLabel>Type</FieldLabel>
+                                    <Controller
+                                      name={`sub_tasks.${index}.type_No`}
+                                      control={form.control}
+                                      render={({ field: subField }) => (
+                                        <Combobox
+                                          options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
+                                          value={subField.value || ''}
+                                          onChange={(val) => {
+                                            subField.onChange(val);
+                                          }}
+                                          placeholder="Select type"
+                                        />
+                                      )}
+                                    />
+                                  </div>
                                 )}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <FieldLabel>Due Date</FieldLabel>
-                              <Controller
-                                name={`sub_tasks.${index}.endDate`}
-                                control={form.control}
-                                render={({ field: subField }) => (
-                                  <DateTimePicker
-                                    date={subField.value ? new Date(subField.value) : undefined}
-                                    onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                                    placeholder="Select date"
-                                    hideTime={true}
+                                <div className="space-y-1">
+                                  <FieldLabel required>Task Assign To</FieldLabel>
+                                  <Controller
+                                    name={`sub_tasks.${index}.ownerLoginNo`}
+                                    control={form.control}
+                                    render={({ field: subField }) => (
+                                      <FieldControl error={form.formState.errors.sub_tasks?.[index]?.ownerLoginNo?.message}>
+                                        <UserCombobox
+                                          className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.sub_tasks?.[index]?.ownerLoginNo && "border-red-400")}
+                                          value={subField.value || ''}
+                                          onChange={(user) => {
+                                            const val = user.loginNo?.toString() || (user as any).LoginNo?.toString() || (user as any).id?.toString();
+                                            subField.onChange(val);
+                                            form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
+                                            form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
+                                          }}
+                                          placeholder="Search owner..."
+                                          error={!!form.formState.errors.sub_tasks?.[index]?.ownerLoginNo}
+                                        />
+                                      </FieldControl>
+                                    )}
                                   />
-                                )}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <FieldLabel>Completion Date</FieldLabel>
-                              <Controller
-                                name={`sub_tasks.${index}.completionDate`}
-                                control={form.control}
-                                render={({ field: subField }) => (
-                                  <DateTimePicker
-                                    date={subField.value ? new Date(subField.value) : undefined}
-                                    onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                                    placeholder="Select date"
-                                    hideTime={true}
+                                </div>
+                                <div className="space-y-1">
+                                  <FieldLabel>Due Date</FieldLabel>
+                                  <Controller
+                                    name={`sub_tasks.${index}.endDate`}
+                                    control={form.control}
+                                    render={({ field: subField }) => (
+                                      <DateTimePicker
+                                        date={subField.value ? new Date(subField.value) : undefined}
+                                        onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                        placeholder="Select date"
+                                        hideTime={true}
+                                      />
+                                    )}
                                   />
-                                )}
-                              />
+                                </div>
+                                <div className="space-y-1">
+                                  <FieldLabel>Completion Date</FieldLabel>
+                                  <Controller
+                                    name={`sub_tasks.${index}.completionDate`}
+                                    control={form.control}
+                                    render={({ field: subField }) => (
+                                      <DateTimePicker
+                                        date={subField.value ? new Date(subField.value) : undefined}
+                                        onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                        placeholder="Select date"
+                                        hideTime={true}
+                                      />
+                                    )}
+                                  />
+                                </div>
+                                <div className="space-y-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                                  <FieldLabel>Completion Remark</FieldLabel>
+                                  <Textarea
+                                    {...form.register(`sub_tasks.${index}.completionRemark`)}
+                                    placeholder="Enter remark"
+                                    rows={2}
+                                    className="border-[var(--tm-border)] shadow-sm min-h-[40px] h-auto py-2 px-3 rounded-[8px] font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300"
+                                    maxLength={500}
+                                  />
+                                </div>
                               </div>
-                            <div className="space-y-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
-                              <FieldLabel>Completion Remark</FieldLabel>
-                              <Textarea
-                                {...form.register(`sub_tasks.${index}.completionRemark`)}
-                                placeholder="Enter remark"
-                                rows={2}
-                                className="border-[var(--tm-border)] shadow-sm min-h-[40px] h-auto py-2 px-3 rounded-[8px] font-normal text-slate-200 placeholder:text-slate-400 text-xs transition-all duration-300"
-                                maxLength={500}
-                              />
                             </div>
                           </div>
-                        </div>
-                      </div>
                         );
                       })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </FormSection>
-        )}
+              </FormSection>
+            )}
 
-        {/* 5. Checklist */}
-        {!hiddenSections.includes('checklist') && (
-          <FormSection
-            title="Checklist"
-            icon={CheckCircle}
-            headerAction={
-              <div className="flex flex-wrap items-center gap-2">
-                {checklistFields.length > 0 && (
-                  <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--tm-tint)] px-2.5 py-1 text-[10px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                    {completedCount}/{checklistFields.length}
-                    <span className="text-[#0EA5E9]/70 font-medium">({progressPercent}%)</span>
-                  </span>
-                )}
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
-                  className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+            {/* 5. Checklist */}
+            {!hiddenSections.includes('checklist') && (
+              <FormSection
+                title="Checklist"
+                icon={CheckCircle}
+                headerAction={
+                  <div className="flex flex-wrap items-center gap-2">
+                    {checklistFields.length > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--tm-tint)] px-2.5 py-1 text-[10px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                        {completedCount}/{checklistFields.length}
+                        <span className="text-[#0EA5E9]/70 font-medium">({progressPercent}%)</span>
+                      </span>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
+                      className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+                    >
+                      <Plus size={12} className="text-[#0EA5E9]" /> Add Checklist Item
+                    </Button>
+                  </div>
+                }
               >
-                <Plus size={12} className="text-[#0EA5E9]" /> Add Checklist Item
-              </Button>
-              </div>
-            }
-          >
-            <div className="space-y-3">
-              {checklistFields.length > 0 && (
-                <div className="h-1.5 w-full rounded-full bg-[var(--tm-muted)] overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[#0EA5E9] transition-all duration-300"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              )}
-
-              {checklistFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
-                  <p className="text-xs text-slate-500 font-medium">No checklist items yet.</p>
-                  <p className="text-[10px] text-slate-400 font-medium">Add items to track task completion.</p>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {checklistFields.map((field, index) => {
-                    const isCompleted = form.watch(`check_list.${index}.completed`);
-                    const descError = form.formState.errors.check_list?.[index]?.description?.message;
-                    return (
-                    <motion.div
-                      key={field.id}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: Math.min(index * 0.04, 0.2) }}
-                      className={cn(
-                          "relative rounded-[8px] border bg-[var(--tm-surface)] overflow-hidden transition-all",
-                          "shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
-                          isCompleted
-                            ? "border-[var(--tm-border)]/80 bg-[var(--tm-muted)]/60"
-                            : "border-[var(--tm-border)]/80 hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
-                          descError && "border-red-300"
-                        )}
-                      >
-                        <div className="relative flex items-start gap-3 pl-3 pr-11 py-3">
-                          <span className={cn(
-                            "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[11px] font-semibold ring-1 mt-0.5",
-                            isCompleted
-                              ? "bg-[var(--tm-muted)] text-slate-400 ring-[var(--tm-border)]"
-                              : "bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12"
-                          )}>
-                            {index + 1}
-                          </span>
-
-                      <Controller
-                        name={`check_list.${index}.completed`}
-                        control={form.control}
-                        render={({ field: checkField }) => (
-                          <button
-                            type="button"
-                            onClick={() => checkField.onChange(!checkField.value)}
-                            className={cn(
-                                  "mt-0.5 h-7 w-7 shrink-0 rounded-[7px] border-2 flex items-center justify-center transition-all duration-200",
-                              checkField.value
-                                    ? "bg-[#0EA5E9] border-[#0EA5E9] text-white"
-                                    : "border-[#3D4F66] text-transparent hover:border-[#0EA5E9] bg-[var(--tm-surface)]"
-                            )}
-                                title={checkField.value ? "Mark incomplete" : "Mark complete"}
-                          >
-                                <Check size={14} strokeWidth={3} />
-                          </button>
-                        )}
+                <div className="space-y-3">
+                  {checklistFields.length > 0 && (
+                    <div className="h-1.5 w-full rounded-full bg-[var(--tm-muted)] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[#0EA5E9] transition-all duration-300"
+                        style={{ width: `${progressPercent}%` }}
                       />
+                    </div>
+                  )}
 
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <FieldLabel required className="sr-only">Checklist item</FieldLabel>
-                            <FieldControl error={descError}>
-                              <Input
-                                {...form.register(`check_list.${index}.description`)}
-                                placeholder="Enter checklist item…"
-                                className={cn(
-                                  "rounded-[8px] h-10 text-xs border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none",
-                                  isCompleted && "text-slate-400 line-through decoration-slate-300 bg-[var(--tm-muted)]",
-                                  descError && "border-red-400"
+                  {checklistFields.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
+                      <p className="text-xs text-slate-500 font-medium">No checklist items yet.</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Add items to track task completion.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {checklistFields.map((field, index) => {
+                        const isCompleted = form.watch(`check_list.${index}.completed`);
+                        const descError = form.formState.errors.check_list?.[index]?.description?.message;
+                        return (
+                          <motion.div
+                            key={field.id}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: Math.min(index * 0.04, 0.2) }}
+                            className={cn(
+                              "relative rounded-[8px] border bg-[var(--tm-surface)] overflow-hidden transition-all",
+                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
+                              isCompleted
+                                ? "border-[var(--tm-border)]/80 bg-[var(--tm-muted)]/60"
+                                : "border-[var(--tm-border)]/80 hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
+                              descError && "border-red-300"
+                            )}
+                          >
+                            <div className="relative flex items-start gap-3 pl-3 pr-11 py-3">
+                              <span className={cn(
+                                "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[11px] font-semibold ring-1 mt-0.5",
+                                isCompleted
+                                  ? "bg-[var(--tm-muted)] text-slate-400 ring-[var(--tm-border)]"
+                                  : "bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12"
+                              )}>
+                                {index + 1}
+                              </span>
+
+                              <Controller
+                                name={`check_list.${index}.completed`}
+                                control={form.control}
+                                render={({ field: checkField }) => (
+                                  <button
+                                    type="button"
+                                    onClick={() => checkField.onChange(!checkField.value)}
+                                    className={cn(
+                                      "mt-0.5 h-7 w-7 shrink-0 rounded-[7px] border-2 flex items-center justify-center transition-all duration-200",
+                                      checkField.value
+                                        ? "bg-[#0EA5E9] border-[#0EA5E9] text-white"
+                                        : "border-[#3D4F66] text-transparent hover:border-[#0EA5E9] bg-[var(--tm-surface)]"
+                                    )}
+                                    title={checkField.value ? "Mark incomplete" : "Mark complete"}
+                                  >
+                                    <Check size={14} strokeWidth={3} />
+                                  </button>
                                 )}
                               />
-                            </FieldControl>
+
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <FieldLabel required className="sr-only">Checklist item</FieldLabel>
+                                <FieldControl error={descError}>
+                                  <Input
+                                    {...form.register(`check_list.${index}.description`)}
+                                    placeholder="Enter checklist item…"
+                                    className={cn(
+                                      "rounded-[8px] h-10 text-xs border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none",
+                                      isCompleted && "text-slate-400 line-through decoration-slate-300 bg-[var(--tm-muted)]",
+                                      descError && "border-red-400"
+                                    )}
+                                  />
+                                </FieldControl>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => removeChecklist(index)}
+                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                                title="Remove checklist item"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+            )}
+
+            {/* 6. Task Execution Log */}
+            {!hiddenSections.includes('execution_note') && (
+              <FormSection
+                title="Task Execution Log"
+                icon={FileText}
+                headerAction={
+                  <div className="flex flex-wrap items-center gap-2">
+                    {executionLogFields.length > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
+                        {executionLogFields.length}
+                      </span>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => appendExecutionLog({ id: Date.now().toString(), date: new Date().toISOString(), remark: '' })}
+                      className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+                    >
+                      <Plus size={12} className="text-[#0EA5E9]" /> Add Log
+                    </Button>
+                  </div>
+                }
+              >
+                <div className="space-y-3">
+                  {/* Log entries panel */}
+                  <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                          <History size={12} strokeWidth={1.75} />
+                        </span>
+                        <p className="text-[11px] font-semibold text-slate-200 truncate">Log entries</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 space-y-2.5">
+                      {executionLogFields.length === 0 ? (
+                        <FieldControl
+                          className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center gap-1"
+                          error={hasExecutionLogError ? (executionLogError as any).message : undefined}
+                        >
+                          <p className="text-xs text-slate-500 font-medium">No execution logs yet.</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Add a log entry with date and remark.</p>
+                        </FieldControl>
+                      ) : (
+                        <FieldControl error={hasExecutionLogError ? (executionLogError as any).message : undefined} className="space-y-2.5 max-h-[340px] overflow-y-auto scrollbar-hide">
+                          {executionLogFields.map((field, index) => {
+                            const dateErr = form.formState.errors.execution_logs?.[index]?.date?.message;
+                            const remarkErr = form.formState.errors.execution_logs?.[index]?.remark?.message;
+                            const logDate = form.watch(`execution_logs.${index}.date`);
+                            const logRemark = form.watch(`execution_logs.${index}.remark`);
+                            return (
+                              <div
+                                key={field.id}
+                                className={cn(
+                                  "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
+                                  "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
+                                  (dateErr || remarkErr) && "border-red-300"
+                                )}
+                              >
+                                <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                    {index + 1}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[12px] font-semibold text-slate-100 leading-snug">
+                                      {logDate ? new Date(logDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : `Log entry ${index + 1}`}
+                                    </p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
+                                      {logRemark?.trim() || 'Add date and remark'}
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeExecutionLog(index)}
+                                    className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                                    title="Remove log"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+
+                                <div className="p-3.5 space-y-3">
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Date</FieldLabel>
+                                    <Controller
+                                      name={`execution_logs.${index}.date`}
+                                      control={form.control}
+                                      render={({ field: dateField }) => (
+                                        <FieldControl error={dateErr}>
+                                          <DateTimePicker
+                                            date={dateField.value ? new Date(dateField.value) : undefined}
+                                            onChange={(date) => {
+                                              dateField.onChange(date ? date.toISOString() : '');
+                                              form.clearErrors(`execution_logs.${index}.date`);
+                                            }}
+                                            placeholder="Select date"
+                                            hideTime
+                                            className={cn(
+                                              "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
+                                              dateErr && "border-red-400"
+                                            )}
+                                          />
+                                        </FieldControl>
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Remark</FieldLabel>
+                                    <FieldControl error={remarkErr}>
+                                      <Textarea
+                                        {...form.register(`execution_logs.${index}.remark`)}
+                                        placeholder="Enter remark"
+                                        rows={4}
+                                        className={cn(
+                                          "min-h-[100px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                                          remarkErr && "border-red-400"
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </FieldControl>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Completion panel */}
+                  <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                        <CheckCircle size={12} strokeWidth={1.75} />
+                      </span>
+                      <p className="text-[11px] font-semibold text-slate-200">Completion</p>
+                    </div>
+                    <div className="p-3.5 space-y-3.5">
+                      <div className="space-y-1" id="form-group-completionDate">
+                        <FieldLabel>Completion Date</FieldLabel>
+                        <FieldControl error={form.formState.errors.completionDate?.message}>
+                          <Controller
+                            name="completionDate"
+                            control={form.control}
+                            render={({ field }) => (
+                              <DateTimePicker
+                                date={field.value ? new Date(field.value) : undefined}
+                                onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                                placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
+                                hideTime={isAllDay}
+                                className={cn(
+                                  "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
+                                  form.formState.errors.completionDate && "border-red-400"
+                                )}
+                              />
+                            )}
+                          />
+                        </FieldControl>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => removeChecklist(index)}
-                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                            title="Remove checklist item"
-                      >
-                            <Trash2 size={13} />
-                      </button>
-                        </div>
-                    </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </FormSection>
-        )}
-
-        {/* 6. Task Execution Log */}
-        {!hiddenSections.includes('execution_note') && (
-          <FormSection
-            title="Task Execution Log"
-            icon={FileText}
-            headerAction={
-              <div className="flex flex-wrap items-center gap-2">
-                {executionLogFields.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
-                    {executionLogFields.length}
-                  </span>
-                )}
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => appendExecutionLog({ id: Date.now().toString(), date: '', remark: '' })}
-                  className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
-              >
-                <Plus size={12} className="text-[#0EA5E9]" /> Add Log
-              </Button>
-              </div>
-            }
-          >
-            <div className="space-y-3">
-              {/* Log entries panel */}
-              <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 overflow-hidden">
-                <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                      <History size={12} strokeWidth={1.75} />
-                    </span>
-                    <p className="text-[11px] font-semibold text-slate-200 truncate">Log entries</p>
+                      <div className="space-y-1" id="form-group-completionRemark">
+                        <FieldLabel>Completion Remark</FieldLabel>
+                        <FieldControl error={form.formState.errors.completionRemark?.message}>
+                          <Textarea
+                            placeholder="Enter completion remark"
+                            {...form.register('completionRemark')}
+                            maxLength={500}
+                            rows={4}
+                            className={cn(
+                              "min-h-[100px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                              form.formState.errors.completionRemark && "border-red-400"
+                            )}
+                          />
+                        </FieldControl>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              </FormSection>
+            )}
 
-                <div className="p-3 space-y-2.5">
-                  {executionLogFields.length === 0 ? (
-                    <FieldControl
-                      className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center gap-1"
-                      error={hasExecutionLogError ? (executionLogError as any).message : undefined}
+            {/* 6b. Challenges */}
+            {!hiddenSections.includes('execution_note') && (
+              <FormSection
+                title="Challenges"
+                icon={AlertCircle}
+                headerAction={
+                  <div className="flex flex-wrap items-center gap-2">
+                    {roadBlockFields.length > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
+                        {roadBlockFields.length}
+                      </span>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => appendRoadBlock({ id: Date.now().toString(), date: '', remark: '', proposedSolution: '', status_No: '' })}
+                      className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
                     >
-                      <p className="text-xs text-slate-500 font-medium">No execution logs yet.</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Add a log entry with date and remark.</p>
-                    </FieldControl>
+                      <Plus size={12} className="text-[#0EA5E9]" /> Add Challenges
+                    </Button>
+                  </div>
+                }
+              >
+                <div className="space-y-2.5">
+                  {roadBlockFields.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
+                      <p className="text-xs text-slate-500 font-medium">No challenges added yet.</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Track blockers with date, remark, and status.</p>
+                    </div>
                   ) : (
-                    <FieldControl error={hasExecutionLogError ? (executionLogError as any).message : undefined} className="space-y-2.5 max-h-[340px] overflow-y-auto scrollbar-hide">
-                      {executionLogFields.map((field, index) => {
-                        const dateErr = form.formState.errors.execution_logs?.[index]?.date?.message;
-                        const remarkErr = form.formState.errors.execution_logs?.[index]?.remark?.message;
-                        const logDate = form.watch(`execution_logs.${index}.date`);
-                        const logRemark = form.watch(`execution_logs.${index}.remark`);
+                    <div className="space-y-2.5 max-h-[420px] overflow-y-auto scrollbar-hide">
+                      {roadBlockFields.map((field, index) => {
+                        const dateErr = form.formState.errors.road_block_remarks?.[index]?.date?.message;
+                        const remarkErr = form.formState.errors.road_block_remarks?.[index]?.remark?.message;
+                        const statusErr = form.formState.errors.road_block_remarks?.[index]?.status_No?.message;
+                        const challengeDate = form.watch(`road_block_remarks.${index}.date`);
+                        const challengeRemark = form.watch(`road_block_remarks.${index}.remark`);
+                        const challengeStatus = form.watch(`road_block_remarks.${index}.status_No`);
+                        const statusLabel = fillValues?.status.find(s => s.StatusNo.toString() === challengeStatus)?.Status;
                         return (
                           <div
                             key={field.id}
                             className={cn(
                               "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
                               "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
-                              (dateErr || remarkErr) && "border-red-300"
+                              (dateErr || remarkErr || statusErr) && "border-red-300"
                             )}
                           >
                             <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
@@ -3610,331 +3846,160 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 {index + 1}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="text-[12px] font-semibold text-slate-100 leading-snug">
-                                  {logDate ? new Date(logDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : `Log entry ${index + 1}`}
-                                </p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-[12px] font-semibold text-slate-100 leading-snug">
+                                    {challengeDate
+                                      ? new Date(challengeDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                                      : `Challenge ${index + 1}`}
+                                  </p>
+                                  {statusLabel ? (
+                                    <span className="inline-flex items-center rounded-[6px] bg-[var(--tm-tint)] px-1.5 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
+                                      {statusLabel}
+                                    </span>
+                                  ) : null}
+                                </div>
                                 <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
-                                  {logRemark?.trim() || 'Add date and remark'}
+                                  {challengeRemark?.trim() || 'Add remark, solution, and status'}
                                 </p>
                               </div>
                               <button
                                 type="button"
-                                onClick={() => removeExecutionLog(index)}
+                                onClick={() => removeRoadBlock(index)}
                                 className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                                title="Remove log"
+                                title="Remove challenge"
                               >
                                 <Trash2 size={13} />
                               </button>
                             </div>
 
                             <div className="p-3.5 space-y-3">
-                              <div className="space-y-1">
-                                <FieldLabel required>Date</FieldLabel>
-                              <Controller
-                                name={`execution_logs.${index}.date`}
-                                control={form.control}
-                                render={({ field: dateField }) => (
-                                    <FieldControl error={dateErr}>
-                                  <DateTimePicker
-                                    date={dateField.value ? new Date(dateField.value) : undefined}
-                                        onChange={(date) => {
-                                          dateField.onChange(date ? date.toISOString() : '');
-                                          form.clearErrors(`execution_logs.${index}.date`);
-                                        }}
-                                    placeholder="Select date"
-                                    hideTime
-                                        className={cn(
-                                          "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
-                                          dateErr && "border-red-400"
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  )}
-                                />
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <FieldLabel required>Date</FieldLabel>
+                                  <Controller
+                                    name={`road_block_remarks.${index}.date`}
+                                    control={form.control}
+                                    render={({ field: dateField }) => (
+                                      <FieldControl error={dateErr}>
+                                        <DateTimePicker
+                                          date={dateField.value ? new Date(dateField.value) : undefined}
+                                          onChange={(date) => {
+                                            dateField.onChange(date ? date.toISOString() : '');
+                                            form.clearErrors(`road_block_remarks.${index}.date`);
+                                          }}
+                                          placeholder="Select date"
+                                          hideTime
+                                          className={cn(
+                                            "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full",
+                                            dateErr && "border-red-400"
+                                          )}
+                                        />
+                                      </FieldControl>
+                                    )}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <FieldLabel required>Status</FieldLabel>
+                                  <Controller
+                                    name={`road_block_remarks.${index}.status_No`}
+                                    control={form.control}
+                                    render={({ field: statusField }) => (
+                                      <FieldControl error={statusErr}>
+                                        <Select
+                                          onValueChange={(val) => {
+                                            statusField.onChange(val);
+                                            form.clearErrors(`road_block_remarks.${index}.status_No`);
+                                          }}
+                                          value={statusField.value}
+                                        >
+                                          <SelectTrigger className={cn(
+                                            "rounded-[8px] h-10 border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none",
+                                            statusErr && "border-red-400"
+                                          )}>
+                                            <SelectValue placeholder="Select status" />
+                                          </SelectTrigger>
+                                          <SelectContent className="rounded-[8px]">
+                                            {fillValues?.status
+                                              .filter(s => ['Open', 'In Progress', 'Close'].includes(s.Status))
+                                              .map(s => (
+                                                <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs">{s.Status}</SelectItem>
+                                              ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </FieldControl>
+                                    )}
+                                  />
+                                </div>
                               </div>
+
                               <div className="space-y-1">
-                                <FieldLabel required>Remark</FieldLabel>
+                                <FieldLabel required>Remarks</FieldLabel>
                                 <FieldControl error={remarkErr}>
                                   <Textarea
-                                    {...form.register(`execution_logs.${index}.remark`)}
+                                    {...form.register(`road_block_remarks.${index}.remark`)}
                                     placeholder="Enter remark"
-                                    rows={4}
+                                    rows={3}
                                     className={cn(
-                                      "min-h-[100px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                                      "min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
                                       remarkErr && "border-red-400"
                                     )}
                                   />
                                 </FieldControl>
-                  </div>
-                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <FieldLabel>Proposed Solution</FieldLabel>
+                                <Textarea
+                                  {...form.register(`road_block_remarks.${index}.proposedSolution`)}
+                                  placeholder="Enter proposed solution"
+                                  rows={3}
+                                  className="min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full"
+                                />
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
-                    </FieldControl>
+                    </div>
                   )}
                 </div>
-              </div>
+              </FormSection>
+            )}
 
-              {/* Completion panel */}
-              <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-                <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                    <CheckCircle size={12} strokeWidth={1.75} />
-                  </span>
-                  <p className="text-[11px] font-semibold text-slate-200">Completion</p>
-                </div>
-                <div className="p-3.5 space-y-3.5">
-                  <div className="space-y-1" id="form-group-completionDate">
-                    <FieldLabel>Completion Date</FieldLabel>
-                    <FieldControl error={form.formState.errors.completionDate?.message}>
-                  <Controller
-                    name="completionDate"
-                    control={form.control}
-                    render={({ field }) => (
-                          <DateTimePicker
-                            date={field.value ? new Date(field.value) : undefined}
-                            onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                        placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
-                        hideTime={isAllDay}
-                            className={cn(
-                              "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
-                              form.formState.errors.completionDate && "border-red-400"
-                            )}
-                      />
-                    )}
+            {/* 8. Time Logs */}
+            {initialData?.taskNo && !hiddenSections.includes('actual_efforts') && (
+              <FormSection title="Time Logs" icon={History}>
+                <div className="space-y-2.5">
+                  <TaskActivity
+                    taskNo={initialData.taskNo}
+                    comments={initialData.task_comments || []}
+                    efforts={initialData.actual_efforts || []}
+                    onRefresh={() => {
+                      if (onRefreshData) {
+                        onRefreshData();
+                      } else {
+                        window.location.reload();
+                      }
+                    }}
                   />
-                    </FieldControl>
                 </div>
+              </FormSection>
+            )}
 
-                  <div className="space-y-1" id="form-group-completionRemark">
-                    <FieldLabel>Completion Remark</FieldLabel>
-                    <FieldControl error={form.formState.errors.completionRemark?.message}>
-                      <Textarea
-                        placeholder="Enter completion remark"
-                        {...form.register('completionRemark')}
-                        maxLength={500}
-                        rows={4}
-                        className={cn(
-                          "min-h-[100px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
-                          form.formState.errors.completionRemark && "border-red-400"
-                        )}
-                      />
-                    </FieldControl>
-                  </div>
+            {!isShowTopAdditionalFields && (form.watch('custom_fields') as any[])?.length > 0 && (
+              <FormSection title="Additional Fields" icon={Sparkles}>
+                <div className="space-y-2.5">
+                  <CustomFieldsSection
+                    customFields={(form.watch('custom_fields') as any) || []}
+                    onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
+                    companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
+                    hideAddButton={true}
+                    viewMode="grid"
+                  />
                 </div>
-              </div>
-            </div>
-          </FormSection>
-        )}
-
-        {/* 6b. Challenges */}
-        {!hiddenSections.includes('execution_note') && (
-          <FormSection
-            title="Challenges"
-            icon={AlertCircle}
-            headerAction={
-              <div className="flex flex-wrap items-center gap-2">
-                {roadBlockFields.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
-                    {roadBlockFields.length}
-                  </span>
-                )}
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => appendRoadBlock({ id: Date.now().toString(), date: '', remark: '', proposedSolution: '', status_No: '' })}
-                  className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
-              >
-                <Plus size={12} className="text-[#0EA5E9]" /> Add Challenges
-              </Button>
-              </div>
-            }
-          >
-            <div className="space-y-2.5">
-              {roadBlockFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
-                  <p className="text-xs text-slate-500 font-medium">No challenges added yet.</p>
-                  <p className="text-[10px] text-slate-400 font-medium">Track blockers with date, remark, and status.</p>
-                </div>
-              ) : (
-                <div className="space-y-2.5 max-h-[420px] overflow-y-auto scrollbar-hide">
-                  {roadBlockFields.map((field, index) => {
-                    const dateErr = form.formState.errors.road_block_remarks?.[index]?.date?.message;
-                    const remarkErr = form.formState.errors.road_block_remarks?.[index]?.remark?.message;
-                    const statusErr = form.formState.errors.road_block_remarks?.[index]?.status_No?.message;
-                    const challengeDate = form.watch(`road_block_remarks.${index}.date`);
-                    const challengeRemark = form.watch(`road_block_remarks.${index}.remark`);
-                    const challengeStatus = form.watch(`road_block_remarks.${index}.status_No`);
-                    const statusLabel = fillValues?.status.find(s => s.StatusNo.toString() === challengeStatus)?.Status;
-                    return (
-                      <div
-                        key={field.id}
-                        className={cn(
-                          "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
-                          "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
-                          (dateErr || remarkErr || statusErr) && "border-red-300"
-                        )}
-                      >
-                        <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                            {index + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-[12px] font-semibold text-slate-100 leading-snug">
-                                {challengeDate
-                                  ? new Date(challengeDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
-                                  : `Challenge ${index + 1}`}
-                              </p>
-                              {statusLabel ? (
-                                <span className="inline-flex items-center rounded-[6px] bg-[var(--tm-tint)] px-1.5 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
-                                  {statusLabel}
-                                </span>
-                              ) : null}
-                            </div>
-                            <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
-                              {challengeRemark?.trim() || 'Add remark, solution, and status'}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeRoadBlock(index)}
-                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                            title="Remove challenge"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-
-                        <div className="p-3.5 space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <FieldLabel required>Date</FieldLabel>
-                              <Controller
-                                name={`road_block_remarks.${index}.date`}
-                                control={form.control}
-                                render={({ field: dateField }) => (
-                                  <FieldControl error={dateErr}>
-                                  <DateTimePicker
-                                    date={dateField.value ? new Date(dateField.value) : undefined}
-                                      onChange={(date) => {
-                                        dateField.onChange(date ? date.toISOString() : '');
-                                        form.clearErrors(`road_block_remarks.${index}.date`);
-                                      }}
-                                    placeholder="Select date"
-                                    hideTime
-                                      className={cn(
-                                        "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full",
-                                        dateErr && "border-red-400"
-                                      )}
-                                    />
-                                  </FieldControl>
-                                )}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <FieldLabel required>Status</FieldLabel>
-                              <Controller
-                                name={`road_block_remarks.${index}.status_No`}
-                                control={form.control}
-                                render={({ field: statusField }) => (
-                                  <FieldControl error={statusErr}>
-                                    <Select
-                                      onValueChange={(val) => {
-                                        statusField.onChange(val);
-                                        form.clearErrors(`road_block_remarks.${index}.status_No`);
-                                      }}
-                                      value={statusField.value}
-                                    >
-                                      <SelectTrigger className={cn(
-                                        "rounded-[8px] h-10 border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none",
-                                        statusErr && "border-red-400"
-                                      )}>
-                                      <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                      <SelectContent className="rounded-[8px]">
-                                      {fillValues?.status
-                                        .filter(s => ['Open', 'In Progress', 'Close'].includes(s.Status))
-                                        .map(s => (
-                                          <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs">{s.Status}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                  </Select>
-                                  </FieldControl>
-                                )}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <FieldLabel required>Remarks</FieldLabel>
-                            <FieldControl error={remarkErr}>
-                              <Textarea
-                                {...form.register(`road_block_remarks.${index}.remark`)}
-                                placeholder="Enter remark"
-                                rows={3}
-                                className={cn(
-                                  "min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
-                                  remarkErr && "border-red-400"
-                                )}
-                              />
-                            </FieldControl>
-                  </div>
-
-                          <div className="space-y-1">
-                            <FieldLabel>Proposed Solution</FieldLabel>
-                            <Textarea
-                              {...form.register(`road_block_remarks.${index}.proposedSolution`)}
-                              placeholder="Enter proposed solution"
-                              rows={3}
-                              className="min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </FormSection>
-        )}
-
-        {/* 8. Time Logs */}
-        {initialData?.taskNo && !hiddenSections.includes('actual_efforts') && (
-          <FormSection title="Time Logs" icon={History}>
-            <div className="space-y-2.5">
-              <TaskActivity
-                taskNo={initialData.taskNo}
-                comments={initialData.task_comments || []}
-                efforts={initialData.actual_efforts || []}
-                onRefresh={() => {
-                  if (onRefreshData) {
-                    onRefreshData();
-                  } else {
-                    window.location.reload();
-                  }
-                }}
-              />
-            </div>
-          </FormSection>
-        )}
-
-        {!isShowTopAdditionalFields && (form.watch('custom_fields') as any[])?.length > 0 && (
-          <FormSection title="Additional Fields" icon={Sparkles}>
-            <div className="space-y-2.5">
-              <CustomFieldsSection
-                customFields={(form.watch('custom_fields') as any) || []}
-                onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
-                companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
-                hideAddButton={true}
-                viewMode="grid"
-              />
-            </div>
-          </FormSection>
-        )}
-        </>
+              </FormSection>
+            )}
+          </>
         )}
 
         {isHideDetailSection && (
@@ -3956,27 +4021,29 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       </form>
 
       {/* Floating Sub-Task Actions */}
-      <div className="fixed bottom-5 right-5 z-40 flex flex-row items-center bg-[var(--tm-surface)]/95 backdrop-blur-md rounded-[10px] shadow-[0_8px_28px_-8px_rgba(15,23,42,0.28)] border border-[var(--tm-border)]/80 overflow-hidden">
-        <button
-          type="button"
-          disabled={(localSubtasks.length + subtaskFields.length) === 0}
-          onClick={() => setIsSubtasksModalOpen(true)}
-          className="flex items-center gap-2 py-2.5 pl-3.5 pr-2.5 text-[13px] font-semibold text-[#0284C7] hover:bg-[var(--tm-page)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-        >
-          Sub-Tasks
-          <span className="bg-[#0EA5E9] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center tracking-wide">
-            {localSubtasks.length + subtaskFields.length}
-          </span>
-        </button>
-        <div className="w-px self-stretch bg-slate-200/80" />
-        <button
-          type="button"
-          onClick={() => setIsStandaloneSubtaskModalOpen(true)}
-          className="flex items-center gap-1.5 pl-2.5 pr-3.5 py-2.5 text-[13px] font-semibold text-[#0284C7] hover:bg-[var(--tm-page)] transition-colors"
-        >
-          <Plus size={16} strokeWidth={2.5} /> Add
-        </button>
-      </div>
+      {!isSubTask && (
+        <div className="fixed bottom-5 right-5 z-40 flex flex-row items-center bg-[var(--tm-surface)]/95 backdrop-blur-md rounded-[10px] shadow-[0_8px_28px_-8px_rgba(15,23,42,0.28)] border border-[var(--tm-border)]/80 overflow-hidden">
+          <button
+            type="button"
+            disabled={(localSubtasks.length + subtaskFields.length) === 0}
+            onClick={() => setIsSubtasksModalOpen(true)}
+            className="flex items-center gap-2 py-2.5 pl-3.5 pr-2.5 text-[13px] font-semibold text-[#0284C7] hover:bg-[var(--tm-page)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            Sub-Tasks
+            <span className="bg-[#0EA5E9] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center tracking-wide">
+              {localSubtasks.length + subtaskFields.length}
+            </span>
+          </button>
+          <div className="w-px self-stretch bg-slate-200/80" />
+          <button
+            type="button"
+            onClick={() => setIsStandaloneSubtaskModalOpen(true)}
+            className="flex items-center gap-1.5 pl-2.5 pr-3.5 py-2.5 text-[13px] font-semibold text-[#0284C7] hover:bg-[var(--tm-page)] transition-colors"
+          >
+            <Plus size={16} strokeWidth={2.5} /> Add
+          </button>
+        </div>
+      )}
 
       {/* Deletion Confirmation Dialog */}
       <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
@@ -4004,6 +4071,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <Button
               disabled={isDeletingAttachment}
               onClick={confirmRemoveAttachment}
+              autoFocus
               className="h-10 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/10 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center min-w-[70px]"
             >
               {isDeletingAttachment ? (
@@ -4144,6 +4212,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               variant="ghost"
               onClick={() => setSubtaskToDelete(null)}
               disabled={isDeletingSubtask}
+              autoFocus
               className="rounded-xl text-xs font-medium h-9 px-4 text-slate-300 hover:bg-slate-200/50 transition-colors"
             >
               Cancel
@@ -4173,8 +4242,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <DialogTitle className="text-[15px] font-semibold text-slate-100 tracking-tight">
-                Manage Sub-Tasks
-              </DialogTitle>
+                  Manage Sub-Tasks
+                </DialogTitle>
                 {(() => {
                   const count =
                     localSubtasks.length +
@@ -4220,13 +4289,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 </div>
               ) : (
                 <>
-                      {localSubtasks.map((task: any, idx: number) => {
-                        const editIndex = subtaskFields.findIndex(sf => sf.operTaskNo === task.taskNo);
-                        if (editIndex !== -1) {
-                          const field = subtaskFields[editIndex];
-                          const index = editIndex;
+                  {localSubtasks.map((task: any, idx: number) => {
+                    const editIndex = subtaskFields.findIndex(sf => sf.operTaskNo === task.taskNo);
+                    if (editIndex !== -1) {
+                      const field = subtaskFields[editIndex];
+                      const index = editIndex;
                       const ownerErr = form.formState.errors.sub_tasks?.[index]?.ownerLoginNo?.message;
-                          return (
+                      return (
                         <div
                           key={field.id}
                           className="relative rounded-[8px] border border-[#0EA5E9]/25 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
@@ -4251,18 +4320,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           </div>
 
                           <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              {showSubtaskType && (
+                            {showSubtaskType && (
                               <div className="space-y-1 sm:col-span-2">
                                 <FieldLabel>Type</FieldLabel>
-                                  <Controller
-                                    name={`sub_tasks.${index}.type_No`}
-                                    control={form.control}
-                                    render={({ field: subField }) => (
+                                <Controller
+                                  name={`sub_tasks.${index}.type_No`}
+                                  control={form.control}
+                                  render={({ field: subField }) => (
                                     <Combobox
                                       options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
-                                          value={subField.value || ''}
+                                      value={subField.value || ''}
                                       onChange={(val) => subField.onChange(val)}
-                                          placeholder="Select type"
+                                      placeholder="Select type"
                                       className="rounded-[8px] h-10 text-xs"
                                     />
                                   )}
@@ -4274,13 +4343,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <p className="text-xs font-medium text-slate-100 break-words rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-muted)] px-3 py-2.5">
                                 {task.title}
                               </p>
-                                  </div>
+                            </div>
                             <div className="space-y-1">
                               <FieldLabel required>Task Assign To</FieldLabel>
-                                <Controller
-                                  name={`sub_tasks.${index}.ownerLoginNo`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
+                              <Controller
+                                name={`sub_tasks.${index}.ownerLoginNo`}
+                                control={form.control}
+                                render={({ field: subField }) => (
                                   <FieldControl error={ownerErr}>
                                     <UserCombobox
                                       className={cn("rounded-[8px] h-10 text-xs", ownerErr && "border-red-400")}
@@ -4291,46 +4360,46 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                         form.setValue(`sub_tasks.${index}.assignedDisplayName`, user.printingName || user.loginId || val);
                                         form.clearErrors(`sub_tasks.${index}.ownerLoginNo`);
                                       }}
-                                        placeholder="Search owner"
+                                      placeholder="Search owner"
                                       modal={true}
                                       error={!!ownerErr}
-                                      />
+                                    />
                                   </FieldControl>
-                                  )}
-                                />
+                                )}
+                              />
                             </div>
                             <div className="space-y-1">
                               <FieldLabel>Due Date</FieldLabel>
-                                <Controller
-                                  name={`sub_tasks.${index}.endDate`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
+                              <Controller
+                                name={`sub_tasks.${index}.endDate`}
+                                control={form.control}
+                                render={({ field: subField }) => (
                                   <DateTimePicker
                                     date={subField.value ? new Date(subField.value) : undefined}
                                     onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                                      placeholder="Select date"
-                                      hideTime={true}
+                                    placeholder="Select date"
+                                    hideTime={true}
                                     className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
-                                    />
-                                  )}
-                                />
+                                  />
+                                )}
+                              />
                             </div>
                             <div className="space-y-1">
                               <FieldLabel>Completion Date</FieldLabel>
-                                <Controller
-                                  name={`sub_tasks.${index}.completionDate`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
+                              <Controller
+                                name={`sub_tasks.${index}.completionDate`}
+                                control={form.control}
+                                render={({ field: subField }) => (
                                   <DateTimePicker
                                     date={subField.value ? new Date(subField.value) : undefined}
                                     onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                                      placeholder="Select date"
-                                      hideTime={true}
+                                    placeholder="Select date"
+                                    hideTime={true}
                                     className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
-                                    />
-                                  )}
-                                />
-                                </div>
+                                  />
+                                )}
+                              />
+                            </div>
                             <div className="space-y-1 sm:col-span-2">
                               <FieldLabel>Completion Remark</FieldLabel>
                               <Textarea
@@ -4350,7 +4419,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       t => t.OperTaskTypeNo.toString() === task.type_No?.toString() || t.OperTaskTypeNo.toString() === task.operTaskTypeNo?.toString()
                     )?.["Task Type"];
 
-                        return (
+                    return (
                       <div
                         key={task.taskNo}
                         className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
@@ -4358,7 +4427,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         <div className="flex items-start gap-3 px-4 py-3 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
                           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                             {idx + 1}
-                              </span>
+                          </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] font-semibold text-slate-100 break-words leading-snug">{task.title}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -4377,21 +4446,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               {showSubtaskType && typeLabel ? (
                                 <span className="text-[10px] font-medium text-slate-500">{typeLabel}</span>
                               ) : null}
-                              </div>
+                            </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-[var(--tm-border)] text-slate-300 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit">
                               <Edit2 size={13} />
                             </Button>
-                                {task.taskNo > 0 && (
+                            {task.taskNo > 0 && (
                               <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-[var(--tm-border)] text-[#0EA5E9]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit">
                                 <ExternalLink size={13} />
                               </Button>
-                                )}
+                            )}
                             <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-red-500/30 text-red-500 hover:bg-red-500/10" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete">
                               <Trash2 size={13} />
                             </Button>
-                              </div>
+                          </div>
                         </div>
 
                         <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
@@ -4418,14 +4487,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           </div>
                         </div>
                       </div>
-                        );
-                      })}
+                    );
+                  })}
 
-                      {subtaskFields.map((field, index) => {
-                        if (localSubtasks.some((st: any) => st.taskNo === field.operTaskNo)) return null;
+                  {subtaskFields.map((field, index) => {
+                    if (localSubtasks.some((st: any) => st.taskNo === field.operTaskNo)) return null;
                     const titleErr = form.formState.errors.sub_tasks?.[index]?.title?.message;
                     const ownerErr = form.formState.errors.sub_tasks?.[index]?.ownerLoginNo?.message;
-                        return (
+                    return (
                       <div
                         key={field.id}
                         className="relative rounded-[8px] border border-[#0EA5E9]/25 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
@@ -4450,18 +4519,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         </div>
 
                         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {showSubtaskType && (
+                          {showSubtaskType && (
                             <div className="space-y-1 sm:col-span-2">
                               <FieldLabel>Type</FieldLabel>
-                                <Controller
-                                  name={`sub_tasks.${index}.type_No`}
-                                  control={form.control}
-                                  render={({ field: subField }) => (
+                              <Controller
+                                name={`sub_tasks.${index}.type_No`}
+                                control={form.control}
+                                render={({ field: subField }) => (
                                   <Combobox
                                     options={fillValues?.type?.map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] })) || []}
-                                        value={subField.value || ''}
+                                    value={subField.value || ''}
                                     onChange={(val) => subField.onChange(val)}
-                                        placeholder="Select type"
+                                    placeholder="Select type"
                                     className="rounded-[8px] h-10 text-xs"
                                   />
                                 )}
@@ -4478,13 +4547,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 maxLength={200}
                               />
                             </FieldControl>
-                                </div>
+                          </div>
                           <div className="space-y-1">
                             <FieldLabel required>Task Assign To</FieldLabel>
-                              <Controller
-                                name={`sub_tasks.${index}.ownerLoginNo`}
-                                control={form.control}
-                                render={({ field: subField }) => (
+                            <Controller
+                              name={`sub_tasks.${index}.ownerLoginNo`}
+                              control={form.control}
+                              render={({ field: subField }) => (
                                 <FieldControl error={ownerErr}>
                                   <UserCombobox
                                     className={cn("rounded-[8px] h-10 text-xs", ownerErr && "border-red-400")}
@@ -4498,43 +4567,43 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     placeholder="Search owner"
                                     modal={true}
                                     error={!!ownerErr}
-                                    />
+                                  />
                                 </FieldControl>
-                                )}
-                              />
+                              )}
+                            />
                           </div>
                           <div className="space-y-1">
                             <FieldLabel>Due Date</FieldLabel>
-                              <Controller
-                                name={`sub_tasks.${index}.endDate`}
-                                control={form.control}
-                                render={({ field: subField }) => (
+                            <Controller
+                              name={`sub_tasks.${index}.endDate`}
+                              control={form.control}
+                              render={({ field: subField }) => (
                                 <DateTimePicker
                                   date={subField.value ? new Date(subField.value) : undefined}
                                   onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                                    placeholder="Select date"
-                                    hideTime={true}
+                                  placeholder="Select date"
+                                  hideTime={true}
                                   className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
-                                  />
-                                )}
-                              />
+                                />
+                              )}
+                            />
                           </div>
                           <div className="space-y-1">
                             <FieldLabel>Completion Date</FieldLabel>
-                              <Controller
-                                name={`sub_tasks.${index}.completionDate`}
-                                control={form.control}
-                                render={({ field: subField }) => (
+                            <Controller
+                              name={`sub_tasks.${index}.completionDate`}
+                              control={form.control}
+                              render={({ field: subField }) => (
                                 <DateTimePicker
                                   date={subField.value ? new Date(subField.value) : undefined}
                                   onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
-                                    placeholder="Select date"
-                                    hideTime={true}
+                                  placeholder="Select date"
+                                  hideTime={true}
                                   className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
-                                  />
-                                )}
-                              />
-                              </div>
+                                />
+                              )}
+                            />
+                          </div>
                           <div className="space-y-1 sm:col-span-2">
                             <FieldLabel>Completion Remark</FieldLabel>
                             <Textarea
@@ -4547,8 +4616,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           </div>
                         </div>
                       </div>
-                        );
-                      })}
+                    );
+                  })}
                 </>
               )}
             </div>
@@ -4574,6 +4643,50 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         fillValues={fillValues}
         onSuccess={handleMasterCreateSuccess}
       />
+
+      {/* Confirmation Save Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-2xl border border-[var(--tm-border)] bg-[var(--tm-surface)]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold text-slate-100">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0EA5E9]/15 text-[#0EA5E9] ring-1 ring-[#0EA5E9]/25">
+                <AlertCircle size={16} strokeWidth={2.5} />
+              </div>
+              Confirmation Save
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm font-medium leading-relaxed text-slate-400">
+              Are you sure you want to save this task?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-5 flex gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl font-semibold border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)] hover:text-slate-100 h-10 px-5"
+              onClick={() => {
+                setShowConfirmDialog(false);
+                setPendingSaveData(null);
+              }}
+            >
+              No, Cancel
+            </Button>
+            <Button
+              type="button"
+              autoFocus
+              className="rounded-xl font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 transition-all hover:shadow-[#0EA5E9]/40 h-10 px-5"
+              onClick={async () => {
+                if (pendingSaveData) {
+                  setShowConfirmDialog(false);
+                  await proceedSubmit(pendingSaveData);
+                  setPendingSaveData(null);
+                }
+              }}
+            >
+              Yes, Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showDraftRestore} onOpenChange={setShowDraftRestore}>
         <DialogContent className="sm:max-w-[425px]">
@@ -4629,36 +4742,36 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         </DialogContent>
       </Dialog>
       {isCameraModalOpen && (
-      <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
-        <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden flex flex-col max-h-[90vh]">
-          <DialogHeader className="p-5 pb-3 border-b border-[var(--tm-border)]">
-            <DialogTitle className="text-base font-black text-slate-100 tracking-tight flex items-center gap-2">
-              <Camera size={18} className="text-[#0EA5E9]" />
-              Capture Attachment
-            </DialogTitle>
-            <DialogDescription className="text-xs font-semibold text-slate-500">
-              Take a photo and upload it as a Task attachment.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="p-5 overflow-y-auto flex-1">
-            <Suspense fallback={
-              <div className="flex items-center justify-center py-16 text-slate-500 text-sm font-medium">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Loading camera…
-              </div>
-            }>
-            <CameraComp
-              companyNo={authCompanies?.[0]?.HeadOfficeNo || authCompanies?.[0]?.headOfficeNo || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
-              formNo={1547}
-              fileNamePrefix="task-capture"
-              className="border-[var(--tm-border)] shadow-none"
-              onUploaded={handleCameraAttachmentUploaded}
-              onCancel={() => setIsCameraModalOpen(false)}
-            />
-            </Suspense>
-          </div>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
+          <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden flex flex-col max-h-[90vh]">
+            <DialogHeader className="p-5 pb-3 border-b border-[var(--tm-border)]">
+              <DialogTitle className="text-base font-black text-slate-100 tracking-tight flex items-center gap-2">
+                <Camera size={18} className="text-[#0EA5E9]" />
+                Capture Attachment
+              </DialogTitle>
+              <DialogDescription className="text-xs font-semibold text-slate-500">
+                Take a photo and upload it as a Task attachment.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-5 overflow-y-auto flex-1">
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-16 text-slate-500 text-sm font-medium">
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  Loading camera…
+                </div>
+              }>
+                <CameraComp
+                  companyNo={authCompanies?.[0]?.HeadOfficeNo || authCompanies?.[0]?.headOfficeNo || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
+                  formNo={1547}
+                  fileNamePrefix="task-capture"
+                  className="border-[var(--tm-border)] shadow-none"
+                  onUploaded={handleCameraAttachmentUploaded}
+                  onCancel={() => setIsCameraModalOpen(false)}
+                />
+              </Suspense>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
       {/* Standalone Sub-Task Form Modal */}
       <Dialog open={isStandaloneSubtaskModalOpen} onOpenChange={setIsStandaloneSubtaskModalOpen}>
@@ -4737,14 +4850,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 <div className="space-y-1">
                   <FieldLabel required>Sub-Task Title</FieldLabel>
                   <FieldControl error={standaloneSubtaskForm.formState.errors.title?.message as string | undefined}>
-                  <Input
-                    {...standaloneSubtaskForm.register("title")}
+                    <Input
+                      {...standaloneSubtaskForm.register("title")}
                       className={cn(
                         "w-full text-xs rounded-[8px] h-10 border-[var(--tm-border)] font-medium",
                         standaloneSubtaskForm.formState.errors.title && "border-red-400"
                       )}
-                    placeholder="Enter sub-task title..."
-                  />
+                      placeholder="Enter sub-task title..."
+                    />
                   </FieldControl>
                 </div>
 
@@ -4775,15 +4888,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       name="ownerLoginNo"
                       render={({ field }) => (
                         <FieldControl error={standaloneSubtaskForm.formState.errors.ownerLoginNo?.message as string | undefined}>
-                        <UserCombobox
-                          value={field.value}
-                          onChange={(user) => {
-                            field.onChange(user.loginNo.toString());
-                            standaloneSubtaskForm.setValue("assignedDisplayName", user.printingName || "");
+                          <UserCombobox
+                            value={field.value}
+                            onChange={(user) => {
+                              field.onChange(user.loginNo.toString());
+                              standaloneSubtaskForm.setValue("assignedDisplayName", user.printingName || "");
                               standaloneSubtaskForm.clearErrors("ownerLoginNo");
-                          }}
-                          placeholder="Select Assign To"
-                          modal={true}
+                            }}
+                            placeholder="Select Assign To"
+                            modal={true}
                             className={cn(
                               "w-full text-xs rounded-[8px] h-10 border-[var(--tm-border)]",
                               standaloneSubtaskForm.formState.errors.ownerLoginNo && "border-red-400"

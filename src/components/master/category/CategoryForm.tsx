@@ -10,6 +10,7 @@ import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 import { Edit, Trash2, X, CheckCircle, Layers, ListChecks, ListTodo, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
@@ -226,6 +227,11 @@ export function CategoryForm({ id }: CategoryFormProps) {
 
   const addChecklistItem = () => {
     if (newChecklistItem.trim()) {
+      const desc = newChecklistItem.trim().toLowerCase();
+      if (checklist.some((item: any) => (typeof item === 'string' ? item : item.description).toLowerCase() === desc)) {
+        toast.error("Duplicate checklist items are not allowed.");
+        return;
+      }
       setChecklist([...checklist, { description: newChecklistItem.trim(), isChecked: false }]);
       setNewChecklistItem('');
     }
@@ -462,6 +468,11 @@ export function CategoryForm({ id }: CategoryFormProps) {
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             if (!tempEditText.trim()) return;
+                            const desc = tempEditText.trim().toLowerCase();
+                            if (checklist.some((item: any, idx: number) => idx !== index && (typeof item === 'string' ? item : item.description).toLowerCase() === desc)) {
+                              toast.error("Duplicate checklist items are not allowed.");
+                              return;
+                            }
                             const next = [...checklist];
                             next[index] = { ...next[index], description: tempEditText.trim() };
                             setChecklist(next);
@@ -485,6 +496,11 @@ export function CategoryForm({ id }: CategoryFormProps) {
                         <>
                           <Button type="button" variant="ghost" size="icon" disabled={!tempEditText.trim()} onClick={() => {
                             if (!tempEditText.trim()) return;
+                            const desc = tempEditText.trim().toLowerCase();
+                            if (checklist.some((item: any, idx: number) => idx !== index && (typeof item === 'string' ? item : item.description).toLowerCase() === desc)) {
+                              toast.error("Duplicate checklist items are not allowed.");
+                              return;
+                            }
                             const next = [...checklist];
                             next[index] = { ...next[index], description: tempEditText.trim() };
                             setChecklist(next);

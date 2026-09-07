@@ -58,6 +58,10 @@ export function MasterCreateDialog({
   const [categoryCustomFields, setCategoryCustomFields] = useState<{ customFieldNo: string; fieldValue: string }[]>([]);
   const [selectedTypeNos, setSelectedTypeNos] = useState<string[]>([]);
 
+  // Benefit Type State
+  const [valuationtypeNo, setValuationtypeNo] = useState('');
+  const [benefitTypeFillValues, setBenefitTypeFillValues] = useState<any>(null);
+
   // Priority State
   const [priorityDuration, setPriorityDuration] = useState<number | null>(null);
   const [priorityFrequencyNo, setPriorityFrequencyNo] = useState('');
@@ -107,6 +111,9 @@ export function MasterCreateDialog({
     setCategoryCustomFields([]);
     setSelectedTypeNos([]);
 
+    // Reset Benefit Type
+    setValuationtypeNo('');
+
     // Reset Priority
     setPriorityDuration(null);
     setPriorityFrequencyNo('');
@@ -147,6 +154,18 @@ export function MasterCreateDialog({
       apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setLocationFillValues(response);
       }).catch(err => console.error("Failed to load location fill values:", err));
+    } else if (type === 'benefit-type') {
+      apiService.get<any>(`/api/master/business-benefit-types/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
+        const data = response.data || response;
+        setBenefitTypeFillValues(data);
+        
+        const intangible = (data?.valuationTypes || []).find((v: any) => 
+          (v.valuationTypeName || v.name || '').toLowerCase() === 'intangible'
+        );
+        if (intangible) {
+          setValuationtypeNo((intangible.valuationTypeNo || intangible.id || '').toString());
+        }
+      }).catch(err => console.error("Failed to load benefit type fill values:", err));
     }
   }, [open, type, companyNo]);
 
@@ -316,6 +335,13 @@ export function MasterCreateDialog({
           companyNo: companyNo || 1
         };
         response = await apiService.post('/api/master/cities/save', payload);
+      } else if (type === 'benefit-type') {
+        const payload = {
+          businessBenefitTypeNo: null,
+          businessBenefitTypeName: name,
+          valuationType: parseInt(valuationtypeNo) || null
+        };
+        response = await apiService.post('/api/master/business-benefit-types/save', payload);
       }
 
       // Resolve the saved record's ID
@@ -331,6 +357,7 @@ export function MasterCreateDialog({
         else if (type === 'country') createdId = (data.countryNo || data.id || '').toString();
         else if (type === 'state') createdId = (data.stateNo || data.id || '').toString();
         else if (type === 'city') createdId = (data.cityNo || data.id || '').toString();
+        else if (type === 'benefit-type') createdId = (data.businessBenefitTypeNo || data.id || '').toString();
       }
 
       // Success Callback!
@@ -369,6 +396,7 @@ export function MasterCreateDialog({
       case 'country': return 'Country Master';
       case 'state': return 'State Master';
       case 'city': return 'City Master';
+      case 'benefit-type': return 'Business Benefit';
       default: return 'Master Form';
     }
   };
@@ -599,6 +627,24 @@ export function MasterCreateDialog({
                 onChange={setCategoryCustomFields}
                 categoryFillValues={categoryFillValues}
               />
+            </div>
+          )}
+
+          {type === 'benefit-type' && (
+            <div className="space-y-3">
+              <div className="space-y-0">
+                <Label className="text-[10px] font-medium text-slate-200 ml-1">Valuation Scale / Type</Label>
+                <Combobox
+                  options={(benefitTypeFillValues?.valuationTypes || []).map((v: any) => ({
+                    label: v.valuationTypeName || v.name || '',
+                    value: (v.valuationTypeNo || v.id || '').toString(),
+                  }))}
+                  value={valuationtypeNo}
+                  onChange={setValuationtypeNo}
+                  placeholder="Select Valuation Scale / Type"
+                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
+                />
+              </div>
             </div>
           )}
 

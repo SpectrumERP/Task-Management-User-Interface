@@ -102,6 +102,7 @@ export interface Task {
   parentTask?: {
     operTaskNo: number;
     title: string;
+    code: string;
   };
   assignedDisplayName?: string;
   originatorDisplayName?: string;

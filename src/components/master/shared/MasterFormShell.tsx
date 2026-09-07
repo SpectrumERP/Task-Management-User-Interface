@@ -129,6 +129,7 @@ export function MasterFormShell({
               No, Cancel
             </Button>
             <Button
+              autoFocus
               onClick={onConfirmSave}
               className="h-9 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
             >

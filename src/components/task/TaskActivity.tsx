@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { format } from 'date-fns';
 import {
   MessageSquare,
@@ -158,20 +159,12 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                   Date
                 </label>
                 <div className="relative">
-                  <Input
-                    type="date"
-                    value={effortDate}
-                    onChange={(e) => setEffortDate(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleLogEffort();
-                      }
-                    }}
-                    className="h-8 text-[11px] font-medium rounded-lg border-[var(--tm-border)] pr-2 pl-7 py-1 text-slate-50"
-                    required
+                  <DateTimePicker 
+                    date={effortDate ? new Date(effortDate) : undefined} 
+                    onChange={(date) => setEffortDate(date ? date.toISOString() : '')}
+                    hideTime={true}
+                    className="h-8 text-[11px] font-medium rounded-lg border-[var(--tm-border)] text-slate-50 w-full"
                   />
-                  <CalendarIcon className="absolute left-2.5 top-2.5 text-slate-400" size={12} />
                 </div>
               </div>
               <div>
