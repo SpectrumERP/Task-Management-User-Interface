@@ -3,11 +3,14 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { TaskForm } from '@/components/task/TaskForm';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { useState, useEffect, useCallback } from 'react';
 import { useFormRights } from '@/hooks/useFormRights';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -79,13 +82,14 @@ export default function TaskDetail() {
       );
       if (response.success) {
         setIsDeleteDialogOpen(false);
+        toast.success('Task deleted');
         handleGoBack();
       } else {
-        alert(response.message || "Failed to delete task. Please try again.");
+        toast.error(response.message || 'Failed to delete task. Please try again.');
       }
     } catch (error) {
-      console.error("Failed to delete task:", error);
-      alert("An error occurred while deleting the task.");
+      console.error('Failed to delete task:', error);
+      toast.error('An error occurred while deleting the task.');
     } finally {
       setIsDeleting(false);
     }
@@ -248,29 +252,30 @@ export default function TaskDetail() {
         }
       }}
     >
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#eef4f8]">
-        <div className="shrink-0 z-20 bg-white border-b border-slate-200/70 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center gap-1.5 text-sm font-semibold min-w-0">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--tm-page)]">
+        <div className="shrink-0 z-20 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded"
+              className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded"
             >
               Tasks List
             </button>
             <ChevronRight size={14} className="text-slate-400 shrink-0" />
-            <span className="text-slate-900 font-bold tracking-tight">
+            <span className="text-slate-50 font-bold tracking-tight">
               {isEdit ? 'Update Task' : 'Create Task'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto" data-page-tour="task-form-actions">
+            <PageGuideButton guideKey="task-form" />
             <Button
               variant="outline"
               type="button"
               onClick={() => navigate(-1)}
               disabled={isSaving}
-              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none gap-1.5 disabled:opacity-40"
+              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
             >
               <X size={14} />
               <span className="hidden sm:inline">Cancel</span>
@@ -281,7 +286,7 @@ export default function TaskDetail() {
                 type="submit"
                 form="task-form"
                 disabled={isSaving}
-                className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#006699] hover:bg-[#005580] text-white shadow-sm shadow-[#006699]/20 gap-1.5 disabled:opacity-50"
+                className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 gap-1.5 disabled:opacity-50"
               >
                 {isSaving ? (
                   <>
@@ -302,15 +307,15 @@ export default function TaskDetail() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-9 w-9 rounded-[8px] border-slate-200 bg-white hover:bg-slate-50 shadow-none"
+                    className="h-9 w-9 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
                   >
-                    <MoreVertical size={16} className="text-slate-600" />
+                    <MoreVertical size={16} className="text-slate-300" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-[8px] w-36 shadow-md border-slate-200">
+                <DropdownMenuContent align="end" className="rounded-[8px] w-36 shadow-md border-[var(--tm-border)]">
                   <DropdownMenuItem
                     onClick={() => setIsDeleteDialogOpen(true)}
-                    className="text-red-600 focus:text-red-700 focus:bg-red-50 font-semibold text-xs cursor-pointer flex items-center gap-2 px-3 py-2 rounded-[6px]"
+                    className="text-red-400 focus:text-red-400 focus:bg-red-500/10 font-semibold text-xs cursor-pointer flex items-center gap-2 px-3 py-2 rounded-[6px]"
                   >
                     <Trash2 size={14} />
                     Delete Task
@@ -321,12 +326,11 @@ export default function TaskDetail() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#eef4f8]">
-          <div className="w-full mx-auto p-4">
+        <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
+          <div className="w-full max-w-none px-3 py-3 sm:px-4 lg:px-5">
             {isFetching ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-[8px] border border-slate-200/70 bg-white py-16 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
-                <Loader2 className="h-8 w-8 text-[#006699] animate-spin" />
-                <p className="text-slate-500 font-medium text-sm">Loading task...</p>
+              <div className="flex flex-col items-center justify-center rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] py-16 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
+                <BrandLoader size="sm" message="Loading task" />
               </div>
             ) : (
               <TaskForm
@@ -345,15 +349,15 @@ export default function TaskDetail() {
 
       {/* Premium Alert Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border-slate-100 shadow-2xl [&>button]:hidden">
+        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">
           <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 border border-red-100">
-              <Trash2 className="h-6 w-6 text-red-600" />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/30">
+              <Trash2 className="h-6 w-6 text-red-400" />
             </div>
-            <DialogTitle className="text-center text-lg font-black text-slate-900 leading-tight">
+            <DialogTitle className="text-center text-lg font-black text-slate-50 leading-tight">
               Delete Task
             </DialogTitle>
-            <DialogDescription className="text-center text-slate-600 font-medium text-xs leading-normal">
+            <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
               Do you want to delete?
             </DialogDescription>
           </DialogHeader>
@@ -362,7 +366,7 @@ export default function TaskDetail() {
               type="button"
               variant="ghost"
               onClick={() => setIsDeleteDialogOpen(false)}
-              className="w-full sm:w-auto rounded-xl font-bold text-slate-600 hover:bg-slate-100 text-xs px-5 h-9"
+              className="w-full sm:w-auto rounded-xl font-bold text-slate-300 hover:bg-[var(--tm-muted)] text-xs px-5 h-9"
             >
               No
             </Button>
@@ -384,16 +388,16 @@ export default function TaskDetail() {
       </Dialog>
       {/* Task Not Found Alert Dialog */}
       <Dialog open={isNotFoundDialogOpen} onOpenChange={() => { }}>
-        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-slate-100 shadow-2xl [&>button]:hidden">
+        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">
           <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 border border-amber-100">
-              <X className="h-6 w-6 text-amber-600" />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/30">
+              <X className="h-6 w-6 text-amber-400" />
             </div>
-            <DialogTitle className="text-center text-lg font-black text-slate-900 leading-tight">
+            <DialogTitle className="text-center text-lg font-black text-slate-50 leading-tight">
               {/* Task Not Found */}
               {notFoundMessage}
             </DialogTitle>
-            {/* <DialogDescription className="text-center text-slate-600 font-medium text-xs leading-normal">
+            {/* <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
               {notFoundMessage}
             </DialogDescription> */}
           </DialogHeader>
@@ -404,7 +408,7 @@ export default function TaskDetail() {
                 setIsNotFoundDialogOpen(false);
                 handleGoBack();
               }}
-              className="w-full rounded-xl bg-[#006699] hover:bg-[#005580] font-bold text-white shadow-lg shadow-[#006699]/20 text-xs h-9 transition-all"
+              className="w-full rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] font-bold text-white shadow-lg shadow-[#0EA5E9]/20 text-xs h-9 transition-all"
             >
               OK
             </Button>

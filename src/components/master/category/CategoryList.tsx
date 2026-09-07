@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function CategoryList() {
 
   const [apiCategories, setApiCategories] = useState<CategoryMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchCategories = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/task-categories/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -50,6 +54,7 @@ export function CategoryList() {
       }
     } catch (error) {
       console.error('Failed to fetch API categories:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -69,8 +74,9 @@ export function CategoryList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -78,9 +84,10 @@ export function CategoryList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-categories/delete', {
       params: { operTaskCategoryNo: deleteTargetId }
-    }).then(() => fetchCategories()).catch(err => console.error('Failed to delete category:', err));
+    }).then(() => { toast.success('Record deleted'); fetchCategories(); }).catch(err => { console.error('Failed to delete category:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -102,13 +109,13 @@ export function CategoryList() {
             render: (item) => {
               const chips = [
                 item.isApprovalApplicable && (
-                  <span key="approval" className="text-[9px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-[6px] border border-emerald-100">Approval</span>
+                  <span key="approval" className="text-[9px] font-medium text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-[6px] border border-emerald-500/30">Approval</span>
                 ),
                 item.isInReviewRequired && (
-                  <span key="review" className="text-[9px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-[6px] border border-amber-100">Review</span>
+                  <span key="review" className="text-[9px] font-medium text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-[6px] border border-amber-500/30">Review</span>
                 ),
                 item.isBusinessBenefitApplicable && (
-                  <span key="benefit" className="text-[9px] font-medium text-sky-700 bg-sky-50 px-2 py-0.5 rounded-[6px] border border-sky-100">Benefit</span>
+                  <span key="benefit" className="text-[9px] font-medium text-sky-400 bg-sky-500/15 px-2 py-0.5 rounded-[6px] border border-sky-500/30">Benefit</span>
                 ),
               ].filter(Boolean);
 
@@ -134,6 +141,8 @@ export function CategoryList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchCategories}
         emptyIcon={Layers}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -158,7 +167,8 @@ export function CategoryList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

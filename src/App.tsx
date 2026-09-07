@@ -35,6 +35,9 @@ import { DealManager } from '@/components/sales/deals/DealManager';
 import { cleanupExpiredDrafts } from '@/utils/draftCleanup';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { AppErrorListeners } from '@/components/ui/AppErrorListeners';
+import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
 
 function Dashboard() {
   const { isSave } = useFormRights(1547);
@@ -56,6 +59,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const { fetchTasks, fetchFillValues, isLoading } = useTaskStore();
   const tasks = useTaskStore((state) => state.tasks);
+  const fetchError = useTaskStore((state) => state.fetchError);
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
 
   const authCompanies = useAuthStore((state) => state.company);
@@ -196,22 +200,37 @@ function Dashboard() {
 
         {/* Content Area */}
         {viewMode === 'list' ? (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
             <div className="flex-1 min-h-0 overflow-hidden">
-              <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} />
+              <TaskListView
+                tasks={tasks}
+                isLoading={isLoading}
+                loadError={Boolean(fetchError)}
+                onRetryLoad={() => {
+                  if (currentFilters) {
+                    fetchTasks({
+                      ...currentFilters,
+                      pageSize,
+                      pageNo,
+                    } as FilterParams);
+                  }
+                }}
+                onTaskClick={handleTaskClick}
+                onCreateTask={handleCreateTask}
+              />
             </div>
 
-            {/* Pagination — only when there are records to page through */}
-            {tasks.length > 0 ? (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2 border-t border-slate-100 bg-[#f8fbfd] shrink-0 select-none">
-                <div className="text-[11px] text-slate-500 font-semibold">
-                  Showing <span className="text-slate-800 font-bold">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
-                  <span className="text-slate-800 font-bold">{((pageNo - 1) * pageSize) + tasks.length}</span> records
+            {/* Pagination — only when more than 9 records (or past page 1) */}
+            {tasks.length > 9 || pageNo > 1 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0 select-none">
+                <div className="text-[11px] text-slate-500 font-semibold justify-self-center sm:justify-self-start min-w-0 truncate tabular-nums order-1 sm:order-none">
+                  Showing <span className="text-slate-100 font-bold">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
+                  <span className="text-slate-100 font-bold">{((pageNo - 1) * pageSize) + tasks.length}</span> records
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Per Page:</span>
-                  <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">Per Page:</span>
+                  <div className="flex items-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)]">
                     {[10, 25, 50, 100].map((size) => (
                       <button
                         key={size}
@@ -221,10 +240,10 @@ function Dashboard() {
                           setPageNo(1);
                         }}
                         className={cn(
-                          "h-6 px-2.5 rounded-md text-[10px] font-semibold tracking-wide uppercase transition-all",
+                          "h-6 w-9 rounded-md text-[10px] font-semibold tabular-nums tracking-wide transition-all",
                           pageSize === size
-                            ? "bg-[#006699] text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                            ? "bg-[#0EA5E9] text-white shadow-sm"
+                            : "text-slate-500 hover:text-slate-50 hover:bg-[var(--tm-muted)]"
                         )}
                       >
                         {size}
@@ -233,33 +252,31 @@ function Dashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
                   <Button
                     variant="ghost"
                     size="icon"
                     disabled={pageNo === 1 || isLoading}
                     onClick={() => setPageNo((prev) => Math.max(1, prev - 1))}
-                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[#e8f1f8] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
                   >
                     <ChevronLeft size={14} strokeWidth={2.5} />
                   </Button>
 
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled
-                      className="h-7 w-7 rounded-lg text-[10px] font-bold bg-[#006699] border border-[#006699] text-white shadow-sm flex items-center justify-center cursor-default"
-                    >
-                      {pageNo}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    className="h-7 w-7 rounded-lg text-[10px] font-bold bg-[#0EA5E9] border border-[#0EA5E9] text-white shadow-sm flex items-center justify-center cursor-default tabular-nums shrink-0"
+                  >
+                    {pageNo}
+                  </button>
 
                   <Button
                     variant="ghost"
                     size="icon"
                     disabled={tasks.length < pageSize || isLoading}
                     onClick={() => setPageNo((prev) => prev + 1)}
-                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[#e8f1f8] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
                   >
                     <ChevronRight size={14} strokeWidth={2.5} />
                   </Button>
@@ -321,15 +338,15 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
     <>
       {children}
       <Dialog open={isSessionTimeoutOpen} onOpenChange={() => { }}>
-        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-slate-100 shadow-2xl [&>button]:hidden">
+        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">
           <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 border border-red-100">
-              <Clock className="h-6 w-6 text-red-600 animate-pulse" />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/30">
+              <Clock className="h-6 w-6 text-red-400 animate-pulse" />
             </div>
-            <DialogTitle className="text-center text-lg font-black text-slate-900 leading-tight">
+            <DialogTitle className="text-center text-lg font-black text-slate-50 leading-tight">
               Session Expired
             </DialogTitle>
-            <DialogDescription className="text-center text-slate-600 font-medium text-xs leading-normal">
+            <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
               Your session has timed out. Please log in again to continue.
             </DialogDescription>
           </DialogHeader>
@@ -538,6 +555,7 @@ const router = createBrowserRouter([
         <Outlet />
       </SessionTimeoutGuard>
     ),
+    errorElement: <RouteErrorFallback />,
     children: [
       { path: "/login", element: <Login /> },
       {
@@ -731,7 +749,10 @@ function App() {
 
   return (
     <>
-      <RouterProvider router={router} />
+      <AppErrorListeners />
+      <ErrorBoundary label="router">
+        <RouterProvider router={router} />
+      </ErrorBoundary>
       <PWAInstallBanner />
       <Toaster position="top-right" richColors closeButton />
     </>

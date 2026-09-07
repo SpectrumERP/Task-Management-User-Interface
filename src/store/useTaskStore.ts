@@ -49,6 +49,8 @@ interface TaskState {
   searchKeyword: string;
   setSearchKeyword: (keyword: string) => void;
   isLoading: boolean;
+  fetchError: string | null;
+  clearFetchError: () => void;
   fillValues: TaskFillValues | null;
   isLoadingFillValues: boolean;
   selectedFolder: { TaskFolderNo: number; "Folder Name": string; Code?: string } | null;
@@ -103,6 +105,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     set({ searchKeyword: keyword, tasks: filtered });
   },
   isLoading: false,
+  fetchError: null,
+  clearFetchError: () => set({ fetchError: null }),
   fillValues: null,
   isLoadingFillValues: false,
   selectedFolder: null,
@@ -147,7 +151,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     return activeFillValuesPromise;
   },
   fetchTasks: async (filters) => {
-    set({ isLoading: true });
+    set({ isLoading: true, fetchError: null });
     try {
       const activeFolder = get().selectedFolder;
       const { isHideType, isHideFolder } = useSettingsStore.getState().settings;
@@ -328,6 +332,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to fetch tasks:', error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to load tasks';
+      set({ fetchError: message });
     } finally {
       set({ isLoading: false });
     }

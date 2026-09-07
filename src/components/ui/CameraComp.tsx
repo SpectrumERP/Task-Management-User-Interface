@@ -459,18 +459,21 @@ export function CameraComp({
   const showPermissionHelp = status === 'denied' || status === 'error';
 
   return (
-    <div className={cn('w-full flex flex-col min-h-full space-y-2 rounded-lg border border-slate-200 bg-white px-4 py-1 shadow-sm', className)}>
-      <div className={cn("flex flex-col gap-2 flex-1", status === 'parsed' && "md:flex-row")}>
-        <div 
-          ref={containerRef} 
+    <div className={cn('w-full h-full flex flex-col min-h-0 bg-[var(--tm-surface)]', className)}>
+      <div
+        className={cn(
+          'flex flex-col flex-1 min-h-0 w-full',
+          status === 'parsed' && 'md:flex-row md:items-stretch gap-3 p-3 sm:p-4 overflow-y-auto'
+        )}
+      >
+        <div
+          ref={containerRef}
           className={cn(
-            "relative overflow-hidden rounded-md bg-slate-950 mx-auto flex flex-col items-center justify-center", 
-            status === 'parsed' ? "md:w-1/2" : "w-full"
+            'relative overflow-hidden bg-[#f1f5f8] flex flex-col items-center justify-center w-full',
+            status === 'parsed'
+              ? 'md:w-1/2 shrink-0 rounded-[10px] border border-[var(--tm-border)]/80 min-h-[240px] md:min-h-0'
+              : 'flex-1 min-h-[min(52vh,420px)] border-0 rounded-none'
           )}
-          style={{ 
-            maxHeight: '60vh',
-            maxWidth: status === 'parsed' ? undefined : 'calc(60vh * 16 / 9)'
-          }}
         >
           {showVideo && (
             <>
@@ -480,7 +483,7 @@ export function CameraComp({
                 muted
                 playsInline
                 className={cn(
-                  "aspect-video w-full h-full bg-slate-950 object-cover transition-transform duration-300",
+                  'absolute inset-0 w-full h-full bg-slate-950 object-cover transition-transform duration-300',
                   status === 'processing' && 'opacity-50 blur-sm',
                   isMirrored && 'scale-x-[-1]'
                 )}
@@ -488,17 +491,25 @@ export function CameraComp({
               <Button
                 variant="secondary"
                 size="icon"
-                className="absolute top-2 right-2 bg-black/40 hover:bg-black/60 text-white rounded-full z-10 w-8 h-8 backdrop-blur-sm transition-all"
-                onClick={() => setIsMirrored(prev => !prev)}
+                className="absolute top-2.5 right-2.5 bg-black/45 hover:bg-black/65 text-white rounded-full z-10 h-8 w-8 backdrop-blur-sm border border-white/10"
+                onClick={() => setIsMirrored((prev) => !prev)}
                 title="Toggle Mirror View"
               >
-                <FlipHorizontal size={14} className={cn("transition-transform duration-300", isMirrored && "scale-x-[-1]")} />
+                <FlipHorizontal
+                  size={14}
+                  className={cn('transition-transform duration-300', isMirrored && 'scale-x-[-1]')}
+                />
               </Button>
             </>
           )}
 
           {status === 'ready' && isCvReady && videoRef.current && (
-            <div className={cn("absolute inset-0 pointer-events-none transition-transform duration-300", isMirrored && "scale-x-[-1]")}>
+            <div
+              className={cn(
+                'absolute inset-0 pointer-events-none transition-transform duration-300',
+                isMirrored && 'scale-x-[-1]'
+              )}
+            >
               <BusinessCardOverlay
                 detectionResult={detectionResult}
                 isStable={isStable}
@@ -511,37 +522,47 @@ export function CameraComp({
           )}
 
           {capturedUrl && status !== 'uploading' && status !== 'processing' && (
-            <div className="relative flex flex-col flex-1 w-full justify-center items-center min-h-0">
+            <div className="relative flex flex-col flex-1 w-full justify-center items-center min-h-0 bg-slate-950">
               {status === 'preview' ? (
                 <>
-                  <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
-                    <div className="bg-slate-900/90 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md border border-slate-700">
+                  <div className="absolute top-3 left-0 right-0 flex justify-center z-10 px-3">
+                    <div className="bg-slate-900/90 text-white px-3 py-1.5 rounded-[8px] text-xs font-medium shadow-md border border-slate-700/80">
                       Crop the business card, then click Analyze
                     </div>
                   </div>
-                  <div className="w-full bg-slate-950 flex justify-center overflow-hidden">
+                  <div className="w-full flex justify-center overflow-hidden">
                     <ReactCrop
                       crop={previewCrop}
                       onChange={(c) => setPreviewCrop(c)}
                       onComplete={(_, percentCrop) => setPreviewCompletedCrop(percentCrop)}
                     >
-                      <img id="preview-image" src={capturedUrl} alt="Captured preview" className="max-h-[60vh] max-w-full block object-contain" />
+                      <img
+                        id="preview-image"
+                        src={capturedUrl}
+                        alt="Captured preview"
+                        className="max-h-[min(48vh,380px)] max-w-full block object-contain"
+                      />
                     </ReactCrop>
                   </div>
                 </>
               ) : (
-                <img src={capturedUrl} alt="Captured preview" className="max-h-full max-w-full object-contain" />
+                <img
+                  src={capturedUrl}
+                  alt="Captured preview"
+                  className="max-h-full max-w-full object-contain"
+                />
               )}
 
               {status === 'parsed' && (
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center z-20">
+                <div className="absolute bottom-3 left-0 right-0 flex justify-center z-20">
                   <Button
                     type="button"
                     variant="secondary"
-                    className="shadow-md bg-white/90 hover:bg-white text-slate-800"
+                    size="sm"
+                    className="shadow-md bg-[var(--tm-surface)]/95 hover:bg-[var(--tm-surface)] text-slate-100 rounded-[8px]"
                     onClick={() => setIsLogoModalOpen(true)}
                   >
-                    <ImagePlus className="w-4 h-4 mr-2" />
+                    <ImagePlus className="w-4 h-4 mr-1.5" />
                     Extract Logo
                   </Button>
                 </div>
@@ -550,162 +571,191 @@ export function CameraComp({
           )}
 
           {(status === 'idle' || showPermissionHelp) && (
-            <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-slate-100 p-6 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm">
+            <div className="flex w-full h-full min-h-[min(52vh,420px)] flex-col items-center justify-center gap-3.5 bg-[linear-gradient(160deg,var(--tm-elevated)_0%,#eef3f7_55%,#e8eef3_100%)] p-6 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--tm-surface)] text-[#0EA5E9] shadow-sm ring-1 ring-[var(--tm-border)]/80">
                 <Camera className="h-6 w-6" />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Camera access is required</p>
-                <p className="mt-1 max-w-md text-xs text-slate-600">
-                  Allow camera permission to scan a business card.
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-slate-100 tracking-tight">
+                  {showPermissionHelp ? 'Camera access blocked' : 'Camera access is required'}
+                </p>
+                <p className="max-w-sm text-[11px] font-medium text-slate-500 leading-relaxed">
+                  {showPermissionHelp
+                    ? 'Allow camera permission in your browser, then try again to scan a business card.'
+                    : 'Allow camera permission to scan a business card and attach the photo.'}
                 </p>
               </div>
             </div>
           )}
 
           {(status === 'processing' || status === 'uploading') && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-white">
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="h-8 w-8 animate-spin text-white" />
-                <span className="text-sm font-medium">
-                  {status === 'uploading' ? 'Uploading...' : `Analyzing Card... ${Math.round(progress * 100)}%`}
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50 text-white backdrop-blur-[2px]">
+              <div className="flex flex-col items-center gap-2 rounded-[10px] bg-slate-900/80 px-5 py-4 border border-white/10">
+                <Loader2 className="h-7 w-7 animate-spin text-white" />
+                <span className="text-xs font-medium">
+                  {status === 'uploading'
+                    ? 'Uploading…'
+                    : `Analyzing card… ${Math.round(progress * 100)}%`}
                 </span>
               </div>
             </div>
           )}
 
-
           {status === 'parsed' && logoFile && (
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 to-transparent z-30 pointer-events-none">
-              <div className="border border-slate-700/50 rounded-xl bg-slate-800/90 backdrop-blur-md shadow-lg p-3 pointer-events-auto">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Extracted Logo</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
-                  onClick={() => dispatch({ type: 'UPDATE_DATA', data: parsedData!, logoFile: null })}
-                >
-                  Remove Logo
-                </Button>
-              </div>
-              <div className="flex justify-center bg-slate-900/80 rounded-lg p-3 border border-slate-700/50 shadow-sm">
-                <img
-                  src={URL.createObjectURL(logoFile)}
-                  alt="Extracted Logo"
-                  className="max-h-24 object-contain rounded drop-shadow-md"
-                />
-              </div>
+            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent z-30 pointer-events-none">
+              <div className="border border-slate-700/50 rounded-[10px] bg-slate-800/90 backdrop-blur-md shadow-lg p-2.5 pointer-events-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">
+                    Extracted Logo
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    onClick={() =>
+                      dispatch({ type: 'UPDATE_DATA', data: parsedData!, logoFile: null })
+                    }
+                  >
+                    Remove Logo
+                  </Button>
+                </div>
+                <div className="flex justify-center bg-slate-900/80 rounded-[8px] p-2 border border-slate-700/50">
+                  <img
+                    src={URL.createObjectURL(logoFile)}
+                    alt="Extracted Logo"
+                    className="max-h-20 object-contain rounded drop-shadow-md"
+                  />
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {status === 'parsed' && parsedData && (
-          <div className="rounded-md border border-slate-200 bg-slate-50 p-4 md:w-1/2 flex flex-col justify-start overflow-y-auto">
-            <h3 className="mb-1 font-semibold text-slate-800">Review Scanned Details</h3>
+          <div className="rounded-[10px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)] p-3.5 md:w-1/2 flex flex-col justify-start overflow-y-auto min-h-0">
+            <h3 className="mb-2 text-sm font-semibold text-slate-100 tracking-tight">
+              Review Scanned Details
+            </h3>
             <CardReviewForm
               data={parsedData}
               onChange={(data) => dispatch({ type: 'UPDATE_DATA', data })}
             />
-
           </div>
         )}
       </div>
 
-      {/* {status === 'parsed' && (
-        <div className="w-full flex flex-col gap-4 mt-4">
-          <h3 className="text-sm font-semibold text-slate-800">Raw Text Comparison</h3>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 space-y-2">
-              <label className="text-xs font-medium text-slate-600">Tesseract Output</label>
-              <textarea
-                readOnly
-                className="w-full h-40 text-xs p-2 rounded border border-slate-200 bg-slate-50 font-mono"
-                value={rawTesseractText}
-              />
-            </div>
-            <div className="flex-1 space-y-2">
-              <label className="text-xs font-medium text-slate-600">Google Vision API Output</label>
-              <textarea
-                readOnly
-                className="w-full h-40 text-xs p-2 rounded border border-slate-200 bg-slate-50 font-mono"
-                value={rawGoogleText || "API Key not provided or request failed."}
-              />
-            </div>
-          </div>
-        </div>
-      )} */}
-
       {errorMessage && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mx-4 sm:mx-5 mb-2 rounded-[8px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
           {errorMessage}
         </div>
       )}
 
-      <div className="sticky bottom-0 bg-white border-t border-slate-100 py-3 flex flex-wrap items-center justify-end gap-2 mt-auto z-20 -mx-4 px-4 rounded-b-lg shadow-[0_-10px_30px_rgba(255,255,255,1)]">
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {(status === 'idle' || showPermissionHelp) && (
-            <Button type="button" onClick={requestCameraPermission} disabled={!isCvReady}>
-              {!isCvReady ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-              {!isCvReady ? 'Loading Scanner...' : showPermissionHelp ? 'Try Camera Again' : 'Open Camera'}
-            </Button>
-          )}
+      <div className="shrink-0 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] px-4 sm:px-5 py-3 flex flex-wrap items-center justify-end gap-2">
+        {(status === 'idle' || showPermissionHelp) && (
+          <Button
+            type="button"
+            onClick={requestCameraPermission}
+            disabled={!isCvReady}
+            className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
+          >
+            {!isCvReady ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Camera className="mr-1.5 h-4 w-4" />
+            )}
+            {!isCvReady ? 'Loading Scanner…' : showPermissionHelp ? 'Try Camera Again' : 'Open Camera'}
+          </Button>
+        )}
 
-          {status === 'requesting' && (
-            <Button type="button" disabled>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Requesting Permission
-            </Button>
-          )}
+        {status === 'requesting' && (
+          <Button type="button" disabled className="rounded-[8px]">
+            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            Requesting Permission
+          </Button>
+        )}
 
-          {(status === 'ready' || status === 'processing') && (
-            <>
-              <Button type="button" variant="outline" onClick={cancel} disabled={status === 'processing'}>
-                <X className="mr-2 h-4 w-4" />
-                Cancel
+        {(status === 'ready' || status === 'processing') && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancel}
+              disabled={status === 'processing'}
+              className="rounded-[8px]"
+            >
+              <X className="mr-1.5 h-4 w-4" />
+              Cancel
+            </Button>
+            {status === 'ready' && (
+              <Button
+                type="button"
+                onClick={() =>
+                  handleAutoCapture(detectionResult.detected ? detectionResult : undefined)
+                }
+                className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
+              >
+                <Camera className="mr-1.5 h-4 w-4" />
+                Capture Manually
               </Button>
-              {status === 'ready' && (
-                <Button type="button" onClick={() => handleAutoCapture(detectionResult.detected ? detectionResult : undefined)}>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Capture Manually
-                </Button>
-              )}
-            </>
-          )}
+            )}
+          </>
+        )}
 
-          {(status === 'preview') && (
-            <>
-              <Button type="button" variant="outline" onClick={retake}>
-                <RotateCcw className="mr-2 h-4 w-4" />
+        {status === 'preview' && (
+          <>
+            <Button type="button" variant="outline" onClick={retake} className="rounded-[8px]">
+              <RotateCcw className="mr-1.5 h-4 w-4" />
+              Retake
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => analyzeImage()}
+              className="rounded-[8px]"
+            >
+              <ScanText className="mr-1.5 h-4 w-4" />
+              Analyze Details
+            </Button>
+            <Button
+              type="button"
+              onClick={uploadCapture}
+              className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
+            >
+              <Check className="mr-1.5 h-4 w-4" />
+              Upload Image
+            </Button>
+          </>
+        )}
+
+        {(status === 'parsed' || status === 'uploading') && (
+          <>
+            {!initialAnalyzeFile && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={retake}
+                disabled={status === 'uploading'}
+                className="rounded-[8px]"
+              >
+                <RotateCcw className="mr-1.5 h-4 w-4" />
                 Retake
               </Button>
-              <Button type="button" variant="secondary" onClick={() => analyzeImage()}>
-                <ScanText className="mr-2 h-4 w-4" />
-                Analyze Details
-              </Button>
-              <Button type="button" onClick={uploadCapture}>
-                <Check className="mr-2 h-4 w-4" />
-                Upload Image
-              </Button>
-            </>
-          )}
-
-          {(status === 'parsed' || status === 'uploading') && (
-            <>
-              {!initialAnalyzeFile && (
-                <Button type="button" variant="outline" onClick={retake} disabled={status === 'uploading'}>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Retake
-                </Button>
+            )}
+            <Button
+              type="button"
+              onClick={uploadCapture}
+              disabled={status === 'uploading'}
+              className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
+            >
+              {status === 'uploading' ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="mr-1.5 h-4 w-4" />
               )}
-              <Button type="button" onClick={uploadCapture} disabled={status === 'uploading'}>
-                {status === 'uploading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                {initialAnalyzeFile ? 'Confirm' : 'Confirm & Upload'}
-              </Button>
-            </>
-          )}
-        </div>
+              {initialAnalyzeFile ? 'Confirm' : 'Confirm & Upload'}
+            </Button>
+          </>
+        )}
       </div>
 
       <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
@@ -718,7 +768,11 @@ export function CameraComp({
           onSave={(logo) => {
             if (parsedData) {
               const newLogoFile = dataUrlToFile(logo, buildCameraFileName('logo'));
-              dispatch({ type: 'UPDATE_DATA', data: { ...parsedData, logo }, logoFile: newLogoFile });
+              dispatch({
+                type: 'UPDATE_DATA',
+                data: { ...parsedData, logo },
+                logoFile: newLogoFile,
+              });
             }
           }}
         />

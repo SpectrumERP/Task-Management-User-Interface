@@ -4,8 +4,8 @@
   "description": "SteelMont — Spectrum Task & Planner",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#eef4f8",
-  "theme_color": "#006699",
+  "background_color": "#0B1220",
+  "theme_color": "#0B1220",
   "icons": [
     {
       "src": "/pwa-192x192.png",

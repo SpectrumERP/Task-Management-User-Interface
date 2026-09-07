@@ -3,8 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { applyBrandToDocument } from '@/config/brandConfig'
+import { initTheme } from '@/store/useThemeStore'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 
-// Apply SteelMont logo / title / favicon (temporary client branding)
+// Theme first (avoids flash), then brand chrome
+initTheme()
 applyBrandToDocument()
 
 // Register Custom Service Worker for PWA
@@ -32,6 +35,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary label="root">
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

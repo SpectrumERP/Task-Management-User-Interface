@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function TypeList() {
 
   const [apiTypes, setApiTypes] = useState<TypeMaster[]>([]);
   const [isLoadingTypes, setIsLoadingTypes] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchTypes = async () => {
     setIsLoadingTypes(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/task-types/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -45,6 +49,7 @@ export function TypeList() {
       }
     } catch (error) {
       console.error('Failed to fetch API types:', error);
+      setLoadError(true);
     } finally {
       setIsLoadingTypes(false);
     }
@@ -64,8 +69,9 @@ export function TypeList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -73,9 +79,10 @@ export function TypeList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-types/delete', {
       params: { operTaskTypeNo: deleteTargetId }
-    }).then(() => fetchTypes()).catch(err => console.error('Failed to delete type:', err));
+    }).then(() => { toast.success('Record deleted'); fetchTypes(); }).catch(err => { console.error('Failed to delete type:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -99,6 +106,8 @@ export function TypeList() {
           canUpdate={isUpdate}
           canDelete={isDelete}
           isLoading={isLoadingTypes}
+          loadError={loadError}
+          onRetryLoad={fetchTypes}
           emptyIcon={Sliders}
         />
         {!isLoadingTypes && filteredList.length > 0 && (
@@ -119,7 +128,8 @@ export function TypeList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

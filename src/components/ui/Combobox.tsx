@@ -73,12 +73,13 @@ export function Combobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-medium text-sm h-9 shadow-sm transition-all border relative pr-8",
+            "w-full justify-between font-medium text-sm h-9 shadow-sm transition-all border border-[var(--tm-border)] relative pr-8",
+            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[var(--tm-elevated)] disabled:hover:bg-[var(--tm-elevated)]",
             className,
             FIELD_TEXT_STYLE,
             !value && "text-slate-400",
             "rounded-[8px]",
-            !(typeof className === "string" && /border-red/.test(className)) && "border-[#a8afb7]"
+            !(typeof className === "string" && /border-red/.test(className)) && "!border-[var(--tm-border)]"
           )}
         >
           <span className="truncate pr-2">{selectedOption ? selectedOption.label : placeholder}</span>
@@ -89,7 +90,7 @@ export function Combobox({
                   e.stopPropagation();
                   onChange("");
                 }}
-                className="p-0.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 <X className="h-3 w-3" />
               </span>
@@ -103,7 +104,7 @@ export function Combobox({
           className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
           align="start"
         >
-        <Command className="rounded-xl border-slate-200">
+        <Command className="rounded-xl border-[var(--tm-border)]">
           <CommandInput value={search} onValueChange={setSearch} placeholder={searchPlaceholder} className="h-9 border-none focus:ring-0" />
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
@@ -121,7 +122,7 @@ export function Combobox({
                   {option.label}
                   <Check
                     className={cn(
-                      "ml-auto h-4 w-4 text-[#006699]",
+                      "ml-auto h-4 w-4 text-[#0EA5E9]",
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
@@ -130,7 +131,7 @@ export function Combobox({
             </CommandGroup>
           </CommandList>
           {onAddNew && (
-            <div className="p-1 border-t border-slate-150 bg-slate-50/50">
+            <div className="p-1 border-t border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
               <Button
                 type="button"
                 variant="ghost"
@@ -141,7 +142,7 @@ export function Combobox({
                     if (onAddNew) onAddNew();
                   }, 0);
                 }}
-                className="w-full justify-start text-[#006699] hover:text-[#005580] hover:bg-slate-100/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-lg transition-all active:scale-[0.98] select-none"
+                className="w-full justify-start text-[#0EA5E9] hover:text-[#0284C7] hover:bg-[var(--tm-muted)]/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-lg transition-all active:scale-[0.98] select-none"
               >
                 <Plus className="h-3.5 w-3.5 stroke-[3]" />
                 {addNewLabel}

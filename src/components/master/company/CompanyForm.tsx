@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 const CameraComp = lazy(() => import('@/components/ui/CameraComp'));
 import { Camera as CameraIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
 import { parseApiSaveError } from '../shared/parseSaveError';
@@ -20,8 +21,28 @@ import { CompanyPortsSection } from './CompanyPortsSection';
 import { CompanyAttachmentsSection } from './CompanyAttachmentsSection';
 import { CompanyNotesSection, FollowUpNote } from './CompanyNotesSection';
 
+/* API payloads in this form are loosely typed; keep runtime behavior unchanged. */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 const FORM_NO = 1550;
 const TITLE = 'Business Entity Master';
+
+/** Loose shapes returned by master geo / fill-values APIs */
+type GeoCountry = { countryName?: string; countryNo?: string | number };
+type GeoState = { stateName?: string; stateNo?: string | number; id?: string | number };
+type GeoCity = { cityName?: string; cityNo?: string | number; id?: string | number };
+
+const asGeoList = <T,>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
+
+const resolveGeoNo = (
+  row: { stateNo?: string | number; countryNo?: string | number; cityNo?: string | number; id?: string | number } | undefined,
+  key: 'stateNo' | 'countryNo' | 'cityNo'
+): string | number | null => {
+  if (!row) return null;
+  const value = row[key] ?? row.id;
+  if (value === undefined || value === null || value === '') return null;
+  return value;
+};
 
 interface CompanyFormProps {
   id?: string;
@@ -58,8 +79,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [locLatitude, setLocLatitude] = useState('');
   const [locLongitude, setLocLongitude] = useState('');
   const [locErrors, setLocErrors] = useState<Record<string, string>>({});
-  const [locStatesList, setLocStatesList] = useState<any[]>([]);
-  const [locCitiesList, setLocCitiesList] = useState<any[]>([]);
+  const [locStatesList, setLocStatesList] = useState<GeoState[]>([]);
+  const [locCitiesList, setLocCitiesList] = useState<GeoCity[]>([]);
 
   // Contacts
   const [companyContacts, setCompanyContacts] = useState<any[]>([]);
@@ -77,8 +98,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [contactPinCode, setContactPinCode] = useState('');
   const [contactStatus, setContactStatus] = useState('Active');
   const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
-  const [contactStatesList, setContactStatesList] = useState<any[]>([]);
-  const [contactCitiesList, setContactCitiesList] = useState<any[]>([]);
+  const [contactStatesList, setContactStatesList] = useState<GeoState[]>([]);
+  const [contactCitiesList, setContactCitiesList] = useState<GeoCity[]>([]);
 
   // Ports
   const [companyPorts, setCompanyPorts] = useState<any[]>([]);
@@ -179,25 +200,30 @@ export function CompanyForm({ id }: CompanyFormProps) {
     }).catch(err => console.error('Failed to load company details via API:', err));
   }, [editingId, companyNo]);
 
-  const countries = businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries || [];
+  const countries: GeoCountry[] = asGeoList<GeoCountry>(
+    businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries
+  );
   const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
   const timeZones = businessEntityFillValues?.data?.timeZones || businessEntityFillValues?.timeZones || [];
   const locationTypes = businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || [];
   const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
 
   const getCountryNo = (countryName: string) => {
-    const found = countries.find((x: any) => x.countryName?.toLowerCase() === countryName?.toLowerCase());
-    return found ? parseInt(found.countryNo) : null;
+    const found = countries.find((x) => x.countryName?.toLowerCase() === countryName?.toLowerCase());
+    const no = resolveGeoNo(found, 'countryNo');
+    return no != null ? parseInt(String(no), 10) : null;
   };
   const getStateNo = (stateName: string) => {
     const list = locStatesList.length ? locStatesList : (contactStatesList.length ? contactStatesList : []);
-    const found = list.find((x: any) => x.stateName?.toLowerCase() === stateName?.toLowerCase());
-    return found ? parseInt(found.stateNo) : null;
+    const found = list.find((x) => x.stateName?.toLowerCase() === stateName?.toLowerCase());
+    const no = resolveGeoNo(found, 'stateNo');
+    return no != null ? parseInt(String(no), 10) : null;
   };
   const getCityNo = (cityName: string) => {
     const list = locCitiesList.length ? locCitiesList : (contactCitiesList.length ? contactCitiesList : []);
-    const found = list.find((x: any) => x.cityName?.toLowerCase() === cityName?.toLowerCase());
-    return found ? parseInt(found.cityNo) : null;
+    const found = list.find((x) => x.cityName?.toLowerCase() === cityName?.toLowerCase());
+    const no = resolveGeoNo(found, 'cityNo');
+    return no != null ? parseInt(String(no), 10) : null;
   };
   const getPortNo = (portName: string) => {
     const list = businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || [];
@@ -245,14 +271,17 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocationModalOpen(true);
 
     if (loc.country) {
-      const foundCountry = countries.find((c: any) => c.countryName?.toLowerCase() === loc.country.toLowerCase());
-      if (foundCountry) {
-        fetchStatesByCountry(foundCountry.countryNo).then((states) => {
-          setLocStatesList(states);
+      const foundCountry = countries.find((c) => c.countryName?.toLowerCase() === loc.country.toLowerCase());
+      const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+      if (countryNo != null) {
+        fetchStatesByCountry(countryNo).then((states) => {
+          const stateRows = asGeoList<GeoState>(states);
+          setLocStatesList(stateRows);
           if (loc.state) {
-            const foundState = states.find((s: any) => s.stateName?.toLowerCase() === loc.state.toLowerCase());
-            if (foundState) {
-              fetchCitiesByState(foundState.stateNo).then((cities) => setLocCitiesList(cities));
+            const foundState = stateRows.find((s) => s.stateName?.toLowerCase() === loc.state.toLowerCase());
+            const stateNo = resolveGeoNo(foundState, 'stateNo');
+            if (stateNo != null) {
+              fetchCitiesByState(stateNo).then((cities) => setLocCitiesList(asGeoList<GeoCity>(cities)));
             }
           }
         });
@@ -272,10 +301,11 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCitiesList([]);
     if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
 
-    const foundCountry = countries.find((c: any) => c.countryName === val);
-    if (foundCountry) {
-      const statesData = await fetchStatesByCountry(foundCountry.countryNo);
-      setLocStatesList(statesData);
+    const foundCountry = countries.find((c) => c.countryName === val);
+    const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+    if (countryNo != null) {
+      const statesData = await fetchStatesByCountry(countryNo);
+      setLocStatesList(asGeoList<GeoState>(statesData));
     }
   };
 
@@ -285,10 +315,11 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCitiesList([]);
     if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
 
-    const foundState = locStatesList.find((s: any) => s.stateName === val);
-    if (foundState) {
-      const citiesData = await fetchCitiesByState(foundState.stateNo);
-      setLocCitiesList(citiesData);
+    const foundState = locStatesList.find((s) => s.stateName === val);
+    const stateNo = resolveGeoNo(foundState, 'stateNo');
+    if (stateNo != null) {
+      const citiesData = await fetchCitiesByState(stateNo);
+      setLocCitiesList(asGeoList<GeoCity>(citiesData));
     }
   };
 
@@ -373,14 +404,17 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactModalOpen(true);
 
     if (c.country) {
-      const foundCountry = countries.find((cnt: any) => cnt.countryName?.toLowerCase() === c.country.toLowerCase());
-      if (foundCountry) {
-        fetchStatesByCountry(foundCountry.countryNo).then((states) => {
-          setContactStatesList(states);
+      const foundCountry = countries.find((cnt) => cnt.countryName?.toLowerCase() === c.country.toLowerCase());
+      const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+      if (countryNo != null) {
+        fetchStatesByCountry(countryNo).then((states) => {
+          const stateRows = asGeoList<GeoState>(states);
+          setContactStatesList(stateRows);
           if (c.state) {
-            const foundState = states.find((s: any) => s.stateName?.toLowerCase() === c.state.toLowerCase());
-            if (foundState) {
-              fetchCitiesByState(foundState.stateNo).then((cities) => setContactCitiesList(cities));
+            const foundState = stateRows.find((s) => s.stateName?.toLowerCase() === c.state.toLowerCase());
+            const stateNo = resolveGeoNo(foundState, 'stateNo');
+            if (stateNo != null) {
+              fetchCitiesByState(stateNo).then((cities) => setContactCitiesList(asGeoList<GeoCity>(cities)));
             }
           }
         });
@@ -410,10 +444,11 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactCitiesList([]);
     if (contactErrors.country) setContactErrors(prev => ({ ...prev, country: '' }));
 
-    const foundCountry = countries.find((c: any) => c.countryName === val);
-    if (foundCountry) {
-      const statesData = await fetchStatesByCountry(foundCountry.countryNo);
-      setContactStatesList(statesData);
+    const foundCountry = countries.find((c) => c.countryName === val);
+    const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+    if (countryNo != null) {
+      const statesData = await fetchStatesByCountry(countryNo);
+      setContactStatesList(asGeoList<GeoState>(statesData));
     }
   };
 
@@ -423,10 +458,11 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactCitiesList([]);
     if (contactErrors.state) setContactErrors(prev => ({ ...prev, state: '' }));
 
-    const foundState = contactStatesList.find((s: any) => s.stateName === val);
-    if (foundState) {
-      const citiesData = await fetchCitiesByState(foundState.stateNo);
-      setContactCitiesList(citiesData);
+    const foundState = contactStatesList.find((s) => s.stateName === val);
+    const stateNo = resolveGeoNo(foundState, 'stateNo');
+    if (stateNo != null) {
+      const citiesData = await fetchCitiesByState(stateNo);
+      setContactCitiesList(asGeoList<GeoCity>(citiesData));
     }
   };
 
@@ -703,43 +739,49 @@ export function CompanyForm({ id }: CompanyFormProps) {
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
       <div className="space-y-4 pb-4">
-        <CompanyHeaderFields
-          code={editingId ? `BE-${editingId}` : ''}
-          editingId={editingId}
-          name={name}
-          setName={setName}
-          companyType={companyType}
-          setCompanyType={setCompanyType}
-          companyTimeZoneNo={companyTimeZoneNo}
-          setCompanyTimeZoneNo={setCompanyTimeZoneNo}
-          creditLimit={creditLimit}
-          setCreditLimit={setCreditLimit}
-          creditInsuranceCompanyName={creditInsuranceCompanyName}
-          setCreditInsuranceCompanyName={setCreditInsuranceCompanyName}
-          companyVatGst={companyVatGst}
-          setCompanyVatGst={setCompanyVatGst}
-          businessEntityTypes={businessEntityTypes}
-          timeZones={timeZones}
-          errors={errors}
-          setErrors={setErrors}
-          onOpenCamera={() => setIsCameraModalOpen(true)}
-        />
+        <div data-page-tour="company-header">
+          <CompanyHeaderFields
+            code={editingId ? `BE-${editingId}` : ''}
+            editingId={editingId}
+            name={name}
+            setName={setName}
+            companyType={companyType}
+            setCompanyType={setCompanyType}
+            companyTimeZoneNo={companyTimeZoneNo}
+            setCompanyTimeZoneNo={setCompanyTimeZoneNo}
+            creditLimit={creditLimit}
+            setCreditLimit={setCreditLimit}
+            creditInsuranceCompanyName={creditInsuranceCompanyName}
+            setCreditInsuranceCompanyName={setCreditInsuranceCompanyName}
+            companyVatGst={companyVatGst}
+            setCompanyVatGst={setCompanyVatGst}
+            businessEntityTypes={businessEntityTypes}
+            timeZones={timeZones}
+            errors={errors}
+            setErrors={setErrors}
+            onOpenCamera={() => setIsCameraModalOpen(true)}
+          />
+        </div>
 
-        <CompanyLocationsSection
-          locations={companyLocations}
-          getLocationTypeName={getLocationTypeName}
-          onAdd={openAddLocationModal}
-          onEdit={handleEditLocation}
-          onRemove={removeCompanyLocation}
-          error={errors.companyLocations}
-        />
+        <div data-page-tour="company-locations">
+          <CompanyLocationsSection
+            locations={companyLocations}
+            getLocationTypeName={getLocationTypeName}
+            onAdd={openAddLocationModal}
+            onEdit={handleEditLocation}
+            onRemove={removeCompanyLocation}
+            error={errors.companyLocations}
+          />
+        </div>
 
-        <CompanyContactsSection
-          contacts={companyContacts}
-          onAdd={openAddContactModal}
-          onEdit={handleEditContact}
-          onRemove={removeCompanyContact}
-        />
+        <div data-page-tour="company-contacts">
+          <CompanyContactsSection
+            contacts={companyContacts}
+            onAdd={openAddContactModal}
+            onEdit={handleEditContact}
+            onRemove={removeCompanyContact}
+          />
+        </div>
 
         <CompanyPortsSection
           ports={companyPorts}
@@ -750,101 +792,112 @@ export function CompanyForm({ id }: CompanyFormProps) {
           onRemove={removeCompanyPort}
         />
 
-        <CompanyAttachmentsSection
-          attachments={companyAttachments}
-          onFileUpload={handleFileUpload}
-          onOpenCamera={() => setIsCameraModalOpen(true)}
-          onAnalyze={handleAnalyzeAttachment}
-          onRemove={removeCompanyAttachment}
-          analyzedAttachmentIds={analyzedAttachmentIds}
-          error={errors.attachments}
-        />
-
+        <div data-page-tour="company-attachments">
+          <CompanyAttachmentsSection
+            attachments={companyAttachments}
+            onFileUpload={handleFileUpload}
+            onOpenCamera={() => setIsCameraModalOpen(true)}
+            onAnalyze={handleAnalyzeAttachment}
+            onRemove={removeCompanyAttachment}
+            analyzedAttachmentIds={analyzedAttachmentIds}
+            error={errors.attachments}
+          />
+        </div>
         <CompanyNotesSection notes={followUpNotes} onChange={setFollowUpNotes} />
 
         {isCameraModalOpen && (
-        <Dialog
-          open={isCameraModalOpen}
-          onOpenChange={(open) => {
-            setIsCameraModalOpen(open);
-            if (!open) setAnalyzeFile(undefined);
-          }}
-        >
-          <DialogContent className="rounded-3xl max-w-6xl p-0 border-none shadow-2xl bg-white overflow-hidden flex flex-col max-h-[90vh]">
-            <DialogHeader className="px-5 py-2 border-b border-slate-100">
-              <DialogTitle className="text-base font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <CameraIcon size={18} className="text-[#006699]" />
-                {analyzeFile ? 'Analyze Attachment' : 'Capture Attachment'}
-              </DialogTitle>
-              <DialogDescription className="text-xs font-semibold text-slate-500">
-                {analyzeFile ? 'Review and extract data from the selected document.' : 'Take a photo and upload it as a Business Entity attachment.'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="px-5 overflow-y-auto flex-1">
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-16 text-slate-500 text-sm font-medium">
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  Loading camera…
-                </div>
-              }>
-                <CameraComp
-                  companyNo={parseInt(companyNo as any) || 1}
-                  formNo={1550}
-                  fileNamePrefix="business-entity-capture"
-                  className="border-slate-100 shadow-none"
-                  initialAnalyzeFile={analyzeFile}
-                  onUploaded={handleCameraAttachmentUploaded}
-                  onCancel={() => {
-                    setIsCameraModalOpen(false);
-                    setAnalyzeFile(undefined);
-                  }}
-                  onCardScanned={(data: any) => {
-                    if (data.company && !name?.trim()) {
-                      setName(data.company);
-                    }
-                    if (data.name || data.email || data.phone || data.mobile || data.designation) {
-                      setCompanyContacts(prev => [
-                        ...prev,
-                        {
-                          contactName: data.name || '',
-                          name: data.name || '',
-                          contactPersonName: data.name || '',
-                          designation: data.designation || '',
-                          department: '',
-                          phone: data.phone || data.mobile || '',
-                          phoneNo: data.phone || data.mobile || '',
-                          email: data.email || '',
-                          address: data.address || '',
-                          country: data.country || '',
-                          state: data.state || '',
-                          city: data.city || '',
-                          status: 'Active'
-                        }
-                      ]);
-                    }
-                    if (data.address || data.city || data.state || data.country) {
-                      const defaultLocType = locationTypes.find((t: any) => /office/i.test(t.locationTypeName || ''))?.locationTypeNo ?? locationTypes[0]?.locationTypeNo;
-                      setCompanyLocations(prev => [
-                        ...prev,
-                        {
-                          type: defaultLocType !== undefined ? defaultLocType.toString() : '',
-                          address: data.address || '',
-                          country: data.country || '',
-                          state: data.state || '',
-                          city: data.city || '',
-                          pinCode: '',
-                          mapUrl: '',
-                          latitude: '',
-                          longitude: ''
-                        }
-                      ]);
-                    }
-                  }}
-                />
-              </Suspense>
-            </div>
-          </DialogContent>
-        </Dialog>
+          <Dialog
+            open={isCameraModalOpen}
+            onOpenChange={(open) => {
+              setIsCameraModalOpen(open);
+              if (!open) setAnalyzeFile(undefined);
+            }}
+          >
+            <DialogContent
+              className={cn(
+                'w-[calc(100vw-1.5rem)] max-w-4xl p-0 gap-0 overflow-hidden',
+                'max-h-[min(90dvh,900px)] flex flex-col',
+                'rounded-[12px] border border-[var(--tm-border)]/80 shadow-xl bg-[var(--tm-surface)] select-none'
+              )}
+            >
+              <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight flex items-center gap-2 pr-6">
+                  <CameraIcon size={16} className="text-[#0EA5E9] shrink-0" />
+                  {analyzeFile ? 'Analyze Attachment' : 'Capture Attachment'}
+                </DialogTitle>
+                <DialogDescription className="text-[11px] font-medium text-slate-500 mt-0.5">
+                  {analyzeFile
+                    ? 'Review and extract data from the selected document.'
+                    : 'Take a photo and upload it as a Business Entity attachment.'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                <Suspense
+                  fallback={
+                    <div className="flex flex-1 items-center justify-center py-20 text-slate-500 text-sm font-medium">
+                      <Loader2 className="h-5 w-5 animate-spin mr-2 text-[#0EA5E9]" />
+                      Loading camera…
+                    </div>
+                  }
+                >
+                  <CameraComp
+                    companyNo={parseInt(companyNo as any) || 1}
+                    formNo={1550}
+                    fileNamePrefix="business-entity-capture"
+                    className="border-0 shadow-none rounded-none flex-1 min-h-0"
+                    initialAnalyzeFile={analyzeFile}
+                    onUploaded={handleCameraAttachmentUploaded}
+                    onCancel={() => {
+                      setIsCameraModalOpen(false);
+                      setAnalyzeFile(undefined);
+                    }}
+                    onCardScanned={(data: any) => {
+                      if (data.company && !name?.trim()) {
+                        setName(data.company);
+                      }
+                      if (data.name || data.email || data.phone || data.mobile || data.designation) {
+                        setCompanyContacts(prev => [
+                          ...prev,
+                          {
+                            contactName: data.name || '',
+                            name: data.name || '',
+                            contactPersonName: data.name || '',
+                            designation: data.designation || '',
+                            department: '',
+                            phone: data.phone || data.mobile || '',
+                            phoneNo: data.phone || data.mobile || '',
+                            email: data.email || '',
+                            address: data.address || '',
+                            country: data.country || '',
+                            state: data.state || '',
+                            city: data.city || '',
+                            status: 'Active'
+                          }
+                        ]);
+                      }
+                      if (data.address || data.city || data.state || data.country) {
+                        const defaultLocType = locationTypes.find((t: any) => /office/i.test(t.locationTypeName || ''))?.locationTypeNo ?? locationTypes[0]?.locationTypeNo;
+                        setCompanyLocations(prev => [
+                          ...prev,
+                          {
+                            type: defaultLocType !== undefined ? defaultLocType.toString() : '',
+                            address: data.address || '',
+                            country: data.country || '',
+                            state: data.state || '',
+                            city: data.city || '',
+                            pinCode: '',
+                            mapUrl: '',
+                            latitude: '',
+                            longitude: ''
+                          }
+                        ]);
+                      }
+                    }}
+                  />
+                </Suspense>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
 
         <CompanyLocationModal

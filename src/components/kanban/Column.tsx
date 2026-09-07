@@ -1,8 +1,25 @@
+import { useMemo, useState } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import { Task, TaskStatus } from '@/types/task';
 import { TaskCard } from './TaskCard';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import {
+  MoreHorizontal,
+  Plus,
+  ChevronDown,
+  ChevronRight,
+  ArrowDownAZ,
+  ArrowUpWideNarrow,
+  ListRestart,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface ColumnProps {
@@ -12,75 +29,191 @@ interface ColumnProps {
   onTaskClick?: (taskId: number) => void;
 }
 
+type ColumnSort = 'default' | 'priority' | 'title';
+
 function statusAccent(status: string) {
   const s = status.toLowerCase().trim();
-  if (s.includes('complete') || s === 'close' || s === 'closed' || s === 'done') {
+  if (s.includes('complete') || s === 'done') {
     return {
+      top: 'border-t-[3px] border-t-emerald-500',
       bar: 'bg-emerald-500',
-      badge: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-      header: 'from-emerald-50/80 to-white',
+      badge: 'bg-emerald-500 text-white',
+    };
+  }
+  if (s === 'close' || s === 'closed') {
+    return {
+      top: 'border-t-[3px] border-t-teal-400',
+      bar: 'bg-teal-400',
+      badge: 'bg-teal-400 text-white',
     };
   }
   if (s.includes('progress')) {
     return {
+      top: 'border-t-[3px] border-t-sky-500',
       bar: 'bg-sky-500',
-      badge: 'bg-sky-50 text-sky-700 ring-sky-100',
-      header: 'from-sky-50/80 to-white',
+      badge: 'bg-sky-500 text-white',
     };
   }
   if (s.includes('review')) {
     return {
+      top: 'border-t-[3px] border-t-violet-500',
       bar: 'bg-violet-500',
-      badge: 'bg-violet-50 text-violet-700 ring-violet-100',
-      header: 'from-violet-50/80 to-white',
+      badge: 'bg-violet-500 text-white',
+    };
+  }
+  if (s.includes('rejected')) {
+    return {
+      top: 'border-t-[3px] border-t-slate-500',
+      bar: 'bg-slate-500',
+      badge: 'bg-slate-500 text-white',
     };
   }
   if (s.includes('hold') || s.includes('pending') || s.includes('open') || s.includes('reopen')) {
     return {
-      bar: 'bg-amber-500',
-      badge: 'bg-amber-50 text-amber-700 ring-amber-100',
-      header: 'from-amber-50/80 to-white',
+      top: 'border-t-[3px] border-t-[#F59E0B]',
+      bar: 'bg-[#F59E0B]',
+      badge: 'bg-[#F59E0B] text-white',
     };
   }
   if (s.includes('draft') || s.includes('todo') || s.includes('to do') || s.includes('to-do')) {
     return {
-      bar: 'bg-[#006699]',
-      badge: 'bg-[#e8f3f8] text-[#006699] ring-[#006699]/12',
-      header: 'from-[#f4f9fc] to-white',
+      top: 'border-t-[3px] border-t-[#0EA5E9]',
+      bar: 'bg-[#0EA5E9]',
+      badge: 'bg-[#0EA5E9] text-white',
     };
   }
   return {
+    top: 'border-t-[3px] border-t-slate-400',
     bar: 'bg-slate-400',
-    badge: 'bg-slate-100 text-slate-600 ring-slate-200',
-    header: 'from-slate-50 to-white',
+    badge: 'bg-slate-400 text-white',
   };
 }
 
 export function Column({ status, tasks, onAddTask, onTaskClick }: ColumnProps) {
   const accent = statusAccent(status);
+  const [collapsed, setCollapsed] = useState(false);
+  const [sortBy, setSortBy] = useState<ColumnSort>('default');
+
+  const sortedTasks = useMemo(() => {
+    if (sortBy === 'default') return tasks;
+    const next = [...tasks];
+    if (sortBy === 'priority') {
+      next.sort((a, b) => (b.priority_No || 0) - (a.priority_No || 0));
+    } else if (sortBy === 'title') {
+      next.sort((a, b) => (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' }));
+    }
+    return next;
+  }, [tasks, sortBy]);
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col w-12 min-w-12 h-full rounded-[12px] theme-kanban-column bg-[var(--tm-surface)] border border-[var(--tm-border)]/80 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          className={cn(
+            'relative flex-1 flex flex-col items-center gap-3 px-1.5 py-3 hover:bg-[var(--tm-muted)]/60 transition-colors bg-[var(--tm-surface)]',
+            accent.top
+          )}
+          title={`Expand ${status}`}
+        >
+          <ChevronRight size={14} className="text-slate-400 shrink-0" />
+          <span
+            className={cn(
+              'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold',
+              accent.badge
+            )}
+          >
+            {tasks.length}
+          </span>
+          <span
+            className="text-[11px] font-semibold text-slate-200 tracking-wide"
+            style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+          >
+            {status}
+          </span>
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col w-[85vw] sm:w-[320px] min-w-[260px] sm:min-w-[320px] h-full rounded-[12px] bg-white border border-slate-200/80 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.1)] overflow-hidden">
-      <div className={cn('relative px-3.5 py-3 border-b border-slate-100 bg-gradient-to-r', accent.header)}>
-        <span className={cn('absolute left-0 top-0 bottom-0 w-1', accent.bar)} />
-        <div className="flex items-center justify-between gap-2 pl-1.5">
+    <div className="flex flex-col w-[85vw] sm:w-[320px] min-w-[260px] sm:min-w-[320px] h-full rounded-[12px] theme-kanban-column bg-[var(--tm-surface)] border border-[var(--tm-border)] shadow-[var(--tm-shadow)] overflow-hidden snap-center shrink-0">
+      <div className={cn('relative px-3.5 py-3 border-b border-[var(--tm-border)] bg-[var(--tm-surface)]', accent.top)}>
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <h3 className="font-semibold text-slate-800 text-[13px] truncate">{status}</h3>
-            <span className={cn(
-              'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold ring-1',
-              accent.badge
-            )}>
+            <h3 className="font-semibold text-slate-100 text-[13px] truncate">{status}</h3>
+            <span
+              className={cn(
+                'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold',
+                accent.badge
+              )}
+            >
               {tasks.length}
             </span>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-slate-600 hover:bg-white/80 shrink-0"
-          >
-            <MoreHorizontal size={16} />
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-slate-200 hover:bg-[var(--tm-surface)]/80 shrink-0"
+                aria-label={`${status} column menu`}
+              >
+                <MoreHorizontal size={16} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-[var(--tm-surface)] border-[var(--tm-border)] text-slate-100">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                Column actions
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                className="gap-2 text-xs cursor-pointer focus:bg-[var(--tm-muted)] focus:text-slate-50"
+                onClick={onAddTask}
+              >
+                <Plus size={14} className="text-[#0EA5E9]" />
+                Add Task
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 text-xs cursor-pointer focus:bg-[var(--tm-muted)] focus:text-slate-50"
+                onClick={() => setCollapsed(true)}
+              >
+                <ChevronDown size={14} className="text-slate-400" />
+                Collapse column
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="bg-[var(--tm-border)]" />
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                Sort
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                className="gap-2 text-xs cursor-pointer focus:bg-[var(--tm-muted)] focus:text-slate-50"
+                onClick={() => setSortBy('priority')}
+              >
+                <ArrowUpWideNarrow size={14} className="text-[#F59E0B]" />
+                Priority (high first)
+                {sortBy === 'priority' ? <span className="ml-auto text-[#0EA5E9]">✓</span> : null}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 text-xs cursor-pointer focus:bg-[var(--tm-muted)] focus:text-slate-50"
+                onClick={() => setSortBy('title')}
+              >
+                <ArrowDownAZ size={14} className="text-slate-400" />
+                Title (A–Z)
+                {sortBy === 'title' ? <span className="ml-auto text-[#0EA5E9]">✓</span> : null}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 text-xs cursor-pointer focus:bg-[var(--tm-muted)] focus:text-slate-50"
+                onClick={() => setSortBy('default')}
+                disabled={sortBy === 'default'}
+              >
+                <ListRestart size={14} className="text-slate-400" />
+                Default order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -90,16 +223,16 @@ export function Column({ status, tasks, onAddTask, onTaskClick }: ColumnProps) {
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              'flex-1 overflow-y-auto scrollbar-hide px-3 py-3 transition-colors',
-              snapshot.isDraggingOver ? 'bg-[#f4f9fc]' : 'bg-[#f8fbfd]/40'
+              'theme-kanban-column-body flex-1 overflow-y-auto scrollbar-hide px-3 py-3 transition-colors',
+              snapshot.isDraggingOver ? 'bg-[var(--tm-tint)]/50' : 'bg-[var(--tm-elevated)]'
             )}
           >
-            {tasks.length === 0 ? (
-              <div className="mb-3 rounded-[8px] border border-dashed border-slate-200 bg-white/70 px-3 py-6 text-center">
+            {sortedTasks.length === 0 ? (
+              <div className="mb-3 rounded-[8px] border border-dashed border-[var(--tm-border)] bg-[var(--tm-surface)]/70 px-3 py-6 text-center">
                 <p className="text-[11px] font-medium text-slate-400">No tasks in {status}</p>
               </div>
             ) : (
-              tasks.map((task, index) => (
+              sortedTasks.map((task, index) => (
                 <TaskCard key={task.taskNo} task={task} index={index} onTaskClick={onTaskClick} />
               ))
             )}
@@ -108,7 +241,7 @@ export function Column({ status, tasks, onAddTask, onTaskClick }: ColumnProps) {
             <button
               type="button"
               onClick={onAddTask}
-              className="w-full py-2.5 mt-1 border border-dashed border-[#006699]/25 rounded-[8px] flex items-center justify-center gap-1.5 text-[#006699] hover:border-[#006699]/45 hover:bg-[#e8f3f8] transition-all text-[11px] font-semibold bg-white/80"
+              className="w-full py-2.5 mt-1 border border-dashed border-[#0EA5E9]/35 rounded-[8px] flex items-center justify-center gap-1.5 text-[#0EA5E9] hover:border-[#0EA5E9]/55 hover:bg-[var(--tm-tint)] transition-all text-[11px] font-semibold bg-[var(--tm-surface)]/90 shadow-sm"
             >
               <Plus size={14} strokeWidth={2.25} />
               Add Task

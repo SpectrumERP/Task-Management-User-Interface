@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
 import { Board } from '@/components/kanban/Board';
@@ -20,6 +20,7 @@ export default function DealMonitorPage() {
   const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>('list');
   const { fetchTasks, fetchFillValues, isLoading } = useTaskStore();
   const tasks = useTaskStore((state) => state.tasks);
+  const fetchError = useTaskStore((state) => state.fetchError);
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
 
   const authCompanies = useAuthStore((state) => state.company);
@@ -100,6 +101,18 @@ export default function DealMonitorPage() {
 
   return (
     <main className="page-shell">
+      {dealMonitorCategoryNo === null ? (
+        <div className="shrink-0 mx-0 mb-2 flex items-start gap-2.5 rounded-xl border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-3.5 py-2.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" strokeWidth={2.25} />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-100">Deal Monitor category not found</p>
+            <p className="text-[11px] font-medium text-slate-400 mt-0.5 leading-relaxed">
+              No category named “Deal Monitor” is configured in fill values, so this view may not filter correctly. Ask an admin to add that category.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="shrink-0">
         <TaskFilter
           onFilter={handleFilter}
@@ -113,21 +126,37 @@ export default function DealMonitorPage() {
       </div>
 
       {viewMode === 'list' ? (
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
           <div className="flex-1 min-h-0 overflow-hidden">
-            <TaskListView tasks={tasks} isLoading={isLoading} onTaskClick={handleTaskClick} hideCategoryColumn />
+            <TaskListView
+              tasks={tasks}
+              isLoading={isLoading}
+              loadError={Boolean(fetchError)}
+              onRetryLoad={() => {
+                if (currentFilters) {
+                  fetchTasks({
+                    ...currentFilters,
+                    pageSize,
+                    pageNo,
+                  });
+                }
+              }}
+              onTaskClick={handleTaskClick}
+              onCreateTask={isSave ? handleCreateTask : undefined}
+              hideCategoryColumn
+            />
           </div>
 
-          {tasks.length > 0 ? (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-2 border-t border-slate-100 bg-[#f8fbfd] shrink-0 select-none">
-              <div className="text-[11px] text-slate-500 font-bold">
-                Showing <span className="text-slate-800 font-black">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
-                <span className="text-slate-800 font-black">{((pageNo - 1) * pageSize) + tasks.length}</span> records
+          {tasks.length > 9 || pageNo > 1 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0 select-none">
+              <div className="text-[11px] text-slate-500 font-bold justify-self-center sm:justify-self-start min-w-0 truncate tabular-nums order-1 sm:order-none">
+                Showing <span className="text-slate-100 font-black">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
+                <span className="text-slate-100 font-black">{((pageNo - 1) * pageSize) + tasks.length}</span> records
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-400">Per Page:</span>
-                <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
+                <span className="text-[10px] font-black text-slate-400 whitespace-nowrap">Per Page:</span>
+                <div className="flex items-center gap-1 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)] shadow-sm">
                   {[10, 25, 50, 100].map((size) => (
                     <button
                       key={size}
@@ -137,10 +166,10 @@ export default function DealMonitorPage() {
                         setPageNo(1);
                       }}
                       className={cn(
-                        "h-6 px-2.5 rounded-md text-[10px] font-black tracking-wide uppercase transition-all",
+                        "h-6 w-9 rounded-md text-[10px] font-black tabular-nums tracking-wide transition-all",
                         pageSize === size
-                          ? "bg-[#006699] text-white shadow-sm font-black"
-                          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                          ? "bg-[#0EA5E9] text-white shadow-sm"
+                          : "text-slate-500 hover:text-slate-50 hover:bg-[var(--tm-muted)]"
                       )}
                     >
                       {size}
@@ -149,33 +178,31 @@ export default function DealMonitorPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
                 <Button
                   variant="ghost"
                   size="icon"
                   disabled={pageNo === 1 || isLoading}
                   onClick={() => setPageNo((prev) => Math.max(1, prev - 1))}
-                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
                 >
                   <ChevronLeft size={14} strokeWidth={2.5} />
                 </Button>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled
-                    className="h-7 w-7 rounded-lg text-[10px] font-black bg-[#006699] border border-[#006699] text-white shadow-md shadow-[#006699]/10 flex items-center justify-center cursor-default"
-                  >
-                    {pageNo}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="h-7 w-7 rounded-lg text-[10px] font-black bg-[#0EA5E9] border border-[#0EA5E9] text-white shadow-md shadow-[#0EA5E9]/10 flex items-center justify-center cursor-default tabular-nums shrink-0"
+                >
+                  {pageNo}
+                </button>
 
                 <Button
                   variant="ghost"
                   size="icon"
                   disabled={tasks.length < pageSize || isLoading}
                   onClick={() => setPageNo((prev) => prev + 1)}
-                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-slate-200 bg-white shadow-sm"
+                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
                 >
                   <ChevronRight size={14} strokeWidth={2.5} />
                 </Button>

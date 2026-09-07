@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function UserGroupList() {
 
   const [apiUserGroups, setApiUserGroups] = useState<UserGroupMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchUserGroups = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/security/user-groups/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -46,6 +50,7 @@ export function UserGroupList() {
       }
     } catch (error) {
       console.error('Failed to fetch API user groups:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -65,8 +70,9 @@ export function UserGroupList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -74,9 +80,10 @@ export function UserGroupList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/security/user-groups/delete', {
       params: { userGroupNo: deleteTargetId }
-    }).then(() => fetchUserGroups()).catch(err => console.error('Failed to delete user group:', err));
+    }).then(() => { toast.success('Record deleted'); fetchUserGroups(); }).catch(err => { console.error('Failed to delete user group:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
@@ -108,6 +115,8 @@ export function UserGroupList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchUserGroups}
         emptyIcon={Users}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -132,7 +141,8 @@ export function UserGroupList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

@@ -29,12 +29,12 @@ function TruncatedCell({ text, minWidth = 'min-w-[200px]' }: { text: string; min
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-auto max-w-[400px] p-3 text-sm shadow-lg pointer-events-auto z-[150] bg-white border border-slate-200"
+        className="w-auto max-w-[400px] p-3 text-sm shadow-lg pointer-events-auto z-[150] bg-[var(--tm-surface)] border border-[var(--tm-border)]"
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
         sideOffset={5}
       >
-        <div className="max-h-[300px] overflow-y-auto whitespace-pre-wrap select-all cursor-text text-slate-800">
+        <div className="max-h-[300px] overflow-y-auto whitespace-pre-wrap select-all cursor-text text-slate-100">
           {text}
         </div>
       </PopoverContent>
@@ -129,12 +129,12 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
-      <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center justify-between px-4 py-3 bg-[#f8fbfd] border-b border-slate-100">
+    <section data-page-tour="mreport-table" className="flex h-full min-h-0 flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+      <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center justify-between px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-slate-800 tracking-tight">
+          <h3 className="text-sm font-semibold text-slate-100 tracking-tight">
             Report Results
-            <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e8f3f8] px-1.5 text-[10px] font-semibold text-[#006699] tabular-nums">
+            <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
               {data.length}
             </span>
           </h3>
@@ -146,7 +146,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-slate-200 shadow-none"
+                className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] shadow-none"
               >
                 <Eye className="h-3.5 w-3.5" />
                 Columns
@@ -169,6 +169,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
           <Button
             onClick={handleExport}
             size="sm"
+            data-page-tour="mreport-export"
             className="h-8 gap-1.5 rounded-[8px] text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-sm"
             disabled={data.length === 0}
           >
@@ -180,10 +181,10 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
 
       <div className="flex-1 min-h-0 overflow-auto">
         <table
-          className="w-full text-sm text-left relative"
+          className="tm-data-table w-full text-sm text-left relative"
           style={{ tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto' }}
         >
-          <thead className="bg-slate-50/90 border-b border-slate-200 text-[10px] text-slate-500 font-semibold uppercase tracking-wide sticky top-0 z-10">
+          <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide sticky top-0 z-10">
             <tr>
               {DEFAULT_COLUMNS.map((col) => {
                 if (!visibleColumns.includes(col.id)) return null;
@@ -198,12 +199,12 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                 return (
                   <th
                     key={col.id}
-                    className="px-3 py-2.5 border-r border-slate-100 last:border-r-0 whitespace-nowrap relative group select-none overflow-hidden text-ellipsis"
+                    className="px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 whitespace-nowrap relative group select-none overflow-hidden text-ellipsis"
                     style={widthStyle}
                   >
                     {col.label}
                     <div
-                      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#006699]/40 group-hover:bg-slate-300 transition-colors z-20"
+                      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors z-20"
                       onMouseDown={(e) => handleResizeStart(e, col.id)}
                     />
                   </th>
@@ -227,11 +228,11 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
               pageRows.map((meeting, index) => (
                 <tr
                   key={meeting.meetingNotesNo || `${startIndex + index}`}
-                  className="border-b border-slate-100 hover:bg-[#f8fbfd]/50"
+                  className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50"
                 >
                   {visibleColumns.includes('srNo') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={colWidths['srNo'] ? { maxWidth: colWidths['srNo'] } : {}}
                     >
                       {startIndex + index + 1}
@@ -239,7 +240,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('meetingTitle') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 font-medium text-slate-900 align-top truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-top truncate"
                       style={
                         colWidths['meetingTitle'] ? { maxWidth: colWidths['meetingTitle'] } : {}
                       }
@@ -252,7 +253,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('category') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 align-top truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate"
                       style={colWidths['category'] ? { maxWidth: colWidths['category'] } : {}}
                     >
                       <TruncatedCell
@@ -262,7 +263,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('type') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={colWidths['type'] ? { maxWidth: colWidths['type'] } : {}}
                     >
                       <TruncatedCell text={meeting.meetingTypeName || meeting.type?.typeName} />
@@ -270,7 +271,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('company') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={colWidths['company'] ? { maxWidth: colWidths['company'] } : {}}
                     >
                       <TruncatedCell
@@ -284,7 +285,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('location') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={colWidths['location'] ? { maxWidth: colWidths['location'] } : {}}
                     >
                       <TruncatedCell
@@ -294,7 +295,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('mode') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={colWidths['mode'] ? { maxWidth: colWidths['mode'] } : {}}
                     >
                       <TruncatedCell
@@ -304,7 +305,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('startDateTime') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={
                         colWidths['startDateTime'] ? { maxWidth: colWidths['startDateTime'] } : {}
                       }
@@ -320,7 +321,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('endDateTime') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={
                         colWidths['endDateTime'] ? { maxWidth: colWidths['endDateTime'] } : {}
                       }
@@ -334,7 +335,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('participants') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={
                         colWidths['participants'] ? { maxWidth: colWidths['participants'] } : {}
                       }
@@ -357,7 +358,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('discussionsMade') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={
                         colWidths['discussionsMade']
                           ? { maxWidth: colWidths['discussionsMade'] }
@@ -379,7 +380,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('discussionRemarks') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={
                         colWidths['discussionRemarks']
                           ? { maxWidth: colWidths['discussionRemarks'] }
@@ -401,17 +402,17 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   )}
                   {visibleColumns.includes('status') && (
                     <td
-                      className="px-3 py-2.5 border-r border-slate-100 text-slate-600 truncate"
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                       style={colWidths['status'] ? { maxWidth: colWidths['status'] } : {}}
                     >
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-semibold ${
                           (meeting.status?.statusName || meeting.status) === 'Completed' ||
                           (meeting.status?.statusName || meeting.status) === 'Closed'
-                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/80'
+                            ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30'
                             : (meeting.status?.statusName || meeting.status) === 'In Progress'
-                              ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200/80'
-                              : 'bg-slate-50 text-slate-600 ring-1 ring-slate-200/80'
+                              ? 'bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30'
+                              : 'bg-[var(--tm-muted)] text-slate-300 ring-1 ring-[var(--tm-border)]/80'
                         }`}
                       >
                         {meeting.status?.statusName || meeting.status || 'Draft'}

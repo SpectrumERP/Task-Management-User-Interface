@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Task } from '@/types/task';
-import { ClipboardList, Settings2, Edit2, Search } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { ClipboardList, Settings2, Edit2, Search, Eye, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { getPriorityBadgeClass } from '@/lib/priorityStyles';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useSettings } from '@/hooks/useSettings';
@@ -15,7 +18,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -24,7 +26,10 @@ import { useTaskStore } from '@/store/useTaskStore';
 interface TaskListViewProps {
   tasks: Task[];
   isLoading?: boolean;
+  loadError?: boolean;
+  onRetryLoad?: () => void;
   onTaskClick?: (taskId: number) => void;
+  onCreateTask?: () => void;
   hideCategoryColumn?: boolean;
 }
 type ColumnKey = 'code' | 'status' | 'title' | 'category' | 'type' | 'priority' | 'dueDate' | 'completionDate' | 'folder' | 'createdBy' | 'createdDate' | 'owner' | 'originator' | 'companyName' | 'location' | 'actions';
@@ -54,7 +59,7 @@ const COLUMNS: ColumnDef[] = [
   { key: 'actions', label: '', defaultVisible: true }, // Actions shouldn't typically be hidden but we can allow it
 ];
 
-export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn = false }: TaskListViewProps) {
+export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskClick, onCreateTask, hideCategoryColumn = false }: TaskListViewProps) {
   const navigate = useNavigate();
   const { isUpdate } = useFormRights(1547);
   const { fillValues } = useTaskStore();
@@ -129,9 +134,9 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
   };
 
   const getContrastColor = (hexColor?: string) => {
-    if (!hexColor) return '#1e293b';
+    if (!hexColor) return '#E2E8F0';
     const hex = hexColor.replace('#', '');
-    if (hex.length !== 6 && hex.length !== 3) return '#1e293b';
+    if (hex.length !== 6 && hex.length !== 3) return '#E2E8F0';
 
     let r = 0, g = 0, b = 0;
     if (hex.length === 6) {
@@ -148,41 +153,147 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
     return yiq >= 140 ? '#0f172a' : '#ffffff';
   };
 
-  if (isLoading) {
+  // Full loader only on first load (no rows yet). Refetch / view-switch keeps existing rows.
+  if (isLoading && tasks.length === 0) {
     return (
-      <div className="h-full space-y-3 p-3">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-14 w-full bg-slate-50 animate-pulse rounded-xl border border-slate-100" />
-        ))}
+      <div className="h-full min-h-[200px] flex items-center justify-center">
+        <BrandLoader size="sm" message="Loading tasks" />
       </div>
+    );
+  }
+
+  if (loadError && tasks.length === 0) {
+    return (
+      <LoadErrorState
+        title="Failed to load tasks"
+        description="Could not load the task list. Retry uses the same filters — nothing else changes."
+        onRetry={onRetryLoad}
+        className="h-full"
+      />
     );
   }
 
   if (tasks.length === 0) {
     return (
-      <div className="h-full min-h-0 flex flex-col items-center justify-center px-6">
-        <div className="h-14 w-14 rounded-2xl bg-[#e8f3f8] flex items-center justify-center mb-2.5">
-          <ClipboardList className="text-[#006699]" size={26} strokeWidth={1.75} />
+      <div className="h-full min-h-0 flex flex-col items-center justify-center px-6 py-10">
+        <div className="h-14 w-14 rounded-2xl bg-[var(--tm-tint)] flex items-center justify-center mb-3 ring-1 ring-[#0EA5E9]/15">
+          <ClipboardList className="text-[#0EA5E9]" size={26} strokeWidth={1.75} />
         </div>
-        <h3 className="text-base font-semibold text-slate-800 tracking-tight">No tasks found</h3>
-        <p className="text-slate-500 text-sm font-medium mt-0.5 max-w-sm text-center">
-          Try adjusting your filters or create a new task.
+        <h3 className="text-base font-semibold text-slate-100 tracking-tight">No tasks found</h3>
+        <p className="text-slate-500 text-sm font-medium mt-1 max-w-sm text-center">
+          Try clearing filters, or create a new task to get started.
         </p>
+        {onCreateTask ? (
+          <Button
+            type="button"
+            onClick={onCreateTask}
+            className="mt-4 h-9 px-4 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold gap-1.5"
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            Create task
+          </Button>
+        ) : null}
       </div>
     );
   }
 
+  const openTask = (task: Task) => {
+    if (onTaskClick) onTaskClick(task.taskNo);
+    else navigate(taskUrl(task.taskNo, task.categoryName));
+  };
+
   return (
-    <div className="h-full min-h-0 overflow-auto">
-      <table className="w-full text-sm text-left">
-        <thead className="sticky top-0 z-30 bg-[#f3f8fb] border-b border-slate-200 text-slate-600 font-semibold text-xs tracking-wider">
+    <div className="h-full min-h-0 overflow-auto" data-page-tour="task-table">
+      {/* Mobile / tablet cards */}
+      <div className="md:hidden flex flex-col gap-2 p-2 sm:p-3">
+        {tasks.map((task) => (
+          <div
+            key={task.taskNo}
+            role="button"
+            tabIndex={0}
+            onClick={() => openTask(task)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openTask(task);
+              }
+            }}
+            className="w-full text-left rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/60 px-3 py-2.5 shadow-sm active:bg-[var(--tm-muted)] transition-colors cursor-pointer"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                  <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                    {task.code || `CP-${100 + task.taskNo}`}
+                  </span>
+                  {task.status ? (
+                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-[var(--tm-muted)] text-slate-200">
+                      {task.status}
+                    </span>
+                  ) : null}
+                  {task.priority ? (
+                    <span
+                      className={cn(
+                        'text-[9px] font-medium px-1.5 py-0.5 rounded-md',
+                        getPriorityBadgeClass(task.priority, task.priority_No, 'solid')
+                      )}
+                    >
+                      {task.priority}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-sm font-semibold text-slate-100 leading-snug line-clamp-2">{task.title}</p>
+                <p className="mt-1 text-[11px] text-slate-400 truncate">
+                  {task.assignedDisplayName || 'Unassigned'}
+                  {task.end_date
+                    ? ` · Due ${format(new Date(task.end_date), 'MMM dd')}`
+                    : ''}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="View"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openTask(task);
+                  }}
+                  className="h-8 w-8 rounded-lg text-slate-400"
+                >
+                  <Eye size={14} strokeWidth={2.25} />
+                </Button>
+                {isUpdate ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Edit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(taskUrl(task.taskNo, task.categoryName));
+                    }}
+                    className="h-8 w-8 rounded-lg text-slate-400"
+                  >
+                    <Edit2 size={14} strokeWidth={2.5} />
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block min-w-0">
+      <table className="tm-data-table w-full text-sm text-left min-w-[720px]">
+        <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold text-xs tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
           <tr>
             {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
               <th
                 key={col.key}
                 className={cn(
                   "px-1.5 py-1 whitespace-nowrap relative group/th",
-                  col.key === 'actions' && "w-[50px] text-center p-1 sticky right-0 z-40 bg-slate-50/90 backdrop-blur-md border-l border-slate-200 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
+                  col.key === 'actions' && "w-[50px] text-center p-1 sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]"
                 )}
                 style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : {}}
               >
@@ -190,39 +301,56 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                   <div className="flex justify-center">
                     <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 px-1 flex items-center gap-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200/50">
+                        <Button variant="ghost" size="sm" className="h-6 px-1 flex items-center gap-1 text-slate-400 hover:text-slate-100 hover:bg-[var(--tm-muted)]">
                           <Settings2 size={14} />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48" onInteractOutside={() => setDropdownOpen(false)}>
-                        <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
-                        <div className="px-2 pb-2">
+                      <DropdownMenuContent
+                        align="end"
+                        className={cn(
+                          'w-56 p-0 overflow-hidden flex flex-col',
+                          'max-h-[min(360px,var(--radix-dropdown-menu-content-available-height))]',
+                          'rounded-xl border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-lg'
+                        )}
+                        onInteractOutside={() => setDropdownOpen(false)}
+                      >
+                        <div className="shrink-0 px-3 pt-2.5 pb-2 space-y-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+                          <DropdownMenuLabel className="p-0 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                            Toggle Columns
+                          </DropdownMenuLabel>
                           <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                             <Input
                               placeholder="Search columns..."
                               value={columnSearchQuery}
                               onChange={(e) => setColumnSearchQuery(e.target.value)}
-                              className="h-8 w-full pl-8 text-xs bg-slate-50 border-slate-200"
+                              className="h-8 w-full pl-8 text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]"
                             />
                           </div>
                         </div>
-                        <DropdownMenuSeparator />
-                        <div className="max-h-[300px] overflow-y-auto scrollbar-thin">
-                          {COLUMNS.filter(c => isColumnAllowed(c.key) && (c.label || 'Actions').toLowerCase().includes(columnSearchQuery.toLowerCase())).map((c) => (
+
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
+                          {COLUMNS.filter(
+                            (c) =>
+                              isColumnAllowed(c.key) &&
+                              (c.label || 'Actions')
+                                .toLowerCase()
+                                .includes(columnSearchQuery.toLowerCase())
+                          ).map((c) => (
                             <DropdownMenuCheckboxItem
                               key={c.key}
                               checked={pendingColumns.has(c.key)}
-                              onSelect={(e) => e.preventDefault()} // Prevent closing on click
+                              onSelect={(e) => e.preventDefault()}
                               onCheckedChange={() => togglePendingColumn(c.key)}
-                              disabled={c.key === 'title' || c.key === 'actions'} // Prevent hiding subject and actions
+                              disabled={c.key === 'title' || c.key === 'actions'}
+                              className="text-xs"
                             >
                               {c.label || 'Actions'}
                             </DropdownMenuCheckboxItem>
                           ))}
                         </div>
-                        <DropdownMenuSeparator />
-                        <div className="flex justify-end gap-0.5 p-2">
+
+                        <div className="shrink-0 flex justify-end gap-2 px-2.5 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)]">
                           <Button
                             variant="outline"
                             size="sm"
@@ -233,7 +361,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                           </Button>
                           <Button
                             size="sm"
-                            className="h-7 text-xs bg-[#006699] hover:bg-[#005580]"
+                            className="h-7 text-xs bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
                             onClick={() => {
                               setVisibleColumns(pendingColumns);
                               setDropdownOpen(false);
@@ -258,23 +386,17 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
             ))}
           </tr>
         </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[var(--tm-border)]">
             {tasks.map((task) => (
               <tr
                 key={task.taskNo}
-                onClick={() => {
-                  if (onTaskClick) {
-                    onTaskClick(task.taskNo);
-                  } else {
-                    navigate(taskUrl(task.taskNo, task.categoryName));
-                  }
-                }}
-                className="group hover:bg-[#006699]/5 transition-colors cursor-pointer"
+                onClick={() => openTask(task)}
+                className="group transition-colors cursor-pointer"
               >
                 {/* Code */}
                 {visibleColumns.has('code') && (
                   <td className="px-1.5 py-1 align-middle">
-                    <span className="text-[11px] font-medium text-[#006699]   whitespace-nowrap">
+                    <span className="text-[11px] font-medium text-[#0EA5E9]   whitespace-nowrap">
                       {task.code || `CP-${100 + task.taskNo}`}
                     </span>
                   </td>
@@ -288,7 +410,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                       task.status === 'Done' ? "bg-green-100/80 text-green-800" :
                         task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
                           task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
-                            "bg-slate-100/80 text-slate-800"
+                            "bg-[var(--tm-muted)]/80 text-slate-100"
                     )}>
                       {task.status}
                     </div>
@@ -299,7 +421,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                 {visibleColumns.has('title') && (
                   <td className="px-1.5 py-1 align-middle w-full max-w-0">
                     <span
-                      className="font-medium text-slate-800 group-hover:text-[#006699] transition-colors truncate block w-full select-all"
+                      className="font-medium text-slate-100 group-hover:text-[#0EA5E9] transition-colors truncate block w-full select-all"
                       title={task.title}
                     >
                       {task.title}
@@ -314,7 +436,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                       const catObj = fillValues?.category?.find(
                         c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
                       );
-                      const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || '#e2e8f0';
+                      const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || 'var(--tm-border)';
                       const textColor = getContrastColor(bgColor);
                       return (
                         <span
@@ -332,7 +454,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                 {visibleColumns.has('type') && !isHideType && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     {task.typeName ? (
-                      <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                      <span className="text-xs font-semibold text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-md border border-[var(--tm-border)]">
                         {task.typeName}
                       </span>
                     ) : (
@@ -346,7 +468,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     <span className={cn(
                       "text-[10px] font-medium   px-1.5 py-0.5 rounded-md shadow-sm",
-                      task.priority_No >= 3 ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600"
+                      getPriorityBadgeClass(task.priority, task.priority_No, 'solid')
                     )}>
                       {task.priority}
                     </span>
@@ -362,7 +484,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                         displayName={task.assignedDisplayName}
                         size="sm"
                       /> */}
-                      <span className="text-xs font-semibold text-slate-700">{task.assignedDisplayName || '-'}</span>
+                      <span className="text-xs font-semibold text-slate-200">{task.assignedDisplayName || '-'}</span>
                     </div>
                   </td>
                 )}
@@ -371,7 +493,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                 {visibleColumns.has('dueDate') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     {task.end_date ? (
-                      <span className="text-xs font-medium text-slate-700">{format(new Date(task.end_date), 'MMM dd, yyyy')}</span>
+                      <span className="text-xs font-medium text-slate-200">{format(new Date(task.end_date), 'MMM dd, yyyy')}</span>
                     ) : <span className="text-slate-300">-</span>}
                   </td>
                 )}
@@ -380,7 +502,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                 {visibleColumns.has('completionDate') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     {task.completionDate ? (
-                      <span className="text-xs font-medium text-slate-700">{format(new Date(task.completionDate), 'MMM dd, yyyy')}</span>
+                      <span className="text-xs font-medium text-slate-200">{format(new Date(task.completionDate), 'MMM dd, yyyy')}</span>
                     ) : <span className="text-slate-300">-</span>}
                   </td>
                 )}
@@ -388,7 +510,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                 {/* Folder */}
                 {visibleColumns.has('folder') && !isHideFolder && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-700">
+                    <span className="text-xs font-medium text-slate-200">
                       {task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.["Folder Name"] || task.project_No || '-'}
                     </span>
                   </td>
@@ -397,28 +519,28 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                 {/* Company */}
                 {visibleColumns.has('companyName') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-700">{task.companyName || '-'}</span>
+                    <span className="text-xs font-medium text-slate-200">{task.companyName || '-'}</span>
                   </td>
                 )}
 
                 {/* Location */}
                 {visibleColumns.has('location') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-700">{task.locationName || (task.location_No ? `Loc ${task.location_No}` : '-')}</span>
+                    <span className="text-xs font-medium text-slate-200">{task.locationName || (task.location_No ? `Loc ${task.location_No}` : '-')}</span>
                   </td>
                 )}
 
                 {/* Originator */}
                 {visibleColumns.has('originator') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-700">{task.originatorDisplayName || '-'}</span>
+                    <span className="text-xs font-medium text-slate-200">{task.originatorDisplayName || '-'}</span>
                   </td>
                 )}
 
                 {/* Created By */}
                 {visibleColumns.has('createdBy') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-700">
+                    <span className="text-xs font-medium text-slate-200">
                       {task.createdBy?.displayName || task.originatorDisplayName || '-'}
                     </span>
                   </td>
@@ -428,29 +550,45 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
                 {visibleColumns.has('createdDate') && (
                   <td className="px-1.5 py-1 align-middle whitespace-nowrap">
                     {task.createdDate ? (
-                      <span className="text-xs font-medium text-slate-700">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
+                      <span className="text-xs font-medium text-slate-200">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
                     ) : task.start_date ? (
-                      <span className="text-xs font-medium text-slate-700">{format(new Date(task.start_date), 'MMM dd, yyyy h:mm a')}</span>
+                      <span className="text-xs font-medium text-slate-200">{format(new Date(task.start_date), 'MMM dd, yyyy h:mm a')}</span>
                     ) : <span className="text-slate-300">-</span>}
                   </td>
                 )}
 
                 {/* Actions */}
                 {visibleColumns.has('actions') && (
-                  <td className="px-1.5 py-1 align-middle text-right sticky right-0 z-10 bg-white/90 backdrop-blur-md border-l border-slate-200 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)] group-hover:bg-slate-50/90">
-                    {isUpdate && (
+                  <td className="px-1.5 py-1 align-middle text-right sticky right-0 z-10 tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                    <div className="inline-flex items-center justify-end gap-0.5 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                       <Button
                         variant="ghost"
                         size="icon"
+                        title="View"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(taskUrl(task.taskNo, task.categoryName));
+                          if (onTaskClick) onTaskClick(task.taskNo);
+                          else navigate(taskUrl(task.taskNo, task.categoryName));
                         }}
-                        className="h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center transition-all duration-200"
+                        className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
                       >
-                        <Edit2 size={14} strokeWidth={2.5} />
+                        <Eye size={14} strokeWidth={2.25} />
                       </Button>
-                    )}
+                      {isUpdate && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(taskUrl(task.taskNo, task.categoryName));
+                          }}
+                          className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+                        >
+                          <Edit2 size={14} strokeWidth={2.5} />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 )}
 
@@ -458,6 +596,7 @@ export function TaskListView({ tasks, isLoading, onTaskClick, hideCategoryColumn
             ))}
           </tbody>
         </table>
+      </div>
     </div>
   );
 }

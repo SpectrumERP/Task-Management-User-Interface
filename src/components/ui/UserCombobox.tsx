@@ -188,11 +188,12 @@ export function UserCombobox({
           disabled={disabled}
           className={cn(
             "w-full justify-between transition-all border shadow-sm relative pr-8",
-            !className?.includes("text-") && "text-sm font-medium text-slate-900",
+            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[var(--tm-elevated)] disabled:hover:bg-[var(--tm-elevated)]",
+            !className?.includes("text-") && "text-sm font-medium text-slate-50",
             !className?.includes("h-") && "h-9",
             className,
             "rounded-[8px]",
-            error ? "!border-red-500 text-red-500" : "border-[#a8afb7]"
+            error ? "!border-red-500 text-red-500" : "!border-[var(--tm-border)]"
           )}
         >
           <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium", error && "text-red-500")}>{selectedLabel || placeholder}</span>
@@ -203,7 +204,7 @@ export function UserCombobox({
                   e.stopPropagation();
                   onChange({ loginNo: "", printingName: "" } as any);
                 }}
-                className="p-0.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 <X className="h-3 w-3" />
               </span>
@@ -217,8 +218,8 @@ export function UserCombobox({
           className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           align="start"
         >
-          <Command className="rounded-xl border-slate-200" shouldFilter={false}>
-            <div className="border-b border-slate-100 bg-slate-50/50">
+          <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={false}>
+            <div className="border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
               <CommandInput
                 placeholder="Type to search..."
                 className="h-10 border-none focus:ring-0 bg-transparent"
@@ -226,7 +227,7 @@ export function UserCombobox({
               />
             </div>
 
-            <div className="grid grid-cols-3 px-3 py-2 bg-slate-100/80 border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+            <div className="grid grid-cols-3 px-3 py-2 bg-[var(--tm-muted)]/80 border-b border-[var(--tm-border)] text-[10px] font-black text-slate-500 uppercase tracking-wider">
               <div>User Name</div>
               <div>Display Name</div>
               <div>Email</div>
@@ -258,12 +259,12 @@ export function UserCombobox({
                       className="text-[11px] font-medium py-2 px-3 cursor-pointer"
                     >
                       <div className="grid grid-cols-3 w-full items-center gap-2">
-                        <div className="truncate text-slate-900 font-bold">{user.loginId}</div>
-                        <div className="truncate text-slate-600 font-semibold">{user.printingName}</div>
+                        <div className="truncate text-slate-50 font-bold">{user.loginId}</div>
+                        <div className="truncate text-slate-300 font-semibold">{user.printingName}</div>
                         <div className="truncate text-slate-500 font-medium col-span-1">{user.email}</div>
                       </div>
                       {value === user.loginNo.toString() && (
-                        <Check className="h-3 w-3 text-[#006699] ml-2 shrink-0" />
+                        <Check className="h-3 w-3 text-[#0EA5E9] ml-2 shrink-0" />
                       )}
                     </CommandItem>
                   ))}

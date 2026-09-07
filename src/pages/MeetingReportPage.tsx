@@ -4,16 +4,23 @@ import { MeetingReportTable } from '@/components/report/MeetingReportTable';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { toast } from 'sonner';
+import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 
 export default function MeetingReportPage() {
   const [reportData, setReportData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [lastFilters, setLastFilters] = useState<any>(null);
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
 
   const handleApplyFilters = async (filters: any) => {
     setIsLoading(true);
+    setLoadError(false);
+    setLastFilters(filters);
     try {
       const searchParamsPascal: any = {};
 
@@ -71,22 +78,33 @@ export default function MeetingReportPage() {
     } catch (error) {
       console.error('Failed to fetch meeting report data:', error);
       setReportData([]);
+      setLoadError(true);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to load meeting report'));
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="page-shell-scroll bg-[#eef4f8]">
+    <div className="page-shell-scroll bg-[var(--tm-page)]">
       <div className="shrink-0">
         <MeetingReportFilter onApply={handleApplyFilters} />
       </div>
       <div className="relative flex min-h-[280px] flex-1 basis-0 flex-col overflow-hidden">
-        <MeetingReportTable data={reportData} />
+        {loadError && !isLoading ? (
+          <LoadErrorState
+            title="Failed to load meeting report"
+            onRetry={() => lastFilters && handleApplyFilters(lastFilters)}
+            className="flex-1"
+          />
+        ) : (
+          <MeetingReportTable data={reportData} />
+        )}
         {isLoading ? (
-          <div className="absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-[8px] bg-white/75 backdrop-blur-[1px] text-slate-500 text-sm font-medium">
-            <Loader2 className="h-4 w-4 animate-spin text-[#006699]" />
-            Loading report...
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[8px] bg-[var(--tm-surface)]/80 backdrop-blur-[1px]">
+            <BrandLoader size="sm" message="Loading report" />
           </div>
         ) : null}
       </div>

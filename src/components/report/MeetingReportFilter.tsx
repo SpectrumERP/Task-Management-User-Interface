@@ -9,6 +9,7 @@ import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityComb
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SlidersHorizontal, RotateCcw, FileBarChart2 } from 'lucide-react';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
 import { useTaskStore } from '@/store/useTaskStore';
@@ -42,7 +43,7 @@ const fieldClass = FIELD_CONTROL_CLASS;
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <label className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600">
+    <label className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300">
       <span>{children}</span>
     </label>
   );
@@ -97,14 +98,14 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
   };
 
   return (
-    <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
+    <section data-page-tour="mreport-filters" className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <SlidersHorizontal size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">
               Meeting Notes Report Filters
             </h2>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
@@ -112,6 +113,7 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
             </p>
           </div>
         </div>
+        <PageGuideButton guideKey="meeting-report" />
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-5 space-y-4">
@@ -380,7 +382,7 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[var(--tm-border)]">
           <div className="flex flex-wrap items-center gap-2">
             <Controller
               name="isActionTaken"
@@ -388,14 +390,14 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
               render={({ field }) => (
                 <label
                   htmlFor="isActionTaken"
-                  className="inline-flex items-center gap-2.5 rounded-[8px] border border-slate-200/80 bg-[#f8fbfd] px-3 py-2 cursor-pointer hover:border-[#006699]/30 transition-colors"
+                  className="inline-flex items-center gap-2.5 rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)] px-3 py-2 cursor-pointer hover:border-[#0EA5E9]/30 transition-colors"
                 >
                   <Checkbox
                     id="isActionTaken"
                     checked={field.value}
                     onCheckedChange={field.onChange}
                   />
-                  <span className="text-[12px] font-medium text-slate-700">Is Action Taken</span>
+                  <span className="text-[12px] font-medium text-slate-200">Is Action Taken</span>
                 </label>
               )}
             />
@@ -405,14 +407,14 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
               render={({ field }) => (
                 <label
                   htmlFor="isAttachedDocument"
-                  className="inline-flex items-center gap-2.5 rounded-[8px] border border-slate-200/80 bg-[#f8fbfd] px-3 py-2 cursor-pointer hover:border-[#006699]/30 transition-colors"
+                  className="inline-flex items-center gap-2.5 rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)] px-3 py-2 cursor-pointer hover:border-[#0EA5E9]/30 transition-colors"
                 >
                   <Checkbox
                     id="isAttachedDocument"
                     checked={field.value}
                     onCheckedChange={field.onChange}
                   />
-                  <span className="text-[12px] font-medium text-slate-700">
+                  <span className="text-[12px] font-medium text-slate-200">
                     Is Attached Document
                   </span>
                 </label>
@@ -424,15 +426,17 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
             <Button
               type="button"
               variant="outline"
+              data-page-tour="mreport-reset"
               onClick={() => reset()}
-              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-600 border-slate-200 bg-white hover:bg-slate-50 shadow-none"
+              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
             >
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
               Reset
             </Button>
             <Button
               type="submit"
-              className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#006699] hover:bg-[#005580] text-white shadow-sm shadow-[#006699]/20"
+              data-page-tour="mreport-apply"
+              className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20"
             >
               <FileBarChart2 className="h-3.5 w-3.5 mr-1.5" />
               Apply Filters

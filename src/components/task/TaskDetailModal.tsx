@@ -7,6 +7,7 @@ import { TaskActivity } from './TaskActivity';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import {
   Edit,
   Calendar,
@@ -16,20 +17,23 @@ import {
   Layers,
   AlertCircle,
   Coins,
-  Loader2,
   CheckSquare,
   FileText,
   Paperclip,
   Image,
   User,
   UserPlus,
-  Clock
+  Clock,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getPriorityBadgeClass } from '@/lib/priorityStyles';
 import { taskUrl } from '@/lib/dealMonitor';
 import { format } from 'date-fns';
 import { useTaskStore } from '@/store/useTaskStore';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import type { ReactNode } from 'react';
 
 interface TaskDetailModalProps {
   taskNo: number | null;
@@ -51,14 +55,131 @@ const reverseEffortFrequencyMap: Record<number, string> = {
   3: 'days',
   4: 'weeks',
   5: 'months',
-  6: 'years'
+  6: 'years',
 };
 
 const reverseBenefitFrequencyMap: Record<number, string> = {
   1: 'One Time',
   2: 'Monthly',
-  3: 'Annually'
+  3: 'Annually',
 };
+
+function SectionCard({
+  title,
+  subtitle,
+  icon: Icon,
+  iconClassName,
+  children,
+  className,
+  action,
+  tourId,
+}: {
+  title?: string;
+  subtitle?: string;
+  icon?: LucideIcon;
+  iconClassName?: string;
+  children: ReactNode;
+  className?: string;
+  action?: ReactNode;
+  tourId?: string;
+}) {
+  return (
+    <section
+      data-page-tour={tourId}
+      className={cn(
+        'rounded-2xl border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] shadow-[var(--tm-shadow-sm)] overflow-hidden',
+        className
+      )}
+    >
+      {(title || action) && (
+        <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-elevated)_55%,var(--tm-surface))]">
+          <div className="flex items-start gap-2.5 min-w-0">
+            {Icon && (
+              <div
+                className={cn(
+                  'mt-0.5 h-8 w-8 shrink-0 rounded-xl border flex items-center justify-center',
+                  iconClassName || 'bg-[var(--tm-tint)]/40 border-[#0EA5E9]/20 text-[#0EA5E9]'
+                )}
+              >
+                <Icon size={15} />
+              </div>
+            )}
+            <div className="min-w-0">
+              {title && (
+                <h4 className="text-[12px] font-semibold text-slate-100 tracking-tight">{title}</h4>
+              )}
+              {subtitle && (
+                <p className="text-[10px] font-medium text-slate-400 mt-0.5 leading-snug">{subtitle}</p>
+              )}
+            </div>
+          </div>
+          {action}
+        </div>
+      )}
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+function SpecRow({
+  index,
+  icon: Icon,
+  label,
+  children,
+}: {
+  index: number;
+  icon: LucideIcon;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between gap-3 px-3 py-2.5 text-xs',
+        index % 2 === 0 ? 'bg-[var(--tm-row-odd)]' : 'bg-[var(--tm-row-even)]'
+      )}
+    >
+      <span className="font-medium text-slate-400 flex items-center gap-2 shrink-0">
+        <Icon size={13} className="text-slate-500" />
+        {label}
+      </span>
+      <div className="min-w-0 text-right font-semibold text-slate-100">{children}</div>
+    </div>
+  );
+}
+
+function PersonRow({
+  loginNo,
+  displayName,
+  email,
+  zebra,
+}: {
+  loginNo?: number | null;
+  displayName?: string;
+  email?: string;
+  zebra?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2.5 px-3 py-2.5',
+        zebra ? 'bg-[var(--tm-row-even)]' : 'bg-[var(--tm-row-odd)]'
+      )}
+    >
+      <UserAvatar loginNo={loginNo} displayName={displayName} size="sm" />
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
+          {displayName || 'Unknown'}
+        </p>
+        {email && (
+          <span className="text-[9px] font-medium text-slate-400 truncate block mt-0.5">
+            {email}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: TaskDetailModalProps) {
   const navigate = useNavigate();
@@ -68,9 +189,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
   const [isLoading, setIsLoading] = useState(false);
 
   const getContrastColor = (hexColor?: string) => {
-    if (!hexColor) return '#1e293b';
+    if (!hexColor) return '#E2E8F0';
     const hex = hexColor.replace('#', '');
-    if (hex.length !== 6 && hex.length !== 3) return '#1e293b';
+    if (hex.length !== 6 && hex.length !== 3) return '#E2E8F0';
 
     let r = 0, g = 0, b = 0;
     if (hex.length === 6) {
@@ -236,7 +357,10 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-full h-full sm:h-[92vh] sm:w-[96vw] sm:max-w-7xl p-0 rounded-none sm:rounded-[28px] overflow-hidden border-none sm:border border-slate-200 shadow-2xl flex flex-col bg-white">
+      <DialogContent
+        data-page-guide="task-detail-modal"
+        className="w-full h-full sm:h-[90vh] sm:w-[96vw] sm:max-w-6xl p-0 rounded-none sm:rounded-2xl overflow-hidden border-none sm:border border-[var(--tm-border)] shadow-2xl flex flex-col gap-0 bg-[var(--tm-page)] [&>button]:right-4 [&>button]:top-4 [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-lg [&>button]:bg-[var(--tm-muted)] [&>button]:opacity-100 [&>button]:text-slate-300 [&>button]:hover:text-slate-100 [&>button]:hover:bg-[var(--tm-elevated)] [&>button]:ring-offset-0"
+      >
         <DialogTitle className="sr-only">
           {task?.title || 'Task Details'}
         </DialogTitle>
@@ -244,453 +368,516 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           Detailed view and activity history for selected task.
         </DialogDescription>
 
-        {/* 1. Modal Sticky Top Header */}
-        <div className="px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-medium text-slate-700   bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shadow-sm">
-              {task?.code || (task ? `CP-${100 + task.taskNo}` : 'LOADING')}
+        {/* Header */}
+        <header className="shrink-0 px-4 sm:px-5 py-3.5 bg-[var(--tm-surface)] border-b border-[var(--tm-border)] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap" data-page-tour="tdm-header">
+            <span className="inline-flex items-center text-[11px] font-semibold tabular-nums text-[#0EA5E9] bg-[var(--tm-tint)]/50 border border-[#0EA5E9]/20 px-2.5 py-1 rounded-lg">
+              {task?.code || (task ? `CP-${100 + task.taskNo}` : '…')}
             </span>
             {task && (
-              <span className={cn(
-                "px-2.5 py-0.5 rounded-full text-[9px] font-medium  ",
-                task.status === 'Done' ? "bg-green-50 text-green-700 border border-green-200" :
-                  task.status === 'In Progress' ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                    task.status === 'In Review' ? "bg-purple-50 text-purple-700 border border-purple-200" :
-                      "bg-slate-100 text-slate-700 border border-slate-200"
-              )}>
+              <span
+                className={cn(
+                  'inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-semibold border',
+                  task.status === 'Done'
+                    ? 'bg-green-500/15 text-green-400 border-green-500/30'
+                    : task.status === 'In Progress'
+                      ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                      : task.status === 'In Review'
+                        ? 'bg-purple-500/15 text-purple-400 border-purple-500/30'
+                        : 'bg-[var(--tm-muted)] text-slate-300 border-[var(--tm-border)]'
+                )}
+              >
                 {task.status}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-0.5 pr-8">
-            {task && (
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={onClose}
-                  className="h-8 text-xs font-medium normal-case text-slate-500 hover:text-slate-700 hover:bg-slate-100/50 rounded-xl px-4 transition-colors"
-                >
-                  Close
-                </Button>
-                {isUpdate && (
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      navigate(taskUrl(task.taskNo, task.categoryName));
-                      onClose();
-                    }}
-                    className="h-8 text-xs font-medium normal-case gap-0.5 px-4 rounded-xl bg-gradient-to-r from-[#006699] to-[#00b4d8] hover:from-[#005580] hover:to-[#0096c7] text-white shadow-md shadow-[#006699]/10 hover:scale-[1.02] active:scale-95 transition-all"
-                  >
-                    <Edit size={13} strokeWidth={2.5} />
-                    Edit Task
-                  </Button>
-                )}
-              </div>
+          <div className="flex items-center gap-2 pr-10 shrink-0">
+            <PageGuideButton guideKey="task-detail-modal" />
+            {task && isUpdate && (
+              <Button
+                type="button"
+                data-page-tour="tdm-edit"
+                onClick={() => {
+                  navigate(taskUrl(task.taskNo, task.categoryName));
+                  onClose();
+                }}
+                className="h-8 text-xs font-semibold gap-1.5 px-3.5 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
+              >
+                <Edit size={13} strokeWidth={2.5} />
+                Edit Task
+              </Button>
             )}
           </div>
-        </div>
+        </header>
 
-        {/* 2. Scrollable Body Content */}
-        <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50/40">
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto min-h-0">
           {isLoading && !task ? (
-            <div className="h-full flex flex-col items-center justify-center gap-3 py-20">
-              <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
-              <p className="text-slate-800 font-medium text-xs normal-case animate-pulse">Syncing Task Schema...</p>
+            <div className="h-full min-h-[320px] flex flex-col items-center justify-center py-20">
+              <BrandLoader size="sm" message="Loading task details" />
             </div>
           ) : task ? (
-            <div className="p-3 space-y-2">
-              {/* Layout Container */}
-              <div className="flex flex-col lg:grid lg:grid-cols-3 gap-2">
-                {/* 1. Main Info Block */}
-                <div className="order-1 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1 space-y-2">
-                  {/* Title & Description Block */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
-                    <div>
-                      <h3 className="text-lg font-medium text-slate-900 tracking-tight leading-tight">
+            <div className="p-4 sm:p-5">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
+                {/* Main column */}
+                <div className="lg:col-span-8 space-y-4 order-1">
+                  {/* Title + description */}
+                  <section data-page-tour="tdm-summary" className="rounded-2xl border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] shadow-[var(--tm-shadow-sm)] overflow-hidden">
+                    <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3">
+                      <h3 className="text-base sm:text-lg font-semibold text-slate-50 tracking-tight leading-snug">
                         {task.title}
                       </h3>
                     </div>
-
-                    {task.description ? (
-                      <div className="text-xs font-medium text-slate-800 leading-relaxed whitespace-pre-wrap bg-slate-50 border border-slate-200/60 p-4 rounded-xl shadow-inner">
-                        {task.description}
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 font-medium text-[11px] italic">No description provided for this task.</p>
-                    )}
-                  </div>
-
-                  {/* Checklist Block */}
-                  {task.check_list && task.check_list.length > 0 && (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                      <div className="flex items-center gap-0.5 mb-2">
-                        <div className="h-7 w-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 shadow-sm">
-                          <CheckSquare size={15} />
+                    <div className="px-4 sm:px-5 pb-4 sm:pb-5">
+                      {task.description ? (
+                        <div className="text-[12px] font-medium text-slate-300 leading-relaxed whitespace-pre-wrap rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_70%,var(--tm-tint))] px-3.5 py-3">
+                          {task.description}
                         </div>
-                        <h4 className="text-xs font-medium text-slate-900  ">Checklist</h4>
-                      </div>
+                      ) : (
+                        <p className="text-[11px] font-medium text-slate-500 italic">
+                          No description provided for this task.
+                        </p>
+                      )}
+                    </div>
+                  </section>
 
-                      <div className="space-y-0">
-                        {task.check_list.map((item) => (
-                          <div key={item.id} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200/60">
+                  {/* Checklist */}
+                  {task.check_list && task.check_list.length > 0 && (
+                    <SectionCard
+                      title="Checklist"
+                      subtitle={`${task.check_list.filter((i) => i.completed).length}/${task.check_list.length} completed`}
+                      icon={CheckSquare}
+                      iconClassName="bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
+                    >
+                      <div className="rounded-xl overflow-hidden border border-[var(--tm-border)]/70">
+                        {task.check_list.map((item, idx) => (
+                          <div
+                            key={item.id}
+                            className={cn(
+                              'flex items-center gap-3 px-3 py-2.5',
+                              idx % 2 === 0
+                                ? 'bg-[var(--tm-row-odd)]'
+                                : 'bg-[var(--tm-row-even)]'
+                            )}
+                          >
                             <input
                               type="checkbox"
                               checked={item.completed}
                               disabled
-                              className="h-4 w-4 rounded border-slate-300 text-[#006699] focus:ring-[#006699] disabled:opacity-80 cursor-not-allowed"
+                              className="h-4 w-4 rounded border-[#3D4F66] text-[#0EA5E9] focus:ring-[#0EA5E9] disabled:opacity-80 cursor-not-allowed"
                             />
-                            <span className={cn(
-                              "text-xs font-medium",
-                              item.completed ? "text-slate-500 line-through font-medium" : "text-slate-900"
-                            )}>
+                            <span
+                              className={cn(
+                                'text-xs font-medium',
+                                item.completed
+                                  ? 'text-slate-500 line-through'
+                                  : 'text-slate-100'
+                              )}
+                            >
                               {item.description}
                             </span>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </SectionCard>
                   )}
 
-                  {/* Sub-Tasks Block */}
+                  {/* Sub-tasks */}
                   {task.subTasks && task.subTasks.length > 0 && (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                      <div className="flex items-center gap-0.5 mb-2">
-                        <div className="h-7 w-7 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 shadow-sm">
-                          <Layers size={15} />
-                        </div>
-                        <h4 className="text-xs font-medium text-slate-900  ">Sub-Tasks</h4>
-                        <span className="ml-1 bg-slate-100 text-slate-600 text-[9px] font-medium px-2 py-0.5 rounded-full">{task.subTasks.length}</span>
-                      </div>
-
-                      <div className="space-y-1.5">
+                    <SectionCard
+                      title="Sub-Tasks"
+                      subtitle={`${task.subTasks.length} linked`}
+                      icon={Layers}
+                      iconClassName="bg-teal-500/15 border-teal-500/30 text-teal-400"
+                    >
+                      <div className="space-y-2">
                         {task.subTasks.map((st: any, idx: number) => (
-                          <div key={st.taskNo || idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors flex flex-col gap-1.5 shadow-sm">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-xs font-semibold text-slate-900 truncate leading-tight">{st.title}</span>
-                                <span className="text-[10px] font-medium text-slate-500 truncate mt-0.5">{st.typeName || 'Task'} • Owner: {st.ownerDisplayName || 'Unassigned'}</span>
-                              </div>
-                              <span className={cn(
-                                "px-2 py-0.5 rounded-md text-[9px] font-medium shrink-0",
-                                st.status === 'Done' ? "bg-green-100 text-green-700" :
-                                  st.status === 'In Progress' ? "bg-blue-100 text-blue-700" :
-                                    "bg-slate-200 text-slate-700"
-                              )}>
-                                {st.status}
+                          <div
+                            key={st.taskNo || idx}
+                            className="rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_65%,var(--tm-surface))] px-3 py-2.5 flex items-start justify-between gap-3"
+                          >
+                            <div className="min-w-0">
+                              <span className="text-xs font-semibold text-slate-50 truncate block leading-tight">
+                                {st.title}
+                              </span>
+                              <span className="text-[10px] font-medium text-slate-400 truncate block mt-1">
+                                {st.typeName || 'Task'} · {st.ownerDisplayName || 'Unassigned'}
                               </span>
                             </div>
+                            <span
+                              className={cn(
+                                'px-2 py-0.5 rounded-md text-[9px] font-semibold shrink-0 border',
+                                st.status === 'Done'
+                                  ? 'bg-green-500/15 text-green-400 border-green-500/30'
+                                  : st.status === 'In Progress'
+                                    ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                                    : 'bg-[var(--tm-muted)] text-slate-300 border-[var(--tm-border)]'
+                              )}
+                            >
+                              {st.status}
+                            </span>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </SectionCard>
                   )}
 
-                  {/* Task Execution Log */}
+                  {/* Execution log */}
                   {(task.executionChallenges || []).filter((c: any) => c.typeNo === 1).length > 0 && (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
-                      <div className="border-b border-slate-100 pb-1 flex items-center gap-0.5">
-                        <FileText className="text-[#006699]" size={16} />
-                        <h4 className="text-xs font-medium text-slate-900  ">Task Execution Log</h4>
+                    <SectionCard
+                      title="Task Execution Log"
+                      icon={FileText}
+                    >
+                      <div className="space-y-2">
+                        {task.executionChallenges!
+                          .filter((c: any) => c.typeNo === 1)
+                          .map((entry: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className="rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_65%,var(--tm-surface))] px-3 py-2.5 flex flex-col gap-1"
+                            >
+                              <span className="text-[10px] font-medium text-slate-400">
+                                {entry.logDate
+                                  ? format(new Date(entry.logDate), 'MMM dd, yyyy')
+                                  : '-'}
+                              </span>
+                              <span className="text-xs font-medium text-slate-100 whitespace-pre-wrap">
+                                {entry.remarks}
+                              </span>
+                            </div>
+                          ))}
                       </div>
-                      <div className="space-y-1.5 pt-1">
-                        {task.executionChallenges!.filter((c: any) => c.typeNo === 1).map((entry: any, idx: number) => (
-                          <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl flex flex-col gap-0.5">
-                            <span className="text-[10px] font-medium text-slate-500">{entry.logDate ? format(new Date(entry.logDate), 'MMM dd, yyyy') : '-'}</span>
-                            <span className="text-xs font-medium text-slate-900 whitespace-pre-wrap">{entry.remarks}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    </SectionCard>
                   )}
 
-                  {/* Challenges (Road Block Remarks) */}
+                  {/* Challenges */}
                   {(task.executionChallenges || []).filter((c: any) => c.typeNo === 2).length > 0 && (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
-                      <div className="border-b border-slate-100 pb-1 flex items-center gap-0.5">
-                        <AlertCircle className="text-[#006699]" size={16} />
-                        <h4 className="text-xs font-medium text-slate-900  ">Challenges</h4>
-                      </div>
-                      <div className="space-y-1.5 pt-1">
-                        {task.executionChallenges!.filter((c: any) => c.typeNo === 2).map((entry: any, idx: number) => {
-                          const statusLabel = fillValues?.status?.find(s => s.StatusNo === entry.statusNo)?.Status;
-                          return (
-                            <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl flex flex-col gap-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] font-medium text-slate-500">{entry.logDate ? format(new Date(entry.logDate), 'MMM dd, yyyy') : '-'}</span>
-                                {statusLabel && (
-                                  <span className={cn(
-                                    "px-2 py-0.5 rounded-md text-[9px] font-medium shrink-0",
-                                    statusLabel === 'Close' ? "bg-green-100 text-green-700" :
-                                      statusLabel === 'In Progress' ? "bg-blue-100 text-blue-700" :
-                                        "bg-orange-100 text-orange-700"
-                                  )}>
-                                    {statusLabel}
+                    <SectionCard
+                      title="Challenges"
+                      icon={AlertCircle}
+                      iconClassName="bg-amber-500/15 border-amber-500/30 text-amber-400"
+                    >
+                      <div className="space-y-2">
+                        {task.executionChallenges!
+                          .filter((c: any) => c.typeNo === 2)
+                          .map((entry: any, idx: number) => {
+                            const statusLabel = fillValues?.status?.find(
+                              (s) => s.StatusNo === entry.statusNo
+                            )?.Status;
+                            return (
+                              <div
+                                key={idx}
+                                className="rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_65%,var(--tm-surface))] px-3 py-2.5 flex flex-col gap-1.5"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-medium text-slate-400">
+                                    {entry.logDate
+                                      ? format(new Date(entry.logDate), 'MMM dd, yyyy')
+                                      : '-'}
+                                  </span>
+                                  {statusLabel && (
+                                    <span
+                                      className={cn(
+                                        'px-2 py-0.5 rounded-md text-[9px] font-semibold shrink-0',
+                                        statusLabel === 'Close'
+                                          ? 'bg-emerald-500/15 text-emerald-400'
+                                          : statusLabel === 'In Progress'
+                                            ? 'bg-sky-500/15 text-sky-400'
+                                            : 'bg-[#F59E0B]/15 text-[#F59E0B]'
+                                      )}
+                                    >
+                                      {statusLabel}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs font-medium text-slate-100 whitespace-pre-wrap">
+                                  {entry.remarks}
+                                </span>
+                                {entry.proposedSolution && (
+                                  <span className="text-[11px] text-slate-300 font-medium">
+                                    <span className="text-slate-400">Proposed Solution: </span>
+                                    {entry.proposedSolution}
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs font-medium text-slate-900 whitespace-pre-wrap">{entry.remarks}</span>
-                              {entry.proposedSolution && (
-                                <span className="text-[11px] text-slate-600 font-medium">
-                                  <span className="text-slate-400">Proposed Solution: </span>{entry.proposedSolution}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
                       </div>
-                    </div>
+                    </SectionCard>
                   )}
 
-                </div>
-
-                {/* 3. Task Activity Block */}
-                <div className="order-3 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-2">
-                  <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
-                    <div className="border-b border-slate-100 pb-3 mb-2">
-                      <h4 className="text-xs font-medium text-slate-900  ">Activity & Effort Tracking</h4>
-                      <p className="text-[10px] font-medium text-slate-600">Post dynamic updates, ask questions, and record task timeline audits.</p>
-                    </div>
+                  {/* Activity */}
+                  <SectionCard
+                    title="Activity & Effort"
+                    subtitle="Comments, updates, and logged hours for this task."
+                    tourId="tdm-activity"
+                    icon={Clock}
+                    className="order-3 lg:order-none"
+                  >
                     <TaskActivity
                       taskNo={task.taskNo}
                       comments={task.task_comments}
                       efforts={task.actual_efforts}
                       onRefresh={fetchTaskDetails}
                     />
-                  </div>
+                  </SectionCard>
                 </div>
 
-                {/* 2. Specifications & Attachments Sidebar */}
-                <div className="order-2 lg:order-none lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2 space-y-2">
-                  <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm space-y-1">
-                    <h4 className="text-[10px] font-medium text-slate-700   mb-1">Task Specifications</h4>
-
-                    {/* Owner Block */}
-                    <div className="flex items-center gap-2 p-1 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
+                {/* Sidebar */}
+                <aside className="lg:col-span-4 space-y-4 order-2 lg:sticky lg:top-0">
+                  <SectionCard title="Details" icon={Layers} tourId="tdm-details">
+                    {/* Assignee */}
+                    <div className="mb-3 flex items-center gap-3 rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-tint)_35%,var(--tm-muted))] px-3 py-2.5">
                       <UserAvatar
                         loginNo={task.owner_user_No}
                         displayName={task.assignedDisplayName}
                         size="lg"
                       />
-                      <div>
-                        <span className="text-[8px] font-medium text-slate-600   block">Assign To</span>
-                        <h4 className="text-xs font-medium text-slate-900 leading-tight">{task.assignedDisplayName || 'Unassigned'}</h4>
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 block">
+                          Assign To
+                        </span>
+                        <h4 className="text-[13px] font-semibold text-slate-50 leading-tight truncate">
+                          {task.assignedDisplayName || 'Unassigned'}
+                        </h4>
                       </div>
                     </div>
 
-                    {/* Dynamic Info Key-Value Rows */}
-                    <div className="space-y-2 pt-1">
-                      {/* Priority */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><AlertCircle size={13} className="text-slate-500" /> Priority</span>
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-md text-[9px] font-medium  ",
-                          task.priority_No >= 3 ? "bg-orange-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"
-                        )}>
-                          {task.priority}
-                        </span>
-                      </div>
+                    <div className="rounded-xl overflow-hidden border border-[var(--tm-border)]/70">
+                      {(() => {
+                        let row = 0;
+                        const next = () => row++;
+                        const companyLabel =
+                          typeof task.company === 'object' && task.company
+                            ? (task.company as any).companyName ||
+                              (task.company as any).CompanyName ||
+                              (task.company as any).name ||
+                              ''
+                            : task.companyName || '';
 
-                      {/* Category */}
-                      {task.categoryName && (() => {
-                        const catObj = fillValues?.category?.find(
-                          c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
-                        );
-                        const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || '#f1f5f9';
+                        const catObj = task.categoryName
+                          ? fillValues?.category?.find(
+                              (c) =>
+                                c.OperTaskCategoryNo === task.category_No ||
+                                c.Category === task.categoryName
+                            )
+                          : undefined;
+                        const bgColor =
+                          catObj?.ColorCoding ||
+                          catObj?.colorCoding ||
+                          (catObj as any)?.color ||
+                          'var(--tm-muted)';
                         const textColor = getContrastColor(bgColor);
+
                         return (
-                          <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                            <span className="font-medium text-slate-600 flex items-center gap-0.5"><Layers size={13} className="text-slate-500" /> Category</span>
-                            <span
-                              style={{ backgroundColor: bgColor, color: textColor }}
-                              className="font-medium px-2 py-0.5 border border-black/5 rounded-md text-[10px] shadow-sm/50 normal-case"
-                            >
-                              {task.categoryName}
-                            </span>
-                          </div>
+                          <>
+                            <SpecRow index={next()} icon={AlertCircle} label="Priority">
+                              <span
+                                className={cn(
+                                  'inline-flex px-2 py-0.5 rounded-md text-[9px] font-semibold',
+                                  getPriorityBadgeClass(task.priority, task.priority_No, 'solid')
+                                )}
+                              >
+                                {task.priority}
+                              </span>
+                            </SpecRow>
+
+                            {task.categoryName && (
+                              <SpecRow index={next()} icon={Layers} label="Category">
+                                <span
+                                  style={{ backgroundColor: bgColor, color: textColor }}
+                                  className="inline-flex font-semibold px-2 py-0.5 rounded-md text-[10px]"
+                                >
+                                  {task.categoryName}
+                                </span>
+                              </SpecRow>
+                            )}
+
+                            {task.typeName && (
+                              <SpecRow index={next()} icon={FolderClosed} label="Type">
+                                <span className="text-[11px]">{task.typeName}</span>
+                              </SpecRow>
+                            )}
+
+                            <SpecRow index={next()} icon={Building2} label="Company">
+                              <span className="text-[11px] truncate max-w-[160px] inline-block">
+                                {companyLabel || '—'}
+                              </span>
+                            </SpecRow>
+
+                            {task.location_No > 0 && (
+                              <SpecRow index={next()} icon={MapPin} label="Location">
+                                <span className="text-[11px]">{task.locationName}</span>
+                              </SpecRow>
+                            )}
+
+                            <SpecRow index={next()} icon={Calendar} label="Start Date">
+                              <span className="text-[11px] tabular-nums">
+                                {task.start_date
+                                  ? format(
+                                      new Date(task.start_date),
+                                      task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a'
+                                    )
+                                  : 'No date'}
+                              </span>
+                            </SpecRow>
+
+                            <SpecRow index={next()} icon={Calendar} label="Due Date">
+                              <span className="text-[11px] tabular-nums">
+                                {task.end_date
+                                  ? format(
+                                      new Date(task.end_date),
+                                      task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a'
+                                    )
+                                  : 'No date'}
+                              </span>
+                            </SpecRow>
+
+                            <SpecRow index={next()} icon={User} label="Assign By">
+                              <span className="text-[11px]">
+                                {task.originatorDisplayName || 'Unknown'}
+                              </span>
+                            </SpecRow>
+
+                            {task.createdBy?.displayName && (
+                              <SpecRow index={next()} icon={UserPlus} label="Created By">
+                                <span className="text-[11px]">{task.createdBy.displayName}</span>
+                              </SpecRow>
+                            )}
+
+                            {task.createdDate && (
+                              <SpecRow index={next()} icon={Clock} label="Created Date">
+                                <span className="text-[11px] tabular-nums">
+                                  {format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}
+                                </span>
+                              </SpecRow>
+                            )}
+                          </>
                         );
                       })()}
-
-                      {/* Type */}
-                      {task.typeName && (
-                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><FolderClosed size={13} className="text-slate-500" /> Type</span>
-                          <span className="font-medium text-slate-955 bg-slate-50 px-2 py-0.5 border border-slate-200 rounded-md text-[10px]">{task.typeName}</span>
-                        </div>
-                      )}
-
-                      {/* Company */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><Building2 size={13} className="text-slate-500" /> Company</span>
-                        <span className="font-medium text-slate-900">
-                          {typeof task.company === 'object' && task.company
-                            ? ((task.company as any).companyName || (task.company as any).CompanyName || (task.company as any).name || '')
-                            : (task.companyName || '')}
-                        </span>
-                      </div>
-
-                      {/* Location */}
-                      {task.location_No > 0 && (
-                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><MapPin size={13} className="text-slate-500" />Location</span>
-                          <span className="font-medium text-slate-900">{task.locationName}</span>
-                        </div>
-                      )}
-
-                      {/* Start Date */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><Calendar size={13} className="text-slate-500" /> Start Date</span>
-                        <span className="font-medium text-slate-900">{task.start_date ? format(new Date(task.start_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
-                      </div>
-
-                      {/* Due Date */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><Calendar size={13} className="text-slate-500" /> Due Date</span>
-                        <span className="font-medium text-slate-900">{task.end_date ? format(new Date(task.end_date), task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a') : 'No date'}</span>
-                      </div>
-
-                      {/* Originator */}
-                      <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1 mt-1">
-                        <span className="font-medium text-slate-600 flex items-center gap-0.5"><User size={13} className="text-slate-500" /> Assign By</span>
-                        <span className="font-medium text-slate-900">{task.originatorDisplayName || 'Unknown'}</span>
-                      </div>
-
-                      {/* Created By */}
-                      {task.createdBy?.displayName && (
-                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><UserPlus size={13} className="text-slate-500" /> Created By</span>
-                          <span className="font-medium text-slate-900">{task.createdBy.displayName}</span>
-                        </div>
-                      )}
-
-                      {/* Created Date */}
-                      {task.createdDate && (
-                        <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-1">
-                          <span className="font-medium text-slate-600 flex items-center gap-0.5"><Clock size={13} className="text-slate-500" /> Created Date</span>
-                          <span className="font-medium text-slate-900">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
-                        </div>
-                      )}
-
-                      {/* Business Benefit Details */}
-                      {task.is_business_benefit_applicable && (
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 space-y-0 mt-2">
-                          <span className="text-[8px] font-medium text-emerald-800   flex items-center gap-1"><Coins size={11} /> Business Benefit</span>
-                          <div className="flex justify-between text-[11px]">
-                            <span className="font-medium text-slate-700">Period:</span>
-                            <span className="font-medium text-slate-900">{task.benefit_period}</span>
-                          </div>
-                          <div className="flex justify-between text-[11px]">
-                            <span className="font-medium text-slate-700">Estimated:</span>
-                            <span className="font-medium text-emerald-800">₹{task.estimated_benefit_amount}</span>
-                          </div>
-                          <div className="flex justify-between text-[11px]">
-                            <span className="font-medium text-slate-700">Actual:</span>
-                            <span className="font-medium text-emerald-800">₹{task.actual_benefit_amount}</span>
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  </div>
 
-                  {/* Collaborators & Informed Lists */}
+                    {task.is_business_benefit_applicable && (
+                      <div className="mt-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 space-y-1.5">
+                        <span className="text-[9px] font-semibold uppercase tracking-wide text-emerald-400 flex items-center gap-1.5">
+                          <Coins size={11} /> Business Benefit
+                        </span>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="font-medium text-slate-400">Period</span>
+                          <span className="font-semibold text-slate-100">{task.benefit_period}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="font-medium text-slate-400">Estimated</span>
+                          <span className="font-semibold text-emerald-400">
+                            ₹{task.estimated_benefit_amount}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="font-medium text-slate-400">Actual</span>
+                          <span className="font-semibold text-emerald-400">
+                            ₹{task.actual_benefit_amount}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </SectionCard>
+
                   {(task.collaborators?.length > 0 || task.informed_to?.length > 0) && (
-                    <div className="grid grid-cols-1 gap-2">
-                      {/* Collaborators */}
+                    <div className="space-y-4">
                       {task.collaborators && task.collaborators.length > 0 && (
-                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                          <h5 className="text-[10px] font-medium text-slate-700   mb-2">Collaborators / Supporters</h5>
-                          <div className="space-y-0">
+                        <SectionCard
+                          title="Collaborators"
+                          subtitle={`${task.collaborators.length} supporter${task.collaborators.length > 1 ? 's' : ''}`}
+                          icon={UserPlus}
+                        >
+                          <div className="rounded-xl overflow-hidden border border-[var(--tm-border)]/70">
                             {task.collaborators.map((c, i) => (
-                              <div key={i} className="flex items-center gap-0.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                                <UserAvatar
-                                  loginNo={c.loginNo}
-                                  displayName={c.displayName}
-                                  size="sm"
-                                />
-                                <div className="min-w-0 ml-1">
-                                  <p className="text-[10px] font-medium text-slate-900 truncate leading-none">{c.displayName}</p>
-                                  <span className="text-[8px] font-medium text-slate-600 truncate block">{c.email}</span>
-                                </div>
-                              </div>
+                              <PersonRow
+                                key={i}
+                                loginNo={c.loginNo}
+                                displayName={c.displayName}
+                                email={c.email}
+                                zebra={i % 2 === 1}
+                              />
                             ))}
                           </div>
-                        </div>
+                        </SectionCard>
                       )}
 
-                      {/* Informed To */}
                       {task.informed_to && task.informed_to.length > 0 && (
-                        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                          <h5 className="text-[10px] font-medium text-slate-700   mb-2">Report To</h5>
-                          <div className="space-y-0">
+                        <SectionCard
+                          title="Report To"
+                          subtitle={`${task.informed_to.length} recipient${task.informed_to.length > 1 ? 's' : ''}`}
+                          icon={User}
+                        >
+                          <div className="rounded-xl overflow-hidden border border-[var(--tm-border)]/70">
                             {task.informed_to.map((inf, i) => (
-                              <div key={i} className="flex items-center gap-0.5 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                                <UserAvatar
-                                  loginNo={inf.loginNo}
-                                  displayName={inf.displayName}
-                                  size="sm"
-                                />
-                                <div className="min-w-0 ml-1">
-                                  <p className="text-[10px] font-medium text-slate-900 truncate leading-none">{inf.displayName}</p>
-                                  <span className="text-[8px] font-medium text-slate-600 truncate block">{inf.email}</span>
-                                </div>
-                              </div>
+                              <PersonRow
+                                key={i}
+                                loginNo={inf.loginNo}
+                                displayName={inf.displayName}
+                                email={inf.email}
+                                zebra={i % 2 === 1}
+                              />
                             ))}
                           </div>
-                        </div>
+                        </SectionCard>
                       )}
                     </div>
                   )}
 
-                  {/* Attached Documents Block */}
                   {task.attachments && task.attachments.length > 0 && (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm mt-2">
-                      <div className="flex items-center gap-1 mb-2">
-                        <div className="h-7 w-7 rounded-lg bg-[#006699]/5 border border-[#006699]/15 flex items-center justify-center text-[#006699] shadow-sm">
-                          <Paperclip size={15} />
-                        </div>
-                        <h4 className="text-xs font-medium text-slate-900  ">Attached Documents</h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2">
+                    <SectionCard
+                      title="Attachments"
+                      subtitle={`${task.attachments.length} file${task.attachments.length > 1 ? 's' : ''}`}
+                      icon={Paperclip}
+                    >
+                      <div className="space-y-2">
                         {task.attachments.map((file: any) => (
                           <div
                             key={file.id}
-                            className="flex items-center justify-between p-2.5 bg-slate-50/40 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 shadow-sm transition-all"
+                            className="flex items-center gap-2.5 rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_65%,var(--tm-surface))] px-2.5 py-2"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
-                                {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <Image size={16} />}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-baseline gap-0.5 mb-0.5">
-                                  <p className="text-xs font-medium text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  {file.size ? (
-                                    <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">{formatFileSize(file.size)}</span>
-                                  ) : null}
-                                  <span className="text-slate-300 text-[9px]">•</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => attachmentService.downloadAttachment(file.id, file.name)}
-                                    className="text-[9px] font-medium text-[#006699] normal-case hover:underline block text-left"
-                                  >
-                                    Open
-                                  </button>
-                                </div>
+                            <div className="h-8 w-8 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-lg flex items-center justify-center shrink-0">
+                              {file.name?.toLowerCase?.().endsWith('.pdf') ? (
+                                <FileText size={15} />
+                              ) : (
+                                <Image size={15} />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-semibold text-slate-100 truncate">
+                                {file.name}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                {file.size ? (
+                                  <span className="text-[9px] font-medium text-slate-400">
+                                    {formatFileSize(file.size)}
+                                  </span>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    attachmentService.downloadAttachment(file.id, file.name)
+                                  }
+                                  className="text-[9px] font-semibold text-[#0EA5E9] hover:underline"
+                                >
+                                  Open
+                                </button>
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </SectionCard>
                   )}
-                </div>
+                </aside>
               </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center py-20">
-              <p className="text-slate-600 font-medium text-sm">Failed to load task details</p>
+            <div className="h-full min-h-[280px] flex flex-col items-center justify-center py-20">
+              <p className="text-slate-400 font-medium text-sm">Failed to load task details</p>
             </div>
           )}
         </div>

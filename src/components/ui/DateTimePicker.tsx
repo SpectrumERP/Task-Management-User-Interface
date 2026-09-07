@@ -29,22 +29,22 @@ function CompactStepper({
   onDown: () => void
 }) {
   return (
-    <div className="inline-flex shrink-0 items-center rounded-[8px] border border-[#a8afb7] bg-white shadow-sm">
+    <div className="inline-flex shrink-0 items-center rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm">
       <button
         type="button"
         onClick={onDown}
-        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-l-[6px] text-slate-500 hover:bg-[#e8f3f8] hover:text-[#006699] transition-colors"
+        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-l-[6px] text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] transition-colors"
         aria-label={`Decrease ${label}`}
       >
         <ChevronLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
       </button>
-      <span className="h-7 min-w-[1.6rem] px-0.5 inline-flex items-center justify-center text-[12px] font-semibold tabular-nums text-slate-800">
+      <span className="h-7 min-w-[1.6rem] px-0.5 inline-flex items-center justify-center text-[12px] font-semibold tabular-nums text-slate-100">
         {value}
       </span>
       <button
         type="button"
         onClick={onUp}
-        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-r-[6px] text-slate-500 hover:bg-[#e8f3f8] hover:text-[#006699] transition-colors"
+        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-r-[6px] text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] transition-colors"
         aria-label={`Increase ${label}`}
       >
         <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
@@ -182,12 +182,12 @@ export function DateTimePicker({
           ref={panelRef}
           data-datetime-picker-panel=""
           style={panelStyle}
-          className="rounded-[12px] border border-slate-200/80 bg-white shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35)] overflow-hidden pointer-events-auto"
+          className="rounded-[12px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35)] overflow-hidden pointer-events-auto"
           role="dialog"
           aria-modal="false"
         >
-          <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-slate-100 bg-[#f7fbfd]">
-            <p className="text-[11px] font-semibold text-slate-800 truncate">
+          <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+            <p className="text-[11px] font-semibold text-slate-100 truncate">
               {date
                 ? format(date, hideTime ? "MMM dd, yyyy" : "EEE, MMM d · h:mm a")
                 : hideTime
@@ -197,7 +197,7 @@ export function DateTimePicker({
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="h-5 w-5 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-white transition-colors shrink-0"
+              className="h-5 w-5 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-slate-300 hover:bg-[var(--tm-surface)] transition-colors shrink-0"
               aria-label="Close"
             >
               <X className="h-3 w-3" />
@@ -233,12 +233,12 @@ export function DateTimePicker({
                 months: "relative w-full flex flex-col",
                 month: "w-full gap-1.5",
                 month_caption: "flex h-7 w-full items-center justify-center px-7",
-                caption_label: "text-[12px] font-semibold text-slate-800",
+                caption_label: "text-[12px] font-semibold text-slate-100",
                 nav: "absolute inset-x-0 top-0 flex items-center justify-between",
                 button_previous:
-                  "size-6 rounded-full text-slate-500 hover:bg-[#e8f3f8] hover:text-[#006699] z-10",
+                  "size-6 rounded-full text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] z-10",
                 button_next:
-                  "size-6 rounded-full text-slate-500 hover:bg-[#e8f3f8] hover:text-[#006699] z-10",
+                  "size-6 rounded-full text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] z-10",
                 month_grid: "w-full border-collapse table-fixed",
                 weekdays: "w-full",
                 weekday:
@@ -256,13 +256,13 @@ export function DateTimePicker({
                     {...props}
                     className={cn(
                       "mx-auto flex size-7 items-center justify-center rounded-full text-[11px] font-medium tabular-nums transition-colors",
-                      "hover:bg-[#e8f3f8] hover:text-[#006699]",
+                      "hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]",
                       modifiers.outside && "text-slate-300",
                       modifiers.today &&
                         !modifiers.selected &&
-                        "bg-[#e8f3f8] text-[#006699] font-semibold",
+                        "bg-[var(--tm-tint)] text-[#0EA5E9] font-semibold",
                       modifiers.selected &&
-                        "bg-[#006699] text-white hover:bg-[#005580] hover:text-white font-semibold"
+                        "bg-[#0EA5E9] text-white hover:bg-[#0284C7] hover:text-white font-semibold"
                     )}
                   />
                 ),
@@ -271,7 +271,7 @@ export function DateTimePicker({
           </div>
 
           {/* Compact time + actions in one row */}
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 bg-[#f8fbfd] px-2 py-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] px-2 py-1.5">
             {!hideTime && (
               <div className="flex items-center gap-1.5 shrink-0">
                 <CompactStepper
@@ -287,7 +287,7 @@ export function DateTimePicker({
                   onUp={() => stepMinute(1)}
                   onDown={() => stepMinute(-1)}
                 />
-                <div className="inline-flex shrink-0 rounded-[7px] bg-slate-100/90 p-0.5">
+                <div className="inline-flex shrink-0 rounded-[7px] bg-[var(--tm-muted)]/90 p-0.5">
                   {(["AM", "PM"] as const).map((p) => (
                     <button
                       key={p}
@@ -296,8 +296,8 @@ export function DateTimePicker({
                       className={cn(
                         "h-6 min-w-[1.85rem] rounded-[6px] px-1.5 text-[10px] font-semibold transition-all",
                         period === p
-                          ? "bg-[#006699] text-white shadow-sm"
-                          : "text-slate-500 hover:text-[#006699]"
+                          ? "bg-[#0EA5E9] text-white shadow-sm"
+                          : "text-slate-500 hover:text-[#0EA5E9]"
                       )}
                     >
                       {p}
@@ -314,14 +314,14 @@ export function DateTimePicker({
                   onChange?.(undefined)
                   setIsOpen(false)
                 }}
-                className="h-7 px-2 rounded-[7px] text-[10px] font-medium text-slate-500 hover:text-slate-700"
+                className="h-7 px-2 rounded-[7px] text-[10px] font-medium text-slate-500 hover:text-slate-200"
               >
                 Clear
               </Button>
               <Button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="h-7 px-3 rounded-[7px] text-[10px] font-semibold bg-[#006699] hover:bg-[#005580] text-white"
+                className="h-7 px-3 rounded-[7px] text-[10px] font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
               >
                 Apply
               </Button>
@@ -341,15 +341,15 @@ export function DateTimePicker({
         aria-expanded={isOpen}
         onClick={() => !disabled && setIsOpen((open) => !open)}
         className={cn(
-          "w-full h-10 justify-start text-left font-medium bg-white text-xs transition-all text-slate-800 hover:bg-[#f8fbfd] hover:border-[#006699]/35 focus-visible:ring-2 focus-visible:ring-[#006699]/15 border shadow-none",
+          "w-full h-10 justify-start text-left font-medium bg-[var(--tm-surface)] text-xs transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-[#0EA5E9]/35 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 border shadow-none",
           !date && "text-slate-400",
-          isOpen && "border-[#006699]/40 ring-2 ring-[#006699]/10",
+          isOpen && "border-[#0EA5E9]/40 ring-2 ring-[#0EA5E9]/10",
           className,
-          "rounded-[8px] border-[#a8afb7]",
-          isOpen && "border-[#006699]/40"
+          "rounded-[8px] border-[var(--tm-border)]",
+          isOpen && "border-[#0EA5E9]/40"
         )}
       >
-        <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[#e8f3f8] text-[#006699]">
+        <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[#0EA5E9]">
           <CalendarIcon className="h-3.5 w-3.5" />
         </span>
         {date ? (

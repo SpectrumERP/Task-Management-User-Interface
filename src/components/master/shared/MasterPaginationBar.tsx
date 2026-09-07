@@ -14,6 +14,9 @@ interface MasterPaginationBarProps {
   onPageChange: (page: number) => void;
 }
 
+/** Hide pagination when there are 9 or fewer records. */
+export const PAGINATION_VISIBLE_AFTER = 9;
+
 export function MasterPaginationBar({
   totalItems,
   startIndex,
@@ -24,32 +27,41 @@ export function MasterPaginationBar({
   totalPages,
   onPageChange,
 }: MasterPaginationBarProps) {
+  if (totalItems <= PAGINATION_VISIBLE_AFTER) {
+    return null;
+  }
+
   const safeCurrentPage = currentPage;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-2.5 bg-[#f8fbfd] border-t border-slate-100 gap-3 select-none shrink-0">
-      <div className="text-[11px] text-slate-500 font-medium">
+    <div
+      className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 bg-[var(--tm-elevated)] border-t border-[var(--tm-border)] select-none shrink-0"
+      data-page-tour="master-pagination"
+    >
+      {/* Left — fixed column, won't move when right side changes */}
+      <div className="text-[11px] text-slate-500 font-medium justify-self-center sm:justify-self-start min-w-0 truncate order-1 sm:order-none">
         Showing{' '}
-        <span className="text-slate-800 font-semibold tabular-nums">
+        <span className="text-slate-100 font-semibold tabular-nums">
           {totalItems === 0 ? 0 : startIndex + 1}
         </span>{' '}
-        to <span className="text-slate-800 font-semibold tabular-nums">{endIndex}</span> of{' '}
-        <span className="text-slate-800 font-semibold tabular-nums">{totalItems}</span> records
+        to <span className="text-slate-100 font-semibold tabular-nums">{endIndex}</span> of{' '}
+        <span className="text-slate-100 font-semibold tabular-nums">{totalItems}</span> records
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] font-medium text-slate-400">Per page</span>
-        <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-[8px] border border-slate-200/80">
+      {/* Center — stays centered in middle track */}
+      <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
+        <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">Per page</span>
+        <div className="flex items-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-[8px] border border-[var(--tm-border)]/80">
           {[10, 25, 50].map((size) => (
             <button
               key={size}
               type="button"
               onClick={() => onItemsPerPageChange(size)}
               className={cn(
-                'h-6 px-2.5 rounded-[6px] text-[10px] font-semibold tabular-nums transition-colors',
+                'h-6 w-8 rounded-[6px] text-[10px] font-semibold tabular-nums transition-colors',
                 itemsPerPage === size
-                  ? 'bg-[#006699] text-white'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                  ? 'bg-[#0EA5E9] text-white'
+                  : 'text-slate-500 hover:text-slate-100 hover:bg-[var(--tm-muted)]'
               )}
             >
               {size}
@@ -58,19 +70,20 @@ export function MasterPaginationBar({
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      {/* Right — pinned to end of third column */}
+      <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
         <Button
           type="button"
           variant="ghost"
           size="icon"
           disabled={safeCurrentPage === 1}
           onClick={() => onPageChange(Math.max(1, safeCurrentPage - 1))}
-          className="h-7 w-7 rounded-[6px] text-slate-500 hover:bg-white disabled:opacity-40 border border-slate-200/80 bg-white shadow-none"
+          className="h-7 w-7 shrink-0 rounded-[6px] text-slate-500 hover:bg-[var(--tm-surface)] disabled:opacity-40 border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] shadow-none"
         >
           <ChevronLeft size={14} strokeWidth={2.5} />
         </Button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-end gap-1 min-w-[7.5rem]">
           {Array.from({ length: totalPages }, (_, i) => i + 1)
             .filter((page) => {
               return (
@@ -86,7 +99,7 @@ export function MasterPaginationBar({
               return (
                 <React.Fragment key={page}>
                   {hasGap ? (
-                    <span className="text-[10px] font-medium text-slate-400 px-1 select-none">
+                    <span className="text-[10px] font-medium text-slate-400 w-4 text-center select-none shrink-0">
                       ...
                     </span>
                   ) : null}
@@ -94,10 +107,10 @@ export function MasterPaginationBar({
                     type="button"
                     onClick={() => onPageChange(page)}
                     className={cn(
-                      'h-7 w-7 rounded-[6px] text-[10px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
+                      'h-7 w-7 shrink-0 rounded-[6px] text-[10px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
                       isPageActive
-                        ? 'bg-[#006699] border-[#006699] text-white'
-                        : 'bg-white border-slate-200/80 text-slate-600 hover:bg-slate-50'
+                        ? 'bg-[#0EA5E9] border-[#0EA5E9] text-white'
+                        : 'bg-[var(--tm-surface)] border-[var(--tm-border)]/80 text-slate-300 hover:bg-[var(--tm-muted)]'
                     )}
                   >
                     {page}
@@ -113,7 +126,7 @@ export function MasterPaginationBar({
           size="icon"
           disabled={safeCurrentPage === totalPages}
           onClick={() => onPageChange(Math.min(totalPages, safeCurrentPage + 1))}
-          className="h-7 w-7 rounded-[6px] text-slate-500 hover:bg-white disabled:opacity-40 border border-slate-200/80 bg-white shadow-none"
+          className="h-7 w-7 shrink-0 rounded-[6px] text-slate-500 hover:bg-[var(--tm-surface)] disabled:opacity-40 border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] shadow-none"
         >
           <ChevronRight size={14} strokeWidth={2.5} />
         </Button>

@@ -97,7 +97,7 @@ export function LogoCropperModal({ open, onOpenChange, imageUrl, onSave }: LogoC
             Adjust the box to outline the logo. Our system made an initial guess.
           </p>
         </DialogHeader>
-        <div className="flex justify-center p-4 bg-slate-50 rounded-md">
+        <div className="flex justify-center p-4 bg-[var(--tm-muted)] rounded-md">
           <ReactCrop
             crop={crop}
             onChange={(c) => setCrop(c)}

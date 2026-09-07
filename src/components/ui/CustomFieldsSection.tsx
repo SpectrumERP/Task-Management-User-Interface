@@ -165,9 +165,9 @@ export function AsyncAutoCompleteList({
               role="combobox"
               aria-expanded={open}
               className={cn(
-                "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-medium text-slate-700 hover:bg-slate-50/50 h-7 px-2",
+                "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-medium text-slate-200 hover:bg-[var(--tm-muted)]/50 h-7 px-2",
                 className,
-                "rounded-[8px] border-[#a8afb7]"
+                "rounded-[8px] border-[var(--tm-border)]"
               )}
             >
               <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium")}>
@@ -181,7 +181,7 @@ export function AsyncAutoCompleteList({
                       onChange("");
                       setSelectedLabel("");
                     }}
-                    className="p-0.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                    className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
                   >
                     <X className="h-3 w-3" />
                   </span>
@@ -191,8 +191,8 @@ export function AsyncAutoCompleteList({
             </Button>
           </PopoverTrigger>
           <PopoverContent className={cn("p-0 z-[9999] max-w-[95vw]", renderCols.length > 4 ? "w-[600px]" : renderCols.length > 2 ? "w-[450px]" : "w-[280px]")} align="start">
-            <Command className="rounded-xl border-slate-200" shouldFilter={false}>
-              <div className="border-b border-slate-100 bg-slate-50/50">
+            <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={false}>
+              <div className="border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
                 <CommandInput
                   placeholder="Search..."
                   className="h-8 border-none focus:ring-0 bg-transparent text-[11px]"
@@ -214,10 +214,10 @@ export function AsyncAutoCompleteList({
                 {!isLoading && (
                   <CommandGroup>
                     {renderCols.length > 0 && options.length > 0 && (
-                      <div className="flex w-full items-center justify-between px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-100/80 border-b border-slate-200 uppercase tracking-wider">
+                      <div className="flex w-full items-center justify-between px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-[var(--tm-muted)]/80 border-b border-[var(--tm-border)] uppercase tracking-wider">
                         <div className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${renderCols.length}, minmax(0, 1fr))` }}>
                           {renderCols.map((col, idx) => (
-                            <span key={idx} className="truncate pr-1 border-r last:border-r-0 border-slate-300">
+                            <span key={idx} className="truncate pr-1 border-r last:border-r-0 border-[#3D4F66]">
                               {col}
                             </span>
                           ))}
@@ -239,23 +239,23 @@ export function AsyncAutoCompleteList({
                             setSelectedObject(opt);
                             setOpen(false);
                           }}
-                          className="text-[11px] font-medium py-2 px-2.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col items-start gap-0.5 border-b border-slate-50 last:border-0"
+                          className="text-[11px] font-medium py-2 px-2.5 cursor-pointer hover:bg-[var(--tm-muted)] transition-colors flex flex-col items-start gap-0.5 border-b border-slate-50 last:border-0"
                         >
                           <div className="flex w-full items-center justify-between gap-2">
                             {itemCols.length > 0 ? (
                               <div className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${itemCols.length}, minmax(0, 1fr))` }}>
                                 {itemCols.map((col, idx) => (
-                                  <span key={idx} className="text-slate-800 font-medium truncate pr-1 border-r last:border-r-0 border-slate-200">
+                                  <span key={idx} className="text-slate-100 font-medium truncate pr-1 border-r last:border-r-0 border-[var(--tm-border)]">
                                     {opt[col] || '-'}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-slate-800 font-medium">{optLabel}</span>
+                              <span className="text-slate-100 font-medium">{optLabel}</span>
                             )}
 
                             {value?.toString() === optValue ? (
-                              <Check className="h-3 w-3 text-[#006699] shrink-0" />
+                              <Check className="h-3 w-3 text-[#0EA5E9] shrink-0" />
                             ) : (
                               <div className="w-3 shrink-0" />
                             )}
@@ -278,8 +278,8 @@ export function AsyncAutoCompleteList({
           {cascadedColumn.split(',').map(c => c.trim()).filter(Boolean).map(col => {
             if (selectedObject[col] === undefined || selectedObject[col] === null) return null;
             return (
-              <div key={col} className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 flex items-center gap-1.5 shadow-sm whitespace-nowrap h-7">
-                <span className="font-semibold text-slate-800">{col}:</span>
+              <div key={col} className="text-[10px] text-slate-300 bg-[var(--tm-muted)] border border-[var(--tm-border)] rounded-md px-2 py-1 flex items-center gap-1.5 shadow-sm whitespace-nowrap h-7">
+                <span className="font-semibold text-slate-100">{col}:</span>
                 <span className="text-slate-500">{selectedObject[col]}</span>
               </div>
             );
@@ -360,12 +360,12 @@ export function CustomFieldsSection({
 
   const renderValueField = (cf: any, index: number) => {
     const baseClasses = viewMode === 'grid'
-      ? "h-10 rounded-[8px] border border-[#a8afb7] focus-visible:ring-2 focus-visible:ring-[#006699]/15 focus-visible:border-[#006699] text-xs bg-white shadow-none px-3 w-full transition-all text-slate-800 font-medium"
-      : "h-9 rounded-[8px] border border-[#a8afb7] group-hover:border-[#006699]/25 focus-visible:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/15 text-xs bg-white shadow-none px-2.5 w-full transition-colors";
+      ? "h-10 rounded-[8px] border border-[var(--tm-border)] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:border-[#0EA5E9] text-xs bg-[var(--tm-surface)] shadow-none px-3 w-full transition-all text-slate-100 font-medium"
+      : "h-9 rounded-[8px] border border-[var(--tm-border)] group-hover:border-[#0EA5E9]/25 focus-visible:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 text-xs bg-[var(--tm-surface)] shadow-none px-2.5 w-full transition-colors";
 
     if (!cf.customFieldNo) {
       return (
-        <Input disabled placeholder="Select custom field..." className={cn(baseClasses, "cursor-not-allowed text-slate-400 bg-[#f8fbfd]")} />
+        <Input disabled placeholder="Select custom field..." className={cn(baseClasses, "cursor-not-allowed text-slate-400 bg-[var(--tm-elevated)]")} />
       );
     }
 
@@ -408,7 +408,7 @@ export function CustomFieldsSection({
               id={`reusable-cf-bool-${index}`}
               checked={cf.fieldValue === 'true' || cf.fieldValue === true}
               onCheckedChange={(checked) => updateField(index, 'fieldValue', checked ? 'true' : 'false')}
-              className="h-4 w-4 rounded border-slate-300"
+              className="h-4 w-4 rounded border-[#3D4F66]"
             />
           </div>
         );
@@ -418,7 +418,7 @@ export function CustomFieldsSection({
             type="date"
             value={cf.fieldValue || ''}
             onChange={(e) => updateField(index, 'fieldValue', e.target.value)}
-            className={cn(baseClasses, "outline-none text-slate-700")}
+            className={cn(baseClasses, "outline-none text-slate-200")}
           />
         );
       case 7: { // Local Dropdown choices
@@ -458,15 +458,15 @@ export function CustomFieldsSection({
 
   return (
     <section className={cn(
-      !hideLabel && "rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden"
+      !hideLabel && "rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden"
     )}>
       {!hideLabel ? (
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <Sparkles size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Additional Fields</h2>
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Additional Fields</h2>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5">
               Optional custom fields for this record
             </p>
@@ -474,7 +474,7 @@ export function CustomFieldsSection({
 
           <div className="flex items-center gap-2 shrink-0">
             {customFields.length > 0 ? (
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[#e8f3f8] px-2 text-[11px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] px-2 text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                 {customFields.length}
               </span>
             ) : null}
@@ -484,7 +484,7 @@ export function CustomFieldsSection({
                 onClick={addField}
                 variant="outline"
                 size="sm"
-                className="h-8 px-2.5 rounded-[8px] text-[11px] font-semibold text-[#006699] border-[#006699]/25 bg-white hover:bg-[#e8f3f8] gap-1 shadow-none"
+                className="h-8 px-2.5 rounded-[8px] text-[11px] font-semibold text-[#0EA5E9] border-[#0EA5E9]/25 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1 shadow-none"
               >
                 <Plus size={13} strokeWidth={2.5} />
                 Add Field
@@ -499,7 +499,7 @@ export function CustomFieldsSection({
             onClick={addField}
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 rounded-[8px] text-[11px] font-semibold text-[#006699] border-[#006699]/25 bg-white hover:bg-[#e8f3f8] gap-1 shadow-none"
+            className="h-8 px-2.5 rounded-[8px] text-[11px] font-semibold text-[#0EA5E9] border-[#0EA5E9]/25 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1 shadow-none"
           >
             <Plus size={13} strokeWidth={2.5} />
             Add Field
@@ -517,18 +517,18 @@ export function CustomFieldsSection({
                 );
 
                 return (
-                  <div key={index} className="space-y-1.5 relative group rounded-[8px] border border-slate-200/80 bg-white p-3">
+                  <div key={index} className="space-y-1.5 relative group rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] p-3">
                     {!hideAddButton ? (
                       <button
                         type="button"
                         onClick={() => removeField(index)}
-                        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-colors p-1 rounded-[6px] z-10 hover:bg-red-50"
+                        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-colors p-1 rounded-[6px] z-10 hover:bg-red-500/10"
                       >
                         <Trash2 size={12} />
                       </button>
                     ) : null}
                     {hideAddButton || cf.customFieldNo ? (
-                      <label className="text-slate-600 font-medium text-[11px] block truncate pr-6">
+                      <label className="text-slate-300 font-medium text-[11px] block truncate pr-6">
                         {selectedField ? selectedField.customFieldName : 'Unknown Field'}
                       </label>
                     ) : (
@@ -539,7 +539,7 @@ export function CustomFieldsSection({
                         value={cf.customFieldNo}
                         onChange={(val) => updateField(index, 'customFieldNo', val)}
                         placeholder="Select custom field..."
-                        className="h-9 mb-1 rounded-[8px] border border-[#a8afb7] text-xs bg-white shadow-none w-full"
+                        className="h-9 mb-1 rounded-[8px] border border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none w-full"
                       />
                     )}
                     {renderValueField(cf, index)}
@@ -552,10 +552,10 @@ export function CustomFieldsSection({
               {customFields.map((cf, index) => (
                 <div
                   key={index}
-                  className="group rounded-[8px] border border-slate-200/80 bg-white p-3 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 sm:gap-3 items-end"
+                  className="group rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] p-3 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 sm:gap-3 items-end"
                 >
                   <div className="space-y-1 min-w-0">
-                    <label className="text-[11px] font-medium text-slate-600">Field Name</label>
+                    <label className="text-[11px] font-medium text-slate-300">Field Name</label>
                     <Combobox options={(fillValues?.customFields || []).map((field: any) => ({
                       label: field.customFieldName || '',
                       value: (field.customFieldNo || '').toString()
@@ -563,11 +563,11 @@ export function CustomFieldsSection({
                       value={cf.customFieldNo}
                       onChange={(val) => updateField(index, 'customFieldNo', val)}
                       placeholder="Select custom field..."
-                      className="h-9 rounded-[8px] border border-[#a8afb7] text-xs bg-white shadow-none w-full"
+                      className="h-9 rounded-[8px] border border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none w-full"
                     />
                   </div>
                   <div className="space-y-1 min-w-0">
-                    <label className="text-[11px] font-medium text-slate-600">Value</label>
+                    <label className="text-[11px] font-medium text-slate-300">Value</label>
                     {renderValueField(cf, index)}
                   </div>
                   <Button
@@ -575,7 +575,7 @@ export function CustomFieldsSection({
                     variant="outline"
                     size="icon"
                     onClick={() => removeField(index)}
-                    className="h-9 w-9 rounded-[8px] border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shrink-0"
+                    className="h-9 w-9 rounded-[8px] border-[var(--tm-border)] text-slate-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 shrink-0"
                     title="Remove field"
                   >
                     <Trash2 size={13} />
@@ -585,13 +585,13 @@ export function CustomFieldsSection({
             </div>
           )
         ) : (
-          <div className="rounded-[8px] border border-dashed border-slate-200 bg-[#f8fbfd] px-4 py-5 text-center">
+          <div className="rounded-[8px] border border-dashed border-[var(--tm-border)] bg-[var(--tm-elevated)] px-4 py-5 text-center">
             <p className="text-xs font-medium text-slate-500">No additional fields added yet.</p>
             {!hideAddButton ? (
               <button
                 type="button"
                 onClick={addField}
-                className="mt-1.5 text-[11px] font-semibold text-[#006699] hover:underline"
+                className="mt-1.5 text-[11px] font-semibold text-[#0EA5E9] hover:underline"
               >
                 + Add Additional Field
               </button>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function LocationList() {
 
   const [apiLocations, setApiLocations] = useState<LocationMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchLocations = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/task-locations/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -56,6 +60,7 @@ export function LocationList() {
       }
     } catch (error) {
       console.error('Failed to fetch API locations:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +80,9 @@ export function LocationList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -88,9 +94,10 @@ export function LocationList() {
         locationNo: deleteTargetId,
         id: deleteTargetId,
       },
-    }).then(() => fetchLocations()).catch(err => console.error('Failed to delete location:', err));
+    }).then(() => { toast.success('Record deleted'); fetchLocations(); }).catch(err => { console.error('Failed to delete location:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   const formatAddress = (item: LocationMaster) => {
@@ -117,7 +124,7 @@ export function LocationList() {
             className: 'w-[100px]',
             render: (item) =>
               item.type ? (
-                <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-slate-200/80 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[var(--tm-border)]/80 bg-[var(--tm-muted)] px-2 py-0.5 text-[10px] font-semibold text-slate-300">
                   {item.type}
                 </span>
               ) : (
@@ -149,7 +156,7 @@ export function LocationList() {
             header: 'Region',
             className: 'w-[110px]',
             render: (item) => (
-              <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[#006699]/15 bg-[#e8f3f8] px-2 py-0.5 text-[10px] font-semibold text-[#006699]">
+              <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[#0EA5E9]/15 bg-[var(--tm-tint)] px-2 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
                 {item.locationRegion || 'Central'}
               </span>
             ),
@@ -166,6 +173,8 @@ export function LocationList() {
         canUpdate={isUpdate}
         canDelete={isDelete}
         isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchLocations}
         emptyIcon={MapPin}
         footer={
           !isLoading && filteredList.length > 0 ? (
@@ -190,7 +199,8 @@ export function LocationList() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

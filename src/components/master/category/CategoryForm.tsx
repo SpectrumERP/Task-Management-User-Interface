@@ -72,7 +72,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-600"
+      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
     >
       <span>{children}</span>
       {required ? (
@@ -267,13 +267,13 @@ export function CategoryForm({ id }: CategoryFormProps) {
       showSuccessAlert={showSuccessAlert}
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
-      <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100 rounded-t-[8px]">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <Layers size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Category Details</h2>
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Category Details</h2>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
               Name, color, types and benefit flags for this category
             </p>
@@ -288,7 +288,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
                 readOnly
                 tabIndex={-1}
                 value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
-                className={cn(fieldClass, 'bg-[#f8fbfd] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-slate-200/80')}
+                className={cn(fieldClass, 'bg-[var(--tm-elevated)] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-[var(--tm-border)]/80')}
               />
             </div>
 
@@ -336,14 +336,14 @@ export function CategoryForm({ id }: CategoryFormProps) {
                     {COLOR_PRESETS.map((preset) => (
                       <SelectItem key={preset.hex} value={preset.hex}>
                         <div className="flex items-center gap-2">
-                          <div className="w-3.5 h-3.5 rounded-full border border-slate-200" style={{ backgroundColor: preset.hex }} />
+                          <div className="w-3.5 h-3.5 rounded-full border border-[var(--tm-border)]" style={{ backgroundColor: preset.hex }} />
                           <span>{preset.name}</span>
                         </div>
                       </SelectItem>
                     ))}
                     <SelectItem value="custom">
                       <div className="flex items-center gap-2">
-                        <div className="w-3.5 h-3.5 rounded-full border border-slate-200 bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
+                        <div className="w-3.5 h-3.5 rounded-full border border-[var(--tm-border)] bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
                         <span>Custom Color</span>
                       </div>
                     </SelectItem>
@@ -351,7 +351,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
                 </Select>
 
                 {color !== '' && !COLOR_PRESETS.map(p => p.hex).includes(color) && (
-                  <div className="flex items-center gap-2 px-2.5 py-1.5 border border-slate-200 rounded-[8px] bg-[#f8fbfd]">
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 border border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
                     <input
                       type="color"
                       value={color || '#000000'}
@@ -376,8 +376,8 @@ export function CategoryForm({ id }: CategoryFormProps) {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 pt-1 border-t border-slate-100">
-            <label htmlFor="business-benefit" className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer select-none">
+          <div className="flex flex-wrap items-center gap-4 pt-1 border-t border-[var(--tm-border)]">
+            <label htmlFor="business-benefit" className="inline-flex items-center gap-2 text-xs font-medium text-slate-200 cursor-pointer select-none">
               <Checkbox
                 id="business-benefit"
                 checked={isBusinessBenefitApplicable}
@@ -389,16 +389,16 @@ export function CategoryForm({ id }: CategoryFormProps) {
         </div>
       </section>
 
-      <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <ListChecks size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Checklist Items</h2>
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Checklist Items</h2>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5">Items checked when tasks in this category are worked</p>
           </div>
-          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[#e8f3f8] px-2 text-[11px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] px-2 text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
             {checklist.length}
           </span>
         </div>
@@ -420,7 +420,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
             <Button
               type="button"
               onClick={addChecklistItem}
-              className="h-10 px-3.5 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-white font-semibold text-xs gap-1 shrink-0"
+              className="h-10 px-3.5 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold text-xs gap-1 shrink-0"
             >
               <Plus size={14} strokeWidth={2.5} />
               Add
@@ -428,7 +428,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
           </div>
 
           {checklist.length === 0 ? (
-            <div className="rounded-[8px] border border-dashed border-slate-200 bg-[#f8fbfd] px-4 py-8 text-center">
+            <div className="rounded-[8px] border border-dashed border-[var(--tm-border)] bg-[var(--tm-elevated)] px-4 py-8 text-center">
               <p className="text-xs font-medium text-slate-500">No checklist items yet.</p>
             </div>
           ) : (
@@ -442,15 +442,15 @@ export function CategoryForm({ id }: CategoryFormProps) {
                   <div
                     key={index}
                     className={cn(
-                      'rounded-[8px] border border-slate-200/80 bg-white px-3 py-2.5 flex items-center gap-3',
-                      isEditing && 'border-[#006699]/25 bg-[#f8fbfd]/60'
+                      'rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] px-3 py-2.5 flex items-center gap-3',
+                      isEditing && 'border-[#0EA5E9]/25 bg-[var(--tm-elevated)]/60'
                     )}
                   >
                     <Checkbox
                       id={`cl-item-${index}`}
                       checked={isChecked}
                       onCheckedChange={() => toggleChecklistItem(index)}
-                      className="h-4 w-4 rounded border-slate-300 shrink-0"
+                      className="h-4 w-4 rounded border-[#3D4F66] shrink-0"
                     />
                     {isEditing ? (
                       <Input
@@ -475,7 +475,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
                         autoFocus
                       />
                     ) : (
-                      <span className={cn('text-xs font-medium text-slate-800 flex-1 min-w-0 break-words', isChecked && 'line-through text-slate-400')}>
+                      <span className={cn('text-xs font-medium text-slate-100 flex-1 min-w-0 break-words', isChecked && 'line-through text-slate-400')}>
                         {desc}
                       </span>
                     )}
@@ -490,19 +490,19 @@ export function CategoryForm({ id }: CategoryFormProps) {
                             setChecklist(next);
                             setEditingChecklistIdx(null);
                             setTempEditText('');
-                          }} className="h-7 w-7 rounded-[6px] text-emerald-600 hover:bg-emerald-50">
+                          }} className="h-7 w-7 rounded-[6px] text-emerald-400 hover:bg-emerald-500/10">
                             <CheckCircle size={14} />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingChecklistIdx(null); setTempEditText(''); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:bg-slate-100">
+                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingChecklistIdx(null); setTempEditText(''); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:bg-[var(--tm-muted)]">
                             <X size={14} />
                           </Button>
                         </>
                       ) : (
                         <>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingChecklistIdx(index); setTempEditText(desc); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8]">
+                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingChecklistIdx(index); setTempEditText(desc); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                             <Edit size={13} />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeChecklistItem(index)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50">
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeChecklistItem(index)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
                             <Trash2 size={13} />
                           </Button>
                         </>
@@ -516,16 +516,16 @@ export function CategoryForm({ id }: CategoryFormProps) {
         </div>
       </section>
 
-      <section className="rounded-[8px] border border-slate-200/70 bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-[#f8fbfd] border-b border-slate-100">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#e8f3f8] text-[#006699]">
+      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <ListTodo size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-slate-800 tracking-tight">Sub-tasks</h2>
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Sub-tasks</h2>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5">Default sub-tasks created with this category</p>
           </div>
-          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[#e8f3f8] px-2 text-[11px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] px-2 text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
             {subtasks.length}
           </span>
         </div>
@@ -554,7 +554,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
             <Button
               type="button"
               onClick={addSubtaskItem}
-              className="h-10 px-3.5 rounded-[8px] bg-[#006699] hover:bg-[#005580] text-white font-semibold text-xs gap-1 shrink-0"
+              className="h-10 px-3.5 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold text-xs gap-1 shrink-0"
             >
               <Plus size={14} strokeWidth={2.5} />
               Add
@@ -562,7 +562,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
           </div>
 
           {subtasks.length === 0 ? (
-            <div className="rounded-[8px] border border-dashed border-slate-200 bg-[#f8fbfd] px-4 py-8 text-center">
+            <div className="rounded-[8px] border border-dashed border-[var(--tm-border)] bg-[var(--tm-elevated)] px-4 py-8 text-center">
               <p className="text-xs font-medium text-slate-500">No sub-tasks yet.</p>
             </div>
           ) : (
@@ -577,8 +577,8 @@ export function CategoryForm({ id }: CategoryFormProps) {
                   <div
                     key={index}
                     className={cn(
-                      'rounded-[8px] border border-slate-200/80 bg-white px-3 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2.5',
-                      isEditing && 'border-[#006699]/25 bg-[#f8fbfd]/60'
+                      'rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] px-3 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2.5',
+                      isEditing && 'border-[#0EA5E9]/25 bg-[var(--tm-elevated)]/60'
                     )}
                   >
                     {isEditing ? (
@@ -617,11 +617,11 @@ export function CategoryForm({ id }: CategoryFormProps) {
                     ) : (
                       <div className="min-w-0 flex-1 flex flex-wrap items-center gap-2">
                         {taskTypeLabel ? (
-                          <span className="inline-flex items-center rounded-[6px] bg-[#e8f3f8] px-2 py-0.5 text-[10px] font-semibold text-[#006699] ring-1 ring-[#006699]/12">
+                          <span className="inline-flex items-center rounded-[6px] bg-[var(--tm-tint)] px-2 py-0.5 text-[10px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                             {taskTypeLabel}
                           </span>
                         ) : null}
-                        <span className="text-xs font-medium text-slate-800 break-words">{desc}</span>
+                        <span className="text-xs font-medium text-slate-100 break-words">{desc}</span>
                       </div>
                     )}
 
@@ -636,19 +636,19 @@ export function CategoryForm({ id }: CategoryFormProps) {
                             setEditingSubtaskIdx(null);
                             setTempEditText('');
                             setTempEditSubtaskTaskTypeNo('');
-                          }} className="h-7 w-7 rounded-[6px] text-emerald-600 hover:bg-emerald-50">
+                          }} className="h-7 w-7 rounded-[6px] text-emerald-400 hover:bg-emerald-500/10">
                             <CheckCircle size={14} />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingSubtaskIdx(null); setTempEditText(''); setTempEditSubtaskTaskTypeNo(''); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:bg-slate-100">
+                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingSubtaskIdx(null); setTempEditText(''); setTempEditSubtaskTaskTypeNo(''); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:bg-[var(--tm-muted)]">
                             <X size={14} />
                           </Button>
                         </>
                       ) : (
                         <>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingSubtaskIdx(index); setTempEditText(desc); setTempEditSubtaskTaskTypeNo(taskTypeNo); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#006699] hover:bg-[#e8f3f8]">
+                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingSubtaskIdx(index); setTempEditText(desc); setTempEditSubtaskTaskTypeNo(taskTypeNo); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                             <Edit size={13} />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeSubtaskItem(index)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-600 hover:bg-red-50">
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeSubtaskItem(index)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
                             <Trash2 size={13} />
                           </Button>
                         </>

@@ -124,8 +124,8 @@ export const attachmentService = {
                 .spinner {
                   width: 40px;
                   height: 40px;
-                  border: 4px solid #1e293b;
-                  border-top: 4px solid #006699;
+                  border: 4px solid #E2E8F0;
+                  border-top: 4px solid #0EA5E9;
                   border-radius: 50%;
                   animation: spin 1s linear infinite;
                   margin-bottom: 16px;

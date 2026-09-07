@@ -15,7 +15,6 @@ import {
   Globe,
   Building,
   ChevronDown,
-  Menu,
   Database,
   Monitor,
   Calendar,
@@ -79,6 +78,7 @@ function SectionFlyoutMenu({
   isSectionActive,
   onExpand,
   onToggleCollapse,
+  dataTour,
 }: {
   title: string;
   Icon: typeof Database;
@@ -88,11 +88,13 @@ function SectionFlyoutMenu({
   onToggleCollapse?: () => void;
   activeTab: string;
   onTabChange: (id: string) => void;
+  dataTour?: string;
 }) {
   return (
     <div className="relative w-full flex justify-center">
       <button
         type="button"
+        data-tour={dataTour}
         onClick={() => {
           if (onToggleCollapse) onToggleCollapse();
           onExpand();
@@ -100,19 +102,19 @@ function SectionFlyoutMenu({
         className={cn(
           "group flex items-center justify-center mx-auto h-10 w-10 rounded-[11px] p-0 transition-all duration-200 relative",
           isSectionActive
-            ? "bg-white text-[#006699] shadow-sm"
-            : "text-slate-500 hover:bg-white hover:text-slate-700 hover:shadow-sm"
+            ? "bg-[var(--tm-tint)] text-[#0EA5E9] shadow-sm"
+            : "text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200 hover:shadow-sm"
         )}
       >
         <Icon
           size={18}
           strokeWidth={isSectionActive ? 2.15 : 1.75}
-          className={isSectionActive ? "text-[#006699]" : "text-slate-400 group-hover:text-slate-500"}
+          className={isSectionActive ? "text-[#0EA5E9]" : "text-slate-400 group-hover:text-slate-500"}
         />
         <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
-          <div className="relative rounded-lg border border-[#006699]/12 bg-white px-2.5 py-1.5 text-[11px] font-semibold tracking-[-0.01em] text-[#006699] whitespace-nowrap shadow-[0_8px_24px_-8px_rgba(15,23,42,0.28)]">
+          <div className="tm-sidebar-tip">
             {title}
-            <span className="absolute left-0 top-1/2 -translate-x-[5px] -translate-y-1/2 h-2.5 w-2.5 rotate-45 border-l border-b border-[#006699]/12 bg-white" />
+            <span className="tm-sidebar-tip-arrow" aria-hidden />
           </div>
         </div>
       </button>
@@ -154,6 +156,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
     return (
       <button
         key={item.id}
+        data-tour={`nav-${item.id}`}
         onClick={() => onTabChange(item.id)}
         className={cn(
           navBtnBase,
@@ -161,17 +164,23 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             ? cn(
                 "justify-center mx-auto h-10 w-10 rounded-[11px] p-0",
                 isActive
-                  ? "bg-[#006699] text-white shadow-[0_6px_16px_-6px_rgba(0,102,153,0.55)]"
-                  : "text-slate-500 hover:bg-white hover:text-slate-700 hover:shadow-sm"
+                  ? "bg-[#0EA5E9] text-white shadow-[0_6px_16px_-6px_rgba(14,165,233,0.55)]"
+                  : "text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200 hover:shadow-sm"
               )
             : cn(
                 "gap-3 rounded-xl px-3 py-[9px] text-[13px] tracking-[-0.01em]",
                 isActive
-                  ? "bg-[#e8f3f8] text-[#006699] font-semibold"
-                  : "font-medium text-slate-600 hover:bg-white/70 hover:text-slate-800"
+                  ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
+                  : "font-medium text-slate-300 hover:bg-[var(--tm-muted)]/70 hover:text-slate-100"
               )
         )}
       >
+        {isActive && !isCollapsed && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-1/2 h-[70%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
+          />
+        )}
         <item.icon
           size={isCollapsed ? 18 : 16}
           strokeWidth={isActive ? 2.15 : 1.75}
@@ -180,7 +189,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             isCollapsed && isActive
               ? "text-white"
               : isActive
-                ? "text-[#006699]"
+                ? "text-slate-50"
                 : "text-slate-400 group-hover:text-slate-500"
           )}
         />
@@ -188,9 +197,9 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
 
         {isCollapsed && (
           <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
-            <div className="relative rounded-lg border border-[#006699]/12 bg-white px-2.5 py-1.5 text-[11px] font-semibold tracking-[-0.01em] text-[#006699] whitespace-nowrap shadow-[0_8px_24px_-8px_rgba(15,23,42,0.28)]">
+            <div className="tm-sidebar-tip">
               {item.label}
-              <span className="absolute left-0 top-1/2 -translate-x-[5px] -translate-y-1/2 h-2.5 w-2.5 rotate-45 border-l border-b border-[#006699]/12 bg-white" />
+              <span className="tm-sidebar-tip-arrow" aria-hidden />
             </div>
           </div>
         )}
@@ -219,18 +228,24 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         <button
           onClick={() => onTabChange(item.id)}
           className={cn(
-            "ml-4 w-[calc(100%-1rem)] flex items-center gap-2.5 pl-2 pr-2.5 py-[6px] rounded-lg text-[12.5px] tracking-[-0.01em] transition-colors duration-150 group",
+            "relative ml-4 w-[calc(100%-1rem)] flex items-center gap-2.5 pl-2 pr-2.5 py-[6px] rounded-lg text-[12.5px] tracking-[-0.01em] transition-colors duration-150 group",
             isActive
-              ? "bg-[#e8f3f8] text-[#006699] font-semibold"
-              : "font-medium text-slate-500 hover:bg-white hover:text-slate-700"
+              ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
+              : "font-medium text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200"
           )}
         >
+          {isActive && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
+            />
+          )}
           <item.icon
             size={14}
             strokeWidth={isActive ? 2.1 : 1.7}
             className={cn(
               "shrink-0",
-              isActive ? "text-[#006699]" : "text-slate-400 group-hover:text-slate-500"
+              isActive ? "text-slate-50" : "text-slate-400 group-hover:text-slate-500"
             )}
           />
           <span className="truncate text-left">{item.label}</span>
@@ -246,6 +261,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
     isExpanded,
     isSectionActive,
     onToggle,
+    dataTour,
   }: {
     title: string;
     Icon: typeof Database;
@@ -253,6 +269,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
     isExpanded: boolean;
     isSectionActive: boolean;
     onToggle: () => void;
+    dataTour?: string;
   }) => {
     const showActive = isExpanded || isSectionActive;
 
@@ -260,17 +277,24 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
       <div>
         <button
           onClick={onToggle}
+          data-tour={dataTour}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-[9px] rounded-xl cursor-pointer transition-colors duration-150 text-[13px] tracking-[-0.01em]",
+            "relative w-full flex items-center gap-3 px-3 py-[9px] rounded-xl cursor-pointer transition-colors duration-150 text-[13px] tracking-[-0.01em]",
             showActive
-              ? "bg-[#e8f3f8] text-[#006699] font-semibold"
-              : "font-medium text-slate-600 hover:bg-white/60 hover:text-slate-800"
+              ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
+              : "font-medium text-slate-300 hover:bg-[var(--tm-muted)]/60 hover:text-slate-100"
           )}
         >
+          {showActive && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-0 top-1/2 h-[70%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
+            />
+          )}
           <Icon
             size={16}
             strokeWidth={showActive ? 2.15 : 1.75}
-            className={cn("shrink-0", showActive ? "text-[#006699]" : "text-slate-400")}
+            className={cn("shrink-0", showActive ? "text-slate-50" : "text-slate-400")}
           />
           <span className="flex-1 text-left truncate">{title}</span>
           <ChevronDown
@@ -278,7 +302,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             strokeWidth={2}
             className={cn(
               "shrink-0 transition-transform duration-300",
-              showActive ? "text-[#006699]/55" : "text-slate-300",
+              showActive ? "text-slate-400" : "text-slate-300",
               !isExpanded && "-rotate-90"
             )}
           />
@@ -305,7 +329,8 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
     Icon: typeof Database,
     items: typeof filteredMasterItems,
     isSectionActive: boolean,
-    onExpand: () => void
+    onExpand: () => void,
+    dataTour?: string
   ) => (
     <SectionFlyoutMenu
       title={title}
@@ -316,14 +341,15 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
       onToggleCollapse={onToggleCollapse}
       activeTab={activeTab}
       onTabChange={onTabChange}
+      dataTour={dataTour}
     />
   );
 
   return (
     <aside
       className={cn(
-        "h-full flex flex-col shrink-0 transition-all duration-300 border-r border-[#d9e4ec]/80",
-        "bg-[linear-gradient(180deg,#f7fafc_0%,#f3f7fa_48%,#eef4f8_100%)]",
+        "relative h-full flex flex-col shrink-0 transition-all duration-300 border-r border-[var(--tm-chrome-border)]",
+        "bg-[linear-gradient(180deg,var(--tm-sidebar)_0%,var(--tm-sidebar-end)_100%)]",
         isCollapsed ? "w-[80px] items-center overflow-visible" : "w-56",
         className
       )}
@@ -356,27 +382,18 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="lg:hidden h-8 w-8 rounded-xl hover:bg-white/80 flex items-center justify-center shrink-0"
+            className="lg:hidden h-8 w-8 rounded-xl hover:bg-[var(--tm-muted)]/80 flex items-center justify-center shrink-0"
           >
             <X size={18} className="text-slate-500" />
           </Button>
         )}
-        {onToggleCollapse && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleCollapse}
-            className="hidden lg:flex h-8 w-8 rounded-xl shrink-0 text-slate-400 hover:text-[#006699] hover:bg-white/80"
-          >
-            <Menu size={16} strokeWidth={1.75} />
-          </Button>
-        )}
-        <div className="pointer-events-none absolute inset-x-3 bottom-0 h-px bg-gradient-to-r from-transparent via-slate-200/90 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-3 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--tm-border)] to-transparent" />
       </div>
       )}
 
       {/* Navigation */}
       <nav
+        data-tour="sidebar-nav"
         className={cn(
           "flex-1 scrollbar-hide",
           isCollapsed ? "overflow-visible px-1.5 pt-3 space-y-1" : "overflow-y-auto px-2.5 py-3.5 space-y-0.5"
@@ -392,7 +409,8 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               Database,
               filteredMasterItems,
               isMasterActive,
-              () => setIsMasterExpanded(true)
+              () => setIsMasterExpanded(true),
+              "nav-master"
             )
           ) : (
             renderTreeSection({
@@ -402,6 +420,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               isExpanded: isMasterExpanded,
               isSectionActive: isMasterActive,
               onToggle: () => setIsMasterExpanded(!isMasterExpanded),
+              dataTour: "nav-master",
             })
           )
         )}
@@ -414,7 +433,8 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               Calendar,
               filteredMenuMasterItems,
               isMenuMasterActive,
-              () => setIsMenuMasterExpanded(true)
+              () => setIsMenuMasterExpanded(true),
+              "nav-meeting-masters"
             )
           ) : (
             renderTreeSection({
@@ -424,18 +444,19 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               isExpanded: isMenuMasterExpanded,
               isSectionActive: isMenuMasterActive,
               onToggle: () => setIsMenuMasterExpanded(!isMenuMasterExpanded),
+              dataTour: "nav-meeting-masters",
             })
           )
         )}
       </nav>
 
       {bottomItems.length > 0 && (
-        <div className="space-y-0 pt-1 border-t border-slate-200/70">
+        <div className="space-y-0 pt-1 border-t border-[var(--tm-border)]/70">
           {bottomItems.map((item) => (
             <button
               key={item.id}
               className={cn(
-                "w-full flex items-center transition-colors font-medium text-sm text-slate-500 hover:bg-white/70 rounded-xl",
+                "w-full flex items-center transition-colors font-medium text-sm text-slate-500 hover:bg-[var(--tm-muted)]/70 rounded-xl",
                 isCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-2"
               )}
               title={item.label}

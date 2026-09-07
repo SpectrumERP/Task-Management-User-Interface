@@ -8,6 +8,8 @@ type BrandLogoProps = {
   maxHeight?: number;
   /** Max width in px — keeps wide client logos from overflowing */
   maxWidth?: number;
+  /** Compact mark for collapsed sidebar rail (uses favicon / square asset) */
+  compact?: boolean;
 };
 
 /**
@@ -19,18 +21,34 @@ export function BrandLogo({
   imgClassName,
   maxHeight = 44,
   maxWidth = 280,
+  compact = false,
 }: BrandLogoProps) {
   const brand = getBrand();
+  const src = compact ? brand.faviconSrc || brand.logoSrc : brand.logoSrc;
+  const size = compact ? Math.min(maxHeight, maxWidth, 32) : maxHeight;
 
   return (
     <div
-      className={cn('flex shrink-0 items-center justify-start overflow-hidden', className)}
-      style={{ height: maxHeight, maxWidth }}
+      className={cn(
+        'flex shrink-0 items-center overflow-hidden',
+        compact ? 'justify-center' : 'justify-start',
+        className
+      )}
+      style={
+        compact
+          ? { height: size, width: size }
+          : { height: maxHeight, maxWidth }
+      }
     >
       <img
-        src={brand.logoSrc}
+        src={src}
         alt={`${brand.brandName} Logo`}
-        className={cn('h-full w-auto max-w-full object-contain object-left', imgClassName)}
+        className={cn(
+          compact
+            ? 'h-full w-full object-contain'
+            : 'h-full w-auto max-w-full object-contain object-left',
+          imgClassName
+        )}
       />
     </div>
   );
