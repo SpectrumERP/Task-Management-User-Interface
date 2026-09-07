@@ -89,6 +89,7 @@ export function CardReviewForm({ data, onChange }: CardReviewFormProps) {
 
         />
       </div>
+{/*
         <div className="space-y-2">
           <Label htmlFor="city">City</Label>
           <ClipboardInput
@@ -119,6 +120,7 @@ export function CardReviewForm({ data, onChange }: CardReviewFormProps) {
             className='rounded-md'
           />
         </div>
+*/}
     </div>
   );
 }

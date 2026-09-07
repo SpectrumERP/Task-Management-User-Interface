@@ -868,13 +868,14 @@ export function CompanyForm({ id }: CompanyFormProps) {
                             phoneNo: data.phone || data.mobile || '',
                             email: data.email || '',
                             address: data.address || '',
-                            country: data.country || '',
-                            state: data.state || '',
-                            city: data.city || '',
+                            // country: data.country || '',
+                            // state: data.state || '',
+                            // city: data.city || '',
                             status: 'Active'
                           }
                         ]);
                       }
+                      /*
                       if (data.address || data.city || data.state || data.country) {
                         const defaultLocType = locationTypes.find((t: any) => /office/i.test(t.locationTypeName || ''))?.locationTypeNo ?? locationTypes[0]?.locationTypeNo;
                         setCompanyLocations(prev => [
@@ -882,9 +883,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
                           {
                             type: defaultLocType !== undefined ? defaultLocType.toString() : '',
                             address: data.address || '',
-                            country: data.country || '',
-                            state: data.state || '',
-                            city: data.city || '',
+                            // country: data.country || '',
+                            // state: data.state || '',
+                            // city: data.city || '',
                             pinCode: '',
                             mapUrl: '',
                             latitude: '',
@@ -892,6 +893,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
                           }
                         ]);
                       }
+                      */
                     }}
                   />
                 </Suspense>

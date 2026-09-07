@@ -16,8 +16,34 @@ interface ClipboardInputProps extends React.InputHTMLAttributes<HTMLInputElement
 
 const ClipboardEntryView = ({ entry, fieldLabel, onHistorySelect }: { entry: ClipboardEntry, fieldLabel: string, onHistorySelect: (text: string | undefined, close: boolean) => void }) => {
   const [selectedLineIndices, setSelectedLineIndices] = useState<Set<number>>(new Set());
-  const lines = entry.formattedText.split('\n').map(l => l.trim()).filter(l => l);
-
+  const lines = React.useMemo(() => {
+    let rawLines = entry.formattedText.split('\n').map(l => l.trim()).filter(l => l);
+    const text = entry.formattedText.trim();
+    if (text.startsWith('{') && text.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(text);
+        const extractValues = (obj: any): string[] => {
+          let vals: string[] = [];
+          for (const key in obj) {
+            if (Array.isArray(obj[key])) {
+              vals = vals.concat(obj[key].map((x: any) => String(x)));
+            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+              vals = vals.concat(extractValues(obj[key]));
+            } else {
+              if (obj[key] !== null && obj[key] !== undefined && String(obj[key]).trim() !== '') {
+                vals.push(String(obj[key]));
+              }
+            }
+          }
+          return vals;
+        };
+        rawLines = extractValues(parsed).filter(l => l.trim() !== '');
+      } catch (e) {
+        // ignore JSON parse error, fallback to raw lines
+      }
+    }
+    return rawLines;
+  }, [entry.formattedText]);
   const toggleLine = (index: number) => {
     const newSet = new Set(selectedLineIndices);
     if (newSet.has(index)) {
