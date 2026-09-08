@@ -93,6 +93,12 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   const [columnSearchQuery, setColumnSearchQuery] = useState('');
 
   useEffect(() => {
+    // Force cleanup any lingering dialog scroll/pointer locks from Radix UI when entering the list view
+    document.body.style.pointerEvents = 'auto';
+    document.body.removeAttribute('data-scroll-locked');
+  }, []);
+
+  useEffect(() => {
     if (dropdownOpen) {
       setPendingColumns(new Set(visibleColumns));
       setColumnSearchQuery('');

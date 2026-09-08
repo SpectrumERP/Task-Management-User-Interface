@@ -83,7 +83,13 @@ export default function TaskDetail() {
       if (response.success) {
         setIsDeleteDialogOpen(false);
         toast.success('Task deleted');
-        handleGoBack();
+        
+        // Force remove pointer-events: none that Radix UI Dialog might leave behind when unmounting quickly
+        document.body.style.pointerEvents = '';
+        
+        setTimeout(() => {
+          handleGoBack();
+        }, 100);
       } else {
         toast.error(response.message || 'Failed to delete task. Please try again.');
       }
