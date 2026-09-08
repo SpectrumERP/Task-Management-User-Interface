@@ -65,15 +65,15 @@ function getOpaqueTint(hexColor: string): string {
 }
 
 function getContrastColor(hexColor: string): string {
-  if (!hexColor || !hexColor.startsWith('#')) return '#ffffff';
+  if (!hexColor || !hexColor.startsWith('#')) return '#0f172a';
   const r = parseInt(hexColor.slice(1, 3), 16);
   const g = parseInt(hexColor.slice(3, 5), 16);
   const b = parseInt(hexColor.slice(5, 7), 16);
-  if (isNaN(r) || isNaN(g) || isNaN(b)) return '#ffffff';
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return '#0f172a';
   
-  // Relative luminance calculation
+  // Relative luminance — dark text on light surfaces, white on dark
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.65 ? '#E2E8F0' : '#ffffff';
+  return luminance > 0.55 ? '#0f172a' : '#ffffff';
 }
 
 export function TaskCalendarView({ 
@@ -258,8 +258,9 @@ export function TaskCalendarView({
             const isCurrentMonth = date.getMonth() === month;
             const isToday = new Date().toDateString() === date.toDateString();
             const dayTasks = sortTasks(tasks.filter(t => isTaskOnDate(t, date)));
-            const visibleTasks = dayTasks.slice(0, 3);
-            const overflowCount = dayTasks.length - 3;
+            const maxVisible = 2;
+            const visibleTasks = dayTasks.slice(0, maxVisible);
+            const overflowCount = dayTasks.length - visibleTasks.length;
 
             return (
               <div
@@ -270,7 +271,7 @@ export function TaskCalendarView({
                   isToday && "bg-[var(--tm-tint)]/70"
                 )}
               >
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-1.5 shrink-0">
                   <span
                     className={cn(
                       "text-[11px] font-semibold tabular-nums transition-all inline-flex items-center justify-center",
@@ -295,8 +296,9 @@ export function TaskCalendarView({
                   )}
                 </div>
 
-                <div className="space-y-0.5 flex-1 overflow-hidden">
-                  {visibleTasks.map(task => {
+                <div className="flex flex-col flex-1 min-h-0 gap-0.5">
+                  <div className="space-y-0.5 min-h-0 overflow-hidden">
+                    {visibleTasks.map(task => {
                       const customColor = task.calendarColor && task.calendarColor !== 'none' ? task.calendarColor : null;
                       const isHovered = hoveredTaskNo === task.taskNo;
 
@@ -313,14 +315,16 @@ export function TaskCalendarView({
                               : (customColor ? getOpaqueTint(customColor) : 'var(--tm-muted)'),
                             color: task.isAllDay
                               ? (customColor ? getContrastColor(customColor) : '#ffffff')
-                              : '#E2E8F0',
+                              : (customColor
+                                  ? getContrastColor(getOpaqueTint(customColor))
+                                  : 'var(--tm-input-fg)'),
                             borderColor: task.isAllDay
                               ? 'transparent'
                               : (customColor ? `${customColor}40` : 'var(--tm-border)'),
                             zIndex: isHovered ? 9999 : undefined
                           }}
                           className={cn(
-                            "px-1.5 py-0.5 rounded-[6px] text-[10px] font-medium truncate cursor-pointer transition-all hover:brightness-[0.98] flex items-center justify-between border",
+                            "px-1.5 py-0.5 rounded-[6px] text-[10px] font-medium truncate cursor-pointer transition-all hover:brightness-[0.98] flex items-center justify-between border shrink-0",
                             task.isAllDay ? "" : "hover:bg-[var(--tm-muted)]"
                           )}
                           title={task.title}
@@ -339,7 +343,8 @@ export function TaskCalendarView({
                           )}
                         </div>
                       );
-                  })}
+                    })}
+                  </div>
 
                   {overflowCount > 0 && (
                     <button
