@@ -6,7 +6,7 @@ import { Task } from '@/types/task';
 import { TaskActivity } from './TaskActivity';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import {
   Edit,
@@ -14,7 +14,6 @@ import {
   MapPin,
   Building2,
   FolderClosed,
-  X,
   Layers,
   AlertCircle,
   Coins,
@@ -51,9 +50,9 @@ const formatFileSize = (bytes?: number | null) => {
 };
 
 const reverseEffortFrequencyMap: Record<number, string> = {
-  1: 'minutes',
-  2: 'hours',
-  3: 'days',
+  1: 'hours',
+  2: 'days',
+  3: 'minutes',
   4: 'weeks',
   5: 'months',
   6: 'years',

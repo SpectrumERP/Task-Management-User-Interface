@@ -214,6 +214,14 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
       });
     }
 
+    if (!data.business_benefit_description || data.business_benefit_description.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Benefit Description is required',
+        path: ['business_benefit_description'],
+      });
+    }
+
     // Skip estimated amount validation if valuation type is Intangible or valuationTypeNo is 2
     let shouldSkipAmountVal = false;
     if (fillValues?.benefitType && data.business_benefit_type_No) {
@@ -568,7 +576,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             const bName = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || '';
             return bName.toLowerCase() === label.toLowerCase();
           });
-          if (matched) resolvedId = (matched.BusinessBenefitTypeNo || matched.businessBenefitTypeNo || matched.id || '').toString();
+          if (matched) resolvedId = (matched.BusinessBenefitTypeNo || '').toString();
         }
       }
 
@@ -752,7 +760,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               start_date: d.startDate,
               end_date: d.endDate,
               estimated_effort_value: d.estimatedEfforts?.hours || '',
-              estimated_effort_unit: 'hours',
+              estimated_effort_unit: resolveFrequencyValue(d.estimatedEfforts?.frequency?.frequencyNo || d.estimatedEfforts?.frequency?.frequencyName || '1'),
               is_business_benefit_applicable: d.isBusinessBenefitApplicable || false,
               business_benefit_type_No: d.businessBenefit?.businessBenefitType?.businessBenefitTypeNo || d.businessBenefit?.businessBenefitTypeNo || '',
               business_benefit_description: d.businessBenefit?.businessBenefitDescription || '',
@@ -3113,7 +3121,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         </>
                       )}
                       <div className="space-y-1.5 md:col-span-2" id="form-group-business_benefit_description">
-                        <FieldLabel>Benefit Description</FieldLabel>
+                        <FieldLabel required>Benefit Description</FieldLabel>
                         <FieldControl error={form.formState.errors.business_benefit_description?.message}>
                           <Textarea placeholder="Enter business benefit description" {...form.register('business_benefit_description')} className={cn("min-h-[80px] rounded-[8px] border-[var(--tm-border)]/80 input-section text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.business_benefit_description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} />
                         </FieldControl>

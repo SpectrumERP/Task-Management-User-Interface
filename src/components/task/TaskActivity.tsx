@@ -11,8 +11,7 @@ import {
   MessageSquare,
   Clock,
   Send,
-  Plus,
-  Calendar as CalendarIcon
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -159,8 +158,8 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                   Date
                 </label>
                 <div className="relative">
-                  <DateTimePicker 
-                    date={effortDate ? new Date(effortDate) : undefined} 
+                  <DateTimePicker
+                    date={effortDate ? new Date(effortDate) : undefined}
                     onChange={(date) => setEffortDate(date ? date.toISOString() : '')}
                     hideTime={true}
                     className="h-8 text-[11px] font-medium rounded-lg border-[var(--tm-border)] text-slate-50 w-full"

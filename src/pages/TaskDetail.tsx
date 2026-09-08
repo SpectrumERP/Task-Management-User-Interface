@@ -27,9 +27,9 @@ import {
 } from '@/components/ui/dialog';
 
 const reverseEffortFrequencyMap: Record<number, string> = {
-  1: 'minutes',
-  2: 'hours',
-  3: 'days',
+  1: 'hours',
+  2: 'days',
+  3: 'minutes',
   4: 'weeks',
   5: 'months',
   6: 'years'
