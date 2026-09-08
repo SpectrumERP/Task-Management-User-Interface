@@ -89,18 +89,18 @@
     --ring: 199 89% 48%;
 
     --tm-page: #0B1220;
-    --tm-surface: #0C4A6E;
-    --tm-elevated: #182234;
+    --tm-surface: #121A2B;
+    --tm-elevated: #151D2E;
     --tm-muted: #1A2438;
-    --tm-border: #3A4B63;
+    --tm-border: #2A3548;
     --tm-tint: #0C3D56;
-    --tm-input: #1A2438;
+    --tm-input: #121A2B;
     --tm-input-fg: #E2E8F0;
-    --tm-chrome: #0C4A6E;
+    --tm-chrome: #121A2B;
     --tm-chrome-end: #0B1220;
     --tm-chrome-border: #2A3548;
     --tm-chrome-muted: #1A2438;
-    --tm-sidebar: #0C4A6E;
+    --tm-sidebar: #121A2B;
     --tm-sidebar-end: #0B1220;
     --tm-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.45);
     --tm-shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.35);
@@ -188,7 +188,7 @@
 }
 
 .glass-morphism {
-  background: rgba(12, 74, 110, 0.72);
+  background: rgba(18, 26, 43, 0.72);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(56, 189, 248, 0.12);
 }

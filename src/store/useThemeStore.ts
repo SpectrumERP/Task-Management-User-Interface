@@ -3,7 +3,7 @@ import { create } from 'zustand';
 export type ThemeMode = 'dark' | 'light';
 
 const STORAGE_KEY = 'steelmont-theme';
-const DEFAULT_THEME: ThemeMode = 'light';
+const DEFAULT_THEME: ThemeMode = 'dark';
 
 function applyThemeClass(theme: ThemeMode) {
   if (typeof document === 'undefined') return;

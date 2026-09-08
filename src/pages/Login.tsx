@@ -57,7 +57,7 @@ export default function Login() {
   }, [checkAuth]);
 
   useEffect(() => {
-    previewTheme('light');
+    previewTheme('dark');
     return () => {
       previewTheme(getStoredTheme());
     };
@@ -124,7 +124,7 @@ export default function Login() {
           initial={{ opacity: 0, y: 28, rotateX: 8 }}
           animate={{ opacity: 1, y: 0, rotateX: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[42rem] max-h-[calc(100vh-1.5rem)] grid grid-cols-1 lg:grid-cols-[20rem_minmax(0,1fr)] overflow-hidden border border-sky-400/25 dark:border-white/10 bg-white dark:bg-[var(--tm-surface)] shadow-[0_28px_60px_rgba(0,0,0,0.35)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.55)] rounded-tl-none rounded-br-none rounded-tr-[1.75rem] rounded-bl-[1.75rem] [transform-style:preserve-3d]"
+          className="w-full max-w-[42rem] max-h-[calc(100vh-1.5rem)] grid grid-cols-1 lg:grid-cols-[20rem_minmax(0,1fr)] overflow-hidden border border-sky-400/25 dark:border-white/10 bg-white dark:bg-[#0C4A6E] shadow-[0_28px_60px_rgba(0,0,0,0.35)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.55)] rounded-tl-none rounded-br-none rounded-tr-[1.75rem] rounded-bl-[1.75rem] [transform-style:preserve-3d]"
         >
           {/* Left brand — cyan panel, theme-independent */}
           <div className="relative hidden lg:flex flex-col overflow-hidden bg-[#0EA5E9] text-white">
@@ -242,8 +242,8 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Right form */}
-          <div className="relative bg-white dark:bg-[var(--tm-surface)] px-6 py-6 sm:px-7 sm:py-8 flex flex-col justify-center overflow-visible">
+          {/* Right form — dark bg matches left header bar (#0C4A6E) */}
+          <div className="relative bg-white dark:bg-[#0C4A6E] px-6 py-6 sm:px-7 sm:py-8 flex flex-col justify-center overflow-visible">
             <div
               className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 bg-[#0EA5E9]/5 dark:bg-[#0EA5E9]/12"
               style={{ clipPath: 'polygon(30% 0, 100% 0, 100% 70%, 0 100%)' }}
