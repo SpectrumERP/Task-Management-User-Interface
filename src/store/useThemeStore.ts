@@ -15,10 +15,7 @@ function applyThemeClass(theme: ThemeMode) {
   if (meta) meta.setAttribute('content', theme === 'dark' ? '#0B1220' : '#F5F7F9');
 }
 
-export function isLoginPath(pathname = typeof location !== 'undefined' ? location.pathname : ''): boolean {
-  const path = (pathname || '/').replace(/\/+$/, '') || '/';
-  return path === '/login';
-}
+
 
 export function getStoredTheme(): ThemeMode {
   try {
@@ -61,7 +58,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
 /** Call once at app boot (before paint if possible). */
 export function initTheme(): ThemeMode {
-  const theme = isLoginPath() ? DEFAULT_THEME : getStoredTheme();
+  const theme = getStoredTheme();
   applyThemeClass(theme);
   useThemeStore.setState({ theme });
   return theme;

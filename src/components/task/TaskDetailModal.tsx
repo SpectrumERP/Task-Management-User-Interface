@@ -222,7 +222,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           .map((c: any) => ({
             userName: c.user?.userName || '',
             displayName: c.user?.displayName || '',
-            email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
+            email: c.user?.email || "",
             loginNo: c.user?.id
           }));
 
@@ -232,7 +232,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           .map((c: any) => ({
             userName: c.user?.userName || '',
             displayName: c.user?.displayName || '',
-            email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
+            email: c.user?.email || "",
             loginNo: c.user?.id
           }));
 

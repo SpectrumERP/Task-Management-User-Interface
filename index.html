@@ -20,9 +20,9 @@
   <script>
     (function () {
       try {
-        var path = (location.pathname || '/').replace(/\/+$/, '') || '/';
+
         var t = localStorage.getItem('steelmont-theme');
-        if (path === '/login' || (t !== 'light' && t !== 'dark')) t = 'dark';
+        if (t !== 'light' && t !== 'dark') t = 'dark';
         var r = document.documentElement;
         r.classList.toggle('dark', t === 'dark');
         r.style.colorScheme = t;

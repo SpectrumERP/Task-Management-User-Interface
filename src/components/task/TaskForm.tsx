@@ -1299,7 +1299,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               appendCollab({
                 userName: member.loginId,
                 displayName: member.printingName,
-                email: member.email || `${member.loginId}@glacier.com`,
+                email: member.email || "",
                 loginNo: member.loginNo,
                 isFromTeam: true
               });
@@ -1312,7 +1312,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               appendInform({
                 userName: member.loginId,
                 displayName: member.printingName,
-                email: member.email || `${member.loginId}@glacier.com`,
+                email: member.email || "",
                 loginNo: member.loginNo,
                 isFromTeam: true
               });

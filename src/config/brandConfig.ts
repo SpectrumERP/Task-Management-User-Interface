@@ -51,10 +51,10 @@ const STEELMONT_SPECTRUM: BrandConfig = {
   brandName: 'SteelMont',
   productName: 'Spectrum Task & Planner',
   platformLabel: 'SteelMont Platform',
-  liveBadge: 'Live workspace',
+  liveBadge: '',
   headline: 'Plan. Track.',
   headlineAccent: 'Deliver together.',
-  description: 'Tasks, meetings, and follow-ups — one clear view for your team.',
+  description: 'Tasks, meetings, and follow-ups.',
   features: [
     { key: 'boards', label: 'Boards' },
     { key: 'planner', label: 'Planner' },

@@ -14,7 +14,6 @@ import { getBrand } from '@/config/brandConfig';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { markOnboardingPending } from '@/components/layout/OnboardingSpotlightTour';
-import { getStoredTheme, previewTheme } from '@/store/useThemeStore';
 
 const FEATURE_ICONS = {
   boards: LayoutDashboard,
@@ -56,12 +55,7 @@ export default function Login() {
     checkAuth();
   }, [checkAuth]);
 
-  useEffect(() => {
-    previewTheme('dark');
-    return () => {
-      previewTheme(getStoredTheme());
-    };
-  }, []);
+
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -174,9 +168,8 @@ export default function Login() {
               aria-hidden="true"
               animate={{ opacity: [0.05, 0.09, 0.05], y: [0, -4, 0] }}
               transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-              className={`pointer-events-none absolute -right-6 bottom-4 h-[72px] w-[120px] object-contain select-none ${
-                brand.invertMaskLogo ? 'brightness-0 invert' : 'opacity-40'
-              }`}
+              className={`pointer-events-none absolute -right-6 bottom-4 h-[72px] w-[120px] object-contain select-none ${brand.invertMaskLogo ? 'brightness-0 invert' : 'opacity-40'
+                }`}
             />
 
             <div className="relative z-10 flex h-full flex-col px-5 pb-5 pt-0">
@@ -204,9 +197,9 @@ export default function Login() {
 
               <div className="mt-4 grid grid-cols-1 gap-2">
                 {[
-                  { key: 'boards' as const, title: 'Boards', desc: 'See work across stages' },
-                  { key: 'planner' as const, title: 'Planner', desc: 'Deadlines in one place' },
-                  { key: 'teams' as const, title: 'Teams', desc: 'Shared team visibility' },
+                  { key: 'boards' as const, title: 'Tasks', desc: 'Manage and track tasks' },
+                  { key: 'teams' as const, title: 'Deals', desc: 'Manage deals' },
+                  { key: 'planner' as const, title: 'Meetings', desc: 'Manage minutes of the meetings' },
                 ].map(({ key, title, desc }, index) => {
                   const Icon = FEATURE_ICONS[key];
                   return (
@@ -308,11 +301,10 @@ export default function Login() {
                     autoFocus
                     autoComplete="username"
                     aria-invalid={!!errors.loginId}
-                    className={`login-field pl-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${
-                      errors.loginId
-                        ? '!border-2 !border-red-500 focus:!border-red-500'
-                        : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
-                    }`}
+                    className={`login-field pl-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${errors.loginId
+                      ? '!border-2 !border-red-500 focus:!border-red-500'
+                      : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
+                      }`}
                     {...register('loginId', {
                       onChange: () => setServerError(''),
                     })}
@@ -342,11 +334,10 @@ export default function Login() {
                     placeholder="Enter password"
                     autoComplete="current-password"
                     aria-invalid={!!errors.password}
-                    className={`login-field pl-10 pr-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${
-                      errors.password
-                        ? '!border-2 !border-red-500 focus:!border-red-500'
-                        : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
-                    }`}
+                    className={`login-field pl-10 pr-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${errors.password
+                      ? '!border-2 !border-red-500 focus:!border-red-500'
+                      : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
+                      }`}
                     {...register('password', {
                       onChange: () => setServerError(''),
                     })}

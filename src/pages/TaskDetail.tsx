@@ -83,10 +83,10 @@ export default function TaskDetail() {
       if (response.success) {
         setIsDeleteDialogOpen(false);
         toast.success('Task deleted');
-        
+
         // Force remove pointer-events: none that Radix UI Dialog might leave behind when unmounting quickly
         document.body.style.pointerEvents = '';
-        
+
         setTimeout(() => {
           handleGoBack();
         }, 100);
@@ -120,7 +120,7 @@ export default function TaskDetail() {
           .map((c: any) => ({
             userName: c.user?.userName || '',
             displayName: c.user?.displayName || '',
-            email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
+            email: c.user?.email || "",
             loginNo: c.user?.id
           }));
 
@@ -130,7 +130,7 @@ export default function TaskDetail() {
           .map((c: any) => ({
             userName: c.user?.userName || '',
             displayName: c.user?.displayName || '',
-            email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
+            email: c.user?.email || "",
             loginNo: c.user?.id
           }));
 
