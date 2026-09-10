@@ -4,6 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/Combobox';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+
+const fieldClass = FIELD_CONTROL_CLASS;
 
 interface CompanyLocationModalProps {
   open: boolean;
@@ -68,139 +71,187 @@ export function CompanyLocationModal({
 }: CompanyLocationModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-3xl max-w-3xl p-6 border-none shadow-2xl bg-white select-none">
-        <DialogHeader className="pb-3 border-b border-slate-150">
-          <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
-            <MapPin size={18} className="text-[#006699]" />
+      <DialogContent
+        className={cn(
+          'w-[calc(100vw-1.5rem)] max-w-3xl p-0 gap-0 overflow-hidden',
+          'max-h-[min(90dvh,900px)] flex flex-col',
+          'rounded-[12px] border border-[var(--tm-border)]/80 shadow-xl bg-[var(--tm-surface)] select-none'
+        )}
+      >
+        <DialogHeader className="shrink-0 px-4 sm:px-5 py-3 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+          <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight flex items-center gap-2 pr-6">
+            <MapPin size={16} className="text-[#0EA5E9] shrink-0" />
             {editingIndex !== null ? 'Edit Location Address' : 'Add Location Address'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2 pr-2">
-          <div className="space-y-0">
-            <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Location Type <span className="text-red-500">*</span></label>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 space-y-3.5 scrollbar-thin">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-slate-300">
+              Location Type <span className="text-red-500">*</span>
+            </label>
             <Combobox
-              options={locationTypes.map((lt: any) => ({ label: lt.locationTypeName, value: lt.locationTypeNo.toString() }))}
+              options={locationTypes.map((lt: any) => ({
+                label: lt.locationTypeName,
+                value: lt.locationTypeNo.toString(),
+              }))}
               value={locType}
               onChange={(val) => {
                 setLocType(val);
-                if (locErrors.type) setLocErrors(prev => ({ ...prev, type: '' }));
+                if (locErrors.type) setLocErrors((prev) => ({ ...prev, type: '' }));
               }}
               placeholder="Select Location Type"
-              className={cn(
-                "bg-white border hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                locErrors.type ? "border-red-500" : "border-slate-200"
-              )}
+              className={cn(fieldClass, 'px-3', locErrors.type && 'border-red-400')}
             />
-            {locErrors.type && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.type}</p>}
+            {locErrors.type ? (
+              <p className="text-[10px] text-red-500 font-medium">{locErrors.type}</p>
+            ) : null}
           </div>
 
-          <div className="space-y-0">
-            <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Address <span className="text-red-500">*</span></label>
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-slate-300">
+              Address <span className="text-red-500">*</span>
+            </label>
             <textarea
               rows={2}
               placeholder="Enter address"
               value={locAddress}
               onChange={(e) => {
                 setLocAddress(e.target.value);
-                if (locErrors.address) setLocErrors(prev => ({ ...prev, address: '' }));
+                if (locErrors.address) setLocErrors((prev) => ({ ...prev, address: '' }));
               }}
               className={cn(
-                "bg-white border border-slate-200 hover:border-slate-300 transition-colors py-2 px-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20 min-h-[50px] resize-y",
-                locErrors.address && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                'w-full rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] px-3 py-2 text-xs font-medium text-slate-200 shadow-none resize-none min-h-[56px]',
+                'focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9]',
+                locErrors.address && 'border-red-400 focus:ring-red-500/10 focus:border-red-400'
               )}
             />
-            {locErrors.address && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.address}</p>}
+            {locErrors.address ? (
+              <p className="text-[10px] text-red-500 font-medium">{locErrors.address}</p>
+            ) : null}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Country</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-300">Country</label>
               <Combobox
-                options={countries.map((c: any) => ({ label: c.countryName, value: c.countryName }))}
+                options={countries.map((c: any) => ({
+                  label: c.countryName,
+                  value: c.countryName,
+                }))}
                 value={locCountry}
                 onChange={onCountryChange}
                 placeholder="Select country"
-                className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  locErrors.country && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+                className={cn(fieldClass, 'px-3', locErrors.country && 'border-red-400')}
               />
-              {locErrors.country && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.country}</p>}
+              {locErrors.country ? (
+                <p className="text-[10px] text-red-500 font-medium">{locErrors.country}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">State</label>
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-300">State</label>
               <Combobox
-                options={statesList.map((s: any) => ({ label: s.stateName, value: s.stateName }))}
+                options={statesList.map((s: any) => ({
+                  label: s.stateName,
+                  value: s.stateName,
+                }))}
                 value={locState}
                 onChange={onStateChange}
                 placeholder="Select state"
-                className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  locErrors.state && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+                className={cn(fieldClass, 'px-3', locErrors.state && 'border-red-400')}
               />
-              {locErrors.state && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.state}</p>}
+              {locErrors.state ? (
+                <p className="text-[10px] text-red-500 font-medium">{locErrors.state}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">City</label>
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-300">City</label>
               <Combobox
-                options={citiesList.map((ci: any) => ({ label: ci.cityName, value: ci.cityName }))}
+                options={citiesList.map((ci: any) => ({
+                  label: ci.cityName,
+                  value: ci.cityName,
+                }))}
                 value={locCity}
                 onChange={(val) => {
                   setLocCity(val);
-                  if (locErrors.city) setLocErrors(prev => ({ ...prev, city: '' }));
+                  if (locErrors.city) setLocErrors((prev) => ({ ...prev, city: '' }));
                 }}
                 placeholder="Select city"
-                className={cn(
-                  "bg-white border border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl px-3 w-full focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  locErrors.city && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+                className={cn(fieldClass, 'px-3', locErrors.city && 'border-red-400')}
               />
-              {locErrors.city && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.city}</p>}
+              {locErrors.city ? (
+                <p className="text-[10px] text-red-500 font-medium">{locErrors.city}</p>
+              ) : null}
             </div>
 
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">PIN / ZIP Code</label>
-              <Input placeholder="Enter PIN / ZIP Code" value={locPin} maxLength={10} onChange={(e) => {
-                setLocPin(e.target.value);
-                if (locErrors.pin) setLocErrors(prev => ({ ...prev, pin: '' }));
-              }}
-                className={cn(
-                  "bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20",
-                  locErrors.pin && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-                )}
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-300">PIN / ZIP Code</label>
+              <Input
+                placeholder="Enter PIN / ZIP Code"
+                value={locPin}
+                maxLength={10}
+                onChange={(e) => {
+                  setLocPin(e.target.value);
+                  if (locErrors.pin) setLocErrors((prev) => ({ ...prev, pin: '' }));
+                }}
+                className={cn(fieldClass, locErrors.pin && 'border-red-400')}
               />
-              {locErrors.pin && <p className="text-[9px] text-red-500 font-medium ml-1">{locErrors.pin}</p>}
+              {locErrors.pin ? (
+                <p className="text-[10px] text-red-500 font-medium">{locErrors.pin}</p>
+              ) : null}
             </div>
-            <div className="space-y-0 col-span-2">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Map URL</label>
-              <Input placeholder="Enter Map URL" value={locMapUrl} maxLength={2000} onChange={(e) => setLocMapUrl(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <label className="text-[11px] font-medium text-slate-300">Map URL</label>
+              <Input
+                placeholder="Enter Map URL"
+                value={locMapUrl}
+                maxLength={2000}
+                onChange={(e) => setLocMapUrl(e.target.value)}
+                className={fieldClass}
               />
             </div>
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Latitude</label>
-              <Input placeholder="Enter Latitude" value={locLatitude} maxLength={15} onChange={(e) => setLocLatitude(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-300">Latitude</label>
+              <Input
+                placeholder="Enter Latitude"
+                value={locLatitude}
+                maxLength={15}
+                onChange={(e) => setLocLatitude(e.target.value)}
+                className={fieldClass}
               />
             </div>
-            <div className="space-y-0">
-              <label className="text-[10px] font-medium text-slate-700 normal-case ml-0.5">Longitude</label>
-              <Input placeholder="Enter Longitude" value={locLongitude} maxLength={15} onChange={(e) => setLocLongitude(e.target.value)}
-                className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-9 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#006699]/20"
+
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-medium text-slate-300">Longitude</label>
+              <Input
+                placeholder="Enter Longitude"
+                value={locLongitude}
+                maxLength={15}
+                onChange={(e) => setLocLongitude(e.target.value)}
+                className={fieldClass}
               />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="pt-3 border-t border-slate-150 flex justify-end gap-0.5 bg-slate-50/50 -mx-6 -mb-6 p-4 rounded-b-3xl">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl h-9 text-xs font-medium text-slate-500 hover:bg-slate-100">
+        <DialogFooter className="shrink-0 px-4 sm:px-5 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] flex flex-row justify-end gap-2 rounded-b-[12px]">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-[8px] h-9 text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={onSave} className="rounded-xl h-9 text-xs font-medium bg-[#006699] hover:bg-[#005580] text-white">
+          <Button
+            type="button"
+            onClick={onSave}
+            className="rounded-[8px] h-9 text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
+          >
             {editingIndex !== null ? 'Save Changes' : 'Add Location'}
           </Button>
         </DialogFooter>

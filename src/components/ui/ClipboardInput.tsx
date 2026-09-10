@@ -16,8 +16,34 @@ interface ClipboardInputProps extends React.InputHTMLAttributes<HTMLInputElement
 
 const ClipboardEntryView = ({ entry, fieldLabel, onHistorySelect }: { entry: ClipboardEntry, fieldLabel: string, onHistorySelect: (text: string | undefined, close: boolean) => void }) => {
   const [selectedLineIndices, setSelectedLineIndices] = useState<Set<number>>(new Set());
-  const lines = entry.formattedText.split('\n').map(l => l.trim()).filter(l => l);
-
+  const lines = React.useMemo(() => {
+    let rawLines = entry.formattedText.split('\n').map(l => l.trim()).filter(l => l);
+    const text = entry.formattedText.trim();
+    if (text.startsWith('{') && text.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(text);
+        const extractValues = (obj: any): string[] => {
+          let vals: string[] = [];
+          for (const key in obj) {
+            if (Array.isArray(obj[key])) {
+              vals = vals.concat(obj[key].map((x: any) => String(x)));
+            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+              vals = vals.concat(extractValues(obj[key]));
+            } else {
+              if (obj[key] !== null && obj[key] !== undefined && String(obj[key]).trim() !== '') {
+                vals.push(String(obj[key]));
+              }
+            }
+          }
+          return vals;
+        };
+        rawLines = extractValues(parsed).filter(l => l.trim() !== '');
+      } catch (e) {
+        // ignore JSON parse error, fallback to raw lines
+      }
+    }
+    return rawLines;
+  }, [entry.formattedText]);
   const toggleLine = (index: number) => {
     const newSet = new Set(selectedLineIndices);
     if (newSet.has(index)) {
@@ -34,9 +60,9 @@ const ClipboardEntryView = ({ entry, fieldLabel, onHistorySelect }: { entry: Cli
   };
 
   return (
-    <div className="p-3 border-b last:border-b-0 hover:bg-slate-50 transition-colors">
+    <div className="p-3 border-b last:border-b-0 hover:bg-[var(--tm-muted)] transition-colors">
       <div className="flex justify-between items-start mb-2">
-        <span className="text-xs font-medium text-slate-800 truncate max-w-[180px]">
+        <span className="text-xs font-medium text-slate-100 truncate max-w-[180px]">
           {entry.data.name || 'Unknown Name'}
         </span>
         <span className="text-[10px] text-slate-400 flex items-center">
@@ -45,7 +71,7 @@ const ClipboardEntryView = ({ entry, fieldLabel, onHistorySelect }: { entry: Cli
         </span>
       </div>
       <div
-        className="w-full text-[10px] rounded border border-slate-200 bg-white font-mono mb-2"
+        className="w-full text-[10px] rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] font-mono mb-2"
       >
         {lines.map((line, idx) => {
            const isSelected = selectedLineIndices.has(idx);
@@ -55,8 +81,8 @@ const ClipboardEntryView = ({ entry, fieldLabel, onHistorySelect }: { entry: Cli
                type="button"
                onClick={() => toggleLine(idx)}
                className={cn(
-                 "w-full text-left p-1.5 border-b last:border-b-0 cursor-pointer hover:bg-slate-100 transition-colors break-words whitespace-pre-wrap select-none focus:outline-none focus:bg-slate-100",
-                 isSelected && "bg-blue-50 border-blue-200 text-blue-700 font-medium hover:bg-blue-100 focus:bg-blue-100"
+                 "w-full text-left p-1.5 border-b last:border-b-0 cursor-pointer hover:bg-[var(--tm-muted)] transition-colors break-words whitespace-pre-wrap select-none focus:outline-none focus:bg-[var(--tm-muted)]",
+                 isSelected && "bg-blue-500/15 border-blue-500/30 text-blue-400 font-medium hover:bg-blue-100 focus:bg-blue-100"
                )}
              >
                {line}
@@ -79,7 +105,7 @@ const ClipboardEntryView = ({ entry, fieldLabel, onHistorySelect }: { entry: Cli
         )}
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-md text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring bg-slate-100 text-slate-900 hover:bg-slate-200 h-6 px-2 py-1"
+          className="inline-flex items-center justify-center rounded-md text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring bg-[var(--tm-muted)] text-slate-50 hover:bg-slate-200 h-6 px-2 py-1"
           onClick={(e) => {
             e.stopPropagation();
             onHistorySelect(entry.data[fieldLabel.toLowerCase() as keyof typeof entry.data] || entry.formattedText, true);
@@ -128,7 +154,7 @@ export const ClipboardInput = React.forwardRef<HTMLInputElement, ClipboardInputP
               ref={ref}
               value={value}
               onChange={(e) => onValueChange(e.target.value)}
-              className={cn("pr-16", className)}
+              className={cn("pr-2", className)}
               {...props}
             />
             
@@ -146,7 +172,7 @@ export const ClipboardInput = React.forwardRef<HTMLInputElement, ClipboardInputP
               <button
                 type="button"
                 onClick={handleCopy}
-                className="p-1 text-slate-400 hover:text-slate-700 bg-white rounded-sm"
+                className="p-1 text-slate-400 hover:text-slate-200 group-hover:bg-[var(--tm-surface)] rounded-sm"
                 title="Copy value"
               >
                 <ClipboardCopy className="w-3.5 h-3.5" />
@@ -156,15 +182,15 @@ export const ClipboardInput = React.forwardRef<HTMLInputElement, ClipboardInputP
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="p-1 text-slate-400 hover:text-slate-700 bg-white rounded-sm"
+                    className="p-1 text-slate-400 hover:text-slate-200 group-hover:bg-[var(--tm-surface)] rounded-sm"
                     title="Clipboard history"
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-96 p-0" align="end">
-                  <div className="p-2 border-b bg-slate-50 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-600">Clipboard History</span>
+                  <div className="p-2 border-b bg-[var(--tm-muted)] flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-300">Clipboard History</span>
                     <span className="text-xs text-slate-400">{entries.length} entries</span>
                   </div>
                   <div className="max-h-96 overflow-y-auto">

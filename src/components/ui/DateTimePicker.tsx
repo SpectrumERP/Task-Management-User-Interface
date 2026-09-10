@@ -1,21 +1,10 @@
 import React from "react"
+import { createPortal } from "react-dom"
 import { format } from "date-fns"
-import { Calendar as CalendarIcon, Clock } from "lucide-react"
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 interface DateTimePickerProps {
   date?: Date
@@ -26,128 +15,352 @@ interface DateTimePickerProps {
   hideTime?: boolean
 }
 
-export function DateTimePicker({ date, onChange, placeholder, className, disabled, hideTime = false }: DateTimePickerProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const defaultPlaceholder = hideTime ? "Pick a date" : "Pick a date and time";
-  const displayPlaceholder = placeholder || defaultPlaceholder;
+const MINUTES = [0, 15, 30, 45]
 
+function CompactStepper({
+  label,
+  value,
+  onUp,
+  onDown,
+}: {
+  label: string
+  value: string
+  onUp: () => void
+  onDown: () => void
+}) {
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant={"outline"}
-          disabled={disabled}
-          className={cn(
-            "w-full justify-start text-left font-medium rounded-xl bg-white shadow-sm text-sm transition-all text-slate-900 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15 border",
-            !className?.includes("border-") && "border-slate-300",
-            !date && "text-slate-500",
-            className
-          )}
+    <div className="inline-flex shrink-0 items-center rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm">
+      <button
+        type="button"
+        onClick={onDown}
+        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-l-[6px] text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] transition-colors"
+        aria-label={`Decrease ${label}`}
+      >
+        <ChevronLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+      </button>
+      <span className="h-7 min-w-[1.6rem] px-0.5 inline-flex items-center justify-center text-[12px] font-semibold tabular-nums text-slate-100">
+        {value}
+      </span>
+      <button
+        type="button"
+        onClick={onUp}
+        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-r-[6px] text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] transition-colors"
+        aria-label={`Increase ${label}`}
+      >
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+      </button>
+    </div>
+  )
+}
+
+export function DateTimePicker({
+  date,
+  onChange,
+  placeholder,
+  className,
+  disabled,
+  hideTime = false,
+}: DateTimePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false)
+  const rootRef = React.useRef<HTMLDivElement | null>(null)
+  const panelRef = React.useRef<HTMLDivElement | null>(null)
+  const [panelStyle, setPanelStyle] = React.useState<React.CSSProperties>({})
+  const defaultPlaceholder = hideTime ? "Pick a date" : "Pick a date and time"
+  const displayPlaceholder = placeholder || defaultPlaceholder
+
+  const hour12 = date ? (date.getHours() % 12 === 0 ? 12 : date.getHours() % 12) : 12
+  const minute = date ? date.getMinutes() : 0
+  const period = date && date.getHours() >= 12 ? "PM" : "AM"
+
+  const getPortalTarget = React.useCallback(() => {
+    const trigger = rootRef.current
+    if (!trigger) return document.body
+    // Keep panel inside the Radix dialog portal so modal focus/outside handlers
+    // don't swallow calendar clicks.
+    const dialog = trigger.closest('[role="dialog"]')
+    return (dialog?.parentElement as HTMLElement | null) || document.body
+  }, [])
+
+  const updatePanelPosition = React.useCallback(() => {
+    const trigger = rootRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const gap = 6
+    const panelWidth = 300
+    let left = rect.left
+    left = Math.min(left, window.innerWidth - panelWidth - 8)
+    left = Math.max(8, left)
+
+    const estimatedHeight = hideTime ? 280 : 340
+    const spaceBelow = window.innerHeight - rect.bottom - gap
+    const placeAbove = spaceBelow < estimatedHeight && rect.top > spaceBelow
+
+    if (placeAbove) {
+      setPanelStyle({
+        position: "fixed",
+        left,
+        width: panelWidth,
+        bottom: window.innerHeight - rect.top + gap,
+        top: "auto",
+        zIndex: 9999,
+      })
+    } else {
+      setPanelStyle({
+        position: "fixed",
+        left,
+        width: panelWidth,
+        top: rect.bottom + gap,
+        bottom: "auto",
+        zIndex: 9999,
+      })
+    }
+  }, [hideTime])
+
+  React.useEffect(() => {
+    if (!isOpen) return
+    updatePanelPosition()
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node
+      const inTrigger = rootRef.current?.contains(target)
+      const inPanel = panelRef.current?.contains(target)
+      if (!inTrigger && !inPanel) setIsOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false)
+    }
+    const onReposition = () => updatePanelPosition()
+
+    document.addEventListener("mousedown", onPointerDown)
+    document.addEventListener("touchstart", onPointerDown)
+    document.addEventListener("keydown", onKeyDown)
+    window.addEventListener("resize", onReposition)
+    // Capture scroll from nested form containers too
+    window.addEventListener("scroll", onReposition, true)
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown)
+      document.removeEventListener("touchstart", onPointerDown)
+      document.removeEventListener("keydown", onKeyDown)
+      window.removeEventListener("resize", onReposition)
+      window.removeEventListener("scroll", onReposition, true)
+    }
+  }, [isOpen, updatePanelPosition])
+
+  const applyTime = (next: { hour12?: number; minute?: number; period?: "AM" | "PM" }) => {
+    const base = date ? new Date(date) : new Date()
+    if (!date) base.setSeconds(0, 0)
+    const h12 = next.hour12 ?? hour12
+    const m = next.minute ?? minute
+    const p = next.period ?? period
+    let hrs = h12
+    if (p === "PM" && hrs < 12) hrs += 12
+    if (p === "AM" && hrs === 12) hrs = 0
+    base.setHours(hrs, m, 0, 0)
+    onChange?.(base)
+  }
+
+  const stepHour = (delta: number) => {
+    let next = hour12 + delta
+    if (next > 12) next = 1
+    if (next < 1) next = 12
+    applyTime({ hour12: next })
+  }
+
+  const stepMinute = (delta: number) => {
+    const idx = MINUTES.includes(minute)
+      ? MINUTES.indexOf(minute)
+      : MINUTES.findIndex((m) => m > minute) - 1
+    const safeIdx = idx < 0 ? 0 : idx
+    const nextIdx = (safeIdx + delta + MINUTES.length) % MINUTES.length
+    applyTime({ minute: MINUTES[nextIdx] })
+  }
+
+  const panel = isOpen
+    ? createPortal(
+        <div
+          ref={panelRef}
+          data-datetime-picker-panel=""
+          style={panelStyle}
+          className="rounded-[12px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35)] overflow-hidden pointer-events-auto"
+          role="dialog"
+          aria-modal="false"
         >
-          <CalendarIcon className="mr-2 h-4 w-4 text-slate-500 shrink-0" />
-          {date ? (
-            <span className="truncate">{format(date, hideTime ? "MMM dd, yyyy" : "MMM dd, yyyy h:mm a")}</span>
-          ) : (
-            <span className="truncate">{displayPlaceholder}</span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 rounded-2xl border-slate-100 shadow-2xl z-[150]" align="start">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={(selectedDate) => {
-            if (selectedDate) {
-              if (date) {
-                selectedDate.setHours(date.getHours(), date.getMinutes())
-              }
-              onChange?.(selectedDate)
-              if (hideTime) {
-                setIsOpen(false);
-              }
-            } else {
-              onChange?.(undefined)
-            }
-          }}
-          className="rounded-2xl border-none p-3 pb-0"
-        />
-        {!hideTime && (
-          <div className="p-3 pt-2 border-t border-slate-100 flex flex-col gap-2.5 bg-slate-50/50 rounded-b-2xl">
-            <div className="flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[10px] font-black text-slate-600  ">Time Select</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/* Hours Selector */}
-              <Select
-                value={date ? (date.getHours() % 12 === 0 ? 12 : date.getHours() % 12).toString() : "12"}
-                onValueChange={(val) => {
-                  const newDate = date ? new Date(date) : new Date();
-                  let hrs = parseInt(val, 10);
-                  const isPM = newDate.getHours() >= 12;
-                  if (isPM && hrs < 12) hrs += 12;
-                  if (!isPM && hrs === 12) hrs = 0;
-                  newDate.setHours(hrs);
-                  onChange?.(newDate);
-                }}
-              >
-                <SelectTrigger className="h-9 w-[64px] rounded-xl border-slate-200 bg-white font-bold text-xs text-slate-700 shadow-sm focus:ring-1 focus:ring-[#006699]/15">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl max-h-[200px]">
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                    <SelectItem key={h} value={h.toString()} className="text-xs font-semibold rounded-lg">{h.toString().padStart(2, '0')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
+            <p className="text-[11px] font-semibold text-slate-100 truncate">
+              {date
+                ? format(date, hideTime ? "MMM dd, yyyy" : "EEE, MMM d · h:mm a")
+                : hideTime
+                  ? "Select date"
+                  : "Select date & time"}
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="h-5 w-5 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-slate-300 hover:bg-[var(--tm-surface)] transition-colors shrink-0"
+              aria-label="Close"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
 
-              <span className="text-slate-400 font-bold text-xs">:</span>
-
-              {/* Minutes Selector */}
-              <Select
-                value={date ? date.getMinutes().toString() : "0"}
-                onValueChange={(val) => {
-                  const newDate = date ? new Date(date) : new Date();
-                  newDate.setMinutes(parseInt(val, 10));
-                  onChange?.(newDate);
-                }}
-              >
-                <SelectTrigger className="h-9 w-[64px] rounded-xl border-slate-200 bg-white font-bold text-xs text-slate-700 shadow-sm focus:ring-1 focus:ring-[#006699]/15">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl max-h-[200px]">
-                  {Array.from({ length: 60 }, (_, i) => i).map((m) => (
-                    <SelectItem key={m} value={m.toString()} className="text-xs font-semibold rounded-lg">{m.toString().padStart(2, '0')}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* AM/PM Selector */}
-              <Select
-                value={date && date.getHours() >= 12 ? "PM" : "AM"}
-                onValueChange={(val) => {
-                  const newDate = date ? new Date(date) : new Date();
-                  const currentHrs = newDate.getHours();
-                  if (val === "PM" && currentHrs < 12) {
-                    newDate.setHours(currentHrs + 12);
-                  } else if (val === "AM" && currentHrs >= 12) {
-                    newDate.setHours(currentHrs - 12);
+          <div className="px-2 pt-1 pb-1.5">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(selectedDate) => {
+                if (selectedDate) {
+                  if (date) {
+                    selectedDate.setHours(date.getHours(), date.getMinutes())
+                  } else {
+                    const hrs =
+                      period === "PM" && hour12 < 12
+                        ? hour12 + 12
+                        : hour12 === 12 && period === "AM"
+                          ? 0
+                          : hour12
+                    selectedDate.setHours(hrs, minute, 0, 0)
                   }
-                  onChange?.(newDate);
+                  onChange?.(selectedDate)
+                  if (hideTime) setIsOpen(false)
+                } else {
+                  onChange?.(undefined)
+                }
+              }}
+              className="rounded-none border-none bg-transparent p-0 w-full"
+              classNames={{
+                root: "w-full",
+                months: "relative w-full flex flex-col",
+                month: "w-full gap-1.5",
+                month_caption: "flex h-7 w-full items-center justify-center px-7",
+                caption_label: "text-[12px] font-semibold text-slate-100",
+                nav: "absolute inset-x-0 top-0 flex items-center justify-between",
+                button_previous:
+                  "size-6 rounded-full text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] z-10",
+                button_next:
+                  "size-6 rounded-full text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] z-10",
+                month_grid: "w-full border-collapse table-fixed",
+                weekdays: "w-full",
+                weekday:
+                  "h-6 p-0 text-center align-middle text-[9px] font-semibold uppercase tracking-wide text-slate-400",
+                weeks: "w-full",
+                week: "w-full",
+                day: "relative h-8 w-[14.2857%] p-0 text-center align-middle",
+                today: "bg-transparent",
+                outside: "opacity-40",
+              }}
+              components={{
+                DayButton: ({ day: _day, modifiers, ...props }) => (
+                  <button
+                    type="button"
+                    {...props}
+                    className={cn(
+                      "mx-auto flex size-7 items-center justify-center rounded-full text-[11px] font-medium tabular-nums transition-colors",
+                      "hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]",
+                      modifiers.outside && "text-slate-300",
+                      modifiers.today &&
+                        !modifiers.selected &&
+                        "bg-[var(--tm-tint)] text-[#0EA5E9] font-semibold",
+                      modifiers.selected &&
+                        "bg-[#0EA5E9] text-white hover:bg-[#0284C7] hover:text-white font-semibold"
+                    )}
+                  />
+                ),
+              }}
+            />
+          </div>
+
+          {/* Compact time + actions in one row */}
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] px-2 py-1.5">
+            {!hideTime && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <CompactStepper
+                  label="hour"
+                  value={String(hour12).padStart(2, "0")}
+                  onUp={() => stepHour(1)}
+                  onDown={() => stepHour(-1)}
+                />
+                <span className="text-[11px] font-semibold text-slate-300">:</span>
+                <CompactStepper
+                  label="minute"
+                  value={String(minute).padStart(2, "0")}
+                  onUp={() => stepMinute(1)}
+                  onDown={() => stepMinute(-1)}
+                />
+                <div className="inline-flex shrink-0 rounded-[7px] bg-[var(--tm-muted)]/90 p-0.5">
+                  {(["AM", "PM"] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => applyTime({ period: p })}
+                      className={cn(
+                        "h-6 min-w-[1.85rem] rounded-[6px] px-1.5 text-[10px] font-semibold transition-all",
+                        period === p
+                          ? "bg-[#0EA5E9] text-white shadow-sm"
+                          : "text-slate-500 hover:text-[#0EA5E9]"
+                      )}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="ml-auto flex items-center gap-1 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  onChange?.(undefined)
+                  setIsOpen(false)
                 }}
+                className="h-7 px-2 rounded-[7px] text-[10px] font-medium text-slate-500 hover:text-slate-200"
               >
-                <SelectTrigger className="h-9 w-[64px] rounded-xl border-slate-200 bg-white font-bold text-xs text-slate-700 shadow-sm focus:ring-1 focus:ring-[#006699]/15">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="AM" className="text-xs font-bold rounded-lg">AM</SelectItem>
-                  <SelectItem value="PM" className="text-xs font-bold rounded-lg">PM</SelectItem>
-                </SelectContent>
-              </Select>
+                Clear
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="h-7 px-3 rounded-[7px] text-[10px] font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+              >
+                Apply
+              </Button>
             </div>
           </div>
+        </div>,
+        getPortalTarget()
+      )
+    : null
+
+  return (
+    <div ref={rootRef} className="relative w-full">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={disabled}
+        aria-expanded={isOpen}
+        onClick={() => !disabled && setIsOpen((open) => !open)}
+        className={cn(
+          "w-full h-10 justify-start text-left font-medium bg-[var(--tm-surface)] text-xs transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-[#0EA5E9]/35 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 border shadow-none",
+          !date && "text-slate-400",
+          isOpen && "border-[#0EA5E9]/40 ring-2 ring-[#0EA5E9]/10",
+          className,
+          "rounded-[8px] border-[var(--tm-border)]",
+          isOpen && "border-[#0EA5E9]/40"
         )}
-      </PopoverContent>
-    </Popover>
+      >
+        <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+          <CalendarIcon className="h-3.5 w-3.5" />
+        </span>
+        {date ? (
+          <span className="truncate">
+            {format(date, hideTime ? "MMM dd, yyyy" : "MMM dd, yyyy h:mm a")}
+          </span>
+        ) : (
+          <span className="truncate">{displayPlaceholder}</span>
+        )}
+      </Button>
+      {panel}
+    </div>
   )
 }

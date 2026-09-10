@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { MapPin, Home } from 'lucide-react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/Combobox';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { cn } from '@/lib/utils';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterCreateDialog } from '../MasterCreateDialog';
 import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
@@ -15,6 +17,61 @@ import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 
 const FORM_NO = 1541;
 const TITLE = 'Location Master';
+
+const fieldClass = FIELD_CONTROL_CLASS;
+
+function FieldErrorTip({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <span
+      role="alert"
+      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
+    >
+      {message}
+    </span>
+  );
+}
+
+function FieldControl({
+  children,
+  error,
+  className,
+}: {
+  children: ReactNode;
+  error?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('relative min-w-0', className)}>
+      {children}
+      <FieldErrorTip message={error} />
+    </div>
+  );
+}
+
+function FieldLabel({
+  children,
+  required,
+  htmlFor,
+}: {
+  children: ReactNode;
+  required?: boolean;
+  htmlFor?: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
+    >
+      <span>{children}</span>
+      {required ? (
+        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
+          *
+        </span>
+      ) : null}
+    </label>
+  );
+}
 
 interface LocationFormProps {
   id?: string;
@@ -104,7 +161,7 @@ export function LocationForm({ id }: LocationFormProps) {
     setLocStatesList([]);
     setLocCitiesList([]);
     if (errors.countryNo || errors.stateNo || errors.cityNo) {
-      setErrors(prev => ({ ...prev, countryNo: '', stateNo: '', cityNo: '' }));
+      setErrors((prev) => ({ ...prev, countryNo: '', stateNo: '', cityNo: '' }));
     }
     if (val) {
       const states = await fetchStatesByCountry(val);
@@ -117,7 +174,7 @@ export function LocationForm({ id }: LocationFormProps) {
     setCityNo('');
     setLocCitiesList([]);
     if (errors.stateNo || errors.cityNo) {
-      setErrors(prev => ({ ...prev, stateNo: '', cityNo: '' }));
+      setErrors((prev) => ({ ...prev, stateNo: '', cityNo: '' }));
     }
     if (val) {
       const cities = await fetchCitiesByState(val);
@@ -128,7 +185,7 @@ export function LocationForm({ id }: LocationFormProps) {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) {
-      newErrors.name = 'location Name is required';
+      newErrors.name = 'Location Name is required';
     }
     if (!address1.trim()) {
       newErrors.address1 = 'Address Line 1 is required';
@@ -189,6 +246,26 @@ export function LocationForm({ id }: LocationFormProps) {
     }
   };
 
+  const parentOptions = [
+    { label: 'No Parent (Root)', value: 'none' },
+    ...(locationFillValues?.data?.locations || locationFillValues?.locations || [])
+      .filter((l: any) => (l.operLocationNo || l.id || '').toString() !== editingId)
+      .map((l: any) => ({
+        label: l.operLocationName || l.locationName || l.name || '',
+        value: (l.operLocationNo || l.id || '').toString(),
+      })),
+  ];
+
+  const regionOptions = (locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
+    label: r.regionName || '',
+    value: (r.regionNo || '').toString(),
+  }));
+
+  const countryOptions = (locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+    label: c.countryName || '',
+    value: (c.countryNo || '').toString(),
+  }));
+
   return (
     <MasterFormShell
       type="location"
@@ -203,188 +280,265 @@ export function LocationForm({ id }: LocationFormProps) {
       showSuccessAlert={showSuccessAlert}
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
-      {/* Disabled System Code */}
-      <div className="flex items-center gap-0.5 px-1 mb-4">
-        <label className="text-[11px] font-medium text-slate-700 normal-case">Code:</label>
-        <div className="text-xs font-medium text-slate-500 select-none">
-          {editingId ? code : 'AUTO-GEN-CODE'}
-        </div>
-      </div>
-
-      {/* Standard Name Input */}
-      <div className="space-y-0">
-        <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Location Name <span className="text-red-500 font-medium">*</span></label>
-        <Input placeholder="Enter location name" value={name} maxLength={50} onChange={(e) => {
-          setName(e.target.value);
-          if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-        }}
-          className={cn(
-            "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-            errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-          )}
-        />
-        {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
-      </div>
-
-      {/* LOCATION EXTRA FIELDS */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-0">
-            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Parent Location</label>
-            <Combobox options={[{ label: "No Parent (Root)", value: "none" }, ...(locationFillValues?.data?.locations || locationFillValues?.locations || []).filter((l: any) => (l.operLocationNo || l.id || '').toString() !== editingId).map((l: any) => ({
-              label: l.operLocationName || l.locationName || l.name || '',
-              value: (l.operLocationNo || l.id || '').toString()
-            }))
-            ]}
-              value={parentLocationNo}
-              onChange={setParentLocationNo}
-              placeholder="Select Parent Location"
-              searchPlaceholder="Search parent..."
-              className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-            />
-          </div>
-
-          <div className="space-y-0">
-            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Incharge Lead <span className="text-red-500 font-medium">*</span></label>
-            <UserCombobox value={inchargeNo} onChange={(user) => {
-              setInchargeNo(user.loginNo.toString());
-              setInchargeLabel(user.printingName);
-              if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
-            }}
-              initialLabel={inchargeLabel}
-              placeholder="Search Incharge Lead..."
-              className={cn(
-                "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                errors.inchargeNo && "border-red-500 focus:ring-red-500/10 focus:border-red-500 focus-visible:ring-red-500/10 focus-visible:border-red-500"
-              )}
-            />
-            {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
+      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+            <MapPin size={15} strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Location Details</h2>
+            <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
+              Name, hierarchy, incharge, and region
+            </p>
           </div>
         </div>
 
-        <div className="space-y-0">
-          <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Location Region</label>
-          <Combobox options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
-            label: r.regionName || '',
-            value: (r.regionNo || '').toString()
-          }))}
-            value={locationRegion}
-            onChange={setLocationRegion}
-            placeholder="Select Location Region"
-            searchPlaceholder="Search region..."
-            className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
-          />
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 w-full">
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel>Code</FieldLabel>
+              <Input
+                readOnly
+                tabIndex={-1}
+                value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
+                className={cn(
+                  fieldClass,
+                  'bg-[var(--tm-elevated)] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-[var(--tm-border)]/80'
+                )}
+              />
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel htmlFor="locationName" required>
+                Location Name
+              </FieldLabel>
+              <FieldControl error={errors.name}>
+                <Input
+                  id="locationName"
+                  placeholder="Enter location name"
+                  value={name}
+                  maxLength={50}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+                  }}
+                  className={cn(
+                    fieldClass,
+                    errors.name &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                />
+              </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel>Parent Location</FieldLabel>
+              <Combobox
+                options={parentOptions}
+                value={parentLocationNo}
+                onChange={setParentLocationNo}
+                placeholder="Select Parent Location"
+                searchPlaceholder="Search parent..."
+                className={fieldClass}
+              />
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel required>Incharge Lead</FieldLabel>
+              <FieldControl error={errors.inchargeNo}>
+                <UserCombobox
+                  value={inchargeNo}
+                  onChange={(user) => {
+                    setInchargeNo(user.loginNo.toString());
+                    setInchargeLabel(user.printingName);
+                    if (errors.inchargeNo) setErrors((prev) => ({ ...prev, inchargeNo: '' }));
+                  }}
+                  initialLabel={inchargeLabel}
+                  placeholder="Search Incharge Lead..."
+                  className={cn(
+                    fieldClass,
+                    errors.inchargeNo &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                />
+              </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <FieldLabel>Location Region</FieldLabel>
+              <Combobox
+                options={regionOptions}
+                value={locationRegion}
+                onChange={setLocationRegion}
+                placeholder="Select Location Region"
+                searchPlaceholder="Search region..."
+                className={fieldClass}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+            <Home size={15} strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Address</h2>
+            <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
+              Street address, country, state, city, and PIN
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-0">
-          <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Address <span className="text-red-500 font-medium">*</span></label>
-          <div className="space-y-0">
-            <Input placeholder="Enter Address" value={address1} maxLength={150} onChange={(e) => {
-              setAddress1(e.target.value);
-              if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
-            }}
-              className={cn(
-                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                errors.address1 && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-              )}
-            />
-            {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
-            <Input placeholder="Address Line 2 (Optional)" value={address2} maxLength={150} onChange={(e) => setAddress2(e.target.value)}
-              className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-            />
-            <Input placeholder="Address Line 3 (Optional)" value={address3} maxLength={150} onChange={(e) => setAddress3(e.target.value)}
-              className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-            />
-          </div>
-        </div>
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 w-full">
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <FieldLabel htmlFor="address1" required>
+                Address
+              </FieldLabel>
+              <FieldControl error={errors.address1}>
+                <Input
+                  id="address1"
+                  placeholder="Enter Address"
+                  value={address1}
+                  maxLength={150}
+                  onChange={(e) => {
+                    setAddress1(e.target.value);
+                    if (errors.address1) setErrors((prev) => ({ ...prev, address1: '' }));
+                  }}
+                  className={cn(
+                    fieldClass,
+                    errors.address1 &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                />
+              </FieldControl>
+            </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-0">
-            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Country <span className="text-red-500 font-medium">*</span></label>
-            <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-              label: c.countryName || '',
-              value: (c.countryNo || '').toString()
-            }))}
-              value={countryNo}
-              onChange={handleLocationCountryChange}
-              placeholder="Select Country"
-              searchPlaceholder="Search country..."
-              className={cn(
-                "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                errors.countryNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-              )}
-              onAddNew={() => {
-                setActiveMasterType('country');
-                setIsMasterCreateOpen(true);
-              }}
-            />
-            {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
-          </div>
-          <div className="space-y-0">
-            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">State / Province <span className="text-red-500 font-medium">*</span></label>
-            <Combobox options={locStatesList.map((s: any) => ({
-              label: s.stateName || '',
-              value: (s.stateNo || '').toString()
-            }))}
-              value={stateNo}
-              onChange={handleLocationStateChange}
-              disabled={!countryNo}
-              placeholder={countryNo ? "Select State" : "Select country first"}
-              searchPlaceholder="Search state..."
-              className={cn(
-                "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                errors.stateNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-              )}
-              onAddNew={() => {
-                setActiveMasterType('state');
-                setIsMasterCreateOpen(true);
-              }}
-            />
-            {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
-          </div>
-        </div>
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <Input
+                placeholder="Address Line 2 (Optional)"
+                value={address2}
+                maxLength={150}
+                onChange={(e) => setAddress2(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
 
-        <div className="grid grid-cols-3 gap-0.5.5">
-          <div className="space-y-0 col-span-2">
-            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">City <span className="text-red-500 font-medium">*</span></label>
-            <Combobox options={locCitiesList.map((c: any) => ({
-              label: c.cityName || '',
-              value: (c.cityNo || '').toString()
-            }))}
-              value={cityNo}
-              onChange={(val) => {
-                setCityNo(val);
-                if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
-              }}
-              disabled={!stateNo}
-              placeholder={stateNo ? "Select City" : "Select state first"}
-              searchPlaceholder="Search city..."
-              className={cn(
-                "h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none",
-                errors.cityNo && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-              )}
-              onAddNew={() => {
-                setActiveMasterType('city');
-                setIsMasterCreateOpen(true);
-              }}
-            />
-            {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
-          </div>
-          <div className="space-y-0">
-            <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">PIN / ZIP Code <span className="text-red-500 font-medium">*</span></label>
-            <Input placeholder="Enter PIN / ZIP Code" value={pinCode} maxLength={10} onChange={(e) => {
-              setPinCode(e.target.value);
-              if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
-            }}
-              className={cn(
-                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-                errors.pinCode && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-              )}
-            />
-            {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <Input
+                placeholder="Address Line 3 (Optional)"
+                value={address3}
+                maxLength={150}
+                onChange={(e) => setAddress3(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel required>Country</FieldLabel>
+              <FieldControl error={errors.countryNo}>
+                <Combobox
+                  options={countryOptions}
+                  value={countryNo}
+                  onChange={handleLocationCountryChange}
+                  placeholder="Select Country"
+                  searchPlaceholder="Search country..."
+                  className={cn(
+                    fieldClass,
+                    errors.countryNo &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                  onAddNew={() => {
+                    setActiveMasterType('country');
+                    setIsMasterCreateOpen(true);
+                  }}
+                />
+              </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel required>State / Province</FieldLabel>
+              <FieldControl error={errors.stateNo}>
+                <Combobox
+                  options={locStatesList.map((s: any) => ({
+                    label: s.stateName || '',
+                    value: (s.stateNo || '').toString(),
+                  }))}
+                  value={stateNo}
+                  onChange={handleLocationStateChange}
+                  disabled={!countryNo}
+                  placeholder={countryNo ? 'Select State' : 'Select country first'}
+                  searchPlaceholder="Search state..."
+                  className={cn(
+                    fieldClass,
+                    errors.stateNo &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                  onAddNew={() => {
+                    setActiveMasterType('state');
+                    setIsMasterCreateOpen(true);
+                  }}
+                />
+              </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel required>City</FieldLabel>
+              <FieldControl error={errors.cityNo}>
+                <Combobox
+                  options={locCitiesList.map((c: any) => ({
+                    label: c.cityName || '',
+                    value: (c.cityNo || '').toString(),
+                  }))}
+                  value={cityNo}
+                  onChange={(val) => {
+                    setCityNo(val);
+                    if (errors.cityNo) setErrors((prev) => ({ ...prev, cityNo: '' }));
+                  }}
+                  disabled={!stateNo}
+                  placeholder={stateNo ? 'Select City' : 'Select state first'}
+                  searchPlaceholder="Search city..."
+                  className={cn(
+                    fieldClass,
+                    errors.cityNo &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                  onAddNew={() => {
+                    setActiveMasterType('city');
+                    setIsMasterCreateOpen(true);
+                  }}
+                />
+              </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel htmlFor="pinCode" required>
+                PIN / ZIP Code
+              </FieldLabel>
+              <FieldControl error={errors.pinCode}>
+                <Input
+                  id="pinCode"
+                  placeholder="Enter PIN / ZIP Code"
+                  value={pinCode}
+                  maxLength={10}
+                  onChange={(e) => {
+                    setPinCode(e.target.value);
+                    if (errors.pinCode) setErrors((prev) => ({ ...prev, pinCode: '' }));
+                  }}
+                  className={cn(
+                    fieldClass,
+                    errors.pinCode &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                />
+              </FieldControl>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <MasterCreateDialog
         open={isMasterCreateOpen}
@@ -392,15 +546,14 @@ export function LocationForm({ id }: LocationFormProps) {
         type={activeMasterType}
         companyNo={companyNo}
         fillValues={fillValues}
-        onSuccess={(id) => {
+        onSuccess={(createdId) => {
           if (activeMasterType === 'country') {
-            setCountryNo(id);
+            setCountryNo(createdId);
           } else if (activeMasterType === 'state') {
-            setStateNo(id);
+            setStateNo(createdId);
           } else if (activeMasterType === 'city') {
-            setCityNo(id);
+            setCityNo(createdId);
           }
-          // Refresh fill values to show new items
           apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${companyNo}`).then((response) => {
             if (response) setLocationFillValues(response);
           }).catch(err => console.error('Failed to fetch location fill-values:', err));

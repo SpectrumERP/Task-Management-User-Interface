@@ -1,16 +1,76 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Building2 } from 'lucide-react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '../../ui/textarea';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 
 const FORM_NO = 1564;
 const TITLE = 'Business Entity Type Master';
+
+const fieldClass = FIELD_CONTROL_CLASS;
+
+const textareaClass =
+  'min-h-[88px] w-full rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 shadow-none resize-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9]';
+
+function FieldErrorTip({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <span
+      role="alert"
+      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
+    >
+      {message}
+    </span>
+  );
+}
+
+function FieldControl({
+  children,
+  error,
+  className,
+}: {
+  children: ReactNode;
+  error?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('relative min-w-0', className)}>
+      {children}
+      <FieldErrorTip message={error} />
+    </div>
+  );
+}
+
+function FieldLabel({
+  children,
+  required,
+  htmlFor,
+}: {
+  children: ReactNode;
+  required?: boolean;
+  htmlFor?: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
+    >
+      <span>{children}</span>
+      {required ? (
+        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
+          *
+        </span>
+      ) : null}
+    </label>
+  );
+}
 
 interface BusinessEntityTypeFormProps {
   id?: string;
@@ -50,7 +110,7 @@ export function BusinessEntityTypeForm({ id }: BusinessEntityTypeFormProps) {
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) {
-      newErrors.name = 'business-entity-type Name is required';
+      newErrors.name = 'Business Entity Type Name is required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -96,36 +156,71 @@ export function BusinessEntityTypeForm({ id }: BusinessEntityTypeFormProps) {
       showSuccessAlert={showSuccessAlert}
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
     >
-      {/* Disabled System Code */}
-      <div className="flex items-center gap-0.5 px-1 mb-4">
-        <label className="text-[11px] font-medium text-slate-700 normal-case">Code:</label>
-        <div className="text-xs font-medium text-slate-500 select-none">
-          {editingId ? code : 'AUTO-GEN-CODE'}
+      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+            <Building2 size={15} strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Entity Type Details</h2>
+            <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
+              Define the business entity type name and description
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Standard Name Input */}
-      <div className="space-y-0">
-        <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Business Entity Type Name <span className="text-red-500 font-medium">*</span></label>
-        <Input placeholder="Enter business entity type name" value={name} maxLength={50} onChange={(e) => {
-          setName(e.target.value);
-          if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-        }}
-          className={cn(
-            "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
-            errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-          )}
-        />
-        {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
-      </div>
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 w-full">
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel>Code</FieldLabel>
+              <Input
+                readOnly
+                tabIndex={-1}
+                value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
+                className={cn(
+                  fieldClass,
+                  'bg-[var(--tm-elevated)] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-[var(--tm-border)]/80'
+                )}
+              />
+            </div>
 
-      {/* Description */}
-      <div className="space-y-0">
-        <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Description</label>
-        <Textarea placeholder="Enter Description" value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)}
-          className="bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]"
-        />
-      </div>
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel htmlFor="entityTypeName" required>
+                Business Entity Type Name
+              </FieldLabel>
+              <FieldControl error={errors.name}>
+                <Input
+                  id="entityTypeName"
+                  placeholder="Enter business entity type name"
+                  value={name}
+                  maxLength={50}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+                  }}
+                  className={cn(
+                    fieldClass,
+                    errors.name &&
+                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                  )}
+                />
+              </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <FieldLabel htmlFor="entityTypeDescription">Description</FieldLabel>
+              <Textarea
+                id="entityTypeDescription"
+                placeholder="Enter Description"
+                value={description}
+                maxLength={500}
+                onChange={(e) => setDescription(e.target.value)}
+                className={textareaClass}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
     </MasterFormShell>
   );
 }

@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { cn } from '@/lib/utils';
 
 interface TagInputProps {
@@ -9,10 +8,9 @@ interface TagInputProps {
   onChange: (tags: string[]) => void;
   placeholder?: string;
   className?: string;
-  infoText?: string;
 }
 
-export function TagInput({ tags, onChange, placeholder = "Add tag...", className, infoText }: TagInputProps) {
+export function TagInput({ tags, onChange, placeholder = "Add tag...", className }: TagInputProps) {
   const [inputValue, setInputValue] = React.useState('');
 
   const addTag = (tag: string) => {
@@ -36,22 +34,22 @@ export function TagInput({ tags, onChange, placeholder = "Add tag...", className
     }
   };
 
-  const box = (
+  return (
     <div className={cn(
-      "flex flex-wrap gap-2 p-2 min-h-[40px] w-full rounded-xl border border-slate-300 bg-white shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-[#006699] transition-all",
+      "flex flex-wrap gap-2 p-2 min-h-[40px] w-full rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-[#0EA5E9] transition-all",
       className
     )}>
       {tags.map((tag, index) => (
         <Badge
           key={index}
           variant="secondary"
-          className="gap-1.5 px-2 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 border-none rounded-lg font-medium text-xs group"
+          className="gap-1.5 px-2 py-1 bg-[var(--tm-muted)] text-slate-200 hover:bg-slate-200 border-none rounded-lg font-medium text-xs group"
         >
           {tag}
           <button
             type="button"
             onClick={() => removeTag(index)}
-            className="text-slate-400 hover:text-slate-600 transition-colors rounded-full p-0.5"
+            className="text-slate-400 hover:text-slate-300 transition-colors rounded-full p-0.5"
           >
             <X size={12} strokeWidth={3} />
           </button>
@@ -63,17 +61,8 @@ export function TagInput({ tags, onChange, placeholder = "Add tag...", className
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={tags.length === 0 ? placeholder : ""}
-        className="flex-1 bg-transparent outline-none text-sm text-slate-900 font-medium placeholder:text-slate-400 min-w-[120px]"
+        className="flex-1 bg-transparent outline-none text-sm text-slate-50 font-medium placeholder:text-slate-400 min-w-[120px]"
       />
-    </div>
-  );
-
-  if (!infoText) return box;
-
-  return (
-    <div className="flex w-full items-center gap-2">
-      <div className="min-w-0 flex-1">{box}</div>
-      <InfoTooltip text={infoText} />
     </div>
   );
 }

@@ -114,7 +114,7 @@ export function MultiUserCombobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-normal bg-white h-9",
+            "w-full justify-between font-normal bg-[var(--tm-surface)] h-9 rounded-[8px] border border-[var(--tm-border)]",
             !value.length && "text-muted-foreground",
             className
           )}
@@ -129,7 +129,7 @@ export function MultiUserCombobox({
               <div
                 role="button"
                 tabIndex={0}
-                className="h-4 w-4 rounded-sm hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700"
+                className="h-4 w-4 rounded-sm hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-200"
                 onClick={handleClear}
                 onKeyDown={(e) => e.key === 'Enter' && handleClear(e as any)}
               >
@@ -145,8 +145,8 @@ export function MultiUserCombobox({
           className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto" 
           align="start"
         >
-        <Command className="rounded-xl border-slate-200">
-          <div className="border-b border-slate-100 bg-slate-50/50">
+        <Command className="rounded-xl border-[var(--tm-border)]">
+          <div className="border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
             <CommandInput
               placeholder="Search user..."
               className="h-10 border-none focus:ring-0 bg-transparent"
@@ -169,10 +169,10 @@ export function MultiUserCombobox({
                   onSelect={handleSelectAll}
                   className="text-[11px] font-medium py-2 px-3 cursor-pointer"
                 >
-                  <div className="w-full flex items-center font-bold text-blue-600">
+                  <div className="w-full flex items-center font-bold text-blue-400">
                     All Users
                   </div>
-                  {isAllSelected && <Check className="h-3 w-3 text-[#006699] ml-2 shrink-0" />}
+                  {isAllSelected && <Check className="h-3 w-3 text-[#0EA5E9] ml-2 shrink-0" />}
                 </CommandItem>
 
                 {options.map((user) => (
@@ -190,12 +190,12 @@ export function MultiUserCombobox({
                     className="text-[11px] font-medium py-2 px-3 cursor-pointer"
                   >
                     <div className="grid grid-cols-3 w-full items-center gap-2">
-                      <div className="truncate text-slate-900 font-bold">{user.loginId}</div>
-                      <div className="truncate text-slate-600">{user.printingName}</div>
+                      <div className="truncate text-slate-50 font-bold">{user.loginId}</div>
+                      <div className="truncate text-slate-300">{user.printingName}</div>
                       <div className="truncate text-slate-400 font-normal">{user.email || 'N/A'}</div>
                     </div>
                     {value.includes(user.loginNo.toString()) && !isAllSelected && (
-                      <Check className="h-3 w-3 text-[#006699] ml-2 shrink-0" />
+                      <Check className="h-3 w-3 text-[#0EA5E9] ml-2 shrink-0" />
                     )}
                   </CommandItem>
                 ))}

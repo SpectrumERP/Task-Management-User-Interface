@@ -22,6 +22,7 @@ export function AppUpdateChecker() {
         } else if (data.version !== currentVersion.current) {
           // If the server's version differs from the running version, a new deployment occurred
           toast.info("A new version of the app is available!", {
+            id: 'app-update',
             duration: 100000,
             action: {
               label: 'Update Now',

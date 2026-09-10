@@ -3,11 +3,14 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { TaskForm } from '@/components/task/TaskForm';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { useState, useEffect, useCallback } from 'react';
 import { useFormRights } from '@/hooks/useFormRights';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -24,9 +27,9 @@ import {
 } from '@/components/ui/dialog';
 
 const reverseEffortFrequencyMap: Record<number, string> = {
-  1: 'minutes',
-  2: 'hours',
-  3: 'days',
+  1: 'hours',
+  2: 'days',
+  3: 'minutes',
   4: 'weeks',
   5: 'months',
   6: 'years'
@@ -79,13 +82,20 @@ export default function TaskDetail() {
       );
       if (response.success) {
         setIsDeleteDialogOpen(false);
-        handleGoBack();
+        toast.success('Task deleted');
+
+        // Force remove pointer-events: none that Radix UI Dialog might leave behind when unmounting quickly
+        document.body.style.pointerEvents = '';
+
+        setTimeout(() => {
+          handleGoBack();
+        }, 100);
       } else {
-        alert(response.message || "Failed to delete task. Please try again.");
+        toast.error(response.message || 'Failed to delete task. Please try again.');
       }
     } catch (error) {
-      console.error("Failed to delete task:", error);
-      alert("An error occurred while deleting the task.");
+      console.error('Failed to delete task:', error);
+      toast.error('An error occurred while deleting the task.');
     } finally {
       setIsDeleting(false);
     }
@@ -110,7 +120,7 @@ export default function TaskDetail() {
           .map((c: any) => ({
             userName: c.user?.userName || '',
             displayName: c.user?.displayName || '',
-            email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
+            email: c.user?.email || "",
             loginNo: c.user?.id
           }));
 
@@ -120,7 +130,7 @@ export default function TaskDetail() {
           .map((c: any) => ({
             userName: c.user?.userName || '',
             displayName: c.user?.displayName || '',
-            email: c.user?.email || `${c.user?.userName || 'user'}@glacier.com`,
+            email: c.user?.email || "",
             loginNo: c.user?.id
           }));
 
@@ -142,7 +152,7 @@ export default function TaskDetail() {
 
         // Map actual efforts
         const mappedEfforts = (d.effortLogs || []).map((e: any) => ({
-          operTaskEffortLogDetailNo: e.operTaskEffortLogDetailNo || 0,
+          operTaskEffortLogDetailNo: e.operTaskEffortLogDetailNo || null,
           date: e.effortDate || e.logDate || '',
           hours: e.effortHours || e.efforts || null,
           description: e.effortDescription || e.description || '',
@@ -160,7 +170,7 @@ export default function TaskDetail() {
           type_No: d.type?.operTaskTypeNo || null,
           project_No: d.project?.operTaskProjectNo || d.project?.projectNo || d.project?.project_No || d.project?.operTaskFolderNo || d.project?.folderNo || d.folder?.operTaskFolderNo || d.folder?.folderNo || d.folder?.TaskFolderNo || d.folder?.taskFolderNo || d.folder?.operTaskFolderDetailNo || d.project?.operTaskProjectDetailNo || d.project_No || d.projectNo || d.folder_No || d.folderNo || null,
           parent_task_No: d.parentTask?.operTaskNo || d.parentTaskNo || null,
-          parentTask: d.parentTask ? { operTaskNo: d.parentTask.operTaskNo, title: d.parentTask.title } : undefined,
+          parentTask: d.parentTask ? { operTaskNo: d.parentTask.operTaskNo, title: d.parentTask.title, code: d.parentTask.code || '' } : undefined,
           tags: d.tags ? (typeof d.tags === 'string' ? d.tags.split(',') : d.tags) : [],
           originator_user_No: d.originator?.id || 1,
           owner_user_No: d.owner?.id || null,
@@ -248,118 +258,112 @@ export default function TaskDetail() {
         }
       }}
     >
-      <div className="flex-1 w-full flex flex-col bg-[#f1f5f9] overflow-hidden">
-        {/* Fixed Header Section */}
-        <div className="w-full px-2 sm:px-6 py-1.5 sm:py-2 z-20">
-          <div className="flex flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <button
-                onClick={() => navigate('/')}
-                className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded"
-              >
-                Tasks List
-              </button>
-              <ChevronRight size={16} className="text-slate-400" />
-              <span className="text-slate-900 font-bold tracking-tight">
-                {isEdit ? 'Update Task' : 'Create Task'}
-              </span>
-            </div>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--tm-page)]">
+        <div className="shrink-0 z-20 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded"
+            >
+              Tasks List
+            </button>
+            <ChevronRight size={14} className="text-slate-400 shrink-0" />
+            <span className="text-slate-50 font-bold tracking-tight">
+              {isEdit ? 'Update Task' : 'Create Task'}
+            </span>
+          </div>
 
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto" data-page-tour="task-form-actions">
+            <PageGuideButton guideKey="task-form" />
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => navigate(-1)}
+              disabled={isSaving}
+              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
+            >
+              <X size={14} />
+              <span className="hidden sm:inline">Cancel</span>
+            </Button>
 
+            {(isEdit ? isUpdate : isSave) && (
               <Button
-                variant="ghost"
-                type="button"
-                onClick={() => navigate(-1)}
+                type="submit"
+                form="task-form"
                 disabled={isSaving}
-                className="rounded-xl px-3 sm:px-5 font-bold text-slate-600 hover:bg-slate-100 transition-colors gap-2 text-xs disabled:opacity-40 disabled:hover:bg-transparent"
+                className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 gap-1.5 disabled:opacity-50"
               >
-                <X size={16} />
-                <span className="hidden sm:inline">Cancel</span>
+                {isSaving ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
+                  </>
+                )}
               </Button>
-              
-              {(isEdit ? isUpdate : isSave) && (
-                <Button
-                  type="submit"
-                  form="task-form"
-                  disabled={isSaving}
-                  className="rounded-xl px-3 sm:px-6 bg-[#006699] hover:bg-[#005580] font-bold shadow-lg shadow-[#006699]/20 gap-2 transition-all hover:scale-105 active:scale-95 text-xs text-white disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save size={16} />
-                      <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
-                    </>
-                  )}
-                </Button>
-              )}
-              {isEdit && isDelete && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 shadow-sm flex items-center justify-center transition-all"
-                    >
-                      <MoreVertical size={18} className="text-slate-600" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-xl w-36 shadow-md border-slate-200">
-                    <DropdownMenuItem
-                      onClick={() => setIsDeleteDialogOpen(true)}
-                      className="text-red-600 focus:text-red-700 focus:bg-red-50 font-bold text-xs cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg"
-                    >
-                      <Trash2 size={14} />
-                      Delete Task
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+            )}
+            {isEdit && isDelete && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
+                  >
+                    <MoreVertical size={16} className="text-slate-300" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-[8px] w-36 shadow-md border-[var(--tm-border)]">
+                  <DropdownMenuItem
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    className="text-red-400 focus:text-red-400 focus:bg-red-500/10 font-semibold text-xs cursor-pointer flex items-center gap-2 px-3 py-2 rounded-[6px]"
+                  >
+                    <Trash2 size={14} />
+                    Delete Task
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
-        {/* Scrollable Form Content */}
-        <div className="flex-1 overflow-y-auto sm:px-8 sm:pt-1 pb-6 sm:pb-8 scrollbar-hide">
-          <div className="max-w-8xl mx-auto">
-            <div className="bg-white rounded-[16px] sm:rounded-[20px] p-4 sm:px-8 shadow-xl shadow-slate-200/40 border border-slate-100 h-fit min-h-[400px] flex flex-col justify-center">
-              {isFetching ? (
-                <div className="flex flex-col items-center justify-center gap-4 py-20">
-                  <Loader2 className="h-10 w-10 text-[#006699] animate-spin" />
-                  <p className="text-slate-500 font-bold text-sm uppercase tracking-widest animate-pulse">Syncing Task Schema...</p>
-                </div>
-              ) : (
-                <TaskForm
-                  key={location.pathname + location.search}
-                  initialData={isEdit ? task : undefined}
-                  parentTask={!isEdit ? task : undefined}
-                  initialStatus={initialStatus}
-                  onComplete={handleGoBack}
-                  onSaveStateChange={setIsSaving}
-                  onRefreshData={fetchTaskDetails}
-                />
-              )}
-            </div>
+        <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
+          <div className="w-full max-w-none px-3 py-3 sm:px-4 lg:px-5">
+            {isFetching ? (
+              <div className="flex flex-col items-center justify-center rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] py-16 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
+                <BrandLoader size="sm" message="Loading task" />
+              </div>
+            ) : (
+              <TaskForm
+                key={location.pathname + location.search}
+                initialData={isEdit ? task : undefined}
+                parentTask={!isEdit ? task : undefined}
+                initialStatus={initialStatus}
+                onComplete={handleGoBack}
+                onSaveStateChange={setIsSaving}
+                onRefreshData={fetchTaskDetails}
+              />
+            )}
           </div>
         </div>
       </div>
 
       {/* Premium Alert Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border-slate-100 shadow-2xl [&>button]:hidden">
+        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">
           <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 border border-red-100">
-              <Trash2 className="h-6 w-6 text-red-600" />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/30">
+              <Trash2 className="h-6 w-6 text-red-400" />
             </div>
-            <DialogTitle className="text-center text-lg font-black text-slate-900 leading-tight">
+            <DialogTitle className="text-center text-lg font-black text-slate-50 leading-tight">
               Delete Task
             </DialogTitle>
-            <DialogDescription className="text-center text-slate-600 font-medium text-xs leading-normal">
+            <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
               Do you want to delete?
             </DialogDescription>
           </DialogHeader>
@@ -368,7 +372,7 @@ export default function TaskDetail() {
               type="button"
               variant="ghost"
               onClick={() => setIsDeleteDialogOpen(false)}
-              className="w-full sm:w-auto rounded-xl font-bold text-slate-600 hover:bg-slate-100 text-xs px-5 h-9"
+              className="w-full sm:w-auto rounded-xl font-bold text-slate-300 hover:bg-[var(--tm-muted)] text-xs px-5 h-9"
             >
               No
             </Button>
@@ -390,16 +394,16 @@ export default function TaskDetail() {
       </Dialog>
       {/* Task Not Found Alert Dialog */}
       <Dialog open={isNotFoundDialogOpen} onOpenChange={() => { }}>
-        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-slate-100 shadow-2xl [&>button]:hidden">
+        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">
           <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 border border-amber-100">
-              <X className="h-6 w-6 text-amber-600" />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/30">
+              <X className="h-6 w-6 text-amber-400" />
             </div>
-            <DialogTitle className="text-center text-lg font-black text-slate-900 leading-tight">
+            <DialogTitle className="text-center text-lg font-black text-slate-50 leading-tight">
               {/* Task Not Found */}
               {notFoundMessage}
             </DialogTitle>
-            {/* <DialogDescription className="text-center text-slate-600 font-medium text-xs leading-normal">
+            {/* <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
               {notFoundMessage}
             </DialogDescription> */}
           </DialogHeader>
@@ -410,7 +414,7 @@ export default function TaskDetail() {
                 setIsNotFoundDialogOpen(false);
                 handleGoBack();
               }}
-              className="w-full rounded-xl bg-[#006699] hover:bg-[#005580] font-bold text-white shadow-lg shadow-[#006699]/20 text-xs h-9 transition-all"
+              className="w-full rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] font-bold text-white shadow-lg shadow-[#0EA5E9]/20 text-xs h-9 transition-all"
             >
               OK
             </Button>

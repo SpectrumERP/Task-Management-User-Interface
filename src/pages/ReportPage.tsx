@@ -5,15 +5,23 @@ import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { format } from 'date-fns';
 import { useSettings } from '@/hooks/useSettings';
+import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { toast } from 'sonner';
+import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 
 export default function ReportPage() {
   const [reportData, setReportData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [lastFilters, setLastFilters] = useState<any>(null);
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1);
   const { isHideType } = useSettings();
   const handleApplyFilters = async (filters: any) => {
     setIsLoading(true);
+    setLoadError(false);
+    setLastFilters(filters);
     try {
       let searchParamsPascal: any = {};
       console.log("show Sub-tasks", filters)
@@ -63,19 +71,36 @@ export default function ReportPage() {
     } catch (error) {
       console.error('Failed to fetch report data:', error);
       setReportData([]);
+      setLoadError(true);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to load report'));
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex h-full w-full flex-col gap-6 p-6 bg-slate-50 overflow-y-auto">
-      <ReportFilter onApply={handleApplyFilters} />
-      {isLoading ? (
-        <div className="flex h-32 items-center justify-center text-slate-500 font-medium">Loading report...</div>
-      ) : (
-        <ReportTable data={reportData} />
-      )}
+    <div className="page-shell-scroll bg-[var(--tm-page)]">
+      <div className="shrink-0">
+        <ReportFilter onApply={handleApplyFilters} />
+      </div>
+      <div className="relative flex min-h-[280px] flex-1 basis-0 flex-col overflow-hidden">
+        {loadError && !isLoading ? (
+          <LoadErrorState
+            title="Failed to load report"
+            onRetry={() => lastFilters && handleApplyFilters(lastFilters)}
+            className="flex-1"
+          />
+        ) : (
+          <ReportTable data={reportData} />
+        )}
+        {isLoading ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[8px] bg-[var(--tm-surface)]/80 backdrop-blur-[1px]">
+            <BrandLoader size="sm" message="Loading report" />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

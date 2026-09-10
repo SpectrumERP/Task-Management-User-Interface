@@ -15,7 +15,6 @@ import {
   Globe,
   Building,
   ChevronDown,
-  Menu,
   Database,
   Monitor,
   Calendar,
@@ -24,8 +23,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import LogoImage from '@/assets/SteelMountLogo01.png';
-
+import { BrandLogo } from '@/components/ui/BrandLogo';
+import { useAuthStore } from '@/store/useAuthStore';
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
   // { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
@@ -66,12 +65,64 @@ interface SidebarProps {
   onClose?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** When true, brand/logo row is omitted (logo lives in the app header). */
+  hideBrand?: boolean;
   className?: string;
 }
 
-import { useAuthStore } from '@/store/useAuthStore';
+type FlyoutItem = { icon: typeof LayoutGrid; label: string; id: string; formNo?: number };
 
-export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, onToggleCollapse, className }: SidebarProps) {
+function SectionFlyoutMenu({
+  title,
+  Icon,
+  isSectionActive,
+  onExpand,
+  onToggleCollapse,
+  dataTour,
+}: {
+  title: string;
+  Icon: typeof Database;
+  items: FlyoutItem[];
+  isSectionActive: boolean;
+  onExpand: () => void;
+  onToggleCollapse?: () => void;
+  activeTab: string;
+  onTabChange: (id: string) => void;
+  dataTour?: string;
+}) {
+  return (
+    <div className="relative w-full flex justify-center">
+      <button
+        type="button"
+        data-tour={dataTour}
+        onClick={() => {
+          if (onToggleCollapse) onToggleCollapse();
+          onExpand();
+        }}
+        className={cn(
+          "group flex items-center justify-center mx-auto h-10 w-10 rounded-[11px] p-0 transition-all duration-200 relative",
+          isSectionActive
+            ? "bg-[var(--tm-tint)] text-[#0EA5E9] shadow-sm"
+            : "text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200 hover:shadow-sm"
+        )}
+      >
+        <Icon
+          size={18}
+          strokeWidth={isSectionActive ? 2.15 : 1.75}
+          className={isSectionActive ? "text-[#0EA5E9]" : "text-slate-400 group-hover:text-slate-500"}
+        />
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
+          <div className="tm-sidebar-tip">
+            {title}
+            <span className="tm-sidebar-tip-arrow" aria-hidden />
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, onToggleCollapse, hideBrand = false, className }: SidebarProps) {
   const accessibleForms = useAuthStore(state => state.accessibleForms);
   const fetchAccessibleForms = useAuthStore(state => state.fetchAccessibleForms);
 
@@ -96,284 +147,326 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
     setIsMenuMasterExpanded(filteredMenuMasterItems.some(item => item.id === activeTab));
   }, [activeTab, accessibleForms]);
 
+  const navBtnBase =
+    "w-full flex items-center relative group transition-[background-color,color,box-shadow,transform] duration-200 ease-out";
+
+  const renderNavItem = (item: { icon: typeof LayoutGrid; label: string; id: string }) => {
+    const isActive = activeTab === item.id;
+
+    return (
+      <button
+        key={item.id}
+        data-tour={`nav-${item.id}`}
+        onClick={() => onTabChange(item.id)}
+        className={cn(
+          navBtnBase,
+          isCollapsed
+            ? cn(
+                "justify-center mx-auto h-10 w-10 rounded-[11px] p-0",
+                isActive
+                  ? "bg-[#0EA5E9] text-white shadow-[0_6px_16px_-6px_rgba(14,165,233,0.55)]"
+                  : "text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200 hover:shadow-sm"
+              )
+            : cn(
+                "gap-3 rounded-xl px-3 py-[9px] text-[13px] tracking-[-0.01em]",
+                isActive
+                  ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
+                  : "font-medium text-slate-300 hover:bg-[var(--tm-muted)]/70 hover:text-slate-100"
+              )
+        )}
+      >
+        {isActive && !isCollapsed && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-1/2 h-[70%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
+          />
+        )}
+        <item.icon
+          size={isCollapsed ? 18 : 16}
+          strokeWidth={isActive ? 2.15 : 1.75}
+          className={cn(
+            "shrink-0 transition-colors duration-200",
+            isCollapsed && isActive
+              ? "text-white"
+              : isActive
+                ? "text-slate-50"
+                : "text-slate-400 group-hover:text-slate-500"
+          )}
+        />
+        {!isCollapsed && <span className="truncate">{item.label}</span>}
+
+        {isCollapsed && (
+          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
+            <div className="tm-sidebar-tip">
+              {item.label}
+              <span className="tm-sidebar-tip-arrow" aria-hidden />
+            </div>
+          </div>
+        )}
+      </button>
+    );
+  };
+
+  const renderTreeLeaf = (
+    item: { icon: typeof LayoutGrid; label: string; id: string },
+    isLast: boolean
+  ) => {
+    const isActive = activeTab === item.id;
+
+    return (
+      <div key={item.id} className="relative flex items-stretch min-h-[32px]">
+        {/* Vertical rail */}
+        <span
+          className={cn(
+            "absolute left-[7px] w-px bg-slate-200",
+            isLast ? "top-0 h-1/2" : "inset-y-0"
+          )}
+        />
+        {/* Elbow */}
+        <span className="absolute left-[7px] top-1/2 w-2.5 h-px bg-slate-200" />
+
+        <button
+          onClick={() => onTabChange(item.id)}
+          className={cn(
+            "relative ml-4 w-[calc(100%-1rem)] flex items-center gap-2.5 pl-2 pr-2.5 py-[6px] rounded-lg text-[12.5px] tracking-[-0.01em] transition-colors duration-150 group",
+            isActive
+              ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
+              : "font-medium text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200"
+          )}
+        >
+          {isActive && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
+            />
+          )}
+          <item.icon
+            size={14}
+            strokeWidth={isActive ? 2.1 : 1.7}
+            className={cn(
+              "shrink-0",
+              isActive ? "text-slate-50" : "text-slate-400 group-hover:text-slate-500"
+            )}
+          />
+          <span className="truncate text-left">{item.label}</span>
+        </button>
+      </div>
+    );
+  };
+
+  const renderTreeSection = ({
+    title,
+    Icon,
+    items,
+    isExpanded,
+    isSectionActive,
+    onToggle,
+    dataTour,
+  }: {
+    title: string;
+    Icon: typeof Database;
+    items: typeof filteredMasterItems;
+    isExpanded: boolean;
+    isSectionActive: boolean;
+    onToggle: () => void;
+    dataTour?: string;
+  }) => {
+    const showActive = isExpanded || isSectionActive;
+
+    return (
+      <div>
+        <button
+          onClick={onToggle}
+          data-tour={dataTour}
+          className={cn(
+            "relative w-full flex items-center gap-3 px-3 py-[9px] rounded-xl cursor-pointer transition-colors duration-150 text-[13px] tracking-[-0.01em]",
+            showActive
+              ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
+              : "font-medium text-slate-300 hover:bg-[var(--tm-muted)]/60 hover:text-slate-100"
+          )}
+        >
+          {showActive && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute left-0 top-1/2 h-[70%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
+            />
+          )}
+          <Icon
+            size={16}
+            strokeWidth={showActive ? 2.15 : 1.75}
+            className={cn("shrink-0", showActive ? "text-slate-50" : "text-slate-400")}
+          />
+          <span className="flex-1 text-left truncate">{title}</span>
+          <ChevronDown
+            size={14}
+            strokeWidth={2}
+            className={cn(
+              "shrink-0 transition-transform duration-300",
+              showActive ? "text-slate-400" : "text-slate-300",
+              !isExpanded && "-rotate-90"
+            )}
+          />
+        </button>
+
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-out",
+            isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
+          <div className="relative ml-3 mt-0.5 mb-1 pl-0">
+            {items.map((item, index) =>
+              renderTreeLeaf(item, index === items.length - 1)
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSectionFlyout = (
+    title: string,
+    Icon: typeof Database,
+    items: typeof filteredMasterItems,
+    isSectionActive: boolean,
+    onExpand: () => void,
+    dataTour?: string
+  ) => (
+    <SectionFlyoutMenu
+      title={title}
+      Icon={Icon}
+      items={items}
+      isSectionActive={isSectionActive}
+      onExpand={onExpand}
+      onToggleCollapse={onToggleCollapse}
+      activeTab={activeTab}
+      onTabChange={onTabChange}
+      dataTour={dataTour}
+    />
+  );
+
   return (
-    <aside className={cn("h-full bg-[#f4f7fa] border-r flex flex-col shrink-0 transition-all duration-300", isCollapsed ? "w-[80px] items-center" : "w-64", className)}>
-      {/* Brand */}
-      <div className={cn("flex items-center mb-2 relative", isCollapsed ? "flex-col gap-1 justify-center px-0 mt-2" : "justify-between px-2")}>
-        <div className={cn("flex items-center justify-start py-1 overflow-hidden transition-all duration-300", isCollapsed ? "w-14 h-10" : "w-auto")}>
-          <img src={LogoImage} alt="SteelMont Logo" className="h-10 w-auto max-w-none object-left object-contain" />
+    <aside
+      className={cn(
+        "relative h-full flex flex-col shrink-0 transition-all duration-300 border-r border-[var(--tm-chrome-border)]",
+        "bg-[linear-gradient(180deg,var(--tm-sidebar)_0%,var(--tm-sidebar-end)_100%)]",
+        isCollapsed ? "w-[80px] items-center overflow-visible" : "w-56",
+        className
+      )}
+    >
+      {/* Brand — skipped when logo is in the full app header */}
+      {!hideBrand && (
+      <div
+        className={cn(
+          "relative shrink-0",
+          isCollapsed
+            ? "flex flex-col gap-1 justify-center items-center px-0 py-3"
+            : "flex items-center justify-between gap-2 px-4 py-3.5"
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center overflow-hidden transition-all duration-300",
+            isCollapsed ? "w-14 h-11 justify-center" : "min-w-0 flex-1"
+          )}
+        >
+          <BrandLogo
+            maxHeight={isCollapsed ? 40 : 44}
+            maxWidth={isCollapsed ? 56 : 200}
+            className={isCollapsed ? "justify-center" : undefined}
+            imgClassName={isCollapsed ? "object-center" : undefined}
+          />
         </div>
         {onClose && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="lg:hidden h-8 w-8 rounded-lg hover:bg-slate-200/50 flex items-center justify-center shrink-0"
+            className="lg:hidden h-8 w-8 rounded-xl hover:bg-[var(--tm-muted)]/80 flex items-center justify-center shrink-0"
           >
             <X size={18} className="text-slate-500" />
           </Button>
         )}
-        {onToggleCollapse && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleCollapse}
-            className="hidden lg:flex h-10 w-10 rounded-xl hover:bg-slate-200/50 text-slate-500 shrink-0"
-          >
-            <Menu size={20} />
-          </Button>
-        )}
+        <div className="pointer-events-none absolute inset-x-3 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--tm-border)] to-transparent" />
       </div>
+      )}
 
       {/* Navigation */}
-      <nav className={cn("flex-1 space-y-3 scrollbar-hide", isCollapsed ? "overflow-visible" : "overflow-y-auto")}>
-        <div className="space-y-0">
-          {filteredNavItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={cn(
-                "w-full flex items-center transition-all font-bold text-sm relative group",
-                isCollapsed ? "justify-center px-0 py-3 rounded-xl" : "gap-3 px-4 py-3 rounded-xl",
-                activeTab === item.id
-                  ? "bg-[#e1ecf7] text-[#006699]"
-                  : "text-slate-600 hover:bg-slate-200/50"
-              )}
-            >
-              <item.icon size={20} className={activeTab === item.id ? "text-[#006699]" : "text-slate-400"} />
-              {!isCollapsed && <span>{item.label}</span>}
-
-              {isCollapsed && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-lg">
-                  {item.label}
-                  <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-4 border-transparent border-r-slate-800" />
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
+      <nav
+        data-tour="sidebar-nav"
+        className={cn(
+          "flex-1 scrollbar-hide",
+          isCollapsed ? "overflow-visible px-1.5 pt-3 space-y-1" : "overflow-y-auto px-2.5 py-3.5 space-y-0.5"
+        )}
+      >
+        {filteredNavItems.map((item) => renderNavItem(item))}
 
         {/* Master Data Section */}
         {filteredMasterItems.length > 0 && (
-          <div className="space-y-0">
-            {isCollapsed ? (
-              <div className="relative group w-full flex justify-center">
-                <button
-                  onClick={() => {
-                    if (onToggleCollapse) onToggleCollapse();
-                    setIsMasterExpanded(true);
-                  }}
-                  className="flex items-center justify-center px-0 py-3 rounded-xl transition-all font-bold text-sm relative text-slate-600 hover:bg-slate-200/50 w-full"
-                >
-                  <Database size={20} className={isMasterActive ? "text-[#006699]" : "text-slate-400"} />
-                </button>
-
-                {/* Interactive Hover Menu */}
-                <div className="absolute left-full top-0 ml-2 py-1.5 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all z-50 shadow-xl min-w-[200px]">
-                  {/* Invisible bridge to maintain hover */}
-                  <div className="absolute -left-3 top-0 bottom-0 w-4 bg-transparent" />
-
-                  <div className="px-3 py-2 flex items-center gap-2 text-xs font-bold text-slate-800 border-b border-slate-100 mb-1">
-                    <Database size={14} className="text-[#00b4d8]" />
-                    Master Data
-                  </div>
-
-                  <div className="max-h-[300px] overflow-y-auto py-1">
-                    {filteredMasterItems.map(item => {
-                      const isActive = activeTab === item.id;
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTabChange(item.id);
-                          }}
-                          className={cn(
-                            "flex items-center gap-2.5 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-colors",
-                            isActive
-                              ? "bg-[#e1ecf7] text-[#006699]"
-                              : "text-slate-600 hover:bg-slate-100"
-                          )}
-                        >
-                          <item.icon size={14} className={isActive ? "text-[#006699]" : "text-slate-400"} />
-                          <span className="text-xs">{item.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsMasterExpanded(!isMasterExpanded)}
-                className="w-full flex items-center justify-between px-4 mb-1 group cursor-pointer hover:bg-slate-200/50 py-1.5 rounded-lg transition-colors"
-              >
-                <h3 className="text-sm font-black text-slate-500   flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#00b4d8]" />
-                  Master Data
-                </h3>
-                <ChevronDown
-                  size={14}
-                  className={cn(
-                    "text-slate-400 transition-transform duration-300",
-                    !isMasterExpanded && "-rotate-90"
-                  )}
-                />
-              </button>
-            )}
-            <div className={cn(
-              "space-y-1 overflow-hidden transition-all duration-300",
-              (isMasterExpanded && !isCollapsed) ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0 hidden"
-            )}>
-              {filteredMasterItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => onTabChange(item.id)}
-                    className={cn(
-                      "w-full flex items-center transition-all font-bold text-sm relative group",
-                      isCollapsed ? "justify-center px-0 py-2.5 rounded-xl" : "gap-3 px-4 py-2.5 rounded-xl",
-                      isActive
-                        ? "bg-[#e1ecf7] text-[#006699] shadow-sm"
-                        : "text-slate-600 hover:bg-slate-200/40"
-                    )}
-                  >
-                    <item.icon size={16} className={isActive ? "text-[#006699]" : "text-slate-400"} />
-                    {!isCollapsed && <span>{item.label}</span>}
-
-                    {isCollapsed && (
-                      <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-lg">
-                        {item.label}
-                        <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-4 border-transparent border-r-slate-800" />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          isCollapsed ? (
+            renderSectionFlyout(
+              "Master Data",
+              Database,
+              filteredMasterItems,
+              isMasterActive,
+              () => setIsMasterExpanded(true),
+              "nav-master"
+            )
+          ) : (
+            renderTreeSection({
+              title: "Master Data",
+              Icon: Database,
+              items: filteredMasterItems,
+              isExpanded: isMasterExpanded,
+              isSectionActive: isMasterActive,
+              onToggle: () => setIsMasterExpanded(!isMasterExpanded),
+              dataTour: "nav-master",
+            })
+          )
         )}
+
         {/* Meeting Master Section */}
         {filteredMenuMasterItems.length > 0 && (
-          <div className="space-y-0 mt-1">
-            {isCollapsed ? (
-              <div className="relative group w-full flex justify-center">
-                <button
-                  onClick={() => {
-                    if (onToggleCollapse) onToggleCollapse();
-                    setIsMenuMasterExpanded(true);
-                  }}
-                  className="flex items-center justify-center px-0 py-3 rounded-xl transition-all font-bold text-sm relative text-slate-600 hover:bg-slate-200/50 w-full"
-                >
-                  <Menu size={20} className={isMenuMasterActive ? "text-[#006699]" : "text-slate-400"} />
-                </button>
-
-                {/* Interactive Hover Menu */}
-                <div className="absolute left-full top-0 ml-2 py-1.5 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all z-50 shadow-xl min-w-[200px]">
-                  <div className="absolute -left-3 top-0 bottom-0 w-4 bg-transparent" />
-
-                  <div className="px-3 py-2 flex items-center gap-2 text-xs font-bold text-slate-800 border-b border-slate-100 mb-1">
-                    <Menu size={14} className="text-[#00b4d8]" />
-                    Meeting Masters
-                  </div>
-
-                  <div className="max-h-[300px] overflow-y-auto py-1">
-                    {filteredMenuMasterItems.map(item => {
-                      const isActive = activeTab === item.id;
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTabChange(item.id);
-                          }}
-                          className={cn(
-                            "flex items-center gap-2.5 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-colors",
-                            isActive
-                              ? "bg-[#e1ecf7] text-[#006699]"
-                              : "text-slate-600 hover:bg-slate-100"
-                          )}
-                        >
-                          <item.icon size={14} className={isActive ? "text-[#006699]" : "text-slate-400"} />
-                          <span className="text-xs">{item.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsMenuMasterExpanded(!isMenuMasterExpanded)}
-                className="w-full flex items-center justify-between px-4 mb-2 group cursor-pointer hover:bg-slate-200/50 py-1.5 rounded-lg transition-colors"
-              >
-                <h3 className="text-sm font-black text-slate-500 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#00b4d8]" />
-                  Meeting Masters
-                </h3>
-                <ChevronDown
-                  size={14}
-                  className={cn(
-                    "text-slate-400 transition-transform duration-300",
-                    !isMenuMasterExpanded && "-rotate-90"
-                  )}
-                />
-              </button>
-            )}
-            <div className={cn(
-              "space-y-1 overflow-hidden transition-all duration-300",
-              (isMenuMasterExpanded && !isCollapsed) ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0 hidden"
-            )}>
-              {filteredMenuMasterItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => onTabChange(item.id)}
-                    className={cn(
-                      "w-full flex items-center transition-all font-bold text-sm relative group",
-                      isCollapsed ? "justify-center px-0 py-2.5 rounded-xl" : "gap-3 px-4 py-2.5 rounded-xl",
-                      isActive
-                        ? "bg-[#e1ecf7] text-[#006699] shadow-sm"
-                        : "text-slate-600 hover:bg-slate-200/40"
-                    )}
-                  >
-                    <item.icon size={16} className={isActive ? "text-[#006699]" : "text-slate-400"} />
-                    {!isCollapsed && <span>{item.label}</span>}
-
-                    {isCollapsed && (
-                      <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-lg">
-                        {item.label}
-                        <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-4 border-transparent border-r-slate-800" />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          isCollapsed ? (
+            renderSectionFlyout(
+              "Meeting Masters",
+              Calendar,
+              filteredMenuMasterItems,
+              isMenuMasterActive,
+              () => setIsMenuMasterExpanded(true),
+              "nav-meeting-masters"
+            )
+          ) : (
+            renderTreeSection({
+              title: "Meeting Masters",
+              Icon: Calendar,
+              items: filteredMenuMasterItems,
+              isExpanded: isMenuMasterExpanded,
+              isSectionActive: isMenuMasterActive,
+              onToggle: () => setIsMenuMasterExpanded(!isMenuMasterExpanded),
+              dataTour: "nav-meeting-masters",
+            })
+          )
         )}
       </nav>
 
-      {/* Bottom Items */}
-      <div className="space-y-0 pt-1 border-t border-slate-200">
-        {bottomItems.map((item) => (
-          <button
-            key={item.id}
-            className={cn(
-              "w-full flex items-center transition-all font-medium text-sm text-slate-500 hover:bg-slate-200/50 rounded-xl",
-              isCollapsed ? "justify-center px-0 py-3" : "gap-3 px-4 py-2"
-            )}
-            title={item.label}
-          >
-            <item.icon size={20} className="text-slate-400" />
-            {!isCollapsed && <span>{item.label}</span>}
-          </button>
-        ))}
-      </div>
-
-
+      {bottomItems.length > 0 && (
+        <div className="space-y-0 pt-1 border-t border-[var(--tm-border)]/70">
+          {bottomItems.map((item) => (
+            <button
+              key={item.id}
+              className={cn(
+                "w-full flex items-center transition-colors font-medium text-sm text-slate-500 hover:bg-[var(--tm-muted)]/70 rounded-xl",
+                isCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-2"
+              )}
+              title={item.label}
+            >
+              <item.icon size={18} strokeWidth={1.75} className="text-slate-400" />
+              {!isCollapsed && <span>{item.label}</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </aside>
   );
 }

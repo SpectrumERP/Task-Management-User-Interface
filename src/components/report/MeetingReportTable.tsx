@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Eye, FileDown } from 'lucide-react';
 import { exportMeetingReportToExcel } from '@/utils/exportToExcel';
@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 
-function TruncatedCell({ text, minWidth = 'min-w-[200px]' }: { text: string, minWidth?: string }) {
+function TruncatedCell({ text, minWidth = 'min-w-[200px]' }: { text: string; minWidth?: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!text || text === '-') return <span className={minWidth}>{text || '-'}</span>;
@@ -28,12 +29,12 @@ function TruncatedCell({ text, minWidth = 'min-w-[200px]' }: { text: string, min
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-auto max-w-[400px] p-3 text-sm shadow-lg pointer-events-auto z-[150] bg-white border border-slate-200"
+        className="w-auto max-w-[400px] p-3 text-sm shadow-lg pointer-events-auto z-[150] bg-[var(--tm-surface)] border border-[var(--tm-border)]"
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
         sideOffset={5}
       >
-        <div className="max-h-[300px] overflow-y-auto whitespace-pre-wrap select-all cursor-text text-slate-800">
+        <div className="max-h-[300px] overflow-y-auto whitespace-pre-wrap select-all cursor-text text-slate-100">
           {text}
         </div>
       </PopoverContent>
@@ -63,19 +64,40 @@ const DEFAULT_COLUMNS = [
 
 export function MeetingReportTable({ data }: MeetingReportTableProps) {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
-    DEFAULT_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)
+    DEFAULT_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id)
+  );
+  const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
+
+  const totalItems = data.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const pageRows = useMemo(
+    () => data.slice(startIndex, endIndex),
+    [data, startIndex, endIndex]
   );
 
-  const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const handleItemsPerPageChange = (size: number) => {
+    setItemsPerPage(size);
+    setCurrentPage(1);
+  };
 
   const handleResizeStart = (e: React.MouseEvent, colId: string) => {
     e.preventDefault();
     const startX = e.pageX;
-    const startWidth = colWidths[colId] || (e.target as HTMLElement).parentElement?.offsetWidth || 150;
+    const startWidth =
+      colWidths[colId] || (e.target as HTMLElement).parentElement?.offsetWidth || 150;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const newWidth = Math.max(80, startWidth + (moveEvent.pageX - startX));
-      setColWidths(prev => ({ ...prev, [colId]: newWidth }));
+      setColWidths((prev) => ({ ...prev, [colId]: newWidth }));
     };
 
     const handleMouseUp = () => {
@@ -88,35 +110,45 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
   };
 
   const toggleColumn = (colId: string) => {
-    setVisibleColumns(prev =>
-      prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]
+    setVisibleColumns((prev) =>
+      prev.includes(colId) ? prev.filter((id) => id !== colId) : [...prev, colId]
     );
   };
 
   const handleExport = () => {
-    exportMeetingReportToExcel(data, "Meeting_Notes_Report.xlsx");
+    exportMeetingReportToExcel(data, 'Meeting_Notes_Report.xlsx');
   };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
     try {
       return format(new Date(dateString), 'dd-MMM-yyyy HH:mm');
-    } catch (e) {
+    } catch {
       return dateString;
     }
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-800">Report Results ({data.length})</h3>
+    <section data-page-tour="mreport-table" className="flex h-full min-h-0 flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+      <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center justify-between px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-slate-100 tracking-tight">
+            Report Results
+            <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+              {data.length}
+            </span>
+          </h3>
+        </div>
 
-        <div className="flex items-center gap-3">
-
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Eye className="h-4 w-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] shadow-none"
+              >
+                <Eye className="h-3.5 w-3.5" />
                 Columns
               </Button>
             </DropdownMenuTrigger>
@@ -137,32 +169,42 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
           <Button
             onClick={handleExport}
             size="sm"
-            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            data-page-tour="mreport-export"
+            className="h-8 gap-1.5 rounded-[8px] text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-sm"
             disabled={data.length === 0}
           >
-            <FileDown className="h-4 w-4" />
+            <FileDown className="h-3.5 w-3.5" />
             Export Excel
           </Button>
         </div>
       </div>
 
-      <div className="rounded-md border border-slate-200 bg-white overflow-x-auto shadow-sm max-h-[80vh] relative">
-        <table className="w-full text-sm text-left relative" style={{ tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto' }}>
-          <thead className="bg-slate-50 border-b border-slate-200 text-xs text-slate-700 font-semibold uppercase sticky top-0 z-10">
+      <div className="flex-1 min-h-0 overflow-auto">
+        <table
+          className="tm-data-table w-full text-sm text-left relative"
+          style={{ tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto' }}
+        >
+          <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide sticky top-0 z-10">
             <tr>
               {DEFAULT_COLUMNS.map((col) => {
                 if (!visibleColumns.includes(col.id)) return null;
-                const widthStyle = colWidths[col.id] ? { width: colWidths[col.id], minWidth: colWidths[col.id], maxWidth: colWidths[col.id] } : {};
+                const widthStyle = colWidths[col.id]
+                  ? {
+                      width: colWidths[col.id],
+                      minWidth: colWidths[col.id],
+                      maxWidth: colWidths[col.id],
+                    }
+                  : {};
 
                 return (
                   <th
                     key={col.id}
-                    className="px-4 py-3 border-r border-slate-100 last:border-r-0 whitespace-nowrap relative group select-none overflow-hidden text-ellipsis"
+                    className="px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 whitespace-nowrap relative group select-none overflow-hidden text-ellipsis"
                     style={widthStyle}
                   >
                     {col.label}
                     <div
-                      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-emerald-400 group-hover:bg-slate-300 transition-colors z-20"
+                      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors z-20"
                       onMouseDown={(e) => handleResizeStart(e, col.id)}
                     />
                   </th>
@@ -171,79 +213,208 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
             </tr>
           </thead>
           <tbody>
-            {data.length === 0 ? (
+            {totalItems === 0 ? (
               <tr>
-                <td colSpan={visibleColumns.length} className="px-4 py-16 text-center text-slate-500">
-                  No meeting notes found matching criteria.
+                <td colSpan={visibleColumns.length} className="px-4 py-16 text-center">
+                  <p className="text-xs font-medium text-slate-500">
+                    No meeting notes found matching criteria.
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Adjust filters and apply again.
+                  </p>
                 </td>
               </tr>
             ) : (
-              data.map((meeting, index) => (
-                <tr key={meeting.meetingNotesNo || index} className="border-b border-slate-100 hover:bg-slate-50/50">
+              pageRows.map((meeting, index) => (
+                <tr
+                  key={meeting.meetingNotesNo || `${startIndex + index}`}
+                  className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50"
+                >
                   {visibleColumns.includes('srNo') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['srNo'] ? { maxWidth: colWidths['srNo'] } : {}}>{index + 1}</td>
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={colWidths['srNo'] ? { maxWidth: colWidths['srNo'] } : {}}
+                    >
+                      {startIndex + index + 1}
+                    </td>
                   )}
                   {visibleColumns.includes('meetingTitle') && (
-                    <td className="px-4 py-3 border-r border-slate-100 font-medium text-slate-900 align-top truncate" style={colWidths['meetingTitle'] ? { maxWidth: colWidths['meetingTitle'] } : {}}>
-                      <TruncatedCell text={meeting.meetingTitle || meeting.title} minWidth="min-w-[150px]" />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-top truncate"
+                      style={
+                        colWidths['meetingTitle'] ? { maxWidth: colWidths['meetingTitle'] } : {}
+                      }
+                    >
+                      <TruncatedCell
+                        text={meeting.meetingTitle || meeting.title}
+                        minWidth="min-w-[150px]"
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('category') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 align-top truncate" style={colWidths['category'] ? { maxWidth: colWidths['category'] } : {}}>
-                      <TruncatedCell text={meeting.meetingCategoryName || meeting.category?.categoryName} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate"
+                      style={colWidths['category'] ? { maxWidth: colWidths['category'] } : {}}
+                    >
+                      <TruncatedCell
+                        text={meeting.meetingCategoryName || meeting.category?.categoryName}
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('type') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['type'] ? { maxWidth: colWidths['type'] } : {}}>
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={colWidths['type'] ? { maxWidth: colWidths['type'] } : {}}
+                    >
                       <TruncatedCell text={meeting.meetingTypeName || meeting.type?.typeName} />
                     </td>
                   )}
                   {visibleColumns.includes('company') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['company'] ? { maxWidth: colWidths['company'] } : {}}>
-                      <TruncatedCell text={meeting.companyName || meeting.taskCompany?.companyName || meeting.company?.companyName} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={colWidths['company'] ? { maxWidth: colWidths['company'] } : {}}
+                    >
+                      <TruncatedCell
+                        text={
+                          meeting.companyName ||
+                          meeting.taskCompany?.companyName ||
+                          meeting.company?.companyName
+                        }
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('location') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['location'] ? { maxWidth: colWidths['location'] } : {}}>
-                      <TruncatedCell text={meeting.locationName || meeting.location?.locationName} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={colWidths['location'] ? { maxWidth: colWidths['location'] } : {}}
+                    >
+                      <TruncatedCell
+                        text={meeting.locationName || meeting.location?.locationName}
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('mode') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['mode'] ? { maxWidth: colWidths['mode'] } : {}}>
-                      <TruncatedCell text={meeting.mode || meeting.meetingMode?.meetingModeName} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={colWidths['mode'] ? { maxWidth: colWidths['mode'] } : {}}
+                    >
+                      <TruncatedCell
+                        text={meeting.mode || meeting.meetingMode?.meetingModeName}
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('startDateTime') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['startDateTime'] ? { maxWidth: colWidths['startDateTime'] } : {}}>
-                      <TruncatedCell text={formatDate(meeting.meetingStartDateTime || meeting.startDateTime || meeting.startDate)} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={
+                        colWidths['startDateTime'] ? { maxWidth: colWidths['startDateTime'] } : {}
+                      }
+                    >
+                      <TruncatedCell
+                        text={formatDate(
+                          meeting.meetingStartDateTime ||
+                            meeting.startDateTime ||
+                            meeting.startDate
+                        )}
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('endDateTime') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['endDateTime'] ? { maxWidth: colWidths['endDateTime'] } : {}}>
-                      <TruncatedCell text={formatDate(meeting.meetingEndDateTime || meeting.endDateTime || meeting.endDate)} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={
+                        colWidths['endDateTime'] ? { maxWidth: colWidths['endDateTime'] } : {}
+                      }
+                    >
+                      <TruncatedCell
+                        text={formatDate(
+                          meeting.meetingEndDateTime || meeting.endDateTime || meeting.endDate
+                        )}
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('participants') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['participants'] ? { maxWidth: colWidths['participants'] } : {}}>
-                      <TruncatedCell text={Array.isArray(meeting.participants) ? meeting.participants.map((p: any) => typeof p === 'string' ? p : (p.printingName || p.loginId || p.participantName)).filter(Boolean).join(', ') : meeting.participants || meeting.internalUsers || '-'} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={
+                        colWidths['participants'] ? { maxWidth: colWidths['participants'] } : {}
+                      }
+                    >
+                      <TruncatedCell
+                        text={
+                          Array.isArray(meeting.participants)
+                            ? meeting.participants
+                                .map((p: any) =>
+                                  typeof p === 'string'
+                                    ? p
+                                    : p.printingName || p.loginId || p.participantName
+                                )
+                                .filter(Boolean)
+                                .join(', ')
+                            : meeting.participants || meeting.internalUsers || '-'
+                        }
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('discussionsMade') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['discussionsMade'] ? { maxWidth: colWidths['discussionsMade'] } : {}}>
-                      <TruncatedCell text={Array.isArray(meeting.discussionDetail) ? meeting.discussionDetail.map((d: any) => d.topic || d.discussionSummary).filter(Boolean).map((t: any) => `• ${t}`).join('\n') : meeting.discussionsMade || meeting.agenda || '-'} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={
+                        colWidths['discussionsMade']
+                          ? { maxWidth: colWidths['discussionsMade'] }
+                          : {}
+                      }
+                    >
+                      <TruncatedCell
+                        text={
+                          Array.isArray(meeting.discussionDetail)
+                            ? meeting.discussionDetail
+                                .map((d: any) => d.topic || d.discussionSummary)
+                                .filter(Boolean)
+                                .map((t: any) => `• ${t}`)
+                                .join('\n')
+                            : meeting.discussionsMade || meeting.agenda || '-'
+                        }
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('discussionRemarks') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['discussionRemarks'] ? { maxWidth: colWidths['discussionRemarks'] } : {}}>
-                      <TruncatedCell text={Array.isArray(meeting.discussionDetail) ? meeting.discussionDetail.map((d: any) => d.decisionRemarks).filter(Boolean).map((t: any) => `• ${t}`).join('\n') : meeting.discussionRemarks || meeting.remarks || '-'} />
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={
+                        colWidths['discussionRemarks']
+                          ? { maxWidth: colWidths['discussionRemarks'] }
+                          : {}
+                      }
+                    >
+                      <TruncatedCell
+                        text={
+                          Array.isArray(meeting.discussionDetail)
+                            ? meeting.discussionDetail
+                                .map((d: any) => d.decisionRemarks)
+                                .filter(Boolean)
+                                .map((t: any) => `• ${t}`)
+                                .join('\n')
+                            : meeting.discussionRemarks || meeting.remarks || '-'
+                        }
+                      />
                     </td>
                   )}
                   {visibleColumns.includes('status') && (
-                    <td className="px-4 py-3 border-r border-slate-100 text-slate-600 truncate" style={colWidths['status'] ? { maxWidth: colWidths['status'] } : {}}>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${(meeting.status?.statusName || meeting.status) === 'Completed' || (meeting.status?.statusName || meeting.status) === 'Closed' ? 'bg-emerald-100 text-emerald-800' :
-                        (meeting.status?.statusName || meeting.status) === 'In Progress' ? 'bg-amber-100 text-amber-800' :
-                          'bg-slate-100 text-slate-800'
-                        }`}>
+                    <td
+                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={colWidths['status'] ? { maxWidth: colWidths['status'] } : {}}
+                    >
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-semibold ${
+                          (meeting.status?.statusName || meeting.status) === 'Completed' ||
+                          (meeting.status?.statusName || meeting.status) === 'Closed'
+                            ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30'
+                            : (meeting.status?.statusName || meeting.status) === 'In Progress'
+                              ? 'bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30'
+                              : 'bg-[var(--tm-muted)] text-slate-300 ring-1 ring-[var(--tm-border)]/80'
+                        }`}
+                      >
                         {meeting.status?.statusName || meeting.status || 'Draft'}
                       </span>
                     </td>
@@ -254,6 +425,19 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
           </tbody>
         </table>
       </div>
-    </div>
+
+      {totalItems > 0 && (
+        <MasterPaginationBar
+          totalItems={totalItems}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      )}
+    </section>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function PortList() {
 
   const [apiPorts, setApiPorts] = useState<PortMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchPorts = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/ports/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -52,6 +56,7 @@ export function PortList() {
       }
     } catch (error) {
       console.error('Failed to fetch API ports:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -74,8 +79,9 @@ export function PortList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -83,13 +89,14 @@ export function PortList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/ports/delete', {
       params: { portNo: deleteTargetId }
-    }).then(() => fetchPorts()).catch(err => console.error('Failed to delete port:', err));
+    }).then(() => { toast.success('Record deleted'); fetchPorts(); }).catch(err => { console.error('Failed to delete port:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
@@ -98,43 +105,67 @@ export function PortList() {
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Port Name"
-          columns={[
-            { header: 'Country', render: (item) => item.countryName || <span className="italic text-slate-300 font-medium">Not set</span> },
-            { header: 'State', render: (item) => item.stateName || <span className="italic text-slate-300 font-medium">Not set</span> },
-            { header: 'City', render: (item) => item.cityName || <span className="italic text-slate-300 font-medium">Not set</span> },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('port', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={Anchor}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Port Name"
+        columns={[
+          {
+            header: 'Country',
+            render: (item) =>
+              item.countryName || (
+                <span className="italic text-slate-300 font-medium">Not set</span>
+              ),
+          },
+          {
+            header: 'State',
+            render: (item) =>
+              item.stateName || (
+                <span className="italic text-slate-300 font-medium">Not set</span>
+              ),
+          },
+          {
+            header: 'City',
+            render: (item) =>
+              item.cityName || (
+                <span className="italic text-slate-300 font-medium">Not set</span>
+              ),
+          },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('port', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchPorts}
+        emptyIcon={Anchor}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

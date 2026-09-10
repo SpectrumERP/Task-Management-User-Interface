@@ -1,23 +1,23 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Info, Users, Plus, Trash2, Edit2, Paperclip, MessageSquare, FileText, Check, X, Loader2 } from 'lucide-react';
+import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Loader2, Clock, UserRound, IdCard, Building2, UserPlus, X } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Combobox } from '@/components/ui/Combobox';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { EmployeeCombobox } from '@/components/meetings/EmployeeCombobox';
 import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityCombobox';
 import { DocumentCombobox } from '@/components/meetings/DocumentCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
@@ -42,94 +42,88 @@ const formatFileSize = (bytes?: number | null) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const cleanMasterLabel = (label?: string | null) =>
+  (label || '').replace(/^\[(.+)\]$/, '$1').trim() || label || '';
 
-function FormSection({ title, icon: Icon, children, headerAction }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode }) {
+const toOptionalInt = (val: string) => {
+  if (val === '' || val == null) return null;
+  const n = parseInt(val, 10);
+  return Number.isNaN(n) ? null : n;
+};
+
+function FieldErrorTip({ message }: { message?: string }) {
+  if (!message) return null;
   return (
-    <div className="space-y-0 pt-2 first:pt-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 border-l-4 border-[#006699] -ml-4 sm:-ml-8 pl-3 sm:pl-7">
-        <div className="flex items-center gap-0.5">
-          {Icon && <Icon size={16} className="text-[#006699]" />}
-          {title && <h3 className="text-sm font-medium text-slate-800">{title}</h3>}
-        </div>
-        {headerAction}
-      </div>
-      <div className="pl-0 mt-3">
-        {children}
-      </div>
+    <span
+      role="alert"
+      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
+    >
+      {message}
+    </span>
+  );
+}
+
+function FieldControl({
+  children,
+  error,
+  className,
+}: {
+  children: React.ReactNode;
+  error?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('relative min-w-0', className)}>
+      {children}
+      <FieldErrorTip message={error} />
     </div>
   );
 }
 
-function TextareaWithPopover({
-  value,
-  onChange,
-  placeholder,
-  maxLength = 1000
+function FieldLabel({
+  children,
+  required,
+  className,
+  htmlFor,
 }: {
-  value: string;
-  onChange: (val: string) => void;
-  placeholder?: string;
-  maxLength?: number;
+  children: React.ReactNode;
+  required?: boolean;
+  className?: string;
+  htmlFor?: string;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [tempValue, setTempValue] = useState(value || '');
-
-  useEffect(() => {
-    if (isOpen) {
-      setTempValue(value || '');
-    }
-  }, [isOpen, value]);
-
-  const handleSave = () => {
-    onChange(tempValue);
-    setIsOpen(false);
-  };
-
-  const handleCancel = () => {
-    setTempValue(value || '');
-    setIsOpen(false);
-  };
-
   return (
-    <div className="relative flex items-center">
-      <Input
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-8 rounded-lg text-xs bg-white pr-7"
-      />
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <button type="button" className="absolute right-1.5 p-1 text-slate-400 hover:text-[#006699] transition-colors rounded">
-            <Edit2 size={12} />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[340px] p-3 shadow-xl shadow-slate-200/50 rounded-xl border border-slate-200" align="end" side="bottom">
-          <div className="space-y-2">
-            <Textarea
-              value={tempValue}
-              onChange={(e) => setTempValue(e.target.value)}
-              placeholder={placeholder}
-              className="min-h-[120px] text-sm resize-none focus-visible:ring-1 focus-visible:ring-[#006699] p-3"
-              maxLength={maxLength}
-            />
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-[10px] text-slate-400 font-medium">
-                {tempValue.length}/{maxLength}
-              </span>
-              <div className="flex gap-1.5">
-                <button type="button" onClick={handleSave} className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors" title="Save">
-                  <Check size={14} />
-                </button>
-                <button type="button" onClick={handleCancel} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-md transition-colors" title="Cancel">
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+    <label
+      htmlFor={htmlFor}
+      className={cn('inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300', className)}
+    >
+      <span>{children}</span>
+      {required ? (
+        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
+          *
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
+function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
+  return (
+    <section data-page-tour={tourId} className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {Icon && (
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+              <Icon size={15} strokeWidth={1.75} />
+            </span>
+          )}
+          {title && <h3 className="text-sm font-semibold text-slate-100 tracking-tight truncate">{title}</h3>}
+        </div>
+        {headerAction}
+      </div>
+      <div className="p-4 sm:p-5">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -160,6 +154,11 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: number; name: string } | null>(null);
   const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{
+    type: 'participant' | 'discussion' | 'document';
+    index: number;
+    label: string;
+  } | null>(null);
   const [invalidFiles, setInvalidFiles] = useState<Array<{ name: string; size: number; reason: string }>>([]);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
 
@@ -293,7 +292,27 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
     }
   }, [startDateTime, endDateTime, form]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (form.formState.isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [form.formState.isDirty]);
 
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      form.formState.isDirty &&
+      currentLocation.pathname !== nextLocation.pathname
+  );
+
+  const requestLeave = () => {
+    navigate('/meetings');
+  };
 
   const startUpload = async (tempId: string, file: File) => {
     try {
@@ -371,6 +390,23 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
   const handleRemoveAttachment = (id: number, name: string) => {
     setAttachmentToDelete({ id, name });
+  };
+
+  const requestRemoveItem = (
+    type: 'participant' | 'discussion' | 'document',
+    index: number,
+    label: string
+  ) => {
+    setItemToDelete({ type, index, label });
+  };
+
+  const confirmRemoveItem = () => {
+    if (!itemToDelete) return;
+    const { type, index } = itemToDelete;
+    if (type === 'participant') removeParticipant(index);
+    else if (type === 'discussion') removeDiscussion(index);
+    else removeDocument(index);
+    setItemToDelete(null);
   };
 
   const confirmRemoveAttachment = async () => {
@@ -463,55 +499,67 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
       await apiService.post(url, cleanEmptyStrings(payload));
       toast.success(isUpdate ? "Meeting Notes Updated Successfully" : "Meeting Notes Saved Successfully");
+      form.reset(form.getValues());
       if (onComplete) onComplete();
     } catch (error) {
       console.error(error);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to save meeting notes. Please try again.'));
+      }
     }
   };
 
   if (isLoadingOptions || isFetchingData) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center h-full gap-4 text-slate-500">
-        <div className="w-8 h-8 border-4 border-[#006699] border-t-transparent rounded-lg animate-spin"></div>
-        <div className="font-semibold">{isFetchingData ? 'Loading meeting details...' : 'Loading options...'}</div>
+      <div className="flex-1 flex flex-col items-center justify-center h-full">
+        <BrandLoader
+          size="sm"
+          message={isFetchingData ? 'Loading meeting details' : 'Loading options'}
+        />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-slate-50/50 absolute inset-0">
+    <div className="flex flex-col h-full overflow-hidden bg-[var(--tm-page)] absolute inset-0">
       {/* Header & Breadcrumb */}
-      <div className="shrink-0 sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-2 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm transition-all duration-200">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/meetings')} className="shrink-0 h-8 w-8 mr-1 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 hidden sm:flex">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="m15 18-6-6 6-6" /></svg>
-          </Button>
-          <div className="flex items-center gap-2 text-xs font-semibold whitespace-nowrap">
-            <span className="text-slate-500 hover:text-[#006699] cursor-pointer transition-colors" onClick={() => navigate('/meetings')}>Meeting Notes</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-800">{meetingNotesNo || initialData?.meetingNotesNo ? 'Edit Meeting Note' : 'Create Meeting Note'}</span>
-          </div>
-        </div>
+      <div className="shrink-0 sticky top-0 z-50 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-2.5 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
+        <nav className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={requestLeave}
+            className="shrink-0 text-sm font-medium text-[#0EA5E9] underline decoration-[#0EA5E9]/40 underline-offset-[3px] hover:decoration-[#0EA5E9] hover:text-[#0284C7] cursor-pointer transition-colors bg-transparent p-0 border-0"
+          >
+            Meeting Notes
+          </button>
+          <span className="text-slate-300 text-sm font-light leading-none select-none" aria-hidden>
+            /
+          </span>
+          <span className="text-sm font-semibold text-slate-100 truncate">
+            {meetingNotesNo || initialData?.meetingNotesNo ? 'Edit Meeting Note' : 'Create Meeting Note'}
+          </span>
+        </nav>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <Button type="button" variant="outline" size="sm" className="h-8 rounded-lg font-semibold shadow-sm text-xs" onClick={() => navigate('/meetings')}>Cancel</Button>
+        <div className="flex items-center gap-2 self-end sm:self-auto" data-page-tour="meeting-form-actions">
+          <PageGuideButton guideKey="meeting-form" />
+          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] font-medium border-[var(--tm-border)]/80 text-xs px-4" onClick={requestLeave}>Cancel</Button>
           {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
-            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-8 rounded-lg bg-[#006699] hover:bg-[#005580] text-white font-bold shadow-md shadow-[#006699]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
+            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] text-xs px-5" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
               {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-slate-50">
-        <div className="w-full mx-auto p-2 sm:p-4 lg:p-5">
-          <Card className="p-3 sm:p-5 bg-white shadow-lg shadow-slate-200/40 rounded-2xl border border-slate-100">
-            <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))} className="space-y-6">
+      <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
+        <div className="w-full mx-auto p-4">
+          <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))} className="space-y-3">
 
               {/* SECTION 1: Basic Information */}
               <FormSection
                 title="Meeting Detail"
-                icon={Info}
+                icon={Clock}
+                tourId="meeting-form-detail"
                 headerAction={
                   <Controller
                     control={form.control}
@@ -521,7 +569,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                         value={field.value?.toString()}
                         onValueChange={(val) => field.onChange(parseInt(val))}
                       >
-                        <SelectTrigger className="h-8 rounded-full bg-slate-50 border-slate-200 text-xs w-[140px] shadow-sm font-medium">
+                        <SelectTrigger className="h-9 rounded-[8px] bg-[var(--tm-surface)] border-[var(--tm-border)]/80 text-xs w-[140px] font-medium">
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -536,137 +584,147 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   />
                 }
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-4">
                   <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
-                    <label className="text-xs font-semibold text-slate-700">Meeting Title <span className="text-red-500">*</span></label>
-                    <Input {...form.register('meetingTitle')} placeholder="e.g. Weekly Sync with Client" className="h-9 rounded-lg" />
-                    {form.formState.errors.meetingTitle && <span className="text-xs text-red-500">{form.formState.errors.meetingTitle.message}</span>}
+                    <FieldLabel required>Meeting Title</FieldLabel>
+                    <FieldControl error={form.formState.errors.meetingTitle?.message}>
+                      <Input {...form.register('meetingTitle')} placeholder="e.g. Weekly Sync with Client" className={cn("h-10 rounded-[8px]", form.formState.errors.meetingTitle && "border-red-400")} />
+                    </FieldControl>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Meeting Category <span className="text-red-500">*</span></label>
+                    <FieldLabel required>Meeting Category</FieldLabel>
                     <Controller
                       control={form.control}
                       name="meetingCategoryNo"
                       render={({ field }) => (
-                        <Combobox className="rounded-lg h-9 w-full"
-                          options={meetingCategories.map(c => ({ value: (c.id || c.meetingCategoryNo).toString(), label: c.name || c.meetingCategoryName }))}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select Category"
-                          onAddNew={() => setCategoryModalOpen(true)}
-                          addNewLabel="Add Category"
-                        />
+                        <FieldControl error={form.formState.errors.meetingCategoryNo?.message}>
+                          <Combobox className={cn("rounded-[8px] h-10 w-full", form.formState.errors.meetingCategoryNo && "border-red-400")}
+                            options={meetingCategories.map(c => ({ value: (c.id || c.meetingCategoryNo).toString(), label: c.name || c.meetingCategoryName }))}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select Category"
+                            onAddNew={() => setCategoryModalOpen(true)}
+                            addNewLabel="Add Category"
+                          />
+                        </FieldControl>
                       )}
                     />
-                    {form.formState.errors.meetingCategoryNo && <span className="text-xs text-red-500">{form.formState.errors.meetingCategoryNo.message}</span>}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Meeting Type <span className="text-red-500">*</span></label>
+                    <FieldLabel required>Meeting Type</FieldLabel>
                     <Controller
                       control={form.control}
                       name="meetingTypeNo"
                       render={({ field }) => (
-                        <Combobox className="rounded-lg h-9 w-full"
-                          options={meetingTypes.map(t => ({ value: (t.id || t.meetingTypeNo).toString(), label: t.name || t.meetingTypeName }))}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select Type"
-                          onAddNew={() => setTypeModalOpen(true)}
-                          addNewLabel="Add Type"
-                        />
+                        <FieldControl error={form.formState.errors.meetingTypeNo?.message}>
+                          <Combobox className={cn("rounded-[8px] h-10 w-full", form.formState.errors.meetingTypeNo && "border-red-400")}
+                            options={meetingTypes.map(t => ({ value: (t.id || t.meetingTypeNo).toString(), label: t.name || t.meetingTypeName }))}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select Type"
+                            onAddNew={() => setTypeModalOpen(true)}
+                            addNewLabel="Add Type"
+                          />
+                        </FieldControl>
                       )}
                     />
-                    {form.formState.errors.meetingTypeNo && <span className="text-xs text-red-500">{form.formState.errors.meetingTypeNo.message}</span>}
                   </div>
 
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Company <span className="text-red-500">*</span></label>
+                    <FieldLabel required>Company</FieldLabel>
                     <Controller
                       control={form.control}
                       name="companyNo"
                       render={({ field }) => (
-                        <Combobox className="rounded-lg"
-                          options={taskFillValues?.taskCompany?.map(c => ({ value: c.CompanyNo?.toString() || c.companyNo?.toString() || c.OperTaskCompanyNo?.toString() || '', label: c.AliasName || c.companyName || c.name || c.AliasName || c.Code || 'Unknown Company' })) || []}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select Company"
-                        />
+                        <FieldControl error={form.formState.errors.companyNo?.message}>
+                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.companyNo && "border-red-400")}
+                            options={taskFillValues?.taskCompany?.map(c => ({ value: c.CompanyNo?.toString() || c.companyNo?.toString() || c.OperTaskCompanyNo?.toString() || '', label: c.AliasName || c.companyName || c.name || c.AliasName || c.Code || 'Unknown Company' })) || []}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select Company"
+                          />
+                        </FieldControl>
                       )}
                     />
-                    {form.formState.errors.companyNo && <span className="text-xs text-red-500">{form.formState.errors.companyNo.message}</span>}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Location <span className="text-red-500">*</span></label>
+                    <FieldLabel required>Location</FieldLabel>
                     <Controller
                       control={form.control}
                       name="operLocationNo"
                       render={({ field }) => (
-                        <Combobox className="rounded-lg"
-                          options={taskFillValues?.location?.filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location })) || []}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select Location"
-                        />
+                        <FieldControl error={form.formState.errors.operLocationNo?.message}>
+                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.operLocationNo && "border-red-400")}
+                            options={taskFillValues?.location?.filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location })) || []}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select Location"
+                          />
+                        </FieldControl>
                       )}
                     />
-                    {form.formState.errors.operLocationNo && <span className="text-xs text-red-500">{form.formState.errors.operLocationNo.message}</span>}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Meeting Mode <span className="text-red-500">*</span></label>
+                    <FieldLabel required>Meeting Mode</FieldLabel>
                     <Controller
                       control={form.control}
                       name="meetingModeNo"
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="Select Mode" /></SelectTrigger>
-                          <SelectContent>
-                            {meetingModes.map(m => (
-                              <SelectItem key={m.meetingModeNo} value={m.meetingModeNo.toString()}>{m.meetingModeName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FieldControl error={form.formState.errors.meetingModeNo?.message}>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger className={cn("h-10 rounded-[8px]", form.formState.errors.meetingModeNo && "border-red-400")}><SelectValue placeholder="Select Mode" /></SelectTrigger>
+                            <SelectContent>
+                              {meetingModes.map(m => (
+                                <SelectItem key={m.meetingModeNo} value={m.meetingModeNo.toString()}>{m.meetingModeName}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FieldControl>
                       )}
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Start Date & Time <span className="text-red-500">*</span></label>
+                    <FieldLabel required>Start Date & Time</FieldLabel>
                     <Controller
                       control={form.control}
                       name="meetingStartDateTime"
                       render={({ field }) => (
-                        <DateTimePicker className="rounded-lg" date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                        <FieldControl error={form.formState.errors.meetingStartDateTime?.message}>
+                          <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                        </FieldControl>
                       )}
                     />
-                    {form.formState.errors.meetingStartDateTime && <span className="text-xs text-red-500">{form.formState.errors.meetingStartDateTime.message}</span>}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">End Date & Time <span className="text-red-500">*</span></label>
+                    <FieldLabel required>End Date & Time</FieldLabel>
                     <Controller
                       control={form.control}
                       name="meetingEndDateTime"
                       render={({ field }) => (
-                        <DateTimePicker className="rounded-lg" date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                        <FieldControl error={form.formState.errors.meetingEndDateTime?.message}>
+                          <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                        </FieldControl>
                       )}
                     />
-                    {form.formState.errors.meetingEndDateTime && <span className="text-xs text-red-500">{form.formState.errors.meetingEndDateTime.message}</span>}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Meeting Duration (In Minutes)</label>
-                    <Input value={form.watch('durationMinutes') || 0} readOnly placeholder="0" className="h-9 rounded-lg bg-slate-50/50 text-xs text-slate-500 text-right" />
+                    <label className="text-[11px] font-medium text-slate-300">Meeting Duration (In Minutes)</label>
+                    <Input value={form.watch('durationMinutes') || 0} readOnly placeholder="0" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500 text-right" />
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
-                    <label className="text-xs font-semibold text-slate-700">Meeting Link (URL)</label>
-                    <Input {...form.register('meetingMinutesUrl')} placeholder="https://..." className="h-9 rounded-lg" />
-                    {form.formState.errors.meetingMinutesUrl && <span className="text-xs text-red-500">{form.formState.errors.meetingMinutesUrl.message}</span>}
+                    <label className="text-[11px] font-medium text-slate-300">Meeting Link (URL)</label>
+                    <FieldControl error={form.formState.errors.meetingMinutesUrl?.message}>
+                      <Input {...form.register('meetingMinutesUrl')} placeholder="https://..." className={cn("h-10 rounded-[8px]", form.formState.errors.meetingMinutesUrl && "border-red-400")} />
+                    </FieldControl>
                   </div>
                 </div>
               </FormSection>
@@ -675,36 +733,90 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <FormSection
                 title="Participants"
                 icon={Users}
+                tourId="meeting-form-participants"
                 headerAction={
-                  <Button type="button" onClick={() => appendParticipant({ participantType: 1 })} variant="outline" size="sm" className="h-8 rounded-lg text-xs">
+                  <Button type="button" onClick={() => appendParticipant({ participantType: 1 })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                     <Plus size={14} className="mr-1" /> Add Participant
                   </Button>
                 }
               >
                 {participantFields.length === 0 ? (
-                  <div className="text-center p-4 border border-dashed border-slate-200 rounded-lg bg-slate-50/50 flex flex-col items-center justify-center">
-                    <p className="text-xs text-slate-500 font-medium">No participants added yet.</p>
-                    {(form.formState.errors.participants?.message || form.formState.errors.participants?.root?.message) && (
-                      <p className="text-xs text-red-500 font-medium mt-1">{(form.formState.errors.participants?.message || form.formState.errors.participants?.root?.message) as string}</p>
-                    )}
-                  </div>
+                  <FieldControl
+                    className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center"
+                    error={
+                      (form.formState.errors.participants?.message ||
+                        form.formState.errors.participants?.root?.message) as
+                        | string
+                        | undefined
+                    }
+                  >
+                    <p className="text-xs text-slate-500 font-medium">
+                      No participants added yet.
+                    </p>
+                  </FieldControl>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-3">
                     {participantFields.map((field, index) => {
                       const participantType = form.watch(`participants.${index}.participantType`);
+                      const participantName = form.watch(`participants.${index}.participantName`);
+                      const participantEmail = form.watch(`participants.${index}.email`);
+                      const summaryName = (participantName || '').trim();
+                      const summaryEmail = (participantEmail || '').trim();
+                      const TypeIcon =
+                        participantType === 2 ? IdCard :
+                        participantType === 3 ? UserPlus :
+                        participantType === 4 ? Building2 :
+                        UserRound;
                       return (
-                        <div key={field.id} className="relative px-3 py-1 rounded-lg border border-slate-100 bg-slate-50/50 flex gap-3 items-start group">
-                          <div className="flex-1 grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                        <div
+                          key={field.id}
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                        >
+                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                              {index + 1}
+                            </span>
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
+                              <TypeIcon size={14} strokeWidth={1.75} />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              {summaryName ? (
+                                <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{summaryName}</p>
+                              ) : null}
+                              {summaryEmail ? (
+                                <p className="text-[11px] text-slate-400 truncate mt-0.5">{summaryEmail}</p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                requestRemoveItem(
+                                  'participant',
+                                  index,
+                                  summaryName || `Participant ${index + 1}`
+                                )
+                              }
+                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                              title="Remove participant"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
 
-                            {/* Participant Type Selection */}
+                          <div className="p-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+
+                            {/* Participant Type — first field in the form row */}
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Type</label>
+                              <FieldLabel required>Type</FieldLabel>
                               <Controller
                                 control={form.control}
                                 name={`participants.${index}.participantType`}
                                 render={({ field }) => (
                                   <Select value={field.value.toString()} onValueChange={(v) => field.onChange(parseInt(v))}>
-                                    <SelectTrigger className="h-8 rounded-lg bg-white text-xs min-w-[150px]"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs min-w-[150px]">
+                                      <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
                                     <SelectContent>
                                       {participantTypes.map(pt => (
                                         <SelectItem key={pt.id} value={pt.id.toString()}>{pt.participantType}</SelectItem>
@@ -719,80 +831,74 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             {participantType === 1 && (
                               <>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select User <span className="text-red-500">*</span></label>
+                                  <FieldLabel required>Select User</FieldLabel>
                                   <Controller
                                     control={form.control}
                                     name={`participants.${index}.userNo`}
                                     render={({ field }) => (
-                                      <UserCombobox className="rounded-lg h-8 text-xs"
-                                        value={field.value?.toString() || ''}
-                                        onChange={(user: any) => {
-                                          field.onChange(user?.loginNo ? Number(user.loginNo) : undefined);
-                                          form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || '');
-                                          form.setValue(`participants.${index}.email`, user?.email || '');
-                                        }}
-                                        onResolve={(user: any) => {
-                                          if (!form.getValues(`participants.${index}.email`)) {
+                                      <FieldControl error={form.formState.errors.participants?.[index]?.userNo?.message}>
+                                        <UserCombobox className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.participants?.[index]?.userNo && "border-red-400")}
+                                          value={field.value?.toString() || ''}
+                                          onChange={(user: any) => {
+                                            field.onChange(user?.loginNo ? Number(user.loginNo) : undefined);
                                             form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || '');
                                             form.setValue(`participants.${index}.email`, user?.email || '');
-                                          }
-                                        }}
-                                        placeholder="Search internal user..."
-                                      />
+                                          }}
+                                          onResolve={(user: any) => {
+                                            if (!form.getValues(`participants.${index}.email`)) {
+                                              form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || '');
+                                              form.setValue(`participants.${index}.email`, user?.email || '');
+                                            }
+                                          }}
+                                          placeholder="Search internal user..."
+                                        />
+                                      </FieldControl>
                                     )}
                                   />
-                                  {form.formState.errors.participants?.[index]?.userNo && (
-                                    <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.userNo?.message}</span>
-                                  )}
                                 </div>
                                 <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Display Name</label>
-                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Display Name" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
+                                  <label className="text-[11px] font-medium text-slate-300">Display Name</label>
+                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Display Name" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
-                                {/* <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email</label>
-                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
-                                </div> */}
                               </>
                             )}
 
                             {/* Internal (Employee) Fields */}
                             {participantType === 2 && (
                               <>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Employee <span className="text-red-500">*</span></label>
+                                <div className="space-y-1 sm:col-span-1 lg:col-span-2">
+                                  <FieldLabel required>Employee</FieldLabel>
                                   <Controller
                                     control={form.control}
                                     name={`participants.${index}.empNo`}
                                     render={({ field }) => (
-                                      <EmployeeCombobox className="rounded-lg h-8 text-xs"
-                                        value={field.value?.toString() || ''}
-                                        onChange={(emp: any) => {
-                                          field.onChange(emp?.empNo ? Number(emp.empNo) : undefined);
-                                          form.setValue(`participants.${index}.participantName`, emp?.empCode || '');
-                                          form.setValue(`participants.${index}.email`, emp?.email || '');
-                                        }}
-                                        onResolve={(emp: any) => {
-                                          if (!form.getValues(`participants.${index}.email`)) {
+                                      <FieldControl error={form.formState.errors.participants?.[index]?.empNo?.message}>
+                                        <EmployeeCombobox className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.participants?.[index]?.empNo && "border-red-400")}
+                                          value={field.value?.toString() || ''}
+                                          onChange={(emp: any) => {
+                                            field.onChange(emp?.empNo ? Number(emp.empNo) : undefined);
                                             form.setValue(`participants.${index}.participantName`, emp?.empCode || '');
                                             form.setValue(`participants.${index}.email`, emp?.email || '');
-                                          }
-                                        }}
-                                        placeholder="Search employee..."
-                                      />
+                                          }}
+                                          onResolve={(emp: any) => {
+                                            if (!form.getValues(`participants.${index}.email`)) {
+                                              form.setValue(`participants.${index}.participantName`, emp?.empCode || '');
+                                              form.setValue(`participants.${index}.email`, emp?.email || '');
+                                            }
+                                          }}
+                                          placeholder="Search employee..."
+                                        />
+                                      </FieldControl>
                                     )}
                                   />
-                                  {form.formState.errors.participants?.[index]?.empNo && (
-                                    <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.empNo?.message}</span>
-                                  )}
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Employee Code</label>
-                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Employee Code" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
+                                <div className="space-y-1 sm:col-span-1 lg:col-span-1">
+                                  <label className="text-[11px] font-medium text-slate-300">Employee Code</label>
+                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Employee Code" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email</label>
-                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
+                                <div className="space-y-1 sm:col-span-2 lg:col-span-2">
+                                  <label className="text-[11px] font-medium text-slate-300">Email</label>
+                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-10 w-full rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                               </>
                             )}
@@ -800,40 +906,35 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             {/* External Fields */}
                             {participantType === 3 && (
                               <>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Name <span className="text-red-500">*</span></label>
-                                  <Input {...form.register(`participants.${index}.participantName`)} placeholder="Name" className="h-8 rounded-lg bg-white text-xs" maxLength={100} />
-                                  {form.formState.errors.participants?.[index]?.participantName && (
-                                    <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.participantName?.message}</span>
-                                  )}
+                                <div className="space-y-1">
+                                  <FieldLabel required>Name</FieldLabel>
+                                  <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
+                                    <Input {...form.register(`participants.${index}.participantName`)} placeholder="Name" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")} maxLength={100} />
+                                  </FieldControl>
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company <span className="text-red-500">*</span></label>
-                                  <Input {...form.register(`participants.${index}.companyName`)} placeholder="Company" className="h-8 rounded-lg bg-white text-xs" maxLength={100} />
-                                  {form.formState.errors.participants?.[index]?.companyName && (
-                                    <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.companyName?.message}</span>
-                                  )}
+                                <div className="space-y-1">
+                                  <FieldLabel required>Company</FieldLabel>
+                                  <FieldControl error={form.formState.errors.participants?.[index]?.companyName?.message}>
+                                    <Input {...form.register(`participants.${index}.companyName`)} placeholder="Company" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.companyName && "border-red-400")} maxLength={100} />
+                                  </FieldControl>
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email <span className="text-red-500">*</span></label>
-                                  <Input {...form.register(`participants.${index}.email`)} placeholder="Email" className="h-8 rounded-lg bg-white text-xs" maxLength={100} />
-                                  {form.formState.errors.participants?.[index]?.email && (
-                                    <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.email?.message}</span>
-                                  )}
+                                <div className="space-y-1 col-start-1 sm:col-span-2 lg:col-span-2">
+                                  <FieldLabel required>Email</FieldLabel>
+                                  <FieldControl error={form.formState.errors.participants?.[index]?.email?.message}>
+                                    <Input {...form.register(`participants.${index}.email`)} placeholder="Email" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.email && "border-red-400")} maxLength={100} />
+                                  </FieldControl>
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Designation <span className="text-red-500">*</span></label>
-                                  <Input {...form.register(`participants.${index}.designation`)} placeholder="Designation" className="h-8 rounded-lg bg-white text-xs" maxLength={100} />
-                                  {form.formState.errors.participants?.[index]?.designation && (
-                                    <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.designation?.message}</span>
-                                  )}
+                                <div className="space-y-1">
+                                  <FieldLabel required>Designation</FieldLabel>
+                                  <FieldControl error={form.formState.errors.participants?.[index]?.designation?.message}>
+                                    <Input {...form.register(`participants.${index}.designation`)} placeholder="Designation" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.designation && "border-red-400")} maxLength={100} />
+                                  </FieldControl>
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contact No <span className="text-red-500">*</span></label>
-                                  <Input {...form.register(`participants.${index}.contactNo`)} placeholder="Contact No" className="h-8 rounded-lg bg-white text-xs" maxLength={20} />
-                                  {form.formState.errors.participants?.[index]?.contactNo && (
-                                    <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.contactNo?.message}</span>
-                                  )}
+                                <div className="space-y-1">
+                                  <FieldLabel required>Contact No</FieldLabel>
+                                  <FieldControl error={form.formState.errors.participants?.[index]?.contactNo?.message}>
+                                    <Input {...form.register(`participants.${index}.contactNo`)} placeholder="Contact No" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.contactNo && "border-red-400")} maxLength={20} />
+                                  </FieldControl>
                                 </div>
                               </>
                             )}
@@ -841,67 +942,59 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             {/* BusinessEntity Fields */}
                             {participantType === 4 && (
                               <>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Entity Contact <span className="text-red-500">*</span></label>
+                                <div className="space-y-1 md:col-span-1 lg:col-span-2 xl:col-span-2">
+                                  <FieldLabel required>Business Entity Contact</FieldLabel>
                                   <Controller
                                     control={form.control}
                                     name={`participants.${index}.participantName`}
                                     render={({ field }) => (
-                                      <BusinessEntityCombobox className="rounded-lg h-8 text-xs"
-                                        detailNo={form.watch(`participants.${index}.businessEntityContactPersonDetailNo`)}
-                                        value={field.value || ''}
-                                        onChange={(contact: any) => {
-                                          field.onChange(contact?.contactPersonName || '');
-                                          form.setValue(`participants.${index}.email`, contact?.email || '');
-                                          form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || '');
-                                          form.setValue(`participants.${index}.designation`, contact?.designation || '');
-                                          form.setValue(`participants.${index}.department` as any, contact?.department || '');
-                                          form.setValue(`participants.${index}.businessEntityNo`, contact?.businessEntityNo || null);
-                                          form.setValue(`participants.${index}.businessEntityContactPersonDetailNo`, contact?.businessEntityContactPersonDetailNo || null);
-                                        }}
-                                        onResolve={(contact: any) => {
-                                          if (!form.getValues(`participants.${index}.email`)) {
+                                      <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
+                                        <BusinessEntityCombobox className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")}
+                                          detailNo={form.watch(`participants.${index}.businessEntityContactPersonDetailNo`)}
+                                          value={field.value || ''}
+                                          onChange={(contact: any) => {
+                                            field.onChange(contact?.contactPersonName || '');
                                             form.setValue(`participants.${index}.email`, contact?.email || '');
                                             form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || '');
                                             form.setValue(`participants.${index}.designation`, contact?.designation || '');
                                             form.setValue(`participants.${index}.department` as any, contact?.department || '');
-                                          }
-                                        }}
-                                        placeholder="Search contact..."
-                                      />
+                                            form.setValue(`participants.${index}.businessEntityNo`, contact?.businessEntityNo || null);
+                                            form.setValue(`participants.${index}.businessEntityContactPersonDetailNo`, contact?.businessEntityContactPersonDetailNo || null);
+                                          }}
+                                          onResolve={(contact: any) => {
+                                            if (!form.getValues(`participants.${index}.email`)) {
+                                              form.setValue(`participants.${index}.email`, contact?.email || '');
+                                              form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || '');
+                                              form.setValue(`participants.${index}.designation`, contact?.designation || '');
+                                              form.setValue(`participants.${index}.department` as any, contact?.department || '');
+                                            }
+                                          }}
+                                          placeholder="Search contact..."
+                                        />
+                                      </FieldControl>
                                     )}
                                   />
-                                  {form.formState.errors.participants?.[index]?.participantName && (
-                                    <span className="text-[10px] text-red-500">{form.formState.errors.participants[index]?.participantName?.message}</span>
-                                  )}
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Entity</label>
-                                  <Input value={form.watch(`participants.${index}.companyName`) || ''} disabled placeholder="Business Entity" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-medium text-slate-300">Business Entity</label>
+                                  <Input value={form.watch(`participants.${index}.companyName`) || ''} disabled placeholder="Business Entity" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Designation</label>
-                                  <Input value={form.watch(`participants.${index}.designation`) || ''} disabled placeholder="Designation" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-medium text-slate-300">Designation</label>
+                                  <Input value={form.watch(`participants.${index}.designation`) || ''} disabled placeholder="Designation" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Department</label>
-                                  <Input value={(form.watch(`participants.${index}` as any)?.department) || ''} disabled placeholder="Department" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-medium text-slate-300">Department</label>
+                                  <Input value={(form.watch(`participants.${index}` as any)?.department) || ''} disabled placeholder="Department" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email</label>
-                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-8 rounded-lg bg-slate-50/50 text-xs text-slate-500" />
+                                <div className="space-y-1 col-start-1 sm:col-span-2 lg:col-span-3 xl:col-span-3">
+                                  <label className="text-[11px] font-medium text-slate-300">Email</label>
+                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-10 w-full rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
                                 </div>
                               </>
                             )}
                           </div>
-
-                          <button
-                            type="button"
-                            onClick={() => removeParticipant(index)}
-                            className="mt-5 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -913,226 +1006,297 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <FormSection
                 title="Discussions & Outcomes"
                 icon={MessageSquare}
+                tourId="meeting-form-discussions"
                 headerAction={
-                  <Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-8 rounded-lg text-xs border-[#006699]/30 text-[#006699] hover:bg-[#006699]/10">
+                  <Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                     <Plus size={14} className="mr-1" /> Add Discussion Point
                   </Button>
                 }
               >
                 {discussionFields.length === 0 ? (
-                  null
+                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                    <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
+                  </div>
                 ) : (
-                  <div className="w-full overflow-x-auto pb-4">
-                    <table className="w-full text-xs text-left whitespace-nowrap">
-                      <thead className="text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                        <tr>
-                          <th className="px-2 py-2 min-w-[200px]">Topic / Agenda <span className="text-red-500">*</span></th>
-                          <th className="px-2 py-2 min-w-[150px]">Discussion Summary</th>
-                          <th className="px-2 py-2 min-w-[150px]">Decision Remarks</th>
-                          <th className="px-2 py-2 min-w-[120px]">Action Required</th>
-                          <th className="px-2 py-2 min-w-[150px]">Task Category</th>
-                          <th className="px-2 py-2 min-w-[150px]">Task Type</th>
-                          <th className="px-2 py-2 min-w-[120px]">Priority</th>
-                          <th className="px-2 py-2 min-w-[120px]">Folder</th>
-                          <th className="px-2 py-2 min-w-[180px]">Task Assign By</th>
-                          <th className="px-2 py-2 min-w-[180px]">Assign Task To</th>
-                          <th className="px-2 py-2 min-w-[180px]">Due Date</th>
-                          <th className="px-2 py-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {discussionFields.map((field, index) => {
-                          const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
-                          return (
-                            <tr key={field.id} className="group hover:bg-slate-50/50">
-                              <td className="px-2 py-2 align-top">
-                                <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className="h-8 rounded-lg text-xs font-medium bg-white" />
-                                {form.formState.errors.discussions?.[index]?.topic && (
-                                  <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.discussions[index]?.topic?.message}</span>
-                                )}
-                              </td>
-                              <td className="px-2 py-2 align-top">
+                  <div className="space-y-3">
+                    {discussionFields.map((field, index) => {
+                      const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
+                      const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
+                      return (
+                        <div
+                          key={field.id}
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                        >
+                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                              {index + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
+                                {topicValue || 'Discussion point'}
+                              </p>
+                              {isActionRequired ? (
+                                <p className="text-[11px] text-[#0EA5E9] font-medium mt-0.5">Action required</p>
+                              ) : (
+                                <p className="text-[11px] text-slate-400 mt-0.5">Discussion only</p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                requestRemoveItem(
+                                  'discussion',
+                                  index,
+                                  topicValue || `Discussion ${index + 1}`
+                                )
+                              }
+                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                              title="Remove discussion"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          <div className="p-4 space-y-4">
+                            <div className="space-y-1">
+                              <FieldLabel required>Topic / Agenda</FieldLabel>
+                              <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
+                                <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-10 rounded-[8px] text-xs font-medium bg-[var(--tm-surface)]", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
+                              </FieldControl>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <label className="text-[11px] font-medium text-slate-300">Discussion Summary</label>
+                                  <span className="text-[10px] text-slate-400 tabular-nums">
+                                    {(form.watch(`discussions.${index}.discussionSummary`) || '').length}/700
+                                  </span>
+                                </div>
                                 <Controller
                                   control={form.control}
                                   name={`discussions.${index}.discussionSummary`}
                                   render={({ field }) => (
-                                    <TextareaWithPopover
+                                    <Textarea
                                       value={field.value || ''}
                                       onChange={field.onChange}
                                       placeholder="Details..."
                                       maxLength={700}
+                                      className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
                                     />
                                   )}
                                 />
-                              </td>
-                              <td className="px-2 py-2 align-top">
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <label className="text-[11px] font-medium text-slate-300">Decision Remarks</label>
+                                  <span className="text-[10px] text-slate-400 tabular-nums">
+                                    {(form.watch(`discussions.${index}.decisionRemarks`) || '').length}/300
+                                  </span>
+                                </div>
                                 <Controller
                                   control={form.control}
                                   name={`discussions.${index}.decisionRemarks`}
                                   render={({ field }) => (
-                                    <TextareaWithPopover
+                                    <Textarea
                                       value={field.value || ''}
                                       onChange={field.onChange}
                                       placeholder="Final decision..."
                                       maxLength={300}
+                                      className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
                                     />
                                   )}
                                 />
-                              </td>
-                              <td className="px-2 py-2 align-top">
-                                <Controller
-                                  control={form.control}
-                                  name={`discussions.${index}.isActionRequired`}
-                                  render={({ field }) => (
-                                    <div className="flex items-center h-8 gap-2">
-                                      <Checkbox checked={field.value} onCheckedChange={field.onChange} id={`action-${index}`} className="data-[state=checked]:bg-[#006699] data-[state=checked]:border-[#006699]" />
-                                    </div>
+                              </div>
+                            </div>
+
+                            <Controller
+                              control={form.control}
+                              name={`discussions.${index}.isActionRequired`}
+                              render={({ field }) => (
+                                <div
+                                  className={cn(
+                                    'w-full flex items-center gap-3 rounded-[10px] border px-3.5 py-3 transition-all duration-200',
+                                    field.value
+                                      ? 'border-[#0EA5E9]/30 bg-gradient-to-r from-[var(--tm-tint)] via-[#f3f9fc] to-[var(--tm-surface)] shadow-[0_8px_20px_-12px_rgba(14,165,233,0.35)]'
+                                      : 'border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]'
                                   )}
-                                />
-                              </td>
-                              <td className="px-2 py-2 align-top bg-[#f8fbff]/50 border-l border-[#e1ecf7]/50">
-                                {isActionRequired && (
-                                  <>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.operTaskCategoryNo`}
-                                      render={({ field }) => (
-                                        <Combobox className="rounded-lg"
-                                          options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category })) || []}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(val) => field.onChange(parseInt(val))}
-                                        />
-                                      )}
-                                    />
-                                    {form.formState.errors.discussions?.[index]?.operTaskCategoryNo && (
-                                      <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.discussions[index]?.operTaskCategoryNo?.message}</span>
-                                    )}
-                                  </>
-                                )}
-                              </td>
-                              <td className="px-2 py-2 align-top bg-[#f8fbff]/50">
-                                {isActionRequired && (
-                                  <>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.operTaskTypeNo`}
-                                      render={({ field }) => (
-                                        <Combobox className="rounded-lg"
-                                          options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: c["Task Type"] })) || []}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(val) => field.onChange(parseInt(val))}
-                                        />
-                                      )}
-                                    />
-                                    {form.formState.errors.discussions?.[index]?.operTaskTypeNo && (
-                                      <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.discussions[index]?.operTaskTypeNo?.message}</span>
-                                    )}
-                                  </>
-                                )}
-                              </td>
-                              <td className="px-2 py-2 align-top bg-[#f8fbff]/50">
-                                {isActionRequired && (
-                                  <>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.operTaskPriorityNo`}
-                                      render={({ field }) => (
-                                        <Combobox className="rounded-lg"
-                                          options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: c.Priority })) || []}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(val) => field.onChange(parseInt(val))}
-                                        />
-                                      )}
-                                    />
-                                    {form.formState.errors.discussions?.[index]?.operTaskPriorityNo && (
-                                      <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.discussions[index]?.operTaskPriorityNo?.message}</span>
-                                    )}
-                                  </>
-                                )}
-                              </td>
-                              <td className="px-2 py-2 align-top bg-[#f8fbff]/50">
-                                {isActionRequired && (
-                                  <Controller
-                                    control={form.control}
-                                    name={`discussions.${index}.taskFolderNo`}
-                                    render={({ field }) => (
-                                      <Combobox className="rounded-lg"
-                                        options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: c["Folder Name"] })) || []}
-                                        value={field.value?.toString() || ''}
-                                        onChange={(val) => field.onChange(parseInt(val))}
-                                      />
-                                    )}
-                                  />
-                                )}
-                              </td>
-                              <td className="px-2 py-2 align-top bg-[#f8fbff]/50">
-                                {isActionRequired && (
-                                  <>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionTaskOriginatorNo`}
-                                      render={({ field }) => (
-                                        <UserCombobox className="rounded-lg"
-                                          value={field.value?.toString() || ''}
-                                          onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                        />
-                                      )}
-                                    />
-                                    {form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && (
-                                      <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.discussions[index]?.actionTaskOriginatorNo?.message}</span>
-                                    )}
-                                  </>
-                                )}
-                              </td>
-                              <td className="px-2 py-2 align-top bg-[#f8fbff]/50">
-                                {isActionRequired && (
-                                  <>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionTaskOwnerNo`}
-                                      render={({ field }) => (
-                                        <UserCombobox className="rounded-lg"
-                                          value={field.value?.toString() || ''}
-                                          onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                        />
-                                      )}
-                                    />
-                                    {form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && (
-                                      <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.discussions[index]?.actionTaskOwnerNo?.message}</span>
-                                    )}
-                                  </>
-                                )}
-                              </td>
-                              <td className="px-2 py-2 align-top bg-[#f8fbff]/50 border-r border-[#e1ecf7]/50">
-                                {isActionRequired && (
-                                  <>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionDueDate`}
-                                      render={({ field }) => (
-                                        <DateTimePicker className="rounded-lg" date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
-                                      )}
-                                    />
-                                    {form.formState.errors.discussions?.[index]?.actionDueDate && (
-                                      <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.discussions[index]?.actionDueDate?.message}</span>
-                                    )}
-                                  </>
-                                )}
-                              </td>
-                              <td className="px-2 py-2 align-top">
-                                <button
-                                  type="button"
-                                  onClick={() => removeDiscussion(index)}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                                 >
-                                  <Trash2 size={14} />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                  <div className="min-w-0 flex-1">
+                                    <p className={cn(
+                                      'text-[12px] font-semibold leading-tight transition-colors',
+                                      field.value ? 'text-[#0284C7]' : 'text-slate-200'
+                                    )}>
+                                      Action required
+                                    </p>
+                                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                      Create a follow-up task from this discussion
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    id={`action-${index}`}
+                                    role="switch"
+                                    aria-checked={!!field.value}
+                                    aria-label="Action required"
+                                    onClick={() => field.onChange(!field.value)}
+                                    className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
+                                  >
+                                    <span
+                                      className={cn(
+                                        'text-[10px] font-semibold tracking-wide transition-colors',
+                                        field.value ? 'text-[#0EA5E9]' : 'text-slate-400'
+                                      )}
+                                    >
+                                      {field.value ? 'ON' : 'OFF'}
+                                    </span>
+                                    <span
+                                      aria-hidden
+                                      className={cn(
+                                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
+                                        field.value
+                                          ? 'bg-[#0EA5E9] shadow-[inset_0_0_0_1px_rgba(14,165,233,0.2)]'
+                                          : 'bg-slate-200'
+                                      )}
+                                    >
+                                      <span
+                                        className={cn(
+                                          'absolute h-5 w-5 rounded-full bg-[var(--tm-surface)] shadow-[0_1px_3px_rgba(15,23,42,0.25)] transition-transform duration-200',
+                                          field.value ? 'translate-x-[22px]' : 'translate-x-[2px]'
+                                        )}
+                                      />
+                                    </span>
+                                  </button>
+                                </div>
+                              )}
+                            />
+
+                            {isActionRequired && (
+                              <div className="rounded-[8px] border border-[#d7e8f2] bg-[var(--tm-elevated)] p-3 space-y-3">
+                                <p className="text-[11px] font-semibold text-[#0EA5E9] uppercase tracking-wide">Task details</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Task Category</FieldLabel>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.operTaskCategoryNo`}
+                                        render={({ field }) => (
+                                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
+                                            options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: cleanMasterLabel(c.Category) })) || []}
+                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                            onChange={(val) => field.onChange(toOptionalInt(val))}
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Task Type</FieldLabel>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.operTaskTypeNo`}
+                                        render={({ field }) => (
+                                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
+                                            options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: cleanMasterLabel(c["Task Type"]) })) || []}
+                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                            onChange={(val) => field.onChange(toOptionalInt(val))}
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Priority</FieldLabel>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.operTaskPriorityNo`}
+                                        render={({ field }) => (
+                                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
+                                            options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
+                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                            onChange={(val) => field.onChange(toOptionalInt(val))}
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-slate-300">Folder</label>
+                                    <Controller
+                                      control={form.control}
+                                      name={`discussions.${index}.taskFolderNo`}
+                                      render={({ field }) => (
+                                        <Combobox className="rounded-[8px] h-10"
+                                          options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
+                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                          onChange={(val) => field.onChange(toOptionalInt(val))}
+                                        />
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-slate-300">Task Assign By</label>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionTaskOriginatorNo`}
+                                        render={({ field }) => (
+                                          <UserCombobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
+                                            value={field.value?.toString() || ''}
+                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Assign Task To</FieldLabel>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionTaskOwnerNo`}
+                                        render={({ field }) => (
+                                          <UserCombobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
+                                            value={field.value?.toString() || ''}
+                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+                                  <div className="space-y-1 w-full min-w-0">
+                                    <FieldLabel required>Due Date & Time</FieldLabel>
+                                    <FieldControl
+                                      className="w-full"
+                                      error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}
+                                    >
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionDueDate`}
+                                        render={({ field }) => (
+                                          <DateTimePicker
+                                            className={cn(
+                                              "w-full rounded-[8px]",
+                                              form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400"
+                                            )}
+                                            date={field.value ? new Date(field.value) : undefined}
+                                            onChange={(d) => field.onChange(d ? d.toISOString() : '')}
+                                            placeholder="Pick a date and time"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </FormSection>
@@ -1146,7 +1310,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-full border-[#006699]/30 text-[#006699] hover:bg-[#006699]/5 font-semibold text-xs px-3"
+                    className="h-9 rounded-[8px] border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] font-medium text-xs px-3"
                     onClick={() => appendDocument({ documentType: 0, documentNo: 0 })}
                   >
                     <Plus size={14} className="mr-1.5" />
@@ -1155,110 +1319,240 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                 }
               >
                 {documentFields.length === 0 ? (
-                  null
+                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                    <p className="text-xs text-slate-500 font-medium">No documents added yet.</p>
+                  </div>
                 ) : (
-                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="min-w-full inline-block align-middle">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-slate-200/60">
-                          <thead>
-                            <tr className="bg-slate-50/80">
-                              <th scope="col" className="px-4 py-2.5 text-left text-[10px] font-black text-slate-500 uppercase tracking-wider w-16">Sr No</th>
-                              <th scope="col" className="px-4 py-2.5 text-left text-[10px] font-black text-slate-500 uppercase tracking-wider min-w-[200px]">Document Name</th>
-                              <th scope="col" className="px-4 py-2.5 text-left text-[10px] font-black text-slate-500 uppercase tracking-wider min-w-[200px]">Document No</th>
-                              <th scope="col" className="px-4 py-2.5 w-10"></th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
-                            {documentFields.map((field, index) => {
-                              const docType = form.watch(`documents.${index}.documentType`);
-                              const selectedDocTypeObj = meetingDocumentTypes.find(d => d.documentTypeNo === docType);
-                              return (
-                                <tr key={field.id} className="group hover:bg-slate-50/50 transition-colors">
-                                  <td className="px-4 py-2 whitespace-nowrap text-xs font-semibold text-slate-500">
-                                    {index + 1}
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap align-top">
-                                    <Controller
-                                      control={form.control}
-                                      name={`documents.${index}.documentType`}
-                                      render={({ field }) => (
+                  <div className="space-y-3">
+                    {documentFields.map((field, index) => {
+                      const docType = form.watch(`documents.${index}.documentType`);
+                      const selectedDocTypeObj =
+                        docType && Number(docType) > 0
+                          ? meetingDocumentTypes.find((d) => d.documentTypeNo === docType)
+                          : undefined;
+                      const docNoYearly = form.watch(`documents.${index}.documentNoYearly`);
+                      const typeName = selectedDocTypeObj?.documentName || '';
+                      const summaryLabel = (docNoYearly || '').trim() || typeName;
+
+                      return (
+                        <div
+                          key={field.id}
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                        >
+                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                              {index + 1}
+                            </span>
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
+                              <FileText size={14} strokeWidth={1.75} />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              {summaryLabel ? (
+                                <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
+                                  {summaryLabel}
+                                </p>
+                              ) : (
+                                <p className="text-[13px] font-medium text-slate-400 truncate leading-tight">
+                                  Document {index + 1}
+                                </p>
+                              )}
+                              {typeName && docNoYearly ? (
+                                <p className="text-[11px] text-slate-400 truncate mt-0.5">{typeName}</p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                requestRemoveItem(
+                                  'document',
+                                  index,
+                                  summaryLabel || `Document ${index + 1}`
+                                )
+                              }
+                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                              title="Remove document"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          <div className="p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <FieldLabel required>Document Name</FieldLabel>
+                                <FieldControl
+                                  error={
+                                    form.formState.errors.documents?.[index]?.documentType?.message
+                                  }
+                                >
+                                  <Controller
+                                    control={form.control}
+                                    name={`documents.${index}.documentType`}
+                                    render={({ field: typeField }) => {
+                                      const selectedType =
+                                        typeField.value && Number(typeField.value) > 0
+                                          ? String(typeField.value)
+                                          : '__none__';
+                                      return (
                                         <Select
-                                          value={field.value?.toString() || ''}
+                                          value={selectedType}
                                           onValueChange={(val) => {
-                                            field.onChange(parseInt(val));
+                                            if (val === '__none__') {
+                                              typeField.onChange(0);
+                                              form.setValue(`documents.${index}.documentNo`, 0);
+                                              form.setValue(
+                                                `documents.${index}.documentNoYearly`,
+                                                ''
+                                              );
+                                              void form.trigger(
+                                                `documents.${index}.documentType`
+                                              );
+                                              void form.trigger(
+                                                `documents.${index}.documentNo`
+                                              );
+                                              return;
+                                            }
+                                            typeField.onChange(parseInt(val, 10));
                                             form.setValue(`documents.${index}.documentNo`, 0);
+                                            form.setValue(
+                                              `documents.${index}.documentNoYearly`,
+                                              ''
+                                            );
+                                            void form.trigger(
+                                              `documents.${index}.documentType`
+                                            );
                                           }}
                                         >
-                                          <SelectTrigger className="h-8 rounded-full bg-white text-xs"><SelectValue placeholder="Select Document Type" /></SelectTrigger>
+                                          <SelectTrigger
+                                            className={cn(
+                                              'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
+                                              selectedType === '__none__' && 'text-slate-400',
+                                              form.formState.errors.documents?.[index]
+                                                ?.documentType && 'border-red-400'
+                                            )}
+                                          >
+                                            <SelectValue placeholder="Select document name" />
+                                          </SelectTrigger>
                                           <SelectContent>
-                                            {meetingDocumentTypes.map(d => (
-                                              <SelectItem key={d.documentTypeNo} value={d.documentTypeNo.toString()}>{d.documentName}</SelectItem>
+                                            <SelectItem
+                                              value="__none__"
+                                              className="text-slate-400"
+                                            >
+                                              Select document name
+                                            </SelectItem>
+                                            {meetingDocumentTypes.map((d) => (
+                                              <SelectItem
+                                                key={d.documentTypeNo}
+                                                value={d.documentTypeNo.toString()}
+                                              >
+                                                {d.documentName}
+                                              </SelectItem>
                                             ))}
                                           </SelectContent>
                                         </Select>
-                                      )}
-                                    />
-                                    {form.formState.errors.documents?.[index]?.documentType && (
-                                      <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.documents[index]?.documentType?.message}</span>
+                                      );
+                                    }}
+                                  />
+                                </FieldControl>
+                              </div>
+
+                              <div className="space-y-1">
+                                <FieldLabel required>Document No</FieldLabel>
+                                <FieldControl
+                                  error={
+                                    form.formState.errors.documents?.[index]?.documentNo?.message
+                                  }
+                                >
+                                  <Controller
+                                    control={form.control}
+                                    name={`documents.${index}.documentNo`}
+                                    render={({ field: noField }) => (
+                                      <DocumentCombobox
+                                        formNo={selectedDocTypeObj?.formNo}
+                                        contextStr={selectedDocTypeObj?.context}
+                                        displayColumnsStr={selectedDocTypeObj?.displayColumns}
+                                        value={
+                                          Number(noField.value) > 0
+                                            ? String(noField.value)
+                                            : ''
+                                        }
+                                        initialLabel={
+                                          form.watch(`documents.${index}.documentNoYearly`) ||
+                                          undefined
+                                        }
+                                        onChange={(doc: any) => {
+                                          if (!doc) {
+                                            noField.onChange(0);
+                                            form.setValue(
+                                              `documents.${index}.documentNoYearly`,
+                                              ''
+                                            );
+                                            void form.trigger(
+                                              `documents.${index}.documentNo`
+                                            );
+                                          } else {
+                                            const no =
+                                              doc.id ||
+                                              doc.documentNo ||
+                                              doc.DocumentNo ||
+                                              doc.Value ||
+                                              0;
+                                            noField.onChange(parseInt(no.toString()) || 0);
+                                            form.setValue(
+                                              `documents.${index}.documentNoYearly`,
+                                              doc.documentNoYearly ||
+                                                doc.DocumentNoYearly ||
+                                                doc.Text ||
+                                                doc.name ||
+                                                ''
+                                            );
+                                            void form.trigger(
+                                              `documents.${index}.documentNo`
+                                            );
+                                          }
+                                        }}
+                                        placeholder={
+                                          Number(docType) > 0
+                                            ? 'Search document...'
+                                            : 'Select Document Name first'
+                                        }
+                                        disabled={!(Number(docType) > 0)}
+                                        className={cn(
+                                          'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
+                                          form.formState.errors.documents?.[index]?.documentNo &&
+                                            'border-red-400',
+                                          !(Number(docType) > 0) && 'bg-[var(--tm-muted)]/80 text-slate-400'
+                                        )}
+                                      />
                                     )}
-                                  </td>
-                                  <td className="px-4 py-2 align-top">
-                                    <Controller
-                                      control={form.control}
-                                      name={`documents.${index}.documentNo`}
-                                      render={({ field }) => (
-                                        <DocumentCombobox
-                                          formNo={selectedDocTypeObj?.formNo}
-                                          contextStr={selectedDocTypeObj?.context}
-                                          displayColumnsStr={selectedDocTypeObj?.displayColumns}
-                                          value={field.value?.toString() || ''}
-                                          initialLabel={form.watch(`documents.${index}.documentNoYearly`) || undefined}
-                                          onChange={(doc: any) => {
-                                            if (!doc) {
-                                              field.onChange(0);
-                                            } else {
-                                              const no = doc.id || doc.documentNo || doc.DocumentNo || doc.Value || 0;
-                                              field.onChange(parseInt(no.toString()) || 0);
-                                            }
-                                          }}
-                                          placeholder={docType ? "Search document..." : "Select Document Name first"}
-                                          disabled={!docType}
-                                        />
-                                      )}
-                                    />
-                                    {form.formState.errors.documents?.[index]?.documentNo && (
-                                      <span className="text-[10px] text-red-500 mt-1 block">{form.formState.errors.documents[index]?.documentNo?.message}</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap align-top text-right">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => removeDocument(index)}
-                                      className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full"
-                                    >
-                                      <Trash2 size={14} />
-                                    </Button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                                  />
+                                </FieldControl>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </FormSection>
 
               {/* SECTION 5: Attachments */}
-              <FormSection title="Attachments" icon={Paperclip}>
-                <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
+              <FormSection title="Attachments" icon={Paperclip} tourId="meeting-form-attachments">
+                <div className="space-y-3">
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#006699] rounded-2xl p-8 bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer group"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const files = e.dataTransfer?.files;
+                      if (files?.length) processFiles(Array.from(files));
+                    }}
+                    className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#0EA5E9]/25 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] px-3.5 py-3 cursor-pointer transition-all hover:border-[#0EA5E9]/45 hover:shadow-[0_8px_24px_-16px_rgba(14,165,233,0.35)]"
                   >
                     <input
                       ref={fileInputRef}
@@ -1268,51 +1562,96 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       onChange={handleFileSelection}
                       className="hidden"
                     />
-                    <div className="h-12 w-12 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex items-center justify-center text-slate-400 group-hover:text-[#006699] group-hover:scale-110 transition-all">
-                      <UploadCloud size={22} />
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12 shadow-sm group-hover:bg-[var(--tm-tint)] transition-colors">
+                      <UploadCloud size={18} strokeWidth={1.75} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-semibold text-slate-100 leading-tight">
+                        Drop files here or{' '}
+                        <span className="text-[#0EA5E9] underline decoration-[#0EA5E9]/30 underline-offset-2">
+                          browse
+                        </span>
+                      </p>
+                      <p className="mt-0.5 text-[10px] font-medium text-slate-400">
+                        PDF &amp; Images · Max 10MB each
+                      </p>
                     </div>
-                    <p className="mt-3 text-xs font-medium text-slate-700">Drag & drop files or click to upload</p>
-                    <p className="mt-1 text-[10px] font-medium text-slate-500">Only PDF and Images are supported (Max size: 10MB)</p>
+                    <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
+                      Upload
+                    </span>
                   </div>
 
                   {uploadingFiles.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="text-[10px] font-medium text-slate-500 ml-1">Uploading Queue</h4>
-                      <div className="space-y-0">
-                        {uploadingFiles.map(file => (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between px-0.5">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Uploading
+                        </h4>
+                        <span className="text-[10px] font-medium text-slate-400 tabular-nums">
+                          {uploadingFiles.length}
+                        </span>
+                      </div>
+                      <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
+                        {uploadingFiles.map((file) => (
                           <motion.div
                             key={file.tempId}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
+                            exit={{ opacity: 0, y: -6 }}
                             className={cn(
-                              "flex items-center justify-between p-3.5 rounded-xl border transition-all shadow-sm",
-                              file.status === 'failed' ? "bg-red-50/50 border-red-200" : "bg-slate-50/50 border-slate-200"
+                              'flex items-center gap-2.5 px-2.5 py-2',
+                              file.status === 'failed' ? 'bg-red-500/10' : 'bg-[var(--tm-surface)]'
                             )}
                           >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className={cn(
-                                "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border shadow-sm",
-                                file.status === 'failed' ? "bg-red-100 border-red-200 text-red-600" : "bg-white border-slate-200 text-[#006699]"
-                              )}>
-                                {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <ImageIcon size={16} />}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-medium text-slate-900 truncate leading-none mb-1">{file.name}</p>
-                                <span className="text-[9px] font-medium flex items-center gap-0.5">
-                                  {file.status === 'failed' && <span className="text-red-600 font-medium">Failed</span>}
-                                  {file.status !== 'failed' && <span className="text-slate-500">{file.status}</span>}
-                                </span>
-                              </div>
+                            <span
+                              className={cn(
+                                'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
+                                file.status === 'failed'
+                                  ? 'bg-red-500/10 text-red-400 ring-red-500/30'
+                                  : 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
+                              )}
+                            >
+                              {file.status !== 'failed' ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : file.name.toLowerCase().endsWith('.pdf') ? (
+                                <FileText size={14} />
+                              ) : (
+                                <ImageIcon size={14} />
+                              )}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
+                                {file.name}
+                              </p>
+                              <p
+                                className={cn(
+                                  'text-[10px] font-medium mt-0.5',
+                                  file.status === 'failed' ? 'text-red-400' : 'text-slate-400'
+                                )}
+                              >
+                                {file.status === 'failed' ? 'Upload failed' : file.status}
+                              </p>
                             </div>
-                            <div className="flex items-center gap-0.5">
+                            <div className="flex items-center gap-0.5 shrink-0">
                               {file.status === 'failed' && (
-                                <Button type="button" size="icon" variant="ghost" onClick={() => handleRetryUpload(file.tempId)} className="h-8 w-8 rounded-lg border border-red-200/50 bg-white text-red-600">
-                                  <RefreshCw size={13} />
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => handleRetryUpload(file.tempId)}
+                                  className="h-7 w-7 rounded-[7px] text-red-400 hover:bg-red-500/10"
+                                >
+                                  <RefreshCw size={12} />
                                 </Button>
                               )}
-                              <Button type="button" size="icon" variant="ghost" onClick={() => handleRemoveUploading(file.tempId)} className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500">
-                                <X size={13} />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleRemoveUploading(file.tempId)}
+                                className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-slate-300 hover:bg-[var(--tm-muted)]"
+                              >
+                                <X size={12} />
                               </Button>
                             </div>
                           </motion.div>
@@ -1325,28 +1664,68 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     const attachments = form.watch('attachments') || [];
                     if (attachments.length === 0) return null;
                     return (
-                      <div className="space-y-3 pt-2">
-                        <h4 className="text-[10px] font-medium text-slate-500 ml-1">Attached Documents ({attachments.length})</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {attachments.map((file: any) => (
-                            <motion.div key={file.id} className="flex items-center justify-between p-3 bg-slate-50/30 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition-all">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="h-8 w-8 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
-                                  {file.name.toLowerCase().endsWith('.pdf') ? <FileText size={16} /> : <ImageIcon size={16} />}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-baseline gap-0.5 mb-0.5">
-                                    <p className="text-xs font-medium text-slate-900 truncate max-w-[180px] leading-tight">{file.name}</p>
-                                    {file.size && <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">({formatFileSize(file.size)})</span>}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-0.5">
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            Attached
+                          </h4>
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                            {attachments.length}
+                          </span>
+                        </div>
+                        <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                          {attachments.map((file: any) => {
+                            const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
+                            return (
+                              <motion.div
+                                key={file.id}
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
+                              >
+                                <span
+                                  className={cn(
+                                    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
+                                    isPdf
+                                      ? 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
+                                      : 'bg-violet-500/15 text-violet-400 ring-violet-500/30'
+                                  )}
+                                >
+                                  {isPdf ? <FileText size={14} /> : <ImageIcon size={14} />}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
+                                      {file.name}
+                                    </p>
+                                    {file.size ? (
+                                      <span className="shrink-0 text-[10px] font-medium text-slate-400 tabular-nums">
+                                        {formatFileSize(file.size)}
+                                      </span>
+                                    ) : null}
                                   </div>
-                                  <button type="button" onClick={() => attachmentService.downloadAttachment(file.id, file.name)} className="text-[9px] font-medium text-[#006699] hover:underline block text-left">View document</button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      attachmentService.downloadAttachment(file.id, file.name)
+                                    }
+                                    className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
+                                  >
+                                    View
+                                  </button>
                                 </div>
-                              </div>
-                              <Button type="button" size="icon" variant="ghost" onClick={() => handleRemoveAttachment(file.id, file.name)} className="h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all shadow-sm">
-                                <Trash size={13} />
-                              </Button>
-                            </motion.div>
-                          ))}
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => handleRemoveAttachment(file.id, file.name)}
+                                  className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                >
+                                  <Trash size={12} />
+                                </Button>
+                              </motion.div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -1355,55 +1734,127 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               </FormSection>
 
             </form>
-          </Card>
         </div>
       </div>
 
+      <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-[2%]">
+          {itemToDelete && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            >
+              <DialogHeader className="p-6 pb-3 text-center sm:text-center items-center">
+                <motion.div
+                  initial={{ scale: 0.6, rotate: -12 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }}
+                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 ring-8 ring-red-500/10"
+                >
+                  <Trash2 size={22} strokeWidth={1.75} />
+                </motion.div>
+                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">
+                  {itemToDelete.type === 'participant'
+                    ? 'Remove participant?'
+                    : itemToDelete.type === 'discussion'
+                      ? 'Remove discussion?'
+                      : 'Remove document?'}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
+                  <span className="font-medium text-slate-200">“{itemToDelete.label}”</span>
+                  {' '}will be removed from this meeting note. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setItemToDelete(null)}
+                  className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={confirmRemoveItem}
+                  className="h-10 px-5 rounded-[8px] bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/20 transition-transform hover:scale-[1.02] active:scale-95"
+                >
+                  Delete
+                </Button>
+              </DialogFooter>
+            </motion.div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
-        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl [&>button]:hidden">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-800 tracking-tight flex items-center gap-0.5">Remove Attachment</DialogTitle>
-            <DialogDescription className="text-sm text-slate-500 mt-2">Do you want to delete?</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
-            <Button type="button" variant="outline" disabled={isDeletingAttachment} onClick={() => setAttachmentToDelete(null)} className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 border-transparent shadow-none">No</Button>
-            <Button disabled={isDeletingAttachment} onClick={confirmRemoveAttachment} className="h-10 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md gap-0.5 transition-transform hover:scale-[1.02]">Yes</Button>
-          </DialogFooter>
+        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95">
+          {attachmentToDelete && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            >
+              <DialogHeader className="p-6 pb-3 text-center sm:text-center items-center">
+                <motion.div
+                  initial={{ scale: 0.6, rotate: -12 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }}
+                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 ring-8 ring-red-500/10"
+                >
+                  <Trash2 size={22} strokeWidth={1.75} />
+                </motion.div>
+                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">Remove attachment?</DialogTitle>
+                <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
+                  <span className="font-medium text-slate-200">“{attachmentToDelete.name}”</span>
+                  {' '}will be deleted. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
+                <Button type="button" variant="outline" disabled={isDeletingAttachment} onClick={() => setAttachmentToDelete(null)} className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none">Cancel</Button>
+                <Button disabled={isDeletingAttachment} onClick={confirmRemoveAttachment} className="h-10 px-5 rounded-[8px] bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/20 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95">
+                  {isDeletingAttachment ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+                  Delete
+                </Button>
+              </DialogFooter>
+            </motion.div>
+          )}
         </DialogContent>
       </Dialog>
 
       <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
-        <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-xl bg-white/95 backdrop-blur-xl">
+        <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-800 flex items-center gap-2"><AlertCircle size={18} className="text-amber-500" /> Invalid Files Skipped</DialogTitle>
+            <DialogTitle className="text-base font-medium text-slate-100 flex items-center gap-2"><AlertCircle size={18} className="text-amber-500" /> Invalid Files Skipped</DialogTitle>
             <DialogDescription className="text-xs text-slate-500 mt-2">Some files were skipped due to validation errors.</DialogDescription>
           </DialogHeader>
           <div className="px-6 py-2 max-h-[300px] overflow-y-auto">
             <ul className="space-y-3">
               {invalidFiles.map((f, i) => (
-                <li key={i} className="bg-amber-50 rounded-xl p-3 border border-amber-100 flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-slate-700 truncate">{f.name} <span className="text-slate-400 font-medium">{f.size}</span></span>
-                  <span className="text-[10px] text-amber-600 font-medium">{f.reason}</span>
+                <li key={i} className="bg-amber-500/15 rounded-[8px] p-3 border border-amber-500/30 flex flex-col gap-1">
+                  <span className="text-xs font-semibold text-slate-200 truncate">{f.name} <span className="text-slate-400 font-medium">{f.size}</span></span>
+                  <span className="text-[10px] text-amber-400 font-medium">{f.reason}</span>
                 </li>
               ))}
             </ul>
           </div>
-          <DialogFooter className="p-4 pt-2 mt-4 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-3xl">
-            <Button type="button" onClick={() => setShowWarningDialog(false)} className="h-10 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium">Got it</Button>
+          <DialogFooter className="p-4 pt-2 mt-4 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
+            <Button type="button" onClick={() => setShowWarningDialog(false)} className="h-10 px-5 rounded-[8px] bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium">Got it</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Category Modal */}
       <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
-        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-white select-none">
-          <DialogHeader className="pb-3 border-b border-slate-150">
-            <DialogTitle className="text-base font-medium text-slate-800">Add Meeting Category</DialogTitle>
+        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-[var(--tm-surface)] select-none">
+          <DialogHeader className="pb-3 border-b border-[var(--tm-border)]">
+            <DialogTitle className="text-base font-medium text-slate-100">Add Meeting Category</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Category Name <span className="text-red-500">*</span></label>
-              <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Enter category name" className="h-9 rounded-lg" />
+              <FieldLabel required className="text-xs font-semibold text-slate-200">Category Name</FieldLabel>
+              <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Enter category name" className="h-10 rounded-[8px]" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button type="button" variant="outline" onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
@@ -1439,14 +1890,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
       {/* Type Modal */}
       <Dialog open={typeModalOpen} onOpenChange={setTypeModalOpen}>
-        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-white select-none">
-          <DialogHeader className="pb-3 border-b border-slate-150">
-            <DialogTitle className="text-base font-medium text-slate-800">Add Meeting Type</DialogTitle>
+        <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-[var(--tm-surface)] select-none">
+          <DialogHeader className="pb-3 border-b border-[var(--tm-border)]">
+            <DialogTitle className="text-base font-medium text-slate-100">Add Meeting Type</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Type Name <span className="text-red-500">*</span></label>
-              <Input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Enter type name" className="h-9 rounded-lg" />
+              <FieldLabel required className="text-xs font-semibold text-slate-200">Type Name</FieldLabel>
+              <Input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Enter type name" className="h-10 rounded-[8px]" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button type="button" variant="outline" onClick={() => setTypeModalOpen(false)}>Cancel</Button>
@@ -1477,6 +1928,40 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={blocker.state === 'blocked'} onOpenChange={(open) => !open && blocker.state === 'blocked' ? blocker.reset?.() : null}>
+        <DialogContent className="sm:max-w-[425px] overflow-hidden rounded-2xl border border-[var(--tm-border)] bg-[var(--tm-surface)]">
+          <div className="absolute top-0 left-0 w-full h-1 bg-[#F59E0B]" />
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5 text-base font-semibold text-slate-100">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F59E0B]/15 text-[#F59E0B] ring-1 ring-[#F59E0B]/25">
+                <AlertCircle size={16} strokeWidth={2.5} />
+              </div>
+              Unsaved Changes
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm font-medium leading-relaxed text-slate-400">
+              You have unsaved edits on this meeting note. Leave now? Your changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl font-semibold border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)] hover:text-slate-100"
+              onClick={() => blocker.proceed?.()}
+            >
+              Leave
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
+              onClick={() => blocker.reset?.()}
+            >
+              Keep editing
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function TaskCompanyList() {
 
   const [apiTaskCompanies, setApiTaskCompanies] = useState<TaskCompanyMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchTaskCompanies = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/crm/task-companies/search-data`);
       if (response) {
@@ -45,6 +49,9 @@ export function TaskCompanyList() {
           countryNo: tc.countryNo || '',
           stateNo: tc.stateNo || '',
           cityNo: tc.cityNo || '',
+          countryName: tc.countryName || '',
+          stateName: tc.stateName || '',
+          cityName: tc.cityName || '',
           pinCode: tc.pinCode || '',
           createdBy: tc.createdBy?.printingName || tc.createdBy?.displayName || tc.createdBy?.loginId || tc.createdByName || 'System',
           createdDate: tc.createdDate || tc.createdDateTime || tc.createdOn || ''
@@ -53,6 +60,7 @@ export function TaskCompanyList() {
       }
     } catch (error) {
       console.error('Failed to fetch API task companies:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +70,11 @@ export function TaskCompanyList() {
 
   const filteredList = apiTaskCompanies.filter((item) => {
     const query = searchQuery.toLowerCase();
-    return item.name?.toLowerCase().includes(query) || item.code?.toLowerCase().includes(query);
+    return item.name?.toLowerCase().includes(query)
+      || item.code?.toLowerCase().includes(query)
+      || item.cityName?.toLowerCase().includes(query)
+      || item.stateName?.toLowerCase().includes(query)
+      || item.countryName?.toLowerCase().includes(query);
   });
 
   const totalItems = filteredList.length;
@@ -72,8 +84,9 @@ export function TaskCompanyList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -81,63 +94,73 @@ export function TaskCompanyList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/crm/task-companies/delete', {
       params: { operTaskCompanyNo: deleteTargetId }
-    }).then(() => fetchTaskCompanies()).catch(err => console.error('Failed to delete task company:', err));
+    }).then(() => {
+      toast.success('Record deleted');
+      fetchTaskCompanies();
+    }).catch(err => {
+      console.error('Failed to delete task company:', err);
+      toast.error('Failed to delete record');
+    });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAddClick={() => navigate(toMasterNewPath('task-company'))}
         canAdd={isSave}
+        searchPlaceholder="Search task company master records by name, code, city, state, country..."
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Task Company Name"
-          columns={[
-            { header: 'Alias', render: (item) => item.aliasName || '-' },
-            {
-              header: 'Address 1',
-              render: (item) => (
-                <span title={[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ')}>
-                  {[item.address1, item.cityNo, item.stateNo].filter(Boolean).join(', ') || '-'}
-                </span>
-              ),
-            },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('task-company', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={Building2}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Task Company Name"
+        columns={[
+          { header: 'Alias', render: (item) => item.aliasName || '-' },
+          { header: 'Address 1', render: (item) => item.address1 || '-' },
+          { header: 'City', render: (item) => item.cityName || '-' },
+          { header: 'State', render: (item) => item.stateName || '-' },
+          { header: 'Country', render: (item) => item.countryName || '-' },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('task-company', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchTaskCompanies}
+        emptyIcon={Building2}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
+        recordName={deleteTargetLabel}
       />
     </div>
   );

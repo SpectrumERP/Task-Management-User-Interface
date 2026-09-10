@@ -8,7 +8,7 @@ When developing or modifying forms, tables, and UI components in this applicatio
 - **Implementation:** 
   ```tsx
   <div className="flex items-center gap-1.5 h-full pt-4">
-    <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Code:</label>
+    <label className="text-[11px] font-medium text-slate-200 normal-case ml-1">Code:</label>
     <div className="text-xs font-medium text-slate-500 select-none">
       {code || 'AUTO-GEN-CODE'}
     </div>
@@ -30,7 +30,7 @@ When developing or modifying forms, tables, and UI components in this applicatio
 - **Rule:** Apply the `capitalize` Tailwind class to `<th>` elements to ensure consistent capitalization.
 - **Implementation:**
   ```tsx
-  <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-600 capitalize">
+  <th className="px-3.5 py-2.5 text-[11px] font-semibold text-slate-300 capitalize">
     {type} Name
   </th>
   ```
@@ -66,9 +66,9 @@ When developing or modifying forms, tables, and UI components in this applicatio
 ## 8. Typography Consistency
 - **Standard Classes:** Use consistent text colors and weights throughout the UI.
 - **Rule:** 
-  - Section Headers: `text-sm font-medium text-slate-800`
-  - Form Labels: `text-[11px] font-medium text-slate-700`
-  - Form Values/Inputs: `text-xs text-slate-900`
+  - Section Headers: `text-sm font-medium text-slate-100`
+  - Form Labels: `text-[11px] font-medium text-slate-200`
+  - Form Values/Inputs: `text-xs text-slate-50`
   - Helper/Minor Text: `text-[10px] text-slate-500`
 - Do not mix text sizes arbitrarily. Stick to the predefined Tailwind scales (`text-xs`, `text-sm`) or specific small scales used in the app (`text-[10px]`, `text-[11px]`).
 
@@ -79,7 +79,9 @@ When developing or modifying forms, tables, and UI components in this applicatio
 ## 10. Theme-Based Design
 - **Color Palette:** Use the application's standard color scales rather than hardcoding hex values. 
 - **Rule:** 
-  - **Primary Accents:** Use the standard blue `bg-[#006699]` or `text-[#006699]` for primary buttons and hover states.
+  - **Theme:** Dark by default. Page `#0B1220`, surfaces `#121A2B` / `#151D2E`, borders `#2A3548`, primary `#0EA5E9` (`hover:bg-[#0284C7]`), warm accent `#F59E0B`.
+  - **Primary Accents:** Use sky blue `bg-[#0EA5E9]` or `text-[#0EA5E9]` / `text-[#38BDF8]` for primary buttons and brand accents.
+  - **Warm Accent:** Use amber `#F59E0B` for high priority badges, pending/open status chips, and attention markers (`bg-[#F59E0B]`, `bg-[#F59E0B]/15 text-[#F59E0B]`).
   - **Neutrals:** Use `slate` scales (`slate-50` to `slate-900`) for all borders, backgrounds, and text, rather than generic `gray`.
-  - **Glassmorphism/Depth:** Use modern translucent effects for floating panels or main content areas: `bg-white/80 backdrop-blur-md` or `bg-slate-50/90 backdrop-blur-md shadow-xl`.
+  - **Glassmorphism/Depth:** Use modern translucent effects for floating panels or main content areas: `bg-[#121A2B]/80 backdrop-blur-md` or `bg-[#1A2438]/90 backdrop-blur-md shadow-xl`.
   - **Border Radius:** Use heavily rounded corners (`rounded-xl`, `rounded-2xl`, or `rounded-[24px]`) to maintain the modern, soft aesthetic of the application's UI.

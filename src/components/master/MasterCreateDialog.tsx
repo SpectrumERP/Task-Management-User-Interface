@@ -58,6 +58,10 @@ export function MasterCreateDialog({
   const [categoryCustomFields, setCategoryCustomFields] = useState<{ customFieldNo: string; fieldValue: string }[]>([]);
   const [selectedTypeNos, setSelectedTypeNos] = useState<string[]>([]);
 
+  // Benefit Type State
+  const [valuationtypeNo, setValuationtypeNo] = useState('');
+  const [benefitTypeFillValues, setBenefitTypeFillValues] = useState<any>(null);
+
   // Priority State
   const [priorityDuration, setPriorityDuration] = useState<number | null>(null);
   const [priorityFrequencyNo, setPriorityFrequencyNo] = useState('');
@@ -107,6 +111,9 @@ export function MasterCreateDialog({
     setCategoryCustomFields([]);
     setSelectedTypeNos([]);
 
+    // Reset Benefit Type
+    setValuationtypeNo('');
+
     // Reset Priority
     setPriorityDuration(null);
     setPriorityFrequencyNo('');
@@ -147,6 +154,18 @@ export function MasterCreateDialog({
       apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setLocationFillValues(response);
       }).catch(err => console.error("Failed to load location fill values:", err));
+    } else if (type === 'benefit-type') {
+      apiService.get<any>(`/api/master/business-benefit-types/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
+        const data = response.data || response;
+        setBenefitTypeFillValues(data);
+        
+        const intangible = (data?.valuationTypes || []).find((v: any) => 
+          (v.valuationTypeName || v.name || '').toLowerCase() === 'intangible'
+        );
+        if (intangible) {
+          setValuationtypeNo((intangible.valuationTypeNo || intangible.id || '').toString());
+        }
+      }).catch(err => console.error("Failed to load benefit type fill values:", err));
     }
   }, [open, type, companyNo]);
 
@@ -316,6 +335,13 @@ export function MasterCreateDialog({
           companyNo: companyNo || 1
         };
         response = await apiService.post('/api/master/cities/save', payload);
+      } else if (type === 'benefit-type') {
+        const payload = {
+          businessBenefitTypeNo: null,
+          businessBenefitTypeName: name,
+          valuationType: parseInt(valuationtypeNo) || null
+        };
+        response = await apiService.post('/api/master/business-benefit-types/save', payload);
       }
 
       // Resolve the saved record's ID
@@ -331,6 +357,7 @@ export function MasterCreateDialog({
         else if (type === 'country') createdId = (data.countryNo || data.id || '').toString();
         else if (type === 'state') createdId = (data.stateNo || data.id || '').toString();
         else if (type === 'city') createdId = (data.cityNo || data.id || '').toString();
+        else if (type === 'benefit-type') createdId = (data.businessBenefitTypeNo || data.id || '').toString();
       }
 
       // Success Callback!
@@ -369,6 +396,7 @@ export function MasterCreateDialog({
       case 'country': return 'Country Master';
       case 'state': return 'State Master';
       case 'city': return 'City Master';
+      case 'benefit-type': return 'Business Benefit';
       default: return 'Master Form';
     }
   };
@@ -393,13 +421,16 @@ export function MasterCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-3xl border-none shadow-2xl max-w-lg p-0 bg-white max-h-[85vh] flex flex-col">
-        <DialogHeader className="rounded-t-3xl p-5 pb-4 border-b border-slate-100 flex flex-row items-center gap-3 shrink-0">
-          <div className="h-9 w-9 rounded-2xl bg-[#006699]/10 flex items-center justify-center text-[#006699]">
+      <DialogContent
+        data-page-guide="master-create-dialog"
+        className="rounded-3xl border-none shadow-2xl max-w-lg p-0 bg-[var(--tm-surface)] max-h-[85vh] flex flex-col"
+      >
+        <DialogHeader data-page-tour="mcd-title" className="rounded-t-3xl p-5 pb-4 border-b border-[var(--tm-border)] flex flex-row items-center gap-3 shrink-0">
+          <div className="h-9 w-9 rounded-2xl bg-[#0EA5E9]/10 flex items-center justify-center text-[#0EA5E9]">
             <Icon size={18} className="stroke-[2.5]" />
           </div>
           <div className="flex-1 text-left">
-            <DialogTitle className="text-sm font-medium text-slate-800 leading-none">
+            <DialogTitle className="text-sm font-medium text-slate-100 leading-none">
               Create New {getMasterTitle().replace(' Master', '')}
             </DialogTitle>
             {/* <DialogDescription className="text-[10px] text-slate-500 font-medium mt-1">
@@ -408,16 +439,16 @@ export function MasterCreateDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin" data-page-tour="mcd-fields">
           {/* Name / Label */}
           <div className="space-y-0">
-            <Label  className="text-[10px] font-medium text-slate-700 ml-1">{`${getMasterTitle().replace(' Master', '')} Name`} <span className="text-red-500">*</span></Label>
+            <Label  className="text-[10px] font-medium text-slate-200 ml-1">{`${getMasterTitle().replace(' Master', '')} Name`} <span className="text-red-500">*</span></Label>
             <Input placeholder={`Enter new ${getMasterTitle().replace(' Master', '').toLowerCase()} name...`} value={name} onChange={(e) => {
                 setName(e.target.value);
                 if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
               }}
               className={cn(
-                "bg-white border-slate-200 hover:border-slate-300 transition-colors h-10 rounded-xl focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699]",
+                "bg-[var(--tm-surface)] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 transition-colors h-10 rounded-[8px] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9]",
                 errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
               )}
             />
@@ -434,7 +465,7 @@ export function MasterCreateDialog({
                     checked={isBusinessBenefitApplicable}
                     onCheckedChange={(checked) => setIsBusinessBenefitApplicable(!!checked)}
                   />
-                  <Label htmlFor="dialog-business-benefit"  className="text-xs font-medium text-slate-700 cursor-pointer select-none">
+                  <Label htmlFor="dialog-business-benefit"  className="text-xs font-medium text-slate-200 cursor-pointer select-none">
                     Business Benefit
                   </Label>
                 </div>
@@ -442,19 +473,19 @@ export function MasterCreateDialog({
 
               {/* Type (optional, multiple) */}
               <div className="space-y-0">
-                <Label className="text-[10px] font-medium text-slate-700 ml-1 block">Type</Label>
+                <Label className="text-[10px] font-medium text-slate-200 ml-1 block">Type</Label>
                 <MultiSelect
                   options={taskTypeOptions}
                   value={selectedTypeNos}
                   onChange={setSelectedTypeNos}
                   placeholder="Select type(s) (optional)"
-                  className="bg-white border-slate-200 hover:border-slate-300 rounded-xl"
+                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 rounded-xl"
                 />
               </div>
 
               {/* Color Coding Option */}
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Color Code</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1 block">Color Code</Label>
                 <div className="flex flex-wrap items-center gap-0.5">
                   {[
                     '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#06b6d4'
@@ -470,7 +501,7 @@ export function MasterCreateDialog({
                       style={{ backgroundColor: hex }}
                     />
                   ))}
-                  <div className="flex items-center gap-0.5 ml-auto border border-slate-200 rounded-xl px-2 py-0.5 bg-slate-50/50">
+                  <div className="flex items-center gap-0.5 ml-auto border border-[var(--tm-border)] rounded-xl px-2 py-0.5 bg-[var(--tm-muted)]/50">
                     <input
                       type="color"
                       value={color || '#000000'}
@@ -484,15 +515,15 @@ export function MasterCreateDialog({
 
               {/* Checklist Editor */}
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1 flex items-center">
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1 flex items-center">
                   Checklist Items
-                  <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+                  <span className="bg-[#e1ecf7] text-[#0EA5E9] text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
                     {checklist.length}
                   </span>
                 </Label>
                 <div className="flex gap-0.5">
                   <Input placeholder="Add description..." value={newChecklistItem} onChange={(e) => setNewChecklistItem(e.target.value)}
-                    className="h-8 text-xs font-medium text-slate-700 bg-white border-slate-200 rounded-xl"
+                    className="h-8 text-xs font-medium text-slate-200 bg-[var(--tm-surface)] border-[var(--tm-border)] rounded-xl"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -512,16 +543,16 @@ export function MasterCreateDialog({
                         setNewChecklistItem('');
                       }
                     }}
-                    className="rounded-xl h-8 px-3 border-[#006699] text-[#006699] hover:bg-[#e1ecf7]"
+                    className="rounded-xl h-8 px-3 border-[#0EA5E9] text-[#0EA5E9] hover:bg-[#e1ecf7]"
                   >
                     Add
                   </Button>
                 </div>
 
                 {checklist.length > 0 && (
-                  <div className="bg-slate-50/50 border border-slate-100 rounded-xl max-h-36 overflow-y-auto divide-y divide-slate-100/50">
+                  <div className="bg-[var(--tm-muted)]/50 border border-[var(--tm-border)] rounded-xl max-h-36 overflow-y-auto divide-y divide-[var(--tm-border)]/50">
                     {checklist.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 text-xs font-medium text-slate-700">
+                      <div key={index} className="flex items-center justify-between p-2 text-xs font-medium text-slate-200">
                         <span className="truncate">{item.description}</span>
                         <button
                           type="button"
@@ -538,15 +569,15 @@ export function MasterCreateDialog({
 
               {/* Subtask Templates */}
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1 flex items-center">
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1 flex items-center">
                   Subtask Templates
-                  <span className="bg-[#e1ecf7] text-[#006699] text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
+                  <span className="bg-[#e1ecf7] text-[#0EA5E9] text-[9px] font-medium px-1.5 py-0.5 rounded-full ml-1.5 shrink-0">
                     {subtasks.length}
                   </span>
                 </Label>
                 <div className="flex gap-0.5">
                   <Input placeholder="Add subtask title..." value={newSubtaskItem} onChange={(e) => setNewSubtaskItem(e.target.value)}
-                    className="h-8 text-xs font-medium text-slate-700 bg-white border-slate-200 rounded-xl"
+                    className="h-8 text-xs font-medium text-slate-200 bg-[var(--tm-surface)] border-[var(--tm-border)] rounded-xl"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -566,16 +597,16 @@ export function MasterCreateDialog({
                         setNewSubtaskItem('');
                       }
                     }}
-                    className="rounded-xl h-8 px-3 border-[#006699] text-[#006699] hover:bg-[#e1ecf7]"
+                    className="rounded-xl h-8 px-3 border-[#0EA5E9] text-[#0EA5E9] hover:bg-[#e1ecf7]"
                   >
                     Add
                   </Button>
                 </div>
 
                 {subtasks.length > 0 && (
-                  <div className="bg-slate-50/50 border border-slate-100 rounded-xl max-h-36 overflow-y-auto divide-y divide-slate-100/50">
+                  <div className="bg-[var(--tm-muted)]/50 border border-[var(--tm-border)] rounded-xl max-h-36 overflow-y-auto divide-y divide-[var(--tm-border)]/50">
                     {subtasks.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 text-xs font-medium text-slate-700">
+                      <div key={index} className="flex items-center justify-between p-2 text-xs font-medium text-slate-200">
                         <span className="truncate">{item.description}</span>
                         <button
                           type="button"
@@ -599,22 +630,40 @@ export function MasterCreateDialog({
             </div>
           )}
 
+          {type === 'benefit-type' && (
+            <div className="space-y-3">
+              <div className="space-y-0">
+                <Label className="text-[10px] font-medium text-slate-200 ml-1">Valuation Scale / Type</Label>
+                <Combobox
+                  options={(benefitTypeFillValues?.valuationTypes || []).map((v: any) => ({
+                    label: v.valuationTypeName || v.name || '',
+                    value: (v.valuationTypeNo || v.id || '').toString(),
+                  }))}
+                  value={valuationtypeNo}
+                  onChange={setValuationtypeNo}
+                  placeholder="Select Valuation Scale / Type"
+                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
+                />
+              </div>
+            </div>
+          )}
+
           {type === 'priority' && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Priority Duration Value</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Priority Duration Value</Label>
                 <Input type="number" min={1} value={priorityDuration ?? ''} onChange={(e) => {
                     const val = e.target.value === '' ? null : Number(e.target.value);
                     setPriorityDuration(val);
                     if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                 />
                 {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
               </div>
 
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Frequency Unit</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Frequency Unit</Label>
                 <Combobox options={(fillValues?.frequency || []).map((f: any) => ({
                     label: f.FrequencyName || f.Frequency || f.name || '',
                     value: (f.FrequencyNo || f.id || '').toString()
@@ -622,18 +671,18 @@ export function MasterCreateDialog({
                   value={priorityFrequencyNo}
                   onChange={setPriorityFrequencyNo}
                   placeholder="Select frequency..."
-                  className="h-10 rounded-xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
               </div>
 
               <div className="space-y-0 col-span-2">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Sequence Number</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Sequence Number</Label>
                 <Input type="number" min={1} value={sequence ?? ''} onChange={(e) => {
                     const val = e.target.value === '' ? null : Number(e.target.value);
                     setSequence(val);
                     if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                 />
                 {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
               </div>
@@ -643,18 +692,18 @@ export function MasterCreateDialog({
           {type === 'folder' && (
             <div className="space-y-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Folder Description <span className="text-red-500">*</span></Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Folder Description <span className="text-red-500">*</span></Label>
                 <Input placeholder="Enter short folder purpose..." value={description} onChange={(e) => {
                     setDescription(e.target.value);
                     if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
                   }}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                 />
                 {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
               </div>
 
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Parent Folder</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Parent Folder</Label>
                 <Combobox options={[ { label: 'No Parent (Root)', value: 'none' }, ...(Array.isArray(folderFillValues?.folders) ? folderFillValues.folders : Array.isArray(folderFillValues?.parentFolder) ? folderFillValues.parentFolder : Array.isArray(folderFillValues?.data) ? folderFillValues.data : Array.isArray(folderFillValues) ? folderFillValues : []).map((f: any) => ({
                             label: f.folderName || f.taskFolderName || f.FolderName || f.name || '',
                             value: (f.taskFolderNo || f.TaskFolderNo || f.id || '').toString()
@@ -663,7 +712,7 @@ export function MasterCreateDialog({
                   value={parentFolderNo}
                   onChange={setParentFolderNo}
                   placeholder="Select Parent Folder..."
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
               </div>
             </div>
@@ -673,7 +722,7 @@ export function MasterCreateDialog({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Parent Location</Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">Parent Location</Label>
                   <Combobox options={[ { label: "No Parent (Root)", value: "none" }, ...(locationFillValues?.data?.locations || locationFillValues?.locations || []).map((l: any) => ({
                         label: l.operLocationName || l.locationName || l.name || '',
                         value: (l.operLocationNo || l.id || '').toString()
@@ -682,12 +731,12 @@ export function MasterCreateDialog({
                     value={parentLocationNo}
                     onChange={setParentLocationNo}
                     placeholder="Select Parent"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                   />
                 </div>
 
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Incharge Lead <span className="text-red-500">*</span></Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">Incharge Lead <span className="text-red-500">*</span></Label>
                   <UserCombobox value={inchargeNo} onChange={(user) => {
                       setInchargeNo(user.loginNo.toString());
                       setInchargeLabel(user.printingName);
@@ -695,14 +744,14 @@ export function MasterCreateDialog({
                     }}
                     initialLabel={inchargeLabel}
                     placeholder="Search Incharge..."
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                   />
                   {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
                 </div>
               </div>
 
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Location Region</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Location Region</Label>
                 <Combobox options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
                     label: r.regionName || '',
                     value: (r.regionNo || '').toString()
@@ -710,32 +759,32 @@ export function MasterCreateDialog({
                   value={locationRegion}
                   onChange={setLocationRegion}
                   placeholder="Select Region"
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
               </div>
 
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Address <span className="text-red-500">*</span></Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1 block">Address <span className="text-red-500">*</span></Label>
                 <div className="space-y-0">
                   <Input placeholder="Address Line 1" value={address1} onChange={(e) => {
                       setAddress1(e.target.value);
                       if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
                     }}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
                   {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
                   <Input placeholder="Address Line 2 (Optional)" value={address2} onChange={(e) => setAddress2(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
                   <Input placeholder="Address Line 3 (Optional)" value={address3} onChange={(e) => setAddress3(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country <span className="text-red-500">*</span></Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">Country <span className="text-red-500">*</span></Label>
                   <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
                       label: c.countryName || '',
                       value: (c.countryNo || '').toString()
@@ -746,7 +795,7 @@ export function MasterCreateDialog({
                       if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
                     }}
                     placeholder="Select Country"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                     onAddNew={() => {
                       setNestedMasterType('country');
                       setIsNestedMasterOpen(true);
@@ -755,7 +804,7 @@ export function MasterCreateDialog({
                   {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
                 </div>
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">State / Province <span className="text-red-500">*</span></Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">State / Province <span className="text-red-500">*</span></Label>
                   <Combobox options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
                       label: s.stateName || '',
                       value: (s.stateNo || '').toString()
@@ -766,7 +815,7 @@ export function MasterCreateDialog({
                       if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
                     }}
                     placeholder="Select State"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                     onAddNew={() => {
                       setNestedMasterType('state');
                       setIsNestedMasterOpen(true);
@@ -778,7 +827,7 @@ export function MasterCreateDialog({
 
               <div className="grid grid-cols-3 gap-0.5.5">
                 <div className="space-y-0 col-span-2">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">City <span className="text-red-500">*</span></Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">City <span className="text-red-500">*</span></Label>
                   <Combobox options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
                       label: c.cityName || '',
                       value: (c.cityNo || '').toString()
@@ -789,7 +838,7 @@ export function MasterCreateDialog({
                       if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
                     }}
                     placeholder="Select City"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                     onAddNew={() => {
                       setNestedMasterType('city');
                       setIsNestedMasterOpen(true);
@@ -798,12 +847,12 @@ export function MasterCreateDialog({
                   {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
                 </div>
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">PIN / ZIP Code <span className="text-red-500">*</span></Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">PIN / ZIP Code <span className="text-red-500">*</span></Label>
                   <Input placeholder="ZIP" value={pinCode} onChange={(e) => {
                       setPinCode(e.target.value);
                       if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
                     }}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
                   {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
                 </div>
@@ -814,38 +863,38 @@ export function MasterCreateDialog({
           {type === 'task-company' && (
             <div className="space-y-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Alias Name</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Alias Name</Label>
                 <Input placeholder="Enter alias" value={aliasName} onChange={(e) => setAliasName(e.target.value)}
                   maxLength={15}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                 />
               </div>
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Location Name</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Location Name</Label>
                 <Input placeholder="Enter location name" value={locationName} onChange={(e) => setLocationName(e.target.value)}
                   maxLength={50}
-                  className="bg-white border-slate-200 h-10 rounded-xl"
+                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                 />
               </div>
 
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1 block">Address</Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1 block">Address</Label>
                 <div className="space-y-0">
                   <Input placeholder="Address Line 1" value={address1} onChange={(e) => setAddress1(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
                   <Input placeholder="Address Line 2 (Optional)" value={address2} onChange={(e) => setAddress2(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
                   <Input placeholder="Address Line 3 (Optional)" value={address3} onChange={(e) => setAddress3(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country</Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">Country</Label>
                   <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
                       label: c.countryName || '',
                       value: (c.countryNo || '').toString()
@@ -853,7 +902,7 @@ export function MasterCreateDialog({
                     value={countryNo}
                     onChange={setCountryNo}
                     placeholder="Select Country"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                     onAddNew={() => {
                       setNestedMasterType('country');
                       setIsNestedMasterOpen(true);
@@ -861,7 +910,7 @@ export function MasterCreateDialog({
                   />
                 </div>
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">State / Province</Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">State / Province</Label>
                   <Combobox options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
                       label: s.stateName || '',
                       value: (s.stateNo || '').toString()
@@ -869,7 +918,7 @@ export function MasterCreateDialog({
                     value={stateNo}
                     onChange={setStateNo}
                     placeholder="Select State"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                     onAddNew={() => {
                       setNestedMasterType('state');
                       setIsNestedMasterOpen(true);
@@ -880,7 +929,7 @@ export function MasterCreateDialog({
 
               <div className="grid grid-cols-3 gap-0.5.5">
                 <div className="space-y-0 col-span-2">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">City</Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">City</Label>
                   <Combobox options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
                       label: c.cityName || '',
                       value: (c.cityNo || '').toString()
@@ -888,7 +937,7 @@ export function MasterCreateDialog({
                     value={cityNo}
                     onChange={setCityNo}
                     placeholder="Select City"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                     onAddNew={() => {
                       setNestedMasterType('city');
                       setIsNestedMasterOpen(true);
@@ -896,9 +945,9 @@ export function MasterCreateDialog({
                   />
                 </div>
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-700 ml-1">PIN / ZIP Code</Label>
+                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">PIN / ZIP Code</Label>
                   <Input placeholder="ZIP" value={pinCode} onChange={(e) => setPinCode(e.target.value)}
-                    className="bg-white border-slate-200 h-10 rounded-xl"
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
                 </div>
               </div>
@@ -908,7 +957,7 @@ export function MasterCreateDialog({
           {type === 'state' && (
             <div className="space-y-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country <span className="text-red-500">*</span></Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Country <span className="text-red-500">*</span></Label>
                 <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || fillValues?.data?.countries || fillValues?.countries || []).map((c: any) => ({
                     label: c.countryName || '',
                     value: (c.countryNo || '').toString()
@@ -919,7 +968,7 @@ export function MasterCreateDialog({
                     if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
                   }}
                   placeholder="Select Country"
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
                 {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
               </div>
@@ -929,7 +978,7 @@ export function MasterCreateDialog({
           {type === 'city' && (
             <div className="space-y-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">Country <span className="text-red-500">*</span></Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Country <span className="text-red-500">*</span></Label>
                 <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || fillValues?.data?.countries || fillValues?.countries || []).map((c: any) => ({
                     label: c.countryName || '',
                     value: (c.countryNo || '').toString()
@@ -947,11 +996,11 @@ export function MasterCreateDialog({
                     }
                   }}
                   placeholder="Select Country first"
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
               </div>
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-700 ml-1">State / Province <span className="text-red-500">*</span></Label>
+                <Label  className="text-[10px] font-medium text-slate-200 ml-1">State / Province <span className="text-red-500">*</span></Label>
                 <Combobox options={availableCityStates.map((s: any) => ({
                     label: s.stateName || '',
                     value: (s.stateNo || '').toString()
@@ -963,7 +1012,7 @@ export function MasterCreateDialog({
                   }}
                   placeholder={countryNo ? "Select State" : "Select country first"}
                   disabled={!countryNo}
-                  className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-700 w-full"
+                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
                 {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
               </div>
@@ -971,25 +1020,26 @@ export function MasterCreateDialog({
           )}
 
           {serverError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-4 py-2.5 rounded-2xl flex items-start gap-0.5 animate-pulse mt-2">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold px-4 py-2.5 rounded-2xl flex items-start gap-0.5 animate-pulse mt-2">
               <span className="font-medium select-none">⚠️ Error:</span>
               <span className="flex-1 whitespace-pre-wrap leading-relaxed">{serverError}</span>
             </div>
           )}
         </div>
 
-        <DialogFooter className="p-4 rounded-b-3xl bg-slate-50/50 border-t border-slate-100 flex justify-end gap-0.5 shrink-0">
+        <DialogFooter className="p-4 rounded-b-3xl bg-[var(--tm-muted)]/50 border-t border-[var(--tm-border)] flex justify-end gap-0.5 shrink-0">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl h-10 font-medium text-slate-500 hover:bg-slate-100 text-xs"
+            className="rounded-xl h-10 font-medium text-slate-500 hover:bg-[var(--tm-muted)] text-xs"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-xl h-10 bg-[#006699] hover:bg-[#005580] font-medium text-white shadow-md text-xs gap-0.5 min-w-[90px] flex items-center justify-center"
+            data-page-tour="mcd-save"
+            className="rounded-xl h-10 bg-[#0EA5E9] hover:bg-[#0284C7] font-medium text-white shadow-md text-xs gap-0.5 min-w-[90px] flex items-center justify-center"
           >
             {isSaving ? (
               <>

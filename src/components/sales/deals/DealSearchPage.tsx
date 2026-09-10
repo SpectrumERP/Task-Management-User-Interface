@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { AlertCircle, ChevronRight, Edit, FileText, Loader2, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Button } from '@/components/ui/button';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { Card } from '@/components/ui/card';
 import { Combobox } from '@/components/ui/Combobox';
 import {
@@ -17,6 +19,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
 import { DealRecord, DealSearchFilters } from '@/types/deal';
 import { DealOption, deleteDeal, fetchDivisionsByCompany, searchDeals } from './dealApi';
+import { toast } from 'sonner';
+import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 
 export function DealSearchPage() {
   const navigate = useNavigate();
@@ -40,14 +45,21 @@ export function DealSearchPage() {
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DealRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchDeals = async (nextFilters = filters) => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const data = await searchDeals(nextFilters);
       setDeals(data);
     } catch (error) {
       console.error('Failed to search sales deals:', error);
+      setLoadError(true);
+      setDeals([]);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to load sales deals'));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +91,9 @@ export function DealSearchPage() {
       } catch (error) {
         console.error('Failed to load divisions:', error);
         setDivisionOptions([]);
+        if (shouldToastCaughtError(error)) {
+          toast.error(getUserErrorMessage(error, 'Failed to load divisions'));
+        }
       } finally {
         setIsLoadingDivisions(false);
       }
@@ -111,6 +126,7 @@ export function DealSearchPage() {
     const editId = deal.id || deal.raw?.dealEntryNo || deal.raw?.DealEntryNo;
     if (!editId) {
       console.error('Sales deal edit failed: missing record id', deal.raw || deal);
+      toast.error('Cannot open this deal — record id is missing');
       return;
     }
     navigate(`/sales/deals/${editId}`);
@@ -123,27 +139,33 @@ export function DealSearchPage() {
       const response = await deleteDeal(deleteTarget.id);
       if (response?.success === false) return;
       setDeleteTarget(null);
+      toast.success('Sales deal deleted');
       fetchDeals(filters);
     } catch (error) {
       console.error('Failed to delete sales deal:', error);
+      if (shouldToastCaughtError(error)) {
+        toast.error(getUserErrorMessage(error, 'Failed to delete sales deal'));
+      }
     } finally {
       setIsDeleting(false);
     }
   };
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
-      <div className="px-3 sm:px-4 py-2">
+    <div className="page-shell">
+      <div className="shrink-0">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <button className="text-slate-500 hover:text-[#006699] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006699] rounded cursor-default">Sales</button>
+            <button className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded cursor-default">Sales</button>
             <ChevronRight size={16} className="text-slate-400" />
-            <span className="text-slate-900 font-bold tracking-tight">Sales Deals</span>
+            <span className="text-slate-50 font-bold tracking-tight">Sales Deals</span>
+            <PageGuideButton guideKey="deals" />
           </div>
           <Button
             type="button"
+            data-page-tour="deal-create"
             onClick={() => navigate('/sales/deals/new')}
-            className="h-9 rounded-xl bg-[#006699] hover:bg-[#005580] text-white text-xs font-medium gap-0.5 shadow-lg shadow-[#006699]/20"
+            className="h-9 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-medium gap-0.5 shadow-lg shadow-[#0EA5E9]/20"
           >
             <Plus size={15} />
             New Deal
@@ -151,11 +173,11 @@ export function DealSearchPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 sm:px-6 space-y-4">
-        <Card className="rounded-2xl border-slate-100 shadow-sm p-4">
+      <div className="flex-1 overflow-y-auto space-y-2">
+        <Card data-page-tour="deal-filters" className="rounded-2xl border-[var(--tm-border)] shadow-sm p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
             <div className="space-y-0.5">
-              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Company</label>
+              <label className="text-[11px] font-medium text-slate-200 normal-case ml-1">Company</label>
               <Combobox options={companyOptions} value={filters.companyNo || ''} onChange={(value) => setFilters((prev) => ({
                 ...prev,
                 companyNo: value,
@@ -163,44 +185,44 @@ export function DealSearchPage() {
               }))}
                 placeholder="Select company"
                 searchPlaceholder="Search company..."
-                className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-11 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 
             <div className="space-y-0.5">
-              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Division</label>
+              <label className="text-[11px] font-medium text-slate-200 normal-case ml-1">Division</label>
               <Combobox options={divisionOptions} value={filters.divisionNo || ''} onChange={(value) => setFilters((prev) => ({ ...prev, divisionNo: value }))}
                 disabled={!filters.companyNo || isLoadingDivisions}
                 placeholder={!filters.companyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "All divisions"}
                 searchPlaceholder="Search division..."
-                className="h-11 rounded-2xl border-slate-200 hover:border-slate-300 bg-white text-xs font-medium text-slate-700 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#006699]/20 focus:border-[#006699] focus-visible:ring-2 focus-visible:ring-[#006699]/20 focus-visible:border-[#006699] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-11 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 
             {/* <div className="space-y-0.5">
-              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">Document No Yearly</label>
+              <label className="text-[11px] font-medium text-slate-200 normal-case ml-1">Document No Yearly</label>
               <Input value={filters.documentNoYearly || ''} onChange={(event) => setFilters((prev) => ({ ...prev, documentNoYearly: event.target.value }))}
-                className="h-11 rounded-2xl border-slate-200 bg-white shadow-sm text-xs font-medium"
+                className="h-11 rounded-2xl border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm text-xs font-medium"
                 placeholder="Enter document no"
               />
             </div>
 
             <div className="space-y-0.5">
-              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">From Date</label>
+              <label className="text-[11px] font-medium text-slate-200 normal-case ml-1">From Date</label>
               <DatePicker date={filters.fromDocumentDate} onChange={(date) => setFilters((prev) => ({ ...prev, fromDocumentDate: date }))} placeholder="From date" />
             </div>
 
             <div className="space-y-0.5">
-              <label className="text-[11px] font-medium text-slate-700 normal-case ml-1">To Date</label>
+              <label className="text-[11px] font-medium text-slate-200 normal-case ml-1">To Date</label>
               <DatePicker date={filters.toDocumentDate} onChange={(date) => setFilters((prev) => ({ ...prev, toDocumentDate: date }))} placeholder="To date" />
             </div> */}
 
             <div className="flex items-end gap-0.5">
-              <Button type="button" variant="outline" onClick={resetFilters} className="h-11 rounded-xl text-xs font-medium gap-0.5 flex-1">
+              <Button type="button" variant="outline" data-page-tour="deal-reset" onClick={resetFilters} className="h-11 rounded-xl text-xs font-medium gap-0.5 flex-1">
                 <RotateCcw size={14} />
                 Reset
               </Button>
-              <Button type="button" onClick={applyFilters} className="h-11 rounded-xl bg-[#006699] hover:bg-[#005580] text-white text-xs font-medium gap-0.5 flex-1">
+              <Button type="button" data-page-tour="deal-search-btn" onClick={applyFilters} className="h-11 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-medium gap-0.5 flex-1">
                 <Search size={14} />
                 Search
               </Button>
@@ -208,26 +230,35 @@ export function DealSearchPage() {
           </div>
         </Card>
 
-        <Card className="rounded-2xl border-slate-100 shadow-sm overflow-hidden">
+        <Card data-page-tour="deal-table" className="rounded-2xl border-[var(--tm-border)] shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left">
-              <thead className="bg-slate-50 border-b border-slate-100">
+            <table className="tm-data-table w-full min-w-[760px] text-left">
+              <thead className="bg-[var(--tm-muted)] border-b border-[var(--tm-border)]">
                 <tr>
                   {['Company', 'Division', 'Document No Yearly', 'Document Date', 'Description', 'Actions'].map((heading) => (
-                    <th key={heading} className={cn("px-4 py-3 text-[11px] font-semibold text-slate-600  ", heading === 'Actions' && "text-right")}>
+                    <th key={heading} className={cn("px-4 py-3 text-[11px] font-semibold text-slate-300  ", heading === 'Actions' && "text-right")}>
                       {heading}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {isLoading ? (
+              <tbody className="divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
+                {isLoading && deals.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-16 text-center">
-                      <div className="flex items-center justify-center gap-0.5 text-xs font-medium text-slate-500">
-                        <Loader2 size={16} className="animate-spin text-[#006699]" />
-                        Loading sales deals...
+                      <div className="flex items-center justify-center">
+                        <BrandLoader size="sm" message="Loading sales deals" />
                       </div>
+                    </td>
+                  </tr>
+                ) : loadError && deals.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center">
+                      <LoadErrorState
+                        title="Failed to load sales deals"
+                        onRetry={() => fetchDeals(filters)}
+                        compact
+                      />
                     </td>
                   </tr>
                 ) : deals.length === 0 ? (
@@ -240,11 +271,11 @@ export function DealSearchPage() {
                     </td>
                   </tr>
                 ) : deals.map((deal) => (
-                  <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 py-3 text-xs font-medium text-slate-700">{deal.companyName || deal.companyNo}</td>
-                    <td className="px-4 py-3 text-xs font-medium text-slate-700">{deal.divisionName || deal.divisionNo || 'N/A'}</td>
-                    <td className="px-4 py-3 text-xs font-medium text-slate-800">{deal.documentNoYearly}</td>
-                    <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                  <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="hover:bg-[var(--tm-muted)]/70 transition-colors">
+                    <td className="px-4 py-3 text-xs font-medium text-slate-200">{deal.companyName || deal.companyNo}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-slate-200">{deal.divisionName || deal.divisionNo || 'N/A'}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-slate-100">{deal.documentNoYearly}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-slate-300">
                       {deal.documentDate ? format(new Date(deal.documentDate), 'MMM dd, yyyy') : 'N/A'}
                     </td>
                     <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[320px] truncate">{deal.description}</td>
@@ -256,7 +287,7 @@ export function DealSearchPage() {
                           size="icon"
                           onClick={() => handleEdit(deal)}
                           title="Edit"
-                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#006699] hover:bg-slate-100"
+                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
                         >
                           <Edit size={14} />
                         </Button>
@@ -267,7 +298,7 @@ export function DealSearchPage() {
                           onClick={() => setDeleteTarget(deal)}
                           disabled={!deal.id}
                           title="Delete"
-                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                         >
                           <Trash2 size={14} />
                         </Button>
@@ -284,7 +315,7 @@ export function DealSearchPage() {
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}>
         <DialogContent className="rounded-2xl max-w-sm p-0 border-none shadow-xl">
           <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-lg font-medium text-slate-800 tracking-tight flex items-center gap-0.5">
+            <DialogTitle className="text-lg font-medium text-slate-100 tracking-tight flex items-center gap-0.5">
               <AlertCircle size={20} className="text-red-500" />
               Confirm Deletion
             </DialogTitle>
@@ -292,13 +323,13 @@ export function DealSearchPage() {
               Do you want to delete?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-slate-50/50 flex justify-end gap-0.5 rounded-b-2xl">
+          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-2xl">
             <Button
               type="button"
               variant="outline"
               disabled={isDeleting}
               onClick={() => setDeleteTarget(null)}
-              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 border-transparent shadow-none"
+              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-300 hover:bg-[var(--tm-muted)] border-transparent shadow-none"
             >
               No
             </Button>

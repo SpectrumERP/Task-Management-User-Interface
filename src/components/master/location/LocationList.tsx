@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -22,14 +23,17 @@ export function LocationList() {
 
   const [apiLocations, setApiLocations] = useState<LocationMaster[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
 
   const fetchLocations = async () => {
     setIsLoading(true);
+    setLoadError(false);
     try {
       const response = await apiService.get<any>(`/api/master/task-locations/search-data?companyNo=${companyNo}`);
       if (response) {
@@ -50,12 +54,13 @@ export function LocationList() {
           pinCode: l.pinCode || '',
           locationRegion: l.regionName || l.locationRegion || '',
           createdBy: l.createdBy?.printingName || l.createdBy?.displayName || l.createdBy?.loginId || l.createdByName || (typeof l.createdBy === 'string' || typeof l.createdBy === 'number' ? l.createdBy : '') || 'System',
-          createdDate: l.createdDate || l.createdDateTime || l.createdOn || ''
+          createdDate: l.createdDate || l.createdDateTime || l.createdOn || '',
         }));
         setApiLocations(mapped);
       }
     } catch (error) {
       console.error('Failed to fetch API locations:', error);
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +80,9 @@ export function LocationList() {
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
+    setDeleteTargetLabel(label || null);
     setDeleteConfirmOpen(true);
   };
 
@@ -87,14 +93,20 @@ export function LocationList() {
         operLocationNo: deleteTargetId,
         locationNo: deleteTargetId,
         id: deleteTargetId,
-      }
-    }).then(() => fetchLocations()).catch(err => console.error('Failed to delete location:', err));
+      },
+    }).then(() => { toast.success('Record deleted'); fetchLocations(); }).catch(err => { console.error('Failed to delete location:', err); toast.error('Failed to delete record'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
+    setDeleteTargetLabel(null);
+  };
+
+  const formatAddress = (item: LocationMaster) => {
+    const parts = [item.address1, item.cityNo].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : '—';
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-3.5 sm:p-4 sm:px-6 gap-2 bg-gradient-to-br from-slate-50 to-[#e8f1f8]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
@@ -103,58 +115,92 @@ export function LocationList() {
         canAdd={isSave}
       />
 
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Location Name"
-          columns={[
-            {
-              header: 'Type',
-              render: (item) => (
-                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium text-[9px]">
-                  {item.type || ''}
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Location Name"
+        columns={[
+          {
+            header: 'Type',
+            className: 'w-[100px]',
+            render: (item) =>
+              item.type ? (
+                <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[var(--tm-border)]/80 bg-[var(--tm-muted)] px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+                  {item.type}
                 </span>
+              ) : (
+                <span className="text-slate-300">—</span>
               ),
-            },
-            { header: 'Incharge', render: (item) => item.inchargeNo || 'No Lead' },
-            {
-              header: 'Address',
-              render: (item) => (
-                <span className="max-w-[150px] truncate">
-                  {item.address1} {item.cityNo ? `, ${item.cityNo}` : ''}
+          },
+          {
+            header: 'Incharge',
+            className: 'w-[14%]',
+            render: (item) => (
+              <span className="truncate block" title={item.inchargeNo || undefined}>
+                {item.inchargeNo || 'No Lead'}
+              </span>
+            ),
+          },
+          {
+            header: 'Address',
+            className: 'w-[18%]',
+            render: (item) => {
+              const address = formatAddress(item);
+              return (
+                <span className="truncate block" title={address !== '—' ? address : undefined}>
+                  {address}
                 </span>
-              ),
+              );
             },
-            { header: 'Region', render: (item) => item.locationRegion || 'Central' },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('location', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          emptyIcon={MapPin}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          },
+          {
+            header: 'Region',
+            className: 'w-[110px]',
+            render: (item) => (
+              <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[#0EA5E9]/15 bg-[var(--tm-tint)] px-2 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
+                {item.locationRegion || 'Central'}
+              </span>
+            ),
+          },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => (
+          <span className="truncate" title={item.name}>
+            {item.name}
+          </span>
         )}
-      </div>
+        onEdit={(item) => navigate(toMasterEditPath('location', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchLocations}
+        emptyIcon={MapPin}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => {
+                setItemsPerPage(size);
+                setCurrentPage(1);
+              }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-      />
+        recordName={deleteTargetLabel}
+/>
     </div>
   );
 }

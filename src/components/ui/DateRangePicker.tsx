@@ -165,7 +165,7 @@ export function DateRangePicker({
   };
 
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className={cn("w-full", className)}>
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
@@ -173,29 +173,31 @@ export function DateRangePicker({
             variant={"outline"}
             disabled={disabled}
             className={cn(
-              "w-full justify-start text-left mt-2 h-9 rounded-2xl border-slate-400 bg-white text-xs transition-all text-slate-900 hover:bg-slate-50 focus:ring-2 focus:ring-[#006699]/15",
-              !range && "text-slate-400 font-medium"
+              "w-full h-10 justify-start text-left font-medium rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs shadow-none transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-[#0EA5E9]/35 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15",
+              !range && "text-slate-400"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 shrink-0" />
+            <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+              <CalendarIcon className="h-3.5 w-3.5" />
+            </span>
             {range?.from ? (
               range.to ? (
-                <span className="text-slate-700 text-[13px]">
-                  {format(range.from, "LLL dd, yyyy")} - {format(range.to, "LLL dd, yyyy")}
+                <span className="truncate text-slate-100 text-xs">
+                  {format(range.from, "LLL dd, yyyy")} – {format(range.to, "LLL dd, yyyy")}
                 </span>
               ) : (
-                <span className="text-slate-700 text-[13px]">
+                <span className="truncate text-slate-100 text-xs">
                   {format(range.from, "LLL dd, yyyy")}
                 </span>
               )
             ) : (
-              <span className="text-slate-400 font-medium text-xs">{placeholder}</span>
+              <span className="truncate text-slate-400 text-xs">{placeholder}</span>
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent
           className={cn(
-            "flex p-0 rounded-[24px] border-slate-100 shadow-2xl z-[150]",
+            "flex p-0 rounded-[24px] border-[var(--tm-border)] shadow-2xl z-[150]",
             isMobile ? "flex-col w-[92vw] max-w-[340px]" : "flex-row w-auto"
           )}
           align="start"
@@ -203,10 +205,10 @@ export function DateRangePicker({
           {/* Preset Shortcuts Sidebar / Mobile Header Strip */}
           <div
             className={cn(
-              "shrink-0 bg-slate-50/60 flex",
+              "shrink-0 bg-[var(--tm-muted)]/60 flex",
               isMobile
-                ? "w-full border-b border-slate-100 p-2 flex-row gap-1.5 rounded-t-[24px] overflow-x-auto scrollbar-none"
-                : "w-[140px] border-r border-slate-100 p-2 flex-col gap-0.5 rounded-l-[24px] justify-center"
+                ? "w-full border-b border-[var(--tm-border)] p-2 flex-row gap-1.5 rounded-t-[24px] overflow-x-auto scrollbar-none"
+                : "w-[140px] border-r border-[var(--tm-border)] p-2 flex-col gap-0.5 rounded-l-[24px] justify-center"
             )}
           >
             {presets.map((preset) => {
@@ -220,8 +222,8 @@ export function DateRangePicker({
                     "text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center justify-between shrink-0",
                     isMobile ? "h-8 px-3" : "w-full py-1.5 text-left",
                     isActive
-                      ? "bg-[#006699] text-white shadow-md shadow-[#006699]/10"
-                      : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+                      ? "bg-[#0EA5E9] text-white shadow-md shadow-[#0EA5E9]/10"
+                      : "text-slate-300 hover:bg-[var(--tm-muted)]/80 hover:text-slate-50"
                   )}
                 >
                   <span>{preset.label}</span>
@@ -243,19 +245,19 @@ export function DateRangePicker({
                 isMobile ? "" : "rounded-tr-[24px]"
               )}
             />
-            <div className="flex items-center justify-end gap-2 p-3 border-t border-slate-100 mt-auto">
+            <div className="flex items-center justify-end gap-2 p-3 border-t border-[var(--tm-border)] mt-auto">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={handleCancel}
-                className="h-8 px-4 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                className="h-8 px-4 text-xs font-bold rounded-xl text-slate-300 hover:bg-[var(--tm-muted)] hover:text-slate-50"
               >
                 Cancel
               </Button>
               <Button
                 type="button"
                 onClick={handleOk}
-                className="h-8 px-5 text-xs font-bold rounded-xl bg-[#006699] text-white hover:bg-[#005580] shadow-sm"
+                className="h-8 px-5 text-xs font-bold rounded-xl bg-[#0EA5E9] text-white hover:bg-[#0284C7] shadow-sm"
               >
                 OK
               </Button>

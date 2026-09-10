@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Task } from '@/types/task';
 import { MessageSquare, Clock, AlertCircle, AlertTriangle, Info, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getPriorityBadgeClass } from '@/lib/priorityStyles';
 import { useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
@@ -22,9 +23,9 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
   const { isHideType } = useSettings();
 
   const getContrastColor = (hexColor?: string) => {
-    if (!hexColor) return '#1e293b';
+    if (!hexColor) return 'var(--tm-input-fg)';
     const hex = hexColor.replace('#', '');
-    if (hex.length !== 6 && hex.length !== 3) return '#1e293b';
+    if (hex.length !== 6 && hex.length !== 3) return 'var(--tm-input-fg)';
     
     let r = 0, g = 0, b = 0;
     if (hex.length === 6) {
@@ -43,7 +44,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
 
   const PriorityIcon = {
     4: () => <AlertCircle className="text-red-500 fill-red-500/10" size={18} />, // Urgent
-    3: () => <AlertTriangle className="text-orange-500" size={18} />, // High
+    3: () => <AlertTriangle className="text-[#F59E0B]" size={18} />, // High
     2: () => <Info className="text-blue-500" size={18} />, // Medium
     1: () => null, // Low
   }[task.priority_No] || (() => null);
@@ -71,35 +72,35 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
           )}
         >
           <Card className={cn(
-            "border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl overflow-hidden active:scale-[0.98]",
-            snapshot.isDragging ? "rotate-2 scale-105 shadow-xl border-primary/20" : ""
+            "theme-task-card border border-[var(--tm-border)] shadow-sm hover:border-[#0EA5E9]/40 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.22)] transition-all duration-200 rounded-[8px] overflow-hidden active:scale-[0.98] bg-[var(--tm-surface)]",
+            snapshot.isDragging ? "rotate-1 scale-[1.02] shadow-xl border-[#0EA5E9]/30" : ""
           )}>
-            <CardContent className="p-3 space-y-0">
-              <div className="flex justify-between items-start">
-                <span className="text-[10px] font-black text-slate-600  ">{displayCode}</span>
-                <div className="flex items-center gap-1.5">
+            <CardContent className="p-3 space-y-2">
+              <div className="flex justify-between items-start gap-2">
+                <span className="text-[10px] font-semibold text-slate-500">{displayCode}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(taskUrl(task.taskNo, task.categoryName));
                     }}
-                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-md text-slate-400 hover:text-[#006699] hover:bg-slate-100 flex items-center justify-center cursor-pointer shrink-0"
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] flex items-center justify-center cursor-pointer"
                   >
-                    <Edit2 size={12} strokeWidth={2.5} />
+                    <Edit2 size={12} strokeWidth={2.25} />
                   </button>
                   <PriorityIcon />
                 </div>
               </div>
-              
-              <div className="space-y-0.5">
-                <h4 className="text-[13px] font-black text-slate-900 leading-tight group-hover:text-[#006699] transition-colors line-clamp-1">
+
+              <div className="space-y-1.5">
+                <h4 className="text-[13px] font-semibold text-slate-100 leading-snug group-hover:text-[#0EA5E9] transition-colors line-clamp-2">
                   {task.title}
                 </h4>
-                
-                <div className="flex flex-wrap gap-1 mt-1">
+
+                <div className="flex flex-wrap gap-1">
                   {task.typeName && !isHideType && (
-                    <span className="bg-slate-200 text-slate-800 text-[8px] font-black px-1.5 py-0.5 rounded-md  ">
+                    <span className="bg-[var(--tm-muted)] text-slate-300 text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
                       {task.typeName}
                     </span>
                   )}
@@ -107,31 +108,33 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                     const catObj = fillValues?.category?.find(
                       c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
                     );
-                    const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || '#e2e8f0';
+                    const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || 'var(--tm-border)';
                     const textColor = getContrastColor(bgColor);
                     return (
-                      <span 
+                      <span
                         style={{ backgroundColor: bgColor, color: textColor }}
-                        className="text-[8px] font-black px-1.5 py-0.5 rounded-md   border border-black/5"
+                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px] border border-black/5"
                       >
                         {task.categoryName}
                       </span>
                     );
                   })()}
                   <span className={cn(
-                    "text-[8px] font-black px-1.5 py-0.5 rounded-md  ",
-                    task.priority_No >= 3 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-700"
+                    "text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]",
+                    getPriorityBadgeClass(task.priority, task.priority_No, 'soft')
                   )}>
                     {task.priority}
                   </span>
                 </div>
 
-                <p className="text-[10px] text-slate-600 font-medium line-clamp-1 leading-normal pt-0.5">
-                  {task.description}
-                </p>
+                {task.description ? (
+                  <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-snug">
+                    {task.description}
+                  </p>
+                ) : null}
               </div>
 
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center justify-between pt-1 border-t border-[var(--tm-border)]">
                 <div className="flex -space-x-1.5 items-center">
                   <UserAvatar
                     loginNo={task.owner_user_No}
@@ -140,7 +143,7 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                     className="border border-white shadow-sm"
                   />
                   {task.collaborators && task.collaborators.length > 0 && (
-                    <div className="h-5.5 w-5.5 rounded-full border border-white bg-slate-200 flex items-center justify-center text-[7px] font-black text-slate-700">
+                    <div className="h-5 w-5 rounded-full border border-white bg-[var(--tm-muted)] flex items-center justify-center text-[8px] font-semibold text-slate-300">
                       +{task.collaborators.length}
                     </div>
                   )}
@@ -148,24 +151,24 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
 
                 <div className="flex items-center gap-2">
                   {task.task_comments && task.task_comments.length > 0 && (
-                    <div className="flex items-center gap-1 text-slate-600 font-extrabold">
-                      <MessageSquare size={12} className="text-[#006699]" />
-                      <span className="text-[9px]">{task.task_comments.length}</span>
+                    <div className="flex items-center gap-1 text-slate-500 font-semibold">
+                      <MessageSquare size={12} className="text-[#0EA5E9]" />
+                      <span className="text-[10px]">{task.task_comments.length}</span>
                     </div>
                   )}
                   {task.priority_No >= 3 && (
-                     <div className="flex items-center gap-1 text-slate-600 font-extrabold">
-                        <Clock size={12} className="text-[#006699]" />
-                        <span className="text-[9px]">2h</span>
-                     </div>
+                    <div className="flex items-center gap-1 text-slate-500 font-semibold">
+                      <Clock size={12} className="text-[#F59E0B]" />
+                      <span className="text-[10px]">2h</span>
+                    </div>
                   )}
                   {task.status === 'In Progress' && (
-                    <div className="bg-[#e1ecf7] text-[#006699] text-[8px] font-bold px-1.5 py-0.5 rounded-full">
+                    <div className="bg-[var(--tm-tint)] text-[#0EA5E9] text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
                       65%
                     </div>
                   )}
                   {task.status === 'In Review' && (
-                    <div className="bg-red-50 text-red-500 text-[8px] font-bold px-1.5 py-0.5 rounded-full">
+                    <div className="bg-red-500/10 text-red-400 text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
                       Needs Fix
                     </div>
                   )}

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { apiService } from '@/services/apiService';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, ShieldCheck } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { cn } from '@/lib/utils';
 
 interface UserAvatarProps {
@@ -87,7 +88,7 @@ export function UserAvatar({
           type="button"
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            "rounded-full flex items-center justify-center overflow-hidden transition-transform duration-200 hover:scale-105 select-none focus:outline-none focus:ring-2 focus:ring-[#006699]/30 shrink-0",
+            "rounded-full flex items-center justify-center overflow-hidden transition-transform duration-200 hover:scale-105 select-none focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30 shrink-0",
             sizeClasses,
             className
           )}
@@ -95,7 +96,7 @@ export function UserAvatar({
           <Avatar className="h-full w-full pointer-events-none">
             <AvatarFallback
               className={cn(
-                "bg-gradient-to-br from-[#006699] to-[#00b4d8] text-white font-black uppercase tracking-wider h-full w-full flex items-center justify-center shadow-sm shadow-[#006699]/10",
+                "bg-gradient-to-br from-[#0EA5E9] to-[#00b4d8] text-white font-semibold uppercase tracking-wide h-full w-full flex items-center justify-center shadow-sm shadow-[#0EA5E9]/10",
                 fallbackClassName
               )}
             >
@@ -106,66 +107,84 @@ export function UserAvatar({
       </PopoverTrigger>
 
       <PopoverContent
-        align="center"
+        align="start"
         sideOffset={8}
-        className="z-[9999] w-72 rounded-2xl border border-slate-150 bg-white/95 backdrop-blur-md p-4 text-slate-800 shadow-xl animate-in fade-in zoom-in-95 duration-200"
+        collisionPadding={12}
+        className="z-[9999] w-[320px] sm:w-[360px] rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] p-0 text-slate-100 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-6 gap-2">
-            <Loader2 className="h-6 w-6 text-[#006699] animate-spin" />
-            <span className="text-[10px] font-black text-slate-400   animate-pulse">Loading Profile...</span>
+          <div className="flex flex-col items-center justify-center py-8">
+            <BrandLoader size="sm" message="Loading profile" />
           </div>
         ) : error ? (
-          <div className="text-center py-4 space-y-0">
-            <p className="text-xs font-black text-red-500 uppercase tracking-wide">Error</p>
-            <p className="text-[10px] font-semibold text-slate-500">{error}</p>
+          <div className="text-center py-6 px-4 space-y-1">
+            <p className="text-xs font-semibold text-red-400">Couldn’t load profile</p>
+            <p className="text-[11px] font-medium text-slate-500 break-words">{error}</p>
           </div>
         ) : userDetails ? (
-          <div className="space-y-4">
-            {/* Header / Avatar Block */}
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-              <Avatar className="h-11 w-11 border-2 border-[#006699]/10">
-                <AvatarFallback className="bg-gradient-to-br from-[#006699] to-[#00b4d8] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center">
+          <div>
+            <div className="flex items-start gap-3 px-4 py-3.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+              <Avatar className="h-12 w-12 shrink-0 ring-2 ring-[#0EA5E9]/12 shadow-sm">
+                <AvatarFallback className="bg-gradient-to-br from-[#0EA5E9] to-[#00b4d8] text-white font-semibold text-sm uppercase tracking-wide flex items-center justify-center">
                   {getInitials(userDetails.displayName)}
                 </AvatarFallback>
               </Avatar>
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-slate-900 tracking-tight leading-none mb-1.5">
+              <div className="min-w-0 flex-1 pt-0.5">
+                <h4 className="text-[14px] font-semibold text-slate-50 leading-snug break-words">
                   {userDetails.displayName}
                 </h4>
-                <span className="text-[9px] font-extrabold text-[#006699] bg-[#e1ecf7] px-2 py-0.5 rounded-full  ">
-                  {userDetails.userName}
-                </span>
+                {userDetails.userName ? (
+                  <span className="inline-flex mt-1.5 max-w-full items-center rounded-[6px] bg-[var(--tm-tint)] px-2 py-0.5 text-[11px] font-medium text-[#0EA5E9] break-all">
+                    {userDetails.userName}
+                  </span>
+                ) : null}
               </div>
             </div>
 
-            {/* Content list */}
-            <div className="space-y-0.5 text-[11px] font-bold text-slate-600">
-              {/* Email */}
-              <div className="flex items-center gap-2">
-                <Mail size={13} className="text-slate-400 shrink-0" />
-                <span className="truncate select-all text-slate-800">{userDetails.email || 'No email registered'}</span>
-              </div>
-
-              {/* Phone */}
-              <div className="flex items-center gap-2">
-                <Phone size={13} className="text-slate-400 shrink-0" />
-                <span className="text-slate-800">{userDetails.phoneNo || 'No phone number'}</span>
-              </div>
-
-              {/* User Type */}
-              {userDetails.userTypeName && (
-                <div className="flex items-center gap-2 pt-1 border-t border-slate-100/50">
-                  <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
-                  <span className="text-[9px] font-black text-emerald-600  ">{userDetails.userTypeName}</span>
+            <div className="px-4 py-3 space-y-2.5">
+              <div className="flex items-start gap-2.5">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-muted)] text-slate-400 ring-1 ring-slate-100">
+                  <Mail size={13} strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">Email</p>
+                  <p className="text-[12px] font-medium text-slate-100 break-all select-all leading-snug">
+                    {userDetails.email || 'No email registered'}
+                  </p>
                 </div>
-              )}
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-muted)] text-slate-400 ring-1 ring-slate-100">
+                  <Phone size={13} strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">Phone</p>
+                  <p className="text-[12px] font-medium text-slate-100 break-words leading-snug">
+                    {userDetails.phoneNo || 'No phone number'}
+                  </p>
+                </div>
+              </div>
+
+              {userDetails.userTypeName ? (
+                <div className="flex items-start gap-2.5 pt-2 border-t border-[var(--tm-border)]">
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30">
+                    <ShieldCheck size={13} strokeWidth={1.75} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-medium text-slate-400 leading-none mb-1">Type</p>
+                    <p className="text-[12px] font-semibold text-emerald-400 break-words leading-snug">
+                      {userDetails.userTypeName}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (
-          <div className="text-center py-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">No user info available</p>
+          <div className="text-center py-6 px-4">
+            <p className="text-[11px] font-medium text-slate-400">No user info available</p>
           </div>
         )}
       </PopoverContent>
