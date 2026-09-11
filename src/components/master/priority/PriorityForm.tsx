@@ -1,19 +1,32 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Flag } from 'lucide-react';
+import { Flag, X } from 'lucide-react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/Combobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
+import { getContrastColor } from '@/lib/colorUtils';
 
 const FORM_NO = 1543;
 const TITLE = 'Priority Master';
+
+const COLOR_PRESETS = [
+  { hex: '#93c5fd', name: 'Blue' },
+  { hex: '#fca5a5', name: 'Red' },
+  { hex: '#86efac', name: 'Green' },
+  { hex: '#fdba74', name: 'Orange' },
+  { hex: '#d8b4fe', name: 'Purple' },
+  { hex: '#f9a8d4', name: 'Pink' },
+  { hex: '#a5b4fc', name: 'Indigo' },
+  { hex: '#67e8f9', name: 'Cyan' },
+];
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
@@ -87,6 +100,7 @@ export function PriorityForm({ id }: PriorityFormProps) {
   const [priorityDuration, setPriorityDuration] = useState<number | null>(null);
   const [priorityFrequencyNo, setPriorityFrequencyNo] = useState('');
   const [sequence, setSequence] = useState<number | null>(null);
+  const [color, setColor] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -105,10 +119,11 @@ export function PriorityForm({ id }: PriorityFormProps) {
         const dl = body.data || body;
         if (dl) {
           setName(dl.taskPriorityName || dl.name || '');
-          setPriorityDuration(dl.priorityDuration !== undefined && dl.priorityDuration !== null ? dl.priorityDuration : null);
+          setPriorityDuration(dl.priorityDuration ? dl.priorityDuration : null);
           setPriorityFrequencyNo(dl.priorityDurationFrequencyNo ? dl.priorityDurationFrequencyNo.toString() : '');
-          setSequence(dl.sequenceNo !== undefined && dl.sequenceNo !== null ? dl.sequenceNo : null);
+          setSequence(dl.sequenceNo ? dl.sequenceNo : null);
           setCode(dl.code || '');
+          setColor(dl.colorCoding || '');
         }
       }
     }).catch(err => console.error('Failed to load priority details:', err));
@@ -145,6 +160,7 @@ export function PriorityForm({ id }: PriorityFormProps) {
         priorityDuration: Number(priorityDuration) || null,
         priorityDurationFrequencyNo: parseInt(priorityFrequencyNo) || null,
         sequenceNo: Number(sequence) || null,
+        colorCoding: color || null,
       };
       await apiService.post('/api/master/task-priorities/save', payload);
       setShowSuccessAlert(true);
@@ -272,6 +288,61 @@ export function PriorityForm({ id }: PriorityFormProps) {
               </FieldControl>
             </div>
 
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel>Color Code</FieldLabel>
+              <div className="flex flex-wrap items-center gap-2 w-full">
+                <Select
+                  value={
+                    color === '' ? 'none' :
+                      COLOR_PRESETS.map(p => p.hex).includes(color) ? color : 'custom'
+                  }
+                  onValueChange={(val) => {
+                    if (val === 'none') setColor('');
+                    else if (val === 'custom') setColor('#000000');
+                    else setColor(val);
+                  }}
+                >
+                  <SelectTrigger className={cn(fieldClass, 'w-full')}>
+                    <SelectValue placeholder="Select color code" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-[8px]">
+                    <SelectItem value="none">
+                      <div className="flex items-center gap-2">
+                        <X size={14} className="text-slate-400" />
+                        <span>None</span>
+                      </div>
+                    </SelectItem>
+                    {COLOR_PRESETS.map((preset) => (
+                      <SelectItem key={preset.hex} value={preset.hex}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 rounded-full border border-[var(--tm-border)]" style={{ backgroundColor: preset.hex }} />
+                          <span>{preset.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3.5 h-3.5 rounded-full border border-[var(--tm-border)] bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
+                        <span>Custom Color</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {color !== '' && !COLOR_PRESETS.map(p => p.hex).includes(color) && (
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 border border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                    <input
+                      type="color"
+                      value={color || '#000000'}
+                      onChange={(e) => setColor(e.target.value)}
+                      className="w-7 h-7 border-0 bg-transparent cursor-pointer rounded"
+                    />
+                    <span className="text-xs font-mono font-medium text-slate-500 uppercase">{color}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
               <FieldLabel htmlFor="prioritySequence">Sequence Number</FieldLabel>
               <FieldControl error={errors.sequence}>
@@ -293,6 +364,24 @@ export function PriorityForm({ id }: PriorityFormProps) {
                   )}
                 />
               </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0 sm:col-span-2 pt-2">
+              <FieldLabel>Preview</FieldLabel>
+              <div className="flex items-center h-12 px-3 rounded-[8px] border border-[var(--tm-border)]/50 bg-[var(--tm-elevated)] overflow-hidden">
+                {color ? (
+                  <span 
+                    className="inline-flex px-3 py-1.5 text-sm font-semibold rounded-[6px] shadow-sm"
+                    style={{ backgroundColor: color, color: getContrastColor(color) }}
+                  >
+                    {name || 'Priority Name'}
+                  </span>
+                ) : (
+                  <span className="inline-flex px-3 py-1.5 text-sm font-medium rounded-[6px] text-slate-300 border border-[var(--tm-border)]">
+                    {name || 'Priority Name'} (No Color)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

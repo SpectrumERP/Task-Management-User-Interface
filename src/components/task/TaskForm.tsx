@@ -268,7 +268,7 @@ interface TaskFormProps {
 }
 
 interface TaskFillValues {
-  priority: { OperTaskPriorityNo: number; Priority: string; Code: string; PriorityDuration?: number; PriorityDurationFrequencyNo?: number }[];
+  priority: { OperTaskPriorityNo: number; Priority: string; Code: string; PriorityDuration?: number; PriorityDurationFrequencyNo?: number; ColorCoding?: string }[];
   type: { OperTaskTypeNo: number; "Task Type": string; Code: string }[];
   category: { OperTaskCategoryNo: number; Category: string; Code: string; colorCoding?: string; ColorCoding?: string }[];
   location: { OperLocationNo: number; Location: string; Code: string }[];
@@ -281,10 +281,11 @@ interface TaskFillValues {
 }
 
 const statusTransitions: Record<string, string[]> = {
-  "Draft": ["Approval In Progress", "Open"],
-  "Approval In Progress": ["Open", "Rejected"],
-  "Rejected": ["Close"],
-  "Open": ["In Progress"],
+  // "Draft": ["Approval In Progress", "Open"],
+  // "Approval In Progress": ["Open", "Rejected"],
+  // "Rejected": ["Close"],
+  // "Open": ["In Progress"],
+  "Assigned": ["In Progress"],
   "In Progress": ["Complete", "Hold"],
   "Hold": ["In Progress"],
   "Complete": ["In Review"],
@@ -447,7 +448,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       taskNo: st.operTaskNo || st.taskNo,
       code: st.code,
       title: st.title,
-      status: st.status?.statusName || st.status || 'Draft',
+      status: st.status?.statusName || st.status || 'Assigned',
       start_date: st.startDate || st.start_date,
       categoryName: st.category?.categoryName || st.categoryName,
       typeName: st.type?.typeName || st.typeName,
@@ -768,7 +769,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               actual_benefit_amount: d.businessBenefit?.actualBenefitAmount || '',
               benefit_period: 'One Time',
               status_No: d.status?.operTaskStatusNo || 1,
-              status: d.status?.statusName || 'Draft',
+              status: d.status?.statusName || 'Assigned',
               priority: d.priority?.priorityName || 'Low Priority',
               categoryName: d.category?.categoryName || '',
               typeName: d.type?.typeName || '',
@@ -1106,7 +1107,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               code: '',
               title: item.title || item.subtaskTitle || item.description || item.taskName || item.subTaskName || '',
               type_No: item.operTaskTypeNo?.toString() || item.typeNo?.toString() || '',
-              status: 'Draft',
+              status: 'Assigned',
               ownerLoginNo: '',
               assignedDisplayName: '-',
               endDate: '',
@@ -1156,7 +1157,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
         // Set default values if not editing
         if (!initialData) {
-          form.setValue('status', 'Draft');
+          form.setValue('status', 'Assigned');
           if (authUser) {
             form.setValue('originator_user_No', authUser.LoginNo?.toString() || authUser.loginNo?.toString() || '101');
           }
@@ -2025,7 +2026,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     render={({ field }) => (
                       <Combobox disabled={isSubTask || isDealMonitorContext} options={fillValues?.category.filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
                         .filter(c => isDealMonitorContext || c.Category.toLowerCase() !== 'deal monitor')
-                        .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString() })) || []}
+                        .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString(), colorCoding: c.colorCoding || c.ColorCoding })) || []}
                         value={field.value}
                         onChange={(val) => {
                           field.onChange(val);
@@ -2104,7 +2105,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     control={form.control}
                     render={({ field }) => (
                       <Combobox disabled={isSubTask} options={fillValues?.priority.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
-                        .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString() })) || []}
+                        .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString(), colorCoding: p.ColorCoding })) || []}
                         value={field.value}
                         onChange={field.onChange}
                         placeholder="Select priority"
@@ -3181,7 +3182,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
-                                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{task.status || 'Draft'}</p>
+                                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{task.status || 'Assigned'}</p>
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[10px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10" onClick={() => removeSubtask(index)} title="Cancel">
@@ -4314,7 +4315,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{task.title || 'Sub-Task'}</p>
-                              <p className="text-[11px] text-slate-400 mt-0.5">{task.status || 'Draft'} · Editing</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{task.status || 'Assigned'} · Editing</p>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-[11px] font-medium border-[#3D4F66] text-slate-300 hover:text-red-400 hover:bg-red-500/10 rounded-[8px]" onClick={() => removeSubtask(index)} title="Cancel">
@@ -4446,7 +4447,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     task.status === 'In Review' ? "bg-violet-500/15 text-violet-400" :
                                       "bg-[var(--tm-muted)] text-slate-300"
                               )}>
-                                {task.status || 'Draft'}
+                                {task.status || 'Assigned'}
                               </span>
                               {(task.code || task.taskNo > 0) && (
                                 <span className="text-[10px] font-medium text-slate-400">{task.code || `#${task.taskNo}`}</span>
@@ -4816,7 +4817,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     taskNo: newFakeTaskNo,
                     code: '',
                     title: data.title,
-                    status: 'Draft',
+                    status: 'Assigned',
                     ownerLoginNo: data.ownerLoginNo,
                     assignedDisplayName: data.assignedDisplayName || '-',
                     endDate: data.endDate || null,

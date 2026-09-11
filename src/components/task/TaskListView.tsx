@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task } from '@/types/task';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
-import { ClipboardList, Settings2, Edit2, Search, Eye, Plus } from 'lucide-react';
+import { ClipboardList, Settings2, Edit2, Search, Eye, Plus, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { getPriorityBadgeClass } from '@/lib/priorityStyles';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useSettings } from '@/hooks/useSettings';
@@ -87,6 +86,18 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   useEffect(() => {
     localStorage.setItem('taskListViewColumns', JSON.stringify(Array.from(visibleColumns)));
   }, [visibleColumns]);
+
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (e: React.MouseEvent, taskNo: number) => {
+    e.stopPropagation();
+    setExpandedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskNo)) next.delete(taskNo);
+      else next.add(taskNo);
+      return next;
+    });
+  };
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [pendingColumns, setPendingColumns] = useState<Set<ColumnKey>>(visibleColumns);
@@ -208,87 +219,350 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
     else navigate(taskUrl(task.taskNo, task.categoryName));
   };
 
+  const renderTaskCard = (task: Task, isSubtask = false) => (
+    <div
+      key={task.taskNo}
+      role="button"
+      tabIndex={0}
+      onClick={() => openTask(task)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openTask(task);
+        }
+      }}
+      className={cn(
+        "w-full text-left rounded-xl border shadow-sm active:bg-[var(--tm-muted)] transition-colors cursor-pointer",
+        isSubtask ? "border-[#0EA5E9]/20 bg-[var(--tm-elevated)]/40 px-2 py-2" : "border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/60 px-3 py-2.5"
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+            {!isSubtask && task.subTasks && task.subTasks.length > 0 && (
+              <button onClick={(e) => toggleExpand(e, task.taskNo)} className="p-0.5 -ml-1 text-slate-400 hover:text-slate-200">
+                {expandedTasks.has(task.taskNo) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+            )}
+            <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+              {task.code || `CP-${100 + task.taskNo}`}
+            </span>
+            {task.status ? (
+              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-[var(--tm-muted)] text-slate-200">
+                {task.status}
+              </span>
+            ) : null}
+            {task.priority ? (() => {
+              const priorityObj = fillValues?.priority?.find(
+                p => p.OperTaskPriorityNo === task.priority_No || p.Priority === task.priority
+              );
+              const colorCoding = priorityObj?.ColorCoding;
+              if (colorCoding && colorCoding !== 'none') {
+                const contrastText = getContrastColor(colorCoding);
+                return (
+                  <span
+                    className="items-center px-1.5 py-0.5 rounded-md text-[9px] font-medium shadow-sm"
+                    style={{ backgroundColor: colorCoding, color: contrastText }}
+                  >
+                    {task.priority}
+                  </span>
+                );
+              }
+              return (
+                <span className="text-[9px] font-medium text-slate-300">
+                  {task.priority}
+                </span>
+              );
+            })() : null}
+          </div>
+          <p className="text-sm font-semibold text-slate-100 leading-snug line-clamp-2">{task.title}</p>
+          <p className="mt-1 text-[11px] text-slate-400 truncate">
+            {task.assignedDisplayName || 'Unassigned'}
+            {task.end_date
+              ? ` · Due ${format(new Date(task.end_date), 'MMM dd')}`
+              : ''}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            title="View"
+            onClick={(e) => {
+              e.stopPropagation();
+              openTask(task);
+            }}
+            className="h-8 w-8 rounded-lg text-slate-400 hover:bg-[var(--tm-muted)] hover:text-slate-200"
+          >
+            <Eye size={14} strokeWidth={2.25} />
+          </Button>
+          {isUpdate ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(taskUrl(task.taskNo, task.categoryName));
+              }}
+              className="h-8 w-8 rounded-lg text-slate-400 hover:bg-[var(--tm-muted)] hover:text-slate-200"
+            >
+              <Edit2 size={14} strokeWidth={2.5} />
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTableRow = (task: Task, isSubtask = false) => (
+    <tr
+      key={task.taskNo}
+      onClick={() => openTask(task)}
+      className={cn("group transition-colors cursor-pointer", isSubtask ? "bg-[var(--tm-surface)]/30" : "")}
+    >
+      {/* Code */}
+      {visibleColumns.has('code') && (
+        <td className={cn("px-1.5 py-1 align-middle", isSubtask && "pl-8")}>
+          <div className="flex items-center gap-1">
+            {isSubtask ? (
+              <CornerDownRight size={14} className="text-slate-400 mr-1" />
+            ) : (
+              <>
+                {task.subTasks && task.subTasks.length > 0 ? (
+                  <button onClick={(e) => toggleExpand(e, task.taskNo)} className="p-0.5 -ml-1 text-slate-400 hover:text-slate-200">
+                    {expandedTasks.has(task.taskNo) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                ) : (
+                  <span className="w-3.5" />
+                )}
+              </>
+            )}
+            <span className="text-[11px] font-medium text-[#0EA5E9] whitespace-nowrap">
+              {task.code || `CP-${100 + task.taskNo}`}
+            </span>
+          </div>
+        </td>
+      )}
+
+      {/* Status */}
+      {visibleColumns.has('status') && (
+        <td className="px-1.5 py-1 align-middle">
+          <div className={cn(
+            "px-1.5 py-0.5 rounded-md text-[10px] font-medium normal-case text-center inline-flex items-center justify-center whitespace-nowrap shadow-sm",
+            task.status === 'Done' ? "bg-green-100/80 text-green-800" :
+              task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
+                task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
+                  "bg-[var(--tm-muted)]/80 text-slate-100"
+          )}>
+            {task.status}
+          </div>
+        </td>
+      )}
+
+      {/* Subject */}
+      {visibleColumns.has('title') && (
+        <td className="px-1.5 py-1 align-middle w-full max-w-0">
+          <span
+            className="font-medium text-slate-100 group-hover:text-[#0EA5E9] transition-colors truncate block w-full select-all"
+            title={task.title}
+          >
+            {task.title}
+          </span>
+        </td>
+      )}
+
+      {/* Category */}
+      {visibleColumns.has('category') && isColumnAllowed('category') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          {task.categoryName ? (() => {
+            const catObj = fillValues?.category?.find(
+              c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
+            );
+            const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || 'var(--tm-border)';
+            const textColor = getContrastColor(bgColor);
+            return (
+              <span
+                style={{ backgroundColor: bgColor, color: textColor }}
+                className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+              >
+                {task.categoryName}
+              </span>
+            );
+          })() : <span className="text-slate-300">-</span>}
+        </td>
+      )}
+
+      {/* Type */}
+      {visibleColumns.has('type') && !isHideType && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          {task.typeName ? (
+            <span className="text-xs font-semibold text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-md border border-[var(--tm-border)]">
+              {task.typeName}
+            </span>
+          ) : (
+            <span className="text-slate-300">-</span>
+          )}
+        </td>
+      )}
+
+      {/* Priority */}
+      {visibleColumns.has('priority') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          {(() => {
+            const priorityObj = fillValues?.priority?.find(
+              p => p.OperTaskPriorityNo === task.priority_No || p.Priority === task.priority
+            );
+            const colorCoding = priorityObj?.ColorCoding;
+            if (colorCoding && colorCoding !== 'none') {
+              const contrastText = getContrastColor(colorCoding);
+              return (
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+                  style={{ backgroundColor: colorCoding, color: contrastText }}
+                >
+                  {task.priority}
+                </span>
+              );
+            }
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium text-slate-300 bg-[var(--tm-muted)]">
+                {task.priority}
+              </span>
+            );
+          })()}
+        </td>
+      )}
+
+      {/* Owner */}
+      {visibleColumns.has('owner') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          <div className="flex items-center gap-0.5">
+            <span className="text-xs font-semibold text-slate-200">{task.assignedDisplayName || '-'}</span>
+          </div>
+        </td>
+      )}
+
+      {/* Due Date */}
+      {visibleColumns.has('dueDate') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          {task.end_date ? (
+            <span className="text-xs font-medium text-slate-200">{format(new Date(task.end_date), 'MMM dd, yyyy')}</span>
+          ) : <span className="text-slate-300">-</span>}
+        </td>
+      )}
+
+      {/* Completion Date */}
+      {visibleColumns.has('completionDate') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          {task.completionDate ? (
+            <span className="text-xs font-medium text-slate-200">{format(new Date(task.completionDate), 'MMM dd, yyyy')}</span>
+          ) : <span className="text-slate-300">-</span>}
+        </td>
+      )}
+
+      {/* Folder */}
+      {visibleColumns.has('folder') && !isHideFolder && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          <span className="text-xs font-medium text-slate-200">
+            {task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.["Folder Name"] || task.project_No || '-'}
+          </span>
+        </td>
+      )}
+
+      {/* Company */}
+      {visibleColumns.has('companyName') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          <span className="text-xs font-medium text-slate-200">{task.companyName || '-'}</span>
+        </td>
+      )}
+
+      {/* Location */}
+      {visibleColumns.has('location') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          <span className="text-xs font-medium text-slate-200">{task.locationName || (task.location_No ? `Loc ${task.location_No}` : '-')}</span>
+        </td>
+      )}
+
+      {/* Originator */}
+      {visibleColumns.has('originator') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          <span className="text-xs font-medium text-slate-200">{task.originatorDisplayName || '-'}</span>
+        </td>
+      )}
+
+      {/* Created By */}
+      {visibleColumns.has('createdBy') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          <span className="text-xs font-medium text-slate-200">
+            {task.createdBy?.displayName || task.originatorDisplayName || '-'}
+          </span>
+        </td>
+      )}
+
+      {/* Created Date */}
+      {visibleColumns.has('createdDate') && (
+        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+          {task.createdDate ? (
+            <span className="text-xs font-medium text-slate-200">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
+          ) : task.start_date ? (
+            <span className="text-xs font-medium text-slate-200">{format(new Date(task.start_date), 'MMM dd, yyyy h:mm a')}</span>
+          ) : <span className="text-slate-300">-</span>}
+        </td>
+      )}
+
+      {/* Actions */}
+      {visibleColumns.has('actions') && (
+        <td className="px-1.5 py-1 align-middle text-right sticky right-0 z-10 tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+          <div className="inline-flex items-center justify-end gap-0.5 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              title="View"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onTaskClick) onTaskClick(task.taskNo);
+                else navigate(taskUrl(task.taskNo, task.categoryName));
+              }}
+              className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+            >
+              <Eye size={14} strokeWidth={2.25} />
+            </Button>
+            {isUpdate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(taskUrl(task.taskNo, task.categoryName));
+                }}
+                className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+              >
+                <Edit2 size={14} strokeWidth={2.5} />
+              </Button>
+            )}
+          </div>
+        </td>
+      )}
+    </tr>
+  );
+
   return (
     <div className="h-full min-h-0 overflow-auto" data-page-tour="task-table">
       {/* Mobile / tablet cards */}
       <div className="md:hidden flex flex-col gap-2 p-2 sm:p-3">
         {tasks.map((task) => (
-          <div
-            key={task.taskNo}
-            role="button"
-            tabIndex={0}
-            onClick={() => openTask(task)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                openTask(task);
-              }
-            }}
-            className="w-full text-left rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/60 px-3 py-2.5 shadow-sm active:bg-[var(--tm-muted)] transition-colors cursor-pointer"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                  <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
-                    {task.code || `CP-${100 + task.taskNo}`}
-                  </span>
-                  {task.status ? (
-                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-[var(--tm-muted)] text-slate-200">
-                      {task.status}
-                    </span>
-                  ) : null}
-                  {task.priority ? (
-                    <span
-                      className={cn(
-                        'text-[9px] font-medium px-1.5 py-0.5 rounded-md',
-                        getPriorityBadgeClass(task.priority, task.priority_No, 'solid')
-                      )}
-                    >
-                      {task.priority}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="text-sm font-semibold text-slate-100 leading-snug line-clamp-2">{task.title}</p>
-                <p className="mt-1 text-[11px] text-slate-400 truncate">
-                  {task.assignedDisplayName || 'Unassigned'}
-                  {task.end_date
-                    ? ` · Due ${format(new Date(task.end_date), 'MMM dd')}`
-                    : ''}
-                </p>
+          <React.Fragment key={task.taskNo}>
+            {renderTaskCard(task)}
+            {expandedTasks.has(task.taskNo) && task.subTasks && task.subTasks.length > 0 && (
+              <div className="flex flex-col gap-2 pl-4 border-l-2 border-[#0EA5E9]/20 ml-2 mt-1 mb-1">
+                {task.subTasks.map((subTask: Task) => renderTaskCard(subTask, true))}
               </div>
-              <div className="flex shrink-0 items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="View"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openTask(task);
-                  }}
-                  className="h-8 w-8 rounded-lg text-slate-400"
-                >
-                  <Eye size={14} strokeWidth={2.25} />
-                </Button>
-                {isUpdate ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Edit"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(taskUrl(task.taskNo, task.categoryName));
-                    }}
-                    className="h-8 w-8 rounded-lg text-slate-400"
-                  >
-                    <Edit2 size={14} strokeWidth={2.5} />
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </div>
+            )}
+          </React.Fragment>
         ))}
       </div>
-
       {/* Desktop table */}
       <div className="hidden md:block min-w-0">
         <table className="tm-data-table w-full text-sm text-left min-w-[720px]">
@@ -394,211 +668,12 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           </thead>
           <tbody className="divide-y divide-[var(--tm-border)]">
             {tasks.map((task) => (
-              <tr
-                key={task.taskNo}
-                onClick={() => openTask(task)}
-                className="group transition-colors cursor-pointer"
-              >
-                {/* Code */}
-                {visibleColumns.has('code') && (
-                  <td className="px-1.5 py-1 align-middle">
-                    <span className="text-[11px] font-medium text-[#0EA5E9]   whitespace-nowrap">
-                      {task.code || `CP-${100 + task.taskNo}`}
-                    </span>
-                  </td>
+              <React.Fragment key={task.taskNo}>
+                {renderTableRow(task)}
+                {expandedTasks.has(task.taskNo) && task.subTasks && task.subTasks.length > 0 && (
+                  task.subTasks.map((subTask: Task) => renderTableRow(subTask, true))
                 )}
-
-                {/* Status */}
-                {visibleColumns.has('status') && (
-                  <td className="px-1.5 py-1 align-middle">
-                    <div className={cn(
-                      "px-1.5 py-0.5 rounded-md text-[10px] font-medium normal-case text-center inline-flex items-center justify-center whitespace-nowrap shadow-sm",
-                      task.status === 'Done' ? "bg-green-100/80 text-green-800" :
-                        task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
-                          task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
-                            "bg-[var(--tm-muted)]/80 text-slate-100"
-                    )}>
-                      {task.status}
-                    </div>
-                  </td>
-                )}
-
-                {/* Subject */}
-                {visibleColumns.has('title') && (
-                  <td className="px-1.5 py-1 align-middle w-full max-w-0">
-                    <span
-                      className="font-medium text-slate-100 group-hover:text-[#0EA5E9] transition-colors truncate block w-full select-all"
-                      title={task.title}
-                    >
-                      {task.title}
-                    </span>
-                  </td>
-                )}
-
-                {/* Category */}
-                {visibleColumns.has('category') && isColumnAllowed('category') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    {task.categoryName ? (() => {
-                      const catObj = fillValues?.category?.find(
-                        c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
-                      );
-                      const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || 'var(--tm-border)';
-                      const textColor = getContrastColor(bgColor);
-                      return (
-                        <span
-                          style={{ backgroundColor: bgColor, color: textColor }}
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded-md normal-case shadow-sm"
-                        >
-                          {task.categoryName}
-                        </span>
-                      );
-                    })() : <span className="text-slate-300">-</span>}
-                  </td>
-                )}
-
-                {/* Type */}
-                {visibleColumns.has('type') && !isHideType && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    {task.typeName ? (
-                      <span className="text-xs font-semibold text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-md border border-[var(--tm-border)]">
-                        {task.typeName}
-                      </span>
-                    ) : (
-                      <span className="text-slate-300">-</span>
-                    )}
-                  </td>
-                )}
-
-                {/* Priority */}
-                {visibleColumns.has('priority') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className={cn(
-                      "text-[10px] font-medium   px-1.5 py-0.5 rounded-md shadow-sm",
-                      getPriorityBadgeClass(task.priority, task.priority_No, 'solid')
-                    )}>
-                      {task.priority}
-                    </span>
-                  </td>
-                )}
-
-                {/* Owner */}
-                {visibleColumns.has('owner') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <div className="flex items-center gap-0.5">
-                      {/* <UserAvatar
-                        loginNo={task.owner_user_No}
-                        displayName={task.assignedDisplayName}
-                        size="sm"
-                      /> */}
-                      <span className="text-xs font-semibold text-slate-200">{task.assignedDisplayName || '-'}</span>
-                    </div>
-                  </td>
-                )}
-
-                {/* Due Date */}
-                {visibleColumns.has('dueDate') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    {task.end_date ? (
-                      <span className="text-xs font-medium text-slate-200">{format(new Date(task.end_date), 'MMM dd, yyyy')}</span>
-                    ) : <span className="text-slate-300">-</span>}
-                  </td>
-                )}
-
-                {/* Completion Date */}
-                {visibleColumns.has('completionDate') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    {task.completionDate ? (
-                      <span className="text-xs font-medium text-slate-200">{format(new Date(task.completionDate), 'MMM dd, yyyy')}</span>
-                    ) : <span className="text-slate-300">-</span>}
-                  </td>
-                )}
-
-                {/* Folder */}
-                {visibleColumns.has('folder') && !isHideFolder && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-200">
-                      {task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.["Folder Name"] || task.project_No || '-'}
-                    </span>
-                  </td>
-                )}
-
-                {/* Company */}
-                {visibleColumns.has('companyName') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-200">{task.companyName || '-'}</span>
-                  </td>
-                )}
-
-                {/* Location */}
-                {visibleColumns.has('location') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-200">{task.locationName || (task.location_No ? `Loc ${task.location_No}` : '-')}</span>
-                  </td>
-                )}
-
-                {/* Originator */}
-                {visibleColumns.has('originator') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-200">{task.originatorDisplayName || '-'}</span>
-                  </td>
-                )}
-
-                {/* Created By */}
-                {visibleColumns.has('createdBy') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    <span className="text-xs font-medium text-slate-200">
-                      {task.createdBy?.displayName || task.originatorDisplayName || '-'}
-                    </span>
-                  </td>
-                )}
-
-                {/* Created Date */}
-                {visibleColumns.has('createdDate') && (
-                  <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-                    {task.createdDate ? (
-                      <span className="text-xs font-medium text-slate-200">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
-                    ) : task.start_date ? (
-                      <span className="text-xs font-medium text-slate-200">{format(new Date(task.start_date), 'MMM dd, yyyy h:mm a')}</span>
-                    ) : <span className="text-slate-300">-</span>}
-                  </td>
-                )}
-
-                {/* Actions */}
-                {visibleColumns.has('actions') && (
-                  <td className="px-1.5 py-1 align-middle text-right sticky right-0 z-10 tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
-                    <div className="inline-flex items-center justify-end gap-0.5 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="View"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onTaskClick) onTaskClick(task.taskNo);
-                          else navigate(taskUrl(task.taskNo, task.categoryName));
-                        }}
-                        className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
-                      >
-                        <Eye size={14} strokeWidth={2.25} />
-                      </Button>
-                      {isUpdate && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="Edit"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(taskUrl(task.taskNo, task.categoryName));
-                          }}
-                          className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
-                        >
-                          <Edit2 size={14} strokeWidth={2.5} />
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                )}
-
-              </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

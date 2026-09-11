@@ -41,7 +41,7 @@ export const masterItems = [
   { icon: Folder, label: 'Folders', id: 'master-folder', formNo: 1542 },
   { icon: Users, label: 'User Groups', id: 'master-user-group', formNo: 1546 },
   { icon: Sparkles, label: 'Benefit Types', id: 'master-benefit-type', formNo: 1545 },
-  { icon: MapPin, label: 'Locations', id: 'master-location', formNo: 1541 },
+  { icon: MapPin, label: 'Task Locations', id: 'master-location', formNo: 1541 },
   { icon: Ship, label: 'Vessels', id: 'master-vessel', formNo: 1549 },
   { icon: Anchor, label: 'Ports', id: 'master-port', formNo: 1563 },
   { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type', formNo: 1564 },
@@ -162,17 +162,17 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
           navBtnBase,
           isCollapsed
             ? cn(
-                "justify-center mx-auto h-10 w-10 rounded-[11px] p-0",
-                isActive
-                  ? "bg-[#0EA5E9] text-white shadow-[0_6px_16px_-6px_rgba(14,165,233,0.55)]"
-                  : "text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200 hover:shadow-sm"
-              )
+              "justify-center mx-auto h-10 w-10 rounded-[11px] p-0",
+              isActive
+                ? "bg-[#0EA5E9] text-white shadow-[0_6px_16px_-6px_rgba(14,165,233,0.55)]"
+                : "text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200 hover:shadow-sm"
+            )
             : cn(
-                "gap-3 rounded-xl px-3 py-[9px] text-[13px] tracking-[-0.01em]",
-                isActive
-                  ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
-                  : "font-medium text-slate-300 hover:bg-[var(--tm-muted)]/70 hover:text-slate-100"
-              )
+              "gap-3 rounded-xl px-3 py-[9px] text-[13px] tracking-[-0.01em]",
+              isActive
+                ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
+                : "font-medium text-slate-300 hover:bg-[var(--tm-muted)]/70 hover:text-slate-100"
+            )
         )}
       >
         {isActive && !isCollapsed && (
@@ -356,39 +356,39 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
     >
       {/* Brand — skipped when logo is in the full app header */}
       {!hideBrand && (
-      <div
-        className={cn(
-          "relative shrink-0",
-          isCollapsed
-            ? "flex flex-col gap-1 justify-center items-center px-0 py-3"
-            : "flex items-center justify-between gap-2 px-4 py-3.5"
-        )}
-      >
         <div
           className={cn(
-            "flex items-center overflow-hidden transition-all duration-300",
-            isCollapsed ? "w-14 h-11 justify-center" : "min-w-0 flex-1"
+            "relative shrink-0",
+            isCollapsed
+              ? "flex flex-col gap-1 justify-center items-center px-0 py-3"
+              : "flex items-center justify-between gap-2 px-4 py-3.5"
           )}
         >
-          <BrandLogo
-            maxHeight={isCollapsed ? 40 : 44}
-            maxWidth={isCollapsed ? 56 : 200}
-            className={isCollapsed ? "justify-center" : undefined}
-            imgClassName={isCollapsed ? "object-center" : undefined}
-          />
-        </div>
-        {onClose && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="lg:hidden h-8 w-8 rounded-xl hover:bg-[var(--tm-muted)]/80 flex items-center justify-center shrink-0"
+          <div
+            className={cn(
+              "flex items-center overflow-hidden transition-all duration-300",
+              isCollapsed ? "w-14 h-11 justify-center" : "min-w-0 flex-1"
+            )}
           >
-            <X size={18} className="text-slate-500" />
-          </Button>
-        )}
-        <div className="pointer-events-none absolute inset-x-3 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--tm-border)] to-transparent" />
-      </div>
+            <BrandLogo
+              maxHeight={isCollapsed ? 40 : 44}
+              maxWidth={isCollapsed ? 56 : 200}
+              className={isCollapsed ? "justify-center" : undefined}
+              imgClassName={isCollapsed ? "object-center" : undefined}
+            />
+          </div>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="lg:hidden h-8 w-8 rounded-xl hover:bg-[var(--tm-muted)]/80 flex items-center justify-center shrink-0"
+            >
+              <X size={18} className="text-slate-500" />
+            </Button>
+          )}
+          <div className="pointer-events-none absolute inset-x-3 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--tm-border)] to-transparent" />
+        </div>
       )}
 
       {/* Navigation */}

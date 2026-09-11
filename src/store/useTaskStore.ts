@@ -30,7 +30,7 @@ export interface FilterParams {
 
 export interface TaskFillValues {
   taskCompany?: any[];
-  priority: { OperTaskPriorityNo: number; Priority: string; Code?: string }[];
+  priority: { OperTaskPriorityNo: number; Priority: string; Code?: string; ColorCoding?: string }[];
   type: { OperTaskTypeNo: number; "Task Type": string; Code?: string }[];
   category: { OperTaskCategoryNo: number; Category: string; Code?: string; colorCoding?: string; ColorCoding?: string }[];
   location: { OperLocationNo: number; Location: string; Code?: string }[];
@@ -71,6 +71,49 @@ const getCompanyNo = () => {
   return authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
 };
 
+const filterTasksByKeyword = (tasks: Task[], kw: string, fillValues: TaskFillValues | null): Task[] => {
+  const isMatch = (task: Task): boolean => {
+    const folderObj = fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No);
+    const folderName = task.folderName || (folderObj ? folderObj["Folder Name"] : (task.project_No?.toString() || ''));
+    const createdByName = task.createdBy?.displayName || task.originatorDisplayName || '';
+
+    return Boolean(
+      (task.code && task.code.toLowerCase().includes(kw)) ||
+      (task.title && task.title.toLowerCase().includes(kw)) ||
+      (task.status && task.status.toLowerCase().includes(kw)) ||
+      (task.categoryName && task.categoryName.toLowerCase().includes(kw)) ||
+      (task.typeName && task.typeName.toLowerCase().includes(kw)) ||
+      (task.priority && task.priority.toLowerCase().includes(kw)) ||
+      (task.assignedDisplayName && task.assignedDisplayName.toLowerCase().includes(kw)) ||
+      (folderName && folderName.toLowerCase().includes(kw)) ||
+      (createdByName && createdByName.toLowerCase().includes(kw)) ||
+      (task.start_date && task.start_date.toLowerCase().includes(kw)) ||
+      (task.end_date && task.end_date.toLowerCase().includes(kw))
+    );
+  };
+
+  const filterTree = (nodes: Task[]): Task[] => {
+    const result: Task[] = [];
+    for (const task of nodes) {
+      const matchesSelf = isMatch(task);
+
+      let matchingSubtasks: Task[] = [];
+      if (task.subTasks && task.subTasks.length > 0) {
+        matchingSubtasks = filterTree(task.subTasks);
+      }
+
+      if (matchesSelf) {
+        result.push(task);
+      } else if (matchingSubtasks.length > 0) {
+        result.push({ ...task, subTasks: matchingSubtasks });
+      }
+    }
+    return result;
+  };
+
+  return filterTree(tasks);
+};
+
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   allTasks: [],
@@ -83,25 +126,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       set({ searchKeyword: keyword, tasks: all });
       return;
     }
-    const filtered = all.filter(task => {
-      const folderObj = fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No);
-      const folderName = task.folderName || (folderObj ? folderObj["Folder Name"] : (task.project_No?.toString() || ''));
-      const createdByName = task.createdBy?.displayName || task.originatorDisplayName || '';
-
-      return (
-        (task.code && task.code.toLowerCase().includes(kw)) ||
-        (task.title && task.title.toLowerCase().includes(kw)) ||
-        (task.status && task.status.toLowerCase().includes(kw)) ||
-        (task.categoryName && task.categoryName.toLowerCase().includes(kw)) ||
-        (task.typeName && task.typeName.toLowerCase().includes(kw)) ||
-        (task.priority && task.priority.toLowerCase().includes(kw)) ||
-        (task.assignedDisplayName && task.assignedDisplayName.toLowerCase().includes(kw)) ||
-        (folderName && folderName.toLowerCase().includes(kw)) ||
-        (createdByName && createdByName.toLowerCase().includes(kw)) ||
-        (task.start_date && task.start_date.toLowerCase().includes(kw)) ||
-        (task.end_date && task.end_date.toLowerCase().includes(kw))
-      );
-    });
+    const filtered = filterTasksByKeyword(all, kw, fillValues);
     set({ searchKeyword: keyword, tasks: filtered });
   },
   isLoading: false,
@@ -187,16 +212,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       // if (searchParamsCamel.title !== undefined) searchParamsPascal.Title = searchParamsCamel.title;
       if (searchParamsCamel.operTaskCategoryNo !== undefined) searchParamsPascal.OperTaskCategoryNo = Number(searchParamsCamel.operTaskCategoryNo);
       if (searchParamsCamel.operTaskPriorityNo !== undefined) searchParamsPascal.OperTaskPriorityNo = Number(searchParamsCamel.operTaskPriorityNo);
-      
+
       const rawStatusNo = searchParamsCamel.operTaskStatusNo;
       const statusNoStr = typeof rawStatusNo === 'string' ? rawStatusNo : (rawStatusNo !== undefined && rawStatusNo !== null ? String(rawStatusNo) : undefined);
       const isPendingGroup = statusNoStr === 'PendingGroup';
       const isMultiStatus = statusNoStr !== undefined && statusNoStr.includes(',');
 
       if (!isPendingGroup && !isMultiStatus && statusNoStr !== undefined && statusNoStr !== '') {
-          searchParamsPascal.OperTaskStatusNo = Number(statusNoStr);
+        searchParamsPascal.OperTaskStatusNo = Number(statusNoStr);
       }
-      
+
       if (searchParamsCamel.operTaskLocationNo !== undefined) searchParamsPascal.OperTaskLocationNo = Number(searchParamsCamel.operTaskLocationNo);
       if (!isHideType && searchParamsCamel.operTaskTypeNo !== undefined) searchParamsPascal.OperTaskTypeNo = Number(searchParamsCamel.operTaskTypeNo);
       if (searchParamsCamel.ownerLoginNo !== undefined) searchParamsPascal.OwnerLoginNo = Number(searchParamsCamel.ownerLoginNo);
@@ -251,48 +276,52 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const response = await apiService.get<{ success: boolean, data: any[] }>('/api/crm/tasks/search-data', {
         params: searchParamsPascal
       });
+
+      const mapTaskItem = (item: any): Task => ({
+        taskNo: item.operTaskNo,
+        code: item.code || '',
+        title: item.title,
+        description: item.description || '',
+        priority_No: item.priority?.operTaskPriorityNo || null,
+        category_No: item.category?.operTaskCategoryNo || null,
+        type_No: item.type?.operTaskTypeNo || null,
+        project_No: item.project?.operTaskProjectNo || item.project?.projectNo || item.project?.project_No || item.project?.operTaskFolderNo || item.project?.folderNo || item.folder?.operTaskFolderNo || item.folder?.folderNo || item.folder?.TaskFolderNo || item.folder?.taskFolderNo || item.project_No || item.projectNo || item.folderNo || item.folder_No || null,
+        folderName: item.folder?.folderName || item.folder?.taskFolderName || item.folder?.FolderName || item.folder?.["Folder Name"] || item.project?.folderName || item.project?.taskFolderName || item.project?.FolderName || item.project?.["Folder Name"] || undefined,
+        tags: item.tags ? item.tags.split(',') : [],
+        originator_user_No: item.originator?.id || item.createdBy?.id || null,
+        originatorDisplayName: item.originator?.displayName || '',
+        createdBy: item.createdBy,
+        createdDate: item.createdDate || item.createdBy?.createdDate || null,
+        owner_user_No: item.assignedTo?.id || null,
+        location_No: item.location?.operTaskLocationNo || null,
+        locationName: item.location?.locationName || undefined,
+        company: item.taskCompany?.taskCompanyNo || item.company || undefined,
+        companyName: item.taskCompany?.taskCompanyAlias || item.taskCompany?.taskCompanyName || item.company || undefined,
+        status_No: item.status?.operTaskStatusNo || null,
+        status: item.status?.statusName || 'Todo',
+        priority: item.priority?.priorityName || 'Low',
+        categoryName: item.category?.categoryName,
+        typeName: item.type?.typeName,
+        assignedDisplayName: item.assignedTo?.displayName,
+        start_date: item.startDate,
+        end_date: item.endDate,
+        completionDate: item.completionDate || null,
+        completionRemark: item.completionRemark || '',
+        isAllDay: item.isAllday ?? item.isAllDay ?? false,
+        calendarColor: item.colorCoding || '',
+        estimated_effort_value: item.estimatedEfforts ?? null,
+        is_business_benefit_applicable: item.isBusinessBenefitApplicable || false,
+        collaborators: [],
+        informed_to: [],
+        actual_efforts: [],
+        check_list: [],
+        task_comments: [],
+        subTasks: item.subTasks ? item.subTasks.map(mapTaskItem) : []
+      });
+
       if (response.success) {
-        let mappedTasks: Task[] = response.data.map(item => ({
-          taskNo: item.operTaskNo,
-          code: item.code || '',
-          title: item.title,
-          description: item.description || '',
-          priority_No: item.priority?.operTaskPriorityNo || null,
-          category_No: item.category?.operTaskCategoryNo || null,
-          type_No: item.type?.operTaskTypeNo || null,
-          project_No: item.project?.operTaskProjectNo || item.project?.projectNo || item.project?.project_No || item.project?.operTaskFolderNo || item.project?.folderNo || item.folder?.operTaskFolderNo || item.folder?.folderNo || item.folder?.TaskFolderNo || item.folder?.taskFolderNo || item.project_No || item.projectNo || item.folderNo || item.folder_No || null,
-          folderName: item.folder?.folderName || item.folder?.taskFolderName || item.folder?.FolderName || item.folder?.["Folder Name"] || item.project?.folderName || item.project?.taskFolderName || item.project?.FolderName || item.project?.["Folder Name"] || undefined,
-          tags: item.tags ? item.tags.split(',') : [],
-          originator_user_No: item.originator?.id || item.createdBy?.id || null,
-          originatorDisplayName: item.originator?.displayName || '',
-          createdBy: item.createdBy,
-          createdDate: item.createdDate || item.createdBy?.createdDate || null,
-          owner_user_No: item.assignedTo?.id || null,
-          location_No: item.location?.operTaskLocationNo || null,
-          locationName: item.location?.locationName || undefined,
-          company: item.taskCompany?.taskCompanyNo || item.company || undefined,
-          companyName: item.taskCompany?.taskCompanyAlias || item.taskCompany?.taskCompanyName || item.company || undefined,
-          status_No: item.status?.operTaskStatusNo || null,
-          status: item.status?.statusName || 'Todo',
-          priority: item.priority?.priorityName || 'Low',
-          categoryName: item.category?.categoryName,
-          typeName: item.type?.typeName,
-          assignedDisplayName: item.assignedTo?.displayName,
-          start_date: item.startDate,
-          end_date: item.endDate,
-          completionDate: item.completionDate || null,
-          completionRemark: item.completionRemark || '',
-          isAllDay: item.isAllday ?? item.isAllDay ?? false,
-          calendarColor: item.colorCoding || '',
-          estimated_effort_value: item.estimatedEfforts ?? null,
-          is_business_benefit_applicable: item.isBusinessBenefitApplicable || false,
-          collaborators: [],
-          informed_to: [],
-          actual_efforts: [],
-          check_list: [],
-          task_comments: []
-        }));
-        
+        let mappedTasks: Task[] = response.data.map(mapTaskItem);
+
         // Apply PendingGroup filter locally if requested
         if (isPendingGroup) {
           const pendingStatuses = ['Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
@@ -307,25 +336,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         const kw = get().searchKeyword.toLowerCase();
         if (kw) {
           const fillValues = get().fillValues;
-          filteredTasks = mappedTasks.filter(task => {
-            const folderObj = fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No);
-            const folderName = task.folderName || (folderObj ? folderObj["Folder Name"] : (task.project_No?.toString() || ''));
-            const createdByName = task.createdBy?.displayName || task.originatorDisplayName || '';
-
-            return (
-              (task.code && task.code.toLowerCase().includes(kw)) ||
-              (task.title && task.title.toLowerCase().includes(kw)) ||
-              (task.status && task.status.toLowerCase().includes(kw)) ||
-              (task.categoryName && task.categoryName.toLowerCase().includes(kw)) ||
-              (task.typeName && task.typeName.toLowerCase().includes(kw)) ||
-              (task.priority && task.priority.toLowerCase().includes(kw)) ||
-              (task.assignedDisplayName && task.assignedDisplayName.toLowerCase().includes(kw)) ||
-              (folderName && folderName.toLowerCase().includes(kw)) ||
-              (createdByName && createdByName.toLowerCase().includes(kw)) ||
-              (task.start_date && task.start_date.toLowerCase().includes(kw)) ||
-              (task.end_date && task.end_date.toLowerCase().includes(kw))
-            );
-          });
+          filteredTasks = filterTasksByKeyword(mappedTasks, kw, fillValues);
         }
 
         set({ allTasks: mappedTasks, tasks: filteredTasks });

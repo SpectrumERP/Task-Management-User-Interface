@@ -22,6 +22,7 @@ export interface PriorityMaster {
   priorityDuration: number;
   priorityFrequencyNo: string;
   sequence?: number | string;
+  colorCoding?: string;
 }
 
 export interface FolderMaster {

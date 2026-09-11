@@ -269,7 +269,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           </div>
 
           {/* Desktop table */}
-          <Card data-page-tour="meeting-table" className="hidden md:flex flex-1 overflow-auto border-[var(--tm-border)]/60 rounded-xl bg-[var(--tm-surface)]/80 backdrop-blur-sm shadow-sm">
+          <Card data-page-tour="meeting-table" className="hidden md:block flex-1 overflow-auto border-[var(--tm-border)]/60 rounded-xl bg-[var(--tm-surface)]/80 backdrop-blur-sm shadow-sm">
             <table className="tm-data-table w-full text-sm text-left">
               <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold text-xs tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
                 <tr>

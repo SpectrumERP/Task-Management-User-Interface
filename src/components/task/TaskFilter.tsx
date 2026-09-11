@@ -522,225 +522,225 @@ export function TaskFilter({
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
               <div className="overflow-y-auto px-4 py-3 scrollbar-sleek flex-1 max-h-[50vh] space-y-3">
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
-                <FilterPanel title="Task filters" icon={Layers} cols={2} className="lg:col-span-3">
-                  <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={Clipboard}>Status</FilterFieldLabel>
-                    <Controller
-                      name="operTaskStatusNo"
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className={filterControlClass}>
-                            <SelectValue placeholder="All Status" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                            {fillValues?.status.map(s => (
-                              <SelectItem key={s.StatusNo} value={s.StatusNo.toString()}>{s.Status}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={Tag}>Priority</FilterFieldLabel>
-                    <Controller
-                      name="operTaskPriorityNo"
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className={filterControlClass}>
-                            <SelectValue placeholder="All Priority" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                            {fillValues?.priority.map(p => (
-                              <SelectItem key={p.OperTaskPriorityNo} value={p.OperTaskPriorityNo.toString()}>{p.Priority}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={Clipboard}>Task ID / Code</FilterFieldLabel>
-                    <Controller
-                      name="taskCode"
-                      control={control}
-                      render={({ field }) => (
-                        <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
-                      )}
-                    />
-                  </div>
-
-                  {!hideCategoryFilter && (
+                  <FilterPanel title="Task filters" icon={Layers} cols={2} className="lg:col-span-3">
                     <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={Layers}>Category</FilterFieldLabel>
+                      <FilterFieldLabel icon={Clipboard}>Status</FilterFieldLabel>
                       <Controller
-                        name="operTaskCategoryNo"
+                        name="operTaskStatusNo"
                         control={control}
                         render={({ field }) => (
                           <Select onValueChange={field.onChange} value={field.value}>
                             <SelectTrigger className={filterControlClass}>
-                              <SelectValue placeholder="All Categories" />
+                              <SelectValue placeholder="All Status" />
                             </SelectTrigger>
                             <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                              {fillValues?.category.map(c => (
-                                <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()}>{c.Category}</SelectItem>
+                              {fillValues?.status.map(s => (
+                                <SelectItem key={s.StatusNo} value={s.StatusNo.toString()}>{s.Status}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         )}
                       />
                     </div>
-                  )}
 
-                  {!isHideType && (
                     <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={Tag}>Task Type</FilterFieldLabel>
+                      <FilterFieldLabel icon={Tag}>Priority</FilterFieldLabel>
                       <Controller
-                        name="operTaskTypeNo"
+                        name="operTaskPriorityNo"
                         control={control}
                         render={({ field }) => (
                           <Select onValueChange={field.onChange} value={field.value}>
                             <SelectTrigger className={filterControlClass}>
-                              <SelectValue placeholder="All Types" />
+                              <SelectValue placeholder="All Priority" />
                             </SelectTrigger>
                             <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                              {fillValues?.type.map(t => (
-                                <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()}>{t["Task Type"]}</SelectItem>
+                              {fillValues?.priority.map(p => (
+                                <SelectItem key={p.OperTaskPriorityNo} value={p.OperTaskPriorityNo.toString()}>{p.Priority}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         )}
                       />
                     </div>
-                  )}
 
-                  <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={MapPin}>Location</FilterFieldLabel>
-                    <Controller
-                      name="operTaskLocationNo"
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className={filterControlClass}>
-                            <SelectValue placeholder="All Locations" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                            {fillValues?.location.map(l => (
-                              <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()}>{l.Location}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  {!isHideFolder && (
                     <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={Folder}>Workspace Folder</FilterFieldLabel>
+                      <FilterFieldLabel icon={Clipboard}>Task ID / Code</FilterFieldLabel>
                       <Controller
-                        name="folderNo"
+                        name="taskCode"
                         control={control}
                         render={({ field }) => (
-                          <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
-                            <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
-                              placeholder="All Folders"
-                              className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                            />
-                          </div>
+                          <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
                         )}
                       />
                     </div>
-                  )}
-                </FilterPanel>
 
-                <FilterPanel title="People" icon={User} cols={1} className="lg:col-span-2">
-                  {!isGeneralUser && (
-                    <>
-                      <div className="space-y-1 min-w-0" id="dialog-form-group-loginNo">
-                        <FilterFieldLabel icon={User} required={!!(watch('filterType') && watch('filterType') !== 'All')}>User</FilterFieldLabel>
-                        <Controller
-                          name="loginNo"
-                          control={control}
-                          rules={{
-                            validate: (val) => {
-                              const filterType = watch('filterType');
-                              if (filterType && filterType !== 'All' && (!val || val === '')) {
-                                return 'User is required when filter type is selected';
-                              }
-                              return true;
-                            }
-                          }}
-                          render={({ field }) => (
-                            <UserCombobox value={field.value} onChange={(user) => {
-                              field.onChange(user.loginNo.toString());
-                              setPersonLabels((prev) => ({
-                                ...prev,
-                                [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
-                              }));
-                              trigger('filterType');
-                            }}
-                              placeholder="Search user..."
-                              className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-400")}
-                            />
-                          )}
-                        />
-                        {errors.loginNo && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.loginNo.message}</p>}
-                      </div>
-
+                    {!hideCategoryFilter && (
                       <div className="space-y-1 min-w-0">
-                        <FilterFieldLabel icon={SlidersHorizontal} required={!!(watch('loginNo') && watch('loginNo') !== '')}>Filter Type</FilterFieldLabel>
+                        <FilterFieldLabel icon={Layers}>Category</FilterFieldLabel>
                         <Controller
-                          name="filterType"
+                          name="operTaskCategoryNo"
                           control={control}
-                          rules={{
-                            validate: (val) => {
-                              const userVal = watch('loginNo');
-                              if (userVal && userVal !== '' && (!val || val === 'All')) {
-                                return 'Filter Type is required when User is selected';
-                              }
-                              return true;
-                            }
-                          }}
                           render={({ field }) => (
-                            <Combobox value={field.value} onChange={(val) => {
-                              field.onChange(val);
-                              trigger('loginNo');
-                            }}
-                              options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
-                              placeholder="Select Filter Type"
-                              className={cn(filterControlClass, FIELD_TEXT_STYLE, errors.filterType && "border-red-400")}
-                            />
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className={filterControlClass}>
+                                <SelectValue placeholder="All Categories" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
+                                {fillValues?.category.map(c => (
+                                  <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()}>{c.Category}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           )}
                         />
-                        {errors.filterType && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.filterType.message}</p>}
                       </div>
-                    </>
-                  )}
+                    )}
 
-                  <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={User}>Assign To</FilterFieldLabel>
-                    <Controller
-                      name="ownerLoginNo"
-                      control={control}
-                      render={({ field }) => (
-                        <UserCombobox value={field.value} onChange={(user) => {
-                          field.onChange(user.loginNo.toString());
-                          setPersonLabels((prev) => ({
-                            ...prev,
-                            [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
-                          }));
-                        }}
-                          placeholder="Search assign to..."
-                          className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE)}
+                    {!isHideType && (
+                      <div className="space-y-1 min-w-0">
+                        <FilterFieldLabel icon={Tag}>Task Type</FilterFieldLabel>
+                        <Controller
+                          name="operTaskTypeNo"
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className={filterControlClass}>
+                                <SelectValue placeholder="All Types" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
+                                {fillValues?.type.map(t => (
+                                  <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()}>{t["Task Type"]}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         />
-                      )}
-                    />
-                  </div>
-                </FilterPanel>
+                      </div>
+                    )}
+
+                    <div className="space-y-1 min-w-0">
+                      <FilterFieldLabel icon={MapPin}>Location</FilterFieldLabel>
+                      <Controller
+                        name="operTaskLocationNo"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger className={filterControlClass}>
+                              <SelectValue placeholder="All Locations" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
+                              {fillValues?.location.map(l => (
+                                <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()}>{l.Location}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+
+                    {!isHideFolder && (
+                      <div className="space-y-1 min-w-0">
+                        <FilterFieldLabel icon={Folder}>Workspace Folder</FilterFieldLabel>
+                        <Controller
+                          name="folderNo"
+                          control={control}
+                          render={({ field }) => (
+                            <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
+                              <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
+                                placeholder="All Folders"
+                                className={cn(filterControlClass, FIELD_TEXT_STYLE)}
+                              />
+                            </div>
+                          )}
+                        />
+                      </div>
+                    )}
+                  </FilterPanel>
+
+                  <FilterPanel title="People" icon={User} cols={1} className="lg:col-span-2">
+                    {!isGeneralUser && (
+                      <>
+                        <div className="space-y-1 min-w-0" id="dialog-form-group-loginNo">
+                          <FilterFieldLabel icon={User} required={!!(watch('filterType') && watch('filterType') !== 'All')}>User</FilterFieldLabel>
+                          <Controller
+                            name="loginNo"
+                            control={control}
+                            rules={{
+                              validate: (val) => {
+                                const filterType = watch('filterType');
+                                if (filterType && filterType !== 'All' && (!val || val === '')) {
+                                  return 'User is required when filter type is selected';
+                                }
+                                return true;
+                              }
+                            }}
+                            render={({ field }) => (
+                              <UserCombobox value={field.value} onChange={(user) => {
+                                field.onChange(user.loginNo.toString());
+                                setPersonLabels((prev) => ({
+                                  ...prev,
+                                  [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
+                                }));
+                                trigger('filterType');
+                              }}
+                                placeholder="Search user..."
+                                className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-400")}
+                              />
+                            )}
+                          />
+                          {errors.loginNo && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.loginNo.message}</p>}
+                        </div>
+
+                        <div className="space-y-1 min-w-0">
+                          <FilterFieldLabel icon={SlidersHorizontal} required={!!(watch('loginNo') && watch('loginNo') !== '')}>Filter Type</FilterFieldLabel>
+                          <Controller
+                            name="filterType"
+                            control={control}
+                            rules={{
+                              validate: (val) => {
+                                const userVal = watch('loginNo');
+                                if (userVal && userVal !== '' && (!val || val === 'All')) {
+                                  return 'Filter Type is required when User is selected';
+                                }
+                                return true;
+                              }
+                            }}
+                            render={({ field }) => (
+                              <Combobox value={field.value} onChange={(val) => {
+                                field.onChange(val);
+                                trigger('loginNo');
+                              }}
+                                options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
+                                placeholder="Select Filter Type"
+                                className={cn(filterControlClass, FIELD_TEXT_STYLE, errors.filterType && "border-red-400")}
+                              />
+                            )}
+                          />
+                          {errors.filterType && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.filterType.message}</p>}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="space-y-1 min-w-0">
+                      <FilterFieldLabel icon={User}>Assign To</FilterFieldLabel>
+                      <Controller
+                        name="ownerLoginNo"
+                        control={control}
+                        render={({ field }) => (
+                          <UserCombobox value={field.value} onChange={(user) => {
+                            field.onChange(user.loginNo.toString());
+                            setPersonLabels((prev) => ({
+                              ...prev,
+                              [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
+                            }));
+                          }}
+                            placeholder="Search assign to..."
+                            className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE)}
+                          />
+                        )}
+                      />
+                    </div>
+                  </FilterPanel>
                 </div>
 
                 <FilterPanel title="Sorting & dates" icon={ArrowUpDown} cols={2}>
@@ -1027,7 +1027,7 @@ export function TaskFilter({
 
         {/* Status Filter Buttons */}
         <div className="flex flex-nowrap sm:flex-wrap items-center gap-1.5 mt-4 mb-2 px-0.5 overflow-x-auto scrollbar-thin pb-1" data-page-tour="task-status-pills">
-          {['Pending', 'Open', 'Draft', 'In-Progress', 'In-Review', 'Reopen', 'Complete', 'Close'].map(statusName => {
+          {['Pending', 'Assigned', 'In-Progress', 'Hold', 'Completed', 'Close'].map(statusName => {
             const s = fillValues?.status?.find(st =>
               st.Status === statusName ||
               st.Status.toLowerCase() === statusName.toLowerCase() ||
@@ -1037,7 +1037,7 @@ export function TaskFilter({
 
             const count = (() => {
               if (statusName === 'Pending') {
-                const pendingStatuses = ['Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
+                const pendingStatuses = ['Assigned', 'Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
                 return Object.keys(statusCounts).reduce((sum, key) => {
                   if (pendingStatuses.includes(key)) return sum + statusCounts[key];
                   return sum;
@@ -1057,7 +1057,7 @@ export function TaskFilter({
 
             const baseClass = "theme-status-pill rounded-full h-7 px-3 text-[11px] font-semibold transition-all duration-200 border bg-[var(--tm-surface)] hover:shadow-md";
             const colorClass =
-              statusName === 'Complete' || statusName === 'Close'
+              statusName === 'Completed' || statusName === 'Complete' || statusName === 'Close'
                 ? isActive
                   ? "border-green-500 bg-green-500 text-white shadow-[0_4px_12px_-4px_rgba(34,197,94,0.45)]"
                   : "border-green-500/30 text-green-400 hover:bg-green-500/10"
@@ -1065,7 +1065,7 @@ export function TaskFilter({
                   ? isActive
                     ? "border-blue-500 bg-blue-500 text-white shadow-[0_4px_12px_-4px_rgba(59,130,246,0.45)]"
                     : "border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-                  : statusName === 'Pending' || statusName === 'Open' || statusName === 'Draft' || statusName === 'Reopen'
+                  : statusName === 'Pending' || statusName === 'Open' || statusName === 'Draft' || statusName === 'Reopen' || statusName === 'Hold'
                     ? isActive
                       ? "border-[#F59E0B] bg-[#F59E0B] text-[#0B1220] shadow-[0_4px_12px_-4px_rgba(245,158,11,0.45)]"
                       : "border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10"
@@ -1123,200 +1123,200 @@ export function TaskFilter({
 
             <div className="overflow-y-auto px-4 py-3 scrollbar-sleek flex-1 space-y-3">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
-              <FilterPanel title="Task filters" icon={Layers} cols={2} className="lg:col-span-3">
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={Clipboard}>Status</FilterFieldLabel>
-                  <Controller
-                    name="operTaskStatusNo"
-                    control={control}
-                    render={({ field }) => (
-                      <MultiSelect
-                        value={field.value ? field.value.split(',') : []}
-                        onChange={(vals) => {
-                          field.onChange(vals.length > 0 ? vals.join(',') : '');
-                        }}
-                        options={(fillValues?.status || []).map(s => ({ value: s.StatusNo.toString(), label: s.Status }))}
-                        placeholder="All Status"
-                        className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                      />
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={Tag}>Priority</FilterFieldLabel>
-                  <Controller
-                    name="operTaskPriorityNo"
-                    control={control}
-                    render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.priority || []).map(p => ({ value: p.OperTaskPriorityNo.toString(), label: p.Priority }))}
-                        placeholder="All Priority"
-                        className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                      />
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={Clipboard}>Task ID / Code</FilterFieldLabel>
-                  <Controller
-                    name="taskCode"
-                    control={control}
-                    render={({ field }) => (
-                      <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
-                    )}
-                  />
-                </div>
-
-                {!hideCategoryFilter && (
+                <FilterPanel title="Task filters" icon={Layers} cols={2} className="lg:col-span-3">
                   <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={Layers}>Category</FilterFieldLabel>
+                    <FilterFieldLabel icon={Clipboard}>Status</FilterFieldLabel>
                     <Controller
-                      name="operTaskCategoryNo"
+                      name="operTaskStatusNo"
                       control={control}
                       render={({ field }) => (
-                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.category || []).map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category }))}
-                          placeholder="All Categories"
+                        <MultiSelect
+                          value={field.value ? field.value.split(',') : []}
+                          onChange={(vals) => {
+                            field.onChange(vals.length > 0 ? vals.join(',') : '');
+                          }}
+                          options={(fillValues?.status || []).map(s => ({ value: s.StatusNo.toString(), label: s.Status }))}
+                          placeholder="All Status"
                           className={cn(filterControlClass, FIELD_TEXT_STYLE)}
                         />
                       )}
                     />
                   </div>
-                )}
 
-                {!isHideType && (
                   <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={Tag}>Task Type</FilterFieldLabel>
+                    <FilterFieldLabel icon={Tag}>Priority</FilterFieldLabel>
                     <Controller
-                      name="operTaskTypeNo"
+                      name="operTaskPriorityNo"
                       control={control}
                       render={({ field }) => (
-                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.type || []).map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] }))}
-                          placeholder="All Types"
+                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.priority || []).map(p => ({ value: p.OperTaskPriorityNo.toString(), label: p.Priority }))}
+                          placeholder="All Priority"
                           className={cn(filterControlClass, FIELD_TEXT_STYLE)}
                         />
                       )}
                     />
                   </div>
-                )}
 
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={MapPin}>Location</FilterFieldLabel>
-                  <Controller
-                    name="operTaskLocationNo"
-                    control={control}
-                    render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.location || []).filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location }))}
-                        placeholder="All Locations"
-                        className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                      />
-                    )}
-                  />
-                </div>
-
-                {!isHideFolder && (
                   <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={Folder}>Workspace Folder</FilterFieldLabel>
+                    <FilterFieldLabel icon={Clipboard}>Task ID / Code</FilterFieldLabel>
                     <Controller
-                      name="folderNo"
+                      name="taskCode"
                       control={control}
                       render={({ field }) => (
-                        <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
-                          <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
-                            placeholder="All Folders"
+                        <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
+                      )}
+                    />
+                  </div>
+
+                  {!hideCategoryFilter && (
+                    <div className="space-y-1 min-w-0">
+                      <FilterFieldLabel icon={Layers}>Category</FilterFieldLabel>
+                      <Controller
+                        name="operTaskCategoryNo"
+                        control={control}
+                        render={({ field }) => (
+                          <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.category || []).map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category }))}
+                            placeholder="All Categories"
                             className={cn(filterControlClass, FIELD_TEXT_STYLE)}
                           />
-                        </div>
+                        )}
+                      />
+                    </div>
+                  )}
+
+                  {!isHideType && (
+                    <div className="space-y-1 min-w-0">
+                      <FilterFieldLabel icon={Tag}>Task Type</FilterFieldLabel>
+                      <Controller
+                        name="operTaskTypeNo"
+                        control={control}
+                        render={({ field }) => (
+                          <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.type || []).map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] }))}
+                            placeholder="All Types"
+                            className={cn(filterControlClass, FIELD_TEXT_STYLE)}
+                          />
+                        )}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1 min-w-0">
+                    <FilterFieldLabel icon={MapPin}>Location</FilterFieldLabel>
+                    <Controller
+                      name="operTaskLocationNo"
+                      control={control}
+                      render={({ field }) => (
+                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.location || []).filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location }))}
+                          placeholder="All Locations"
+                          className={cn(filterControlClass, FIELD_TEXT_STYLE)}
+                        />
                       )}
                     />
                   </div>
-                )}
-              </FilterPanel>
 
-              <FilterPanel title="People" icon={User} cols={1} className="lg:col-span-2">
-                {!isGeneralUser && (
-                  <>
-                    <div className="space-y-1 min-w-0" id="form-group-loginNo">
-                      <FilterFieldLabel icon={User} required={!!(watch('filterType') && watch('filterType') !== 'All')}>User</FilterFieldLabel>
-                      <Controller
-                        name="loginNo"
-                        control={control}
-                        rules={{
-                          validate: (val) => {
-                            const filterType = watch('filterType');
-                            if (filterType && filterType !== 'All' && (!val || val === '')) {
-                              return 'User is required when filter type is selected';
-                            }
-                            return true;
-                          }
-                        }}
-                        render={({ field }) => (
-                          <UserCombobox value={field.value} onChange={(user) => {
-                            field.onChange(user.loginNo.toString());
-                            setPersonLabels((prev) => ({
-                              ...prev,
-                              [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
-                            }));
-                            trigger('filterType');
-                          }}
-                            placeholder="Search user..."
-                            className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-400")}
-                          />
-                        )}
-                      />
-                      {errors.loginNo && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.loginNo.message}</p>}
-                    </div>
-
+                  {!isHideFolder && (
                     <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={SlidersHorizontal} required={!!(watch('loginNo') && watch('loginNo') !== '')}>Filter Type</FilterFieldLabel>
+                      <FilterFieldLabel icon={Folder}>Workspace Folder</FilterFieldLabel>
                       <Controller
-                        name="filterType"
+                        name="folderNo"
                         control={control}
-                        rules={{
-                          validate: (val) => {
-                            const userVal = watch('loginNo');
-                            if (userVal && userVal !== '' && (!val || val === 'All')) {
-                              return 'Filter Type is required when User is selected';
-                            }
-                            return true;
-                          }
-                        }}
                         render={({ field }) => (
-                          <Combobox value={field.value} onChange={(val) => {
-                            field.onChange(val);
-                            trigger('loginNo');
-                          }}
-                            options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
-                            placeholder="Select Filter Type"
-                            className={cn(filterControlClass, FIELD_TEXT_STYLE, errors.filterType && "border-red-400")}
-                          />
+                          <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
+                            <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
+                              placeholder="All Folders"
+                              className={cn(filterControlClass, FIELD_TEXT_STYLE)}
+                            />
+                          </div>
                         )}
                       />
-                      {errors.filterType && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.filterType.message}</p>}
                     </div>
-                  </>
-                )}
+                  )}
+                </FilterPanel>
 
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={User}>Assign To</FilterFieldLabel>
-                  <Controller
-                    name="ownerLoginNo"
-                    control={control}
-                    render={({ field }) => (
-                      <UserCombobox value={field.value} onChange={(user) => {
-                        field.onChange(user.loginNo.toString());
-                        setPersonLabels((prev) => ({
-                          ...prev,
-                          [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
-                        }));
-                      }}
-                        placeholder="Search assign to..."
-                        className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE)}
-                      />
-                    )}
-                  />
-                </div>
-              </FilterPanel>
+                <FilterPanel title="People" icon={User} cols={1} className="lg:col-span-2">
+                  {!isGeneralUser && (
+                    <>
+                      <div className="space-y-1 min-w-0" id="form-group-loginNo">
+                        <FilterFieldLabel icon={User} required={!!(watch('filterType') && watch('filterType') !== 'All')}>User</FilterFieldLabel>
+                        <Controller
+                          name="loginNo"
+                          control={control}
+                          rules={{
+                            validate: (val) => {
+                              const filterType = watch('filterType');
+                              if (filterType && filterType !== 'All' && (!val || val === '')) {
+                                return 'User is required when filter type is selected';
+                              }
+                              return true;
+                            }
+                          }}
+                          render={({ field }) => (
+                            <UserCombobox value={field.value} onChange={(user) => {
+                              field.onChange(user.loginNo.toString());
+                              setPersonLabels((prev) => ({
+                                ...prev,
+                                [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
+                              }));
+                              trigger('filterType');
+                            }}
+                              placeholder="Search user..."
+                              className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-400")}
+                            />
+                          )}
+                        />
+                        {errors.loginNo && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.loginNo.message}</p>}
+                      </div>
+
+                      <div className="space-y-1 min-w-0">
+                        <FilterFieldLabel icon={SlidersHorizontal} required={!!(watch('loginNo') && watch('loginNo') !== '')}>Filter Type</FilterFieldLabel>
+                        <Controller
+                          name="filterType"
+                          control={control}
+                          rules={{
+                            validate: (val) => {
+                              const userVal = watch('loginNo');
+                              if (userVal && userVal !== '' && (!val || val === 'All')) {
+                                return 'Filter Type is required when User is selected';
+                              }
+                              return true;
+                            }
+                          }}
+                          render={({ field }) => (
+                            <Combobox value={field.value} onChange={(val) => {
+                              field.onChange(val);
+                              trigger('loginNo');
+                            }}
+                              options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
+                              placeholder="Select Filter Type"
+                              className={cn(filterControlClass, FIELD_TEXT_STYLE, errors.filterType && "border-red-400")}
+                            />
+                          )}
+                        />
+                        {errors.filterType && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.filterType.message}</p>}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-1 min-w-0">
+                    <FilterFieldLabel icon={User}>Assign To</FilterFieldLabel>
+                    <Controller
+                      name="ownerLoginNo"
+                      control={control}
+                      render={({ field }) => (
+                        <UserCombobox value={field.value} onChange={(user) => {
+                          field.onChange(user.loginNo.toString());
+                          setPersonLabels((prev) => ({
+                            ...prev,
+                            [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
+                          }));
+                        }}
+                          placeholder="Search assign to..."
+                          className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE)}
+                        />
+                      )}
+                    />
+                  </div>
+                </FilterPanel>
               </div>
 
               <FilterPanel title="Sorting & dates" icon={ArrowUpDown} cols={2}>

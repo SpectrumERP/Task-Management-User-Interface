@@ -18,8 +18,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
+import { getContrastColor } from "@/lib/colorUtils"
+
 interface ComboboxProps {
-  options: { label: string; value: string }[]
+  options: { label: string; value: string; colorCoding?: string; description?: string }[]
   value: string | undefined
   onChange: (value: string) => void
   placeholder?: string
@@ -31,6 +33,8 @@ interface ComboboxProps {
   onAddNew?: () => void
   addNewLabel?: string
   modal?: boolean
+  onSearchChange?: (search: string) => void
+  shouldFilter?: boolean
 }
 
 export function Combobox({
@@ -46,6 +50,8 @@ export function Combobox({
   onAddNew,
   addNewLabel = "Add New",
   modal = false,
+  onSearchChange,
+  shouldFilter = true,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -82,7 +88,22 @@ export function Combobox({
             !(typeof className === "string" && /border-red/.test(className)) && "!border-[var(--tm-border)]"
           )}
         >
-          <span className="truncate pr-2">{selectedOption ? selectedOption.label : placeholder}</span>
+          <div className="flex-1 overflow-hidden flex items-center pr-2">
+            {selectedOption ? (
+              selectedOption.colorCoding && selectedOption.colorCoding !== 'none' ? (
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm truncate"
+                  style={{ backgroundColor: selectedOption.colorCoding, color: getContrastColor(selectedOption.colorCoding) }}
+                >
+                  {selectedOption.label}
+                </span>
+              ) : (
+                <span className="truncate">{selectedOption.label}</span>
+              )
+            ) : (
+              <span className="truncate">{placeholder}</span>
+            )}
+          </div>
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
             {value && !disabled && isClearable && (
               <span
@@ -104,8 +125,16 @@ export function Combobox({
           className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
           align="start"
         >
-        <Command className="rounded-xl border-[var(--tm-border)]">
-          <CommandInput value={search} onValueChange={setSearch} placeholder={searchPlaceholder} className="h-9 border-none focus:ring-0" />
+        <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={shouldFilter}>
+          <CommandInput 
+            value={search} 
+            onValueChange={(val) => {
+              setSearch(val)
+              onSearchChange?.(val)
+            }} 
+            placeholder={searchPlaceholder} 
+            className="h-9 border-none focus:ring-0" 
+          />
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
             <CommandGroup>
@@ -119,7 +148,25 @@ export function Combobox({
                   }}
                   className="text-xs font-medium py-2 px-3 flex items-center justify-between cursor-pointer"
                 >
-                  {option.label}
+                  <div className="flex flex-col min-w-0 pr-4">
+                    <div className="flex items-center">
+                      {option.colorCoding && option.colorCoding !== 'none' ? (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+                          style={{ backgroundColor: option.colorCoding, color: getContrastColor(option.colorCoding) }}
+                        >
+                          {option.label}
+                        </span>
+                      ) : (
+                        <span className="truncate">{option.label}</span>
+                      )}
+                    </div>
+                    {option.description && (
+                      <span className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
+                        {option.description}
+                      </span>
+                    )}
+                  </div>
                   <Check
                     className={cn(
                       "ml-auto h-4 w-4 text-[#0EA5E9]",

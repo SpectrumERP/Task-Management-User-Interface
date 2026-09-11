@@ -11,12 +11,12 @@ import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterCreateDialog } from '../MasterCreateDialog';
-import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
+import { fetchStatesByCountry } from '../shared/geo';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 
 const FORM_NO = 1541;
-const TITLE = 'Location Master';
+const TITLE = 'Task Locations Master';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
@@ -108,6 +108,37 @@ export function LocationForm({ id }: LocationFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
   const [activeMasterType, setActiveMasterType] = useState<'country' | 'state' | 'city'>('country');
+  const [citySearch, setCitySearch] = useState('');
+
+  useEffect(() => {
+    if (!citySearch && !stateNo) {
+      setLocCitiesList([]);
+      return;
+    }
+
+    const fetchCities = async () => {
+      try {
+        const response = await apiService.get<{ success: boolean, data: any[] }>('/api/master/cities/fill-city-combo', {
+          params: {
+            ...(citySearch ? { KeywordSearch: citySearch } : {}),
+            ...(stateNo ? { StateNo: String(stateNo) } : {})
+          }
+        });
+        if (response?.data) {
+          setLocCitiesList(response.data);
+        } else {
+          setLocCitiesList([]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch cities:', err);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      fetchCities();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [citySearch, stateNo]);
 
   useEffect(() => {
     apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${companyNo}`).then((response) => {
@@ -142,9 +173,6 @@ export function LocationForm({ id }: LocationFormProps) {
           if (countryVal) {
             fetchStatesByCountry(countryVal).then((states) => setLocStatesList(states));
           }
-          if (stateVal) {
-            fetchCitiesByState(stateVal).then((cities) => setLocCitiesList(cities));
-          }
           setPinCode(addr.pinCode || addr.pincode || '');
           const regionVal = addr.region?.regionNo || addr.regionNo || '';
           setLocationRegion(regionVal.toString());
@@ -159,7 +187,6 @@ export function LocationForm({ id }: LocationFormProps) {
     setStateNo('');
     setCityNo('');
     setLocStatesList([]);
-    setLocCitiesList([]);
     if (errors.countryNo || errors.stateNo || errors.cityNo) {
       setErrors((prev) => ({ ...prev, countryNo: '', stateNo: '', cityNo: '' }));
     }
@@ -172,13 +199,8 @@ export function LocationForm({ id }: LocationFormProps) {
   const handleLocationStateChange = async (val: string) => {
     setStateNo(val);
     setCityNo('');
-    setLocCitiesList([]);
     if (errors.stateNo || errors.cityNo) {
       setErrors((prev) => ({ ...prev, stateNo: '', cityNo: '' }));
-    }
-    if (val) {
-      const cities = await fetchCitiesByState(val);
-      setLocCitiesList(cities);
     }
   };
 
@@ -186,21 +208,6 @@ export function LocationForm({ id }: LocationFormProps) {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) {
       newErrors.name = 'Location Name is required';
-    }
-    if (!address1.trim()) {
-      newErrors.address1 = 'Address Line 1 is required';
-    }
-    if (!pinCode.trim()) {
-      newErrors.pinCode = 'PIN / ZIP Code is required';
-    }
-    if (!countryNo || countryNo === 'none' || countryNo === '') {
-      newErrors.countryNo = 'Country is required';
-    }
-    if (!stateNo || stateNo === 'none' || stateNo === '') {
-      newErrors.stateNo = 'State is required';
-    }
-    if (!cityNo || cityNo === 'none' || cityNo === '') {
-      newErrors.cityNo = 'City is required';
     }
     if (!inchargeNo || inchargeNo === 'none' || inchargeNo === '') {
       newErrors.inchargeNo = 'Incharge Lead is required';
@@ -325,7 +332,7 @@ export function LocationForm({ id }: LocationFormProps) {
                   className={cn(
                     fieldClass,
                     errors.name &&
-                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                    'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
                   )}
                 />
               </FieldControl>
@@ -358,7 +365,7 @@ export function LocationForm({ id }: LocationFormProps) {
                   className={cn(
                     fieldClass,
                     errors.inchargeNo &&
-                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                    'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
                   )}
                 />
               </FieldControl>
@@ -395,7 +402,7 @@ export function LocationForm({ id }: LocationFormProps) {
         <div className="p-4 sm:p-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3 w-full">
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
-              <FieldLabel htmlFor="address1" required>
+              <FieldLabel htmlFor="address1">
                 Address
               </FieldLabel>
               <FieldControl error={errors.address1}>
@@ -411,7 +418,7 @@ export function LocationForm({ id }: LocationFormProps) {
                   className={cn(
                     fieldClass,
                     errors.address1 &&
-                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                    'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
                   )}
                 />
               </FieldControl>
@@ -438,7 +445,7 @@ export function LocationForm({ id }: LocationFormProps) {
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <FieldLabel required>Country</FieldLabel>
+              <FieldLabel>Country</FieldLabel>
               <FieldControl error={errors.countryNo}>
                 <Combobox
                   options={countryOptions}
@@ -449,7 +456,7 @@ export function LocationForm({ id }: LocationFormProps) {
                   className={cn(
                     fieldClass,
                     errors.countryNo &&
-                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                    'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
                   )}
                   onAddNew={() => {
                     setActiveMasterType('country');
@@ -460,7 +467,7 @@ export function LocationForm({ id }: LocationFormProps) {
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <FieldLabel required>State / Province</FieldLabel>
+              <FieldLabel>State / Province</FieldLabel>
               <FieldControl error={errors.stateNo}>
                 <Combobox
                   options={locStatesList.map((s: any) => ({
@@ -475,7 +482,7 @@ export function LocationForm({ id }: LocationFormProps) {
                   className={cn(
                     fieldClass,
                     errors.stateNo &&
-                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                    'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
                   )}
                   onAddNew={() => {
                     setActiveMasterType('state');
@@ -486,25 +493,43 @@ export function LocationForm({ id }: LocationFormProps) {
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <FieldLabel required>City</FieldLabel>
+              <FieldLabel>City</FieldLabel>
               <FieldControl error={errors.cityNo}>
                 <Combobox
                   options={locCitiesList.map((c: any) => ({
                     label: c.cityName || '',
                     value: (c.cityNo || '').toString(),
+                    description: [c.stateName, c.countryName].filter(Boolean).join(', ')
                   }))}
                   value={cityNo}
                   onChange={(val) => {
                     setCityNo(val);
                     if (errors.cityNo) setErrors((prev) => ({ ...prev, cityNo: '' }));
+                    if (val) {
+                      const selectedCity = locCitiesList.find(c => (c.cityNo || '').toString() === val);
+                      if (selectedCity) {
+                        if (selectedCity.countryNo && selectedCity.countryNo.toString() !== countryNo) {
+                          setCountryNo(selectedCity.countryNo.toString());
+                          fetchStatesByCountry(selectedCity.countryNo).then(states => {
+                            setLocStatesList(states);
+                            if (selectedCity.stateNo) {
+                              setStateNo(selectedCity.stateNo.toString());
+                            }
+                          });
+                        } else if (selectedCity.stateNo && selectedCity.stateNo.toString() !== stateNo) {
+                          setStateNo(selectedCity.stateNo.toString());
+                        }
+                      }
+                    }
                   }}
-                  disabled={!stateNo}
-                  placeholder={stateNo ? 'Select City' : 'Select state first'}
+                  onSearchChange={setCitySearch}
+                  shouldFilter={false}
+                  placeholder="Select City"
                   searchPlaceholder="Search city..."
                   className={cn(
                     fieldClass,
                     errors.cityNo &&
-                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                    'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
                   )}
                   onAddNew={() => {
                     setActiveMasterType('city');
@@ -515,7 +540,7 @@ export function LocationForm({ id }: LocationFormProps) {
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <FieldLabel htmlFor="pinCode" required>
+              <FieldLabel htmlFor="pinCode">
                 PIN / ZIP Code
               </FieldLabel>
               <FieldControl error={errors.pinCode}>
@@ -531,7 +556,7 @@ export function LocationForm({ id }: LocationFormProps) {
                   className={cn(
                     fieldClass,
                     errors.pinCode &&
-                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+                    'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
                   )}
                 />
               </FieldControl>

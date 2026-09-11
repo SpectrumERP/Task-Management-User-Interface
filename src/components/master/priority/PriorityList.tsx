@@ -12,6 +12,7 @@ import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 import { PriorityMaster } from '@/store/useMasterStore';
+import { getContrastColor } from '@/lib/colorUtils';
 
 const FORM_NO = 1543;
 const TITLE = 'Priority Master';
@@ -53,6 +54,7 @@ export function PriorityList() {
           priorityDuration: p.priorityDuration || '',
           priorityFrequencyNo: (p.priorityDurationFrequencyNo || '').toString(),
           sequence: p.sequenceNo || '',
+          colorCoding: p.colorCoding || '',
           createdBy: p.createdBy?.printingName || p.createdBy?.displayName || p.createdBy?.loginId || p.createdByName || (typeof p.createdBy === 'string' || typeof p.createdBy === 'number' ? p.createdBy : '') || 'System',
           createdDate: p.createdDate || p.createdDateTime || p.createdOn || ''
         }));
@@ -131,7 +133,20 @@ export function PriorityList() {
           },
         ]}
         getCode={(item) => item.code || `SYS-${item.id}`}
-        getName={(item) => <span className="uppercase tracking-wide">{item.name}</span>}
+        getName={(item) => {
+          if (item.colorCoding && item.colorCoding !== 'none') {
+            const contrastText = getContrastColor(item.colorCoding);
+            return (
+              <span 
+                className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[12px] font-semibold uppercase tracking-wide shadow-sm"
+                style={{ backgroundColor: item.colorCoding, color: contrastText }}
+              >
+                {item.name}
+              </span>
+            );
+          }
+          return <span className="uppercase tracking-wide">{item.name}</span>;
+        }}
         onEdit={(item) => navigate(toMasterEditPath('priority', item.id))}
         onDelete={handleDeleteClick}
         canUpdate={isUpdate}

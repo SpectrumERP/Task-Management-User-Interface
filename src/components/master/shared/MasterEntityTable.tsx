@@ -1,10 +1,26 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
+
+function SortableHeader({ label, sortKey, sortCol, sortDesc, onSort }: { label: string, sortKey: string, sortCol: string | null, sortDesc: boolean, onSort: (k: string) => void }) {
+  const isActive = sortCol === sortKey;
+  return (
+    <div 
+      className="flex items-center gap-1 cursor-pointer select-none hover:text-slate-200 transition-colors group/header"
+      onClick={() => onSort(sortKey)}
+    >
+      <span>{label}</span>
+      <span className="flex flex-col opacity-30 group-hover/header:opacity-100 transition-opacity">
+         <ChevronUp size={10} className={cn("-mb-1", isActive && !sortDesc && "text-[#0EA5E9] opacity-100")} />
+         <ChevronDown size={10} className={cn(isActive && sortDesc && "text-[#0EA5E9] opacity-100")} />
+      </span>
+    </div>
+  );
+}
 
 export interface MasterColumn<T> {
   header: string;
@@ -60,6 +76,84 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
     ? 'flex flex-col min-h-0 max-h-full overflow-hidden'
     : 'flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden';
 
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDesc, setSortDesc] = useState(false);
+
+  const handleSort = (colKey: string) => {
+    if (sortCol === colKey) {
+      if (sortDesc) {
+        setSortCol(null);
+        setSortDesc(false);
+      } else {
+        setSortDesc(true);
+      }
+    } else {
+      setSortCol(colKey);
+      setSortDesc(false);
+    }
+  };
+
+  const getSortValue = (row: any, key: string) => {
+    if (key === 'code') return row.code || `SYS-${row.id}`;
+    if (key === 'name') return row.name || row.title || row.description || '';
+    return row[key] || '';
+  };
+
+  const sortedRows = useMemo(() => {
+    if (!sortCol) return rows;
+    return [...rows].sort((a, b) => {
+      let valA = getSortValue(a, sortCol);
+      let valB = getSortValue(b, sortCol);
+      
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return sortDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
+      }
+      if (valA < valB) return sortDesc ? 1 : -1;
+      if (valA > valB) return sortDesc ? -1 : 1;
+      return 0;
+    });
+  }, [rows, sortCol, sortDesc]);
+
+  const handleExport = () => {
+    if (!rows || rows.length === 0) return;
+    
+    // Generic shallow flattening
+    // Exclude 'id' and grab all primitive fields
+    const keys = Object.keys(rows[0]).filter(k => k !== 'id');
+    const separator = ',';
+    
+    const csvContent = [
+      keys.join(separator),
+      ...rows.map(row => 
+        keys.map(k => {
+          let cell = (row as any)[k];
+          if (cell === null || cell === undefined) cell = '';
+          else if (cell instanceof Date) cell = cell.toLocaleString();
+          else if (typeof cell === 'object') cell = JSON.stringify(cell);
+          else cell = String(cell);
+          
+          cell = cell.replace(/"/g, '""');
+          if (cell.search(/("|,|\n)/g) >= 0) {
+            cell = `"${cell}"`;
+          }
+          return cell;
+        }).join(separator)
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${nameHeader.replace(/\s+/g, '_').toLowerCase()}_export.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   // Loader only when there is nothing to show yet (first load / empty refetch).
   if (isLoading && rows.length === 0) {
     return (
@@ -102,10 +196,22 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
 
   return (
     <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')} data-page-tour="master-table">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
+        <span className="text-[11px] font-semibold text-slate-400">Total {rows.length} Records</span>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleExport}
+          className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
+        >
+          <Download size={12} />
+          Export CSV
+        </Button>
+      </div>
       <div className="overflow-auto min-h-0 max-h-[calc(100dvh-13.5rem)]">
         {/* Mobile cards */}
         <div className="md:hidden flex flex-col gap-2 p-2">
-          {rows.map((item) => (
+          {sortedRows.map((item) => (
             <div
               key={item.id}
               className="rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 px-3 py-2.5"
@@ -171,10 +277,10 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
           <thead className="sticky top-0 z-10 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
             <tr>
               <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[110px]">
-                Code
+                <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
               <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 min-w-[140px]">
-                {nameHeader}
+                <SortableHeader label={nameHeader} sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
               {columns.map((col, idx) => (
                 <th
@@ -188,10 +294,10 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                 </th>
               ))}
               <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 min-w-[100px]">
-                Created By
+                <SortableHeader label="Created By" sortKey="createdBy" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
               <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[160px]">
-                Created Date
+                <SortableHeader label="Created Date" sortKey="createdDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
               <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[88px]">
                 Actions
@@ -199,7 +305,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
             </tr>
           </thead>
           <tbody>
-            {rows.map((item) => (
+            {sortedRows.map((item) => (
               <tr
                 key={item.id}
                 className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group"
