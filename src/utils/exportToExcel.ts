@@ -1,20 +1,24 @@
 import * as XLSX from 'xlsx';
 
-export const exportReportToExcel = (data: any[], groupedByUser: boolean, filename: string = 'Task_Report.xlsx') => {
+export const exportReportToExcel = (data: any[], groupedByUser: boolean, filename: string = 'Task_Report.xlsx', visibleColumnsOverride?: string[]) => {
   const wb = XLSX.utils.book_new();
 
   if (data.length === 0) return;
 
-  const savedStr = localStorage.getItem('taskListViewColumns');
   let visibleSet = new Set<string>();
-  if (savedStr) {
-    try {
-      const parsed = JSON.parse(savedStr);
-      if (Array.isArray(parsed)) parsed.forEach(k => visibleSet.add(k));
-    } catch {}
-  }
-  if (visibleSet.size === 0) {
-    ['code', 'status', 'title', 'category', 'type', 'priority', 'dueDate', 'completionDate', 'folder', 'createdBy', 'createdDate', 'owner', 'originator', 'companyName', 'location'].forEach(k => visibleSet.add(k));
+  if (visibleColumnsOverride) {
+    visibleColumnsOverride.forEach(k => visibleSet.add(k));
+  } else {
+    const savedStr = localStorage.getItem('taskListViewColumns');
+    if (savedStr) {
+      try {
+        const parsed = JSON.parse(savedStr);
+        if (Array.isArray(parsed)) parsed.forEach(k => visibleSet.add(k));
+      } catch {}
+    }
+    if (visibleSet.size === 0) {
+      ['code', 'status', 'title', 'category', 'type', 'priority', 'dueDate', 'completionDate', 'folder', 'createdBy', 'createdDate', 'owner', 'originator', 'companyName', 'location'].forEach(k => visibleSet.add(k));
+    }
   }
 
   const formatDate = (dateString?: string) => {
@@ -32,6 +36,9 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
   
   if (visibleSet.has('code')) activeCols.push({ key: 'code', label: 'Task ID', getVal: t => t.taskNo || t.operTaskNo || '' });
   if (visibleSet.has('title')) activeCols.push({ key: 'title', label: 'Task Title', getVal: t => t.title || t.taskName || '' });
+  if (visibleSet.has('description')) activeCols.push({ key: 'description', label: 'Description', getVal: t => t.description || '' });
+  if (visibleSet.has('isPending')) activeCols.push({ key: 'isPending', label: 'Pending Task', getVal: t => t.pendingTask || '' });
+  if (visibleSet.has('crossFunctional')) activeCols.push({ key: 'crossFunctional', label: 'Cross Functional Support', getVal: t => t.hasCrossFunctionalSupport ? 'Yes' : 'No' });
   if (visibleSet.has('status')) activeCols.push({ key: 'status', label: 'Task Status', getVal: t => t.status?.statusName || t.status || '' });
   if (visibleSet.has('category')) activeCols.push({ key: 'category', label: 'Category', getVal: t => t.categoryName || t.category?.categoryName || '' });
   if (visibleSet.has('type')) activeCols.push({ key: 'type', label: 'Type', getVal: t => t.typeName || t.type?.typeName || '' });
@@ -43,8 +50,18 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
   if (visibleSet.has('createdDate')) activeCols.push({ key: 'createdDate', label: 'Created Date', getVal: t => formatDate(t.createdDate) });
   if (visibleSet.has('owner') && !groupedByUser) activeCols.push({ key: 'owner', label: 'Assign To', getVal: t => t.assignedDisplayName || t.assignedTo?.displayName || t.ownerLoginNo || 'Unassigned' });
   if (visibleSet.has('originator')) activeCols.push({ key: 'originator', label: 'Assign By', getVal: t => t.originatorDisplayName || t.originator?.displayName || t.originatorLoginNo || '' });
-  if (visibleSet.has('companyName')) activeCols.push({ key: 'companyName', label: 'Company', getVal: t => t.companyName || t.taskCompany?.taskCompanyAlias || t.taskCompany?.companyName || '' });
+  if (visibleSet.has('companyName') || visibleSet.has('company')) activeCols.push({ key: 'companyName', label: 'Company', getVal: t => t.companyName || t.taskCompany?.taskCompanyAlias || t.taskCompany?.companyName || '' });
   if (visibleSet.has('location')) activeCols.push({ key: 'location', label: 'Location', getVal: t => t.locationName || t.location?.locationName || '' });
+  if (visibleSet.has('subTaskCount')) activeCols.push({ key: 'subTaskCount', label: 'Sub Task Count', getVal: t => t.subTasks?.length ?? t.subTaskCount ?? 0 });
+  if (visibleSet.has('roadBlock')) activeCols.push({ key: 'roadBlock', label: 'Road Block', getVal: t => t.roadBlock || '' });
+  if (visibleSet.has('progress')) activeCols.push({ key: 'progress', label: 'Task Progress Review', getVal: t => {
+      if (Array.isArray(t.executionLog) && t.executionLog.length > 0) {
+        return t.executionLog.map((log: any) => log.remarks || '').filter(Boolean).join(', ');
+      }
+      return t.taskProgressReview || '';
+  }});
+  if (visibleSet.has('userRemarks')) activeCols.push({ key: 'userRemarks', label: 'User Remarks', getVal: t => t.completionRemark || '' });
+  if (visibleSet.has('managementRemarks')) activeCols.push({ key: 'managementRemarks', label: 'Management Remarks', getVal: t => t.managementRemark || '' });
 
   const headerRow = ['Sr. No.', ...activeCols.map(c => c.label)];
 

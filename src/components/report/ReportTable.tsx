@@ -47,6 +47,13 @@ interface ReportTableProps {
   data: any[];
 }
 
+const getExecutionLogRemarks = (task: any) => {
+  if (Array.isArray(task.executionLog) && task.executionLog.length > 0) {
+    return task.executionLog.map((log: any) => log.remarks || '').filter(Boolean).join(', ');
+  }
+  return task.taskProgressReview || '';
+};
+
 const DEFAULT_COLUMNS = [
   { id: 'srNo', label: 'Sr. No.', defaultVisible: true },
   { id: 'title', label: 'Task', defaultVisible: true },
@@ -127,7 +134,7 @@ export function ReportTable({ data }: ReportTableProps) {
   };
 
   const handleExport = () => {
-    exportReportToExcel(data, exportGrouped);
+    exportReportToExcel(data, exportGrouped, 'MIS_Task_Report.xlsx', visibleColumns);
   };
 
   return (
@@ -306,7 +313,7 @@ export function ReportTable({ data }: ReportTableProps) {
                   )}
                   {visibleColumns.includes('progress') && (
                     <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate" style={colWidths['progress'] ? { maxWidth: colWidths['progress'] } : {}}>
-                      <TruncatedCell text={task.taskProgressReview || ''} />
+                      <TruncatedCell text={getExecutionLogRemarks(task)} />
                     </td>
                   )}
                   {visibleColumns.includes('status') && (

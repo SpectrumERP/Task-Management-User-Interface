@@ -900,7 +900,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     name: "sub_tasks"
   });
 
-  const { fields: executionLogFields, append: appendExecutionLog, remove: removeExecutionLog } = useFieldArray({
+  const { fields: executionLogFields } = useFieldArray({
     control: form.control,
     name: "execution_logs"
   });
@@ -1879,9 +1879,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const informError = form.formState.errors.informed_to;
   const hasInformError = informError && !Array.isArray(informError) && (informError as any).message;
-
-  const executionLogError = form.formState.errors.execution_logs;
-  const hasExecutionLogError = executionLogError && !Array.isArray(executionLogError) && (executionLogError as any).message;
 
   return (
     <Card className="border-none shadow-none bg-transparent relative">
