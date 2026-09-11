@@ -5,10 +5,11 @@ import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
+import { exportBusinessEntityReportToExcel } from '@/utils/exportToExcel';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText,
+  Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText, Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MasterListHeader } from '../shared/MasterListHeader';
@@ -539,6 +540,18 @@ export function CompanyList() {
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden relative">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
+              <span className="text-[11px] font-semibold text-slate-400">Total {totalItems} Records</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => exportBusinessEntityReportToExcel(filteredList, companyViewMode, 'Business_Entity_Report.csv')}
+                className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
+              >
+                <Download size={12} />
+                Export CSV
+              </Button>
+            </div>
             <div className="flex-1 min-h-0 flex relative">
               <div
                 className="flex-1 overflow-y-auto overflow-x-auto pr-10 scrollbar-thin min-h-0"

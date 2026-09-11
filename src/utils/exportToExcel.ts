@@ -5,48 +5,52 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
 
   if (data.length === 0) return;
 
-  const headerRow = [
-    'Sr. No.',
-    'Task',
-    'Description of Task',
-    'Pending Task',
-    'Cross Functional Support',
-    'Company',
-    'Location',
-    'Category',
-    'Type',
-    'Folder',
-    'Priority',
-    ...(groupedByUser ? [] : ['Assign To']),
-    'Assign By',
-    'Sub Task Count',
-    'Road Block',
-    'Task Progress Review',
-    'Task Status',
-    'User Remarks',
-    'Management Remarks'
-  ];
+  const savedStr = localStorage.getItem('taskListViewColumns');
+  let visibleSet = new Set<string>();
+  if (savedStr) {
+    try {
+      const parsed = JSON.parse(savedStr);
+      if (Array.isArray(parsed)) parsed.forEach(k => visibleSet.add(k));
+    } catch {}
+  }
+  if (visibleSet.size === 0) {
+    ['code', 'status', 'title', 'category', 'type', 'priority', 'dueDate', 'completionDate', 'folder', 'createdBy', 'createdDate', 'owner', 'originator', 'companyName', 'location'].forEach(k => visibleSet.add(k));
+  }
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return dateString;
+      return `${d.getDate().toString().padStart(2, '0')}-${d.toLocaleString('default', { month: 'short' })}-${d.getFullYear()}`;
+    } catch {
+      return dateString;
+    }
+  };
+
+  const activeCols: { key: string; label: string; getVal: (t: any) => any }[] = [];
+  
+  if (visibleSet.has('code')) activeCols.push({ key: 'code', label: 'Task ID', getVal: t => t.taskNo || t.operTaskNo || '' });
+  if (visibleSet.has('title')) activeCols.push({ key: 'title', label: 'Task Title', getVal: t => t.title || t.taskName || '' });
+  if (visibleSet.has('status')) activeCols.push({ key: 'status', label: 'Task Status', getVal: t => t.status?.statusName || t.status || '' });
+  if (visibleSet.has('category')) activeCols.push({ key: 'category', label: 'Category', getVal: t => t.categoryName || t.category?.categoryName || '' });
+  if (visibleSet.has('type')) activeCols.push({ key: 'type', label: 'Type', getVal: t => t.typeName || t.type?.typeName || '' });
+  if (visibleSet.has('priority')) activeCols.push({ key: 'priority', label: 'Priority', getVal: t => t.priority || t.priority?.priorityName || '' });
+  if (visibleSet.has('dueDate')) activeCols.push({ key: 'dueDate', label: 'Due Date', getVal: t => formatDate(t.dueDate || t.targetDate) });
+  if (visibleSet.has('completionDate')) activeCols.push({ key: 'completionDate', label: 'Completion Date', getVal: t => formatDate(t.completionDate) });
+  if (visibleSet.has('folder')) activeCols.push({ key: 'folder', label: 'Folder', getVal: t => t.folderName || t.folder?.folderName || '' });
+  if (visibleSet.has('createdBy')) activeCols.push({ key: 'createdBy', label: 'Created By', getVal: t => t.createdByDisplayName || t.createdBy?.displayName || t.createdBy?.printingName || '' });
+  if (visibleSet.has('createdDate')) activeCols.push({ key: 'createdDate', label: 'Created Date', getVal: t => formatDate(t.createdDate) });
+  if (visibleSet.has('owner') && !groupedByUser) activeCols.push({ key: 'owner', label: 'Assign To', getVal: t => t.assignedDisplayName || t.assignedTo?.displayName || t.ownerLoginNo || 'Unassigned' });
+  if (visibleSet.has('originator')) activeCols.push({ key: 'originator', label: 'Assign By', getVal: t => t.originatorDisplayName || t.originator?.displayName || t.originatorLoginNo || '' });
+  if (visibleSet.has('companyName')) activeCols.push({ key: 'companyName', label: 'Company', getVal: t => t.companyName || t.taskCompany?.taskCompanyAlias || t.taskCompany?.companyName || '' });
+  if (visibleSet.has('location')) activeCols.push({ key: 'location', label: 'Location', getVal: t => t.locationName || t.location?.locationName || '' });
+
+  const headerRow = ['Sr. No.', ...activeCols.map(c => c.label)];
 
   const mapTaskToRow = (task: any, idx: number) => [
     idx + 1,
-    task.title || '',
-    task.description || '',
-    task.isPending ? 'Yes' : 'No',
-    task.hasCrossFunctionalSupport ? 'Yes' : 'No',
-    task.taskCompany?.taskCompanyAlias || task.taskCompany?.companyName || '',
-    task.location?.locationName || '',
-    task.category?.categoryName || '',
-    task.type?.typeName || '',
-    task.folder?.folderName || '',
-    task.priority?.priorityName || '',
-    ...(groupedByUser ? [] : [task.assignedTo?.displayName || '']),
-    task.originator?.displayName || '',
-    task.subTaskCount ?? 0,
-    task.roadBlock || '',
-    task.taskProgressReview || '',
-    task.status?.statusName || task.status || '',
-    task.completionRemark || '',
-    task.managementRemark || ''
+    ...activeCols.map(c => c.getVal(task))
   ];
 
   const rows: any[][] = [];
@@ -54,7 +58,7 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
   if (groupedByUser) {
     const groupedData: Record<string, any[]> = {};
     data.forEach((task) => {
-      const owner = task.assignedTo?.displayName || task.ownerLoginNo || 'Unassigned';
+      const owner = task.assignedDisplayName || task.assignedTo?.displayName || task.ownerLoginNo || 'Unassigned';
       if (!groupedData[owner]) groupedData[owner] = [];
       groupedData[owner].push(task);
     });
@@ -81,7 +85,8 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
 
   // Auto-size columns roughly
   const colWidths = headerRow.map(() => ({ wch: 20 }));
-  colWidths[2] = { wch: 40 }; // Description wider
+  const titleIdx = headerRow.findIndex(h => h === 'Task Title');
+  if (titleIdx >= 0) colWidths[titleIdx] = { wch: 40 };
   ws['!cols'] = colWidths;
 
   XLSX.utils.book_append_sheet(wb, ws, 'Report');
@@ -95,24 +100,20 @@ export const exportMeetingReportToExcel = (data: any[], filename: string = 'Meet
 
   const headerRow = [
     'Sr. No.',
-    'Meeting Note Title',
+    'Title',
+    'Meeting Type',
     'Category',
-    'Type',
     'Company',
-    'Location',
-    'Meeting Mode',
-    'Start Date and Time',
-    'End Date and Time',
-    'Participants',
-    'Discussions Made',
-    'Discussion Remarks',
+    'Start Date & Time',
+    'End Date & Time',
     'Status'
   ];
 
-  const formatDate = (dateString: string) => {
+  const formatDateTime = (dateString: string) => {
     if (!dateString) return '-';
     try {
       const d = new Date(dateString);
+      if (isNaN(d.getTime())) return dateString;
       return `${d.getDate().toString().padStart(2, '0')}-${d.toLocaleString('default', { month: 'short' })}-${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
     } catch {
       return dateString;
@@ -122,17 +123,12 @@ export const exportMeetingReportToExcel = (data: any[], filename: string = 'Meet
   const mapMeetingToRow = (meeting: any, idx: number) => [
     idx + 1,
     meeting.meetingTitle || meeting.title || '',
-    meeting.meetingCategoryName || meeting.category?.categoryName || '',
     meeting.meetingTypeName || meeting.type?.typeName || '',
+    meeting.meetingCategoryName || meeting.category?.categoryName || '',
     meeting.companyName || meeting.taskCompany?.companyName || meeting.company?.companyName || '',
-    meeting.locationName || meeting.location?.locationName || '',
-    meeting.mode || meeting.meetingMode?.meetingModeName || '',
-    formatDate(meeting.meetingStartDateTime || meeting.startDateTime || meeting.startDate),
-    formatDate(meeting.meetingEndDateTime || meeting.endDateTime || meeting.endDate),
-    Array.isArray(meeting.participants) ? meeting.participants.map((p: any) => typeof p === 'string' ? p : (p.printingName || p.loginId || p.participantName)).filter(Boolean).join(', ') : meeting.participants || meeting.internalUsers || '-',
-    Array.isArray(meeting.discussionDetail) ? meeting.discussionDetail.map((d: any) => d.topic || d.discussionSummary).filter(Boolean).map((t: any) => `• ${t}`).join('\n') : meeting.discussionsMade || meeting.agenda || '-',
-    Array.isArray(meeting.discussionDetail) ? meeting.discussionDetail.map((d: any) => d.decisionRemarks).filter(Boolean).map((t: any) => `• ${t}`).join('\n') : meeting.discussionRemarks || meeting.remarks || '-',
-    meeting.statusName || meeting.status?.statusName || meeting.status || ''
+    formatDateTime(meeting.meetingStartDateTime || meeting.startDateTime || meeting.startDate),
+    formatDateTime(meeting.meetingEndDateTime || meeting.endDateTime || meeting.endDate),
+    meeting.docStatusName || meeting.statusName || meeting.status?.statusName || meeting.status || ''
   ];
 
   const rows: any[][] = [];
@@ -144,11 +140,84 @@ export const exportMeetingReportToExcel = (data: any[], filename: string = 'Meet
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
   const colWidths = headerRow.map(() => ({ wch: 20 }));
-  colWidths[1] = { wch: 30 };
-  colWidths[9] = { wch: 40 };
-  colWidths[10] = { wch: 40 };
-  colWidths[11] = { wch: 40 };
+  colWidths[1] = { wch: 30 }; // Title
   ws['!cols'] = colWidths;
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+  XLSX.writeFile(wb, filename);
+};
+
+export const exportBusinessEntityReportToExcel = (data: any[], viewMode: 'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment', filename: string = 'Business_Entity_Report.xlsx') => {
+  const wb = XLSX.utils.book_new();
+
+  if (data.length === 0) return;
+
+  let headerRow: string[] = [];
+  let mapRowToCols: (item: any, idx: number) => any[] = () => [];
+  let colWidths: number[] = [];
+
+  const isContactMode = viewMode === 'contact-list' || viewMode === 'contact-album';
+  const isAttachmentMode = viewMode === 'attachment';
+
+  if (isContactMode) {
+    headerRow = ['Sr. No.', 'Contact Person Name', 'Business Entity', 'Email', 'Phone', 'Department', 'Designation', 'Status'];
+    mapRowToCols = (item: any, idx: number) => {
+      const contact = item.contacts?.[0] || {};
+      return [
+        idx + 1,
+        contact.contactPersonName || contact.contactName || contact.name || '-',
+        item.name || '-',
+        contact.email || '-',
+        contact.phoneNo || contact.phone || '-',
+        contact.department || '-',
+        contact.designation || '-',
+        contact.status || 'Active'
+      ];
+    };
+    colWidths = [10, 30, 30, 30, 20, 20, 20, 15];
+  } else if (isAttachmentMode) {
+    headerRow = ['Sr. No.', 'Name', 'Business Entity', 'Code', 'Size', 'Type', 'Status'];
+    mapRowToCols = (item: any, idx: number) => {
+      const attachment = item.attachments?.[0] || {};
+      return [
+        idx + 1,
+        attachment.fileName || attachment.name || '-',
+        item.name || '-',
+        item.code || '-',
+        attachment.fileSize ? `${(attachment.fileSize / 1024).toFixed(2)} KB` : '-',
+        attachment.fileType || '-',
+        attachment.status || 'Active'
+      ];
+    };
+    colWidths = [10, 30, 30, 20, 15, 15, 15];
+  } else {
+    headerRow = ['Sr. No.', 'Code', 'Business Entity Name', 'Type', 'Primary Address', 'City', 'State', 'Country', 'VAT/GST No.', 'Credit Limit'];
+    mapRowToCols = (item: any, idx: number) => {
+      const addr = item.locations?.[0]?.address || item.address || '';
+      return [
+        idx + 1,
+        item.code || '-',
+        item.name || '-',
+        item.type || '-',
+        addr || '-',
+        item.city || '-',
+        item.state || '-',
+        item.country || '-',
+        item.vatGst || 'N/A',
+        item.creditLimit > 0 ? item.creditLimit : 'No Limit'
+      ];
+    };
+    colWidths = [10, 20, 40, 20, 40, 20, 20, 20, 20, 20];
+  }
+
+  const rows: any[][] = [];
+  rows.push(headerRow);
+  data.forEach((item, idx) => {
+    rows.push(mapRowToCols(item, idx));
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = colWidths.map(wch => ({ wch }));
 
   XLSX.utils.book_append_sheet(wb, ws, 'Report');
   XLSX.writeFile(wb, filename);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
-import { ClipboardList, Edit2, Plus } from 'lucide-react';
+import { ClipboardList, Edit2, Plus, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
+import { exportMeetingReportToExcel } from '@/utils/exportToExcel';
 
 interface MeetingListViewProps {
   onMeetingClick?: (meetingNotesNo: number) => void;
@@ -134,15 +135,17 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           <h1 className="text-xl font-bold text-slate-100 truncate">Meeting Notes</h1>
           <PageGuideButton guideKey="meetings" />
         </div>
-        {isSave && (
-          <Button
-            data-page-tour="meeting-create"
-            onClick={() => navigate('/meetings/new')}
-            className="shrink-0 bg-[#0EA5E9] hover:bg-[#0284C7] shadow-md shadow-[#0EA5E9]/20"
-          >
-            <Plus className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">New Meeting</span><span className="sm:hidden">New</span>
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {isSave && (
+            <Button
+              data-page-tour="meeting-create"
+              onClick={() => navigate('/meetings/new')}
+              className="shrink-0 bg-[#0EA5E9] hover:bg-[#0284C7] shadow-md shadow-[#0EA5E9]/20"
+            >
+              <Plus className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">New Meeting</span><span className="sm:hidden">New</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -215,6 +218,19 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
         </Card>
       ) : (
         <>
+          <div className="flex items-center justify-between px-4 py-2 border border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0 rounded-[12px] mb-2">
+            <span className="text-[11px] font-semibold text-slate-400">Total {filteredMeetings.length} Records shown</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => exportMeetingReportToExcel(filteredMeetings, 'MeetingNotes.csv')}
+              className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
+            >
+              <Download size={12} />
+              Export CSV
+            </Button>
+          </div>
+          
           {/* Mobile cards */}
           <div className="md:hidden flex-1 min-h-0 overflow-y-auto space-y-2.5 pb-2">
             {filteredMeetings.map((meeting) => (

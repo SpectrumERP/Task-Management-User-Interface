@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
 import { Board } from '@/components/kanban/Board';
@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { cn } from '@/lib/utils';
 import { dealMonitorTaskUrl } from '@/lib/dealMonitor';
+import { exportReportToExcel } from '@/utils/exportToExcel';
 
 const DEAL_MONITOR_FORM_NO = 1548;
 
@@ -127,6 +128,20 @@ export default function DealMonitorPage() {
 
       {viewMode === 'list' ? (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
+          {tasks.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
+              <span className="text-[11px] font-semibold text-slate-400">Total {tasks.length} Records shown</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => exportReportToExcel(tasks, false, 'Deal_Monitor_Tasks.csv')}
+                className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
+              >
+                <Download size={12} />
+                Export CSV
+              </Button>
+            </div>
+          )}
           <div className="flex-1 min-h-0 overflow-hidden">
             <TaskListView
               tasks={tasks}
@@ -147,7 +162,7 @@ export default function DealMonitorPage() {
             />
           </div>
 
-          {tasks.length > 9 || pageNo > 1 ? (
+          {tasks.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0 select-none">
               <div className="text-[11px] text-slate-500 font-bold justify-self-center sm:justify-self-start min-w-0 truncate tabular-nums order-1 sm:order-none">
                 Showing <span className="text-slate-100 font-black">{((pageNo - 1) * pageSize) + 1}</span> to{" "}

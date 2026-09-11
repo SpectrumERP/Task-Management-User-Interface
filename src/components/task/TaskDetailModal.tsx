@@ -27,7 +27,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getPriorityBadgeClass } from '@/lib/priorityStyles';
+
 import { taskUrl } from '@/lib/dealMonitor';
 import { format } from 'date-fns';
 import { useTaskStore } from '@/store/useTaskStore';
@@ -670,17 +670,34 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                           'var(--tm-muted)';
                         const textColor = getContrastColor(bgColor);
 
+                        const priorityObj = task.priority
+                          ? fillValues?.priority?.find(
+                            (p) =>
+                              p.OperTaskPriorityNo === task.priority_No ||
+                              p.Priority === task.priority
+                          )
+                          : undefined;
+                        const priorityBgColor =
+                          priorityObj?.ColorCoding && priorityObj.ColorCoding !== 'none'
+                            ? priorityObj.ColorCoding
+                            : undefined;
+                        const priorityTextColor = priorityBgColor ? getContrastColor(priorityBgColor) : undefined;
+
                         return (
                           <>
                             <SpecRow index={next()} icon={AlertCircle} label="Priority">
-                              <span
-                                className={cn(
-                                  'inline-flex px-2 py-0.5 rounded-md text-[9px] font-semibold',
-                                  getPriorityBadgeClass(task.priority, task.priority_No, 'solid')
-                                )}
-                              >
-                                {task.priority}
-                              </span>
+                              {priorityBgColor ? (
+                                <span
+                                  className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+                                  style={{ backgroundColor: priorityBgColor, color: priorityTextColor }}
+                                >
+                                  {task.priority}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium text-slate-300 bg-[var(--tm-muted)]">
+                                  {task.priority}
+                                </span>
+                              )}
                             </SpecRow>
 
                             {task.categoryName && (
