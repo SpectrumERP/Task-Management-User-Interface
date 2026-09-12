@@ -95,22 +95,30 @@ export class GoogleVisionService {
   }
 
   public parseCardData(jsonText: string): BusinessCardData {
+    const asText = (value: unknown): string => {
+      if (value == null) return '';
+      if (typeof value === 'string') return value;
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      if (Array.isArray(value)) return value.map(asText).filter(Boolean).join(', ');
+      return '';
+    };
+
     try {
       const cleaned = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
       const parsed = JSON.parse(cleaned);
       const phone = Array.isArray(parsed.phone_numbers) ? parsed.phone_numbers[0] : parsed.phone_numbers;
 
       return {
-        name: parsed.full_name || '',
-        designation: parsed.job_title || '',
-        company: parsed.company_name || '',
-        email: parsed.email || '',
-        phone: phone || '',
-        website: parsed.website || '',
-        address: parsed.address || '',
-        city: parsed.city || '',
-        state: parsed.state || '',
-        country: parsed.country || '',
+        name: asText(parsed.full_name),
+        designation: asText(parsed.job_title),
+        company: asText(parsed.company_name),
+        email: asText(parsed.email),
+        phone: asText(phone),
+        website: asText(parsed.website),
+        address: asText(parsed.address),
+        city: asText(parsed.city),
+        state: asText(parsed.state),
+        country: asText(parsed.country),
       };
     } catch (error) {
       console.error('Failed to parse Google Vision card JSON:', error);

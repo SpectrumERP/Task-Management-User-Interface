@@ -1,11 +1,16 @@
 import { ApiError } from '@/services/apiService';
+import { toErrorMessage } from '@/lib/toErrorMessage';
+
+export { toErrorMessage };
 
 /** User-facing message helper. Does not change API behavior. */
 export function getUserErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof ApiError && error.message) return error.message;
-  if (error instanceof Error && error.message) return error.message;
+  if (error instanceof ApiError) {
+    return toErrorMessage(error.message, toErrorMessage(error.data, fallback));
+  }
+  if (error instanceof Error) return toErrorMessage(error.message, fallback);
   if (typeof error === 'string' && error.trim()) return error;
-  return fallback;
+  return toErrorMessage(error, fallback);
 }
 
 /**

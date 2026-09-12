@@ -265,6 +265,8 @@ interface TaskFormProps {
   onComplete?: () => void;
   onRefreshData?: () => void;
   onSaveStateChange?: (isSaving: boolean) => void;
+  /** When true, form is view-only (e.g. General user viewing parent task). */
+  readOnly?: boolean;
 }
 
 interface TaskFillValues {
@@ -427,7 +429,7 @@ const nextClientTaskNo = () => {
   return 100 + taskFormClientIdSeq;
 };
 
-export function TaskForm({ initialStatus, initialData, parentTask: parentTaskProp, onComplete, onRefreshData, onSaveStateChange }: TaskFormProps) {
+export function TaskForm({ initialStatus, initialData, parentTask: parentTaskProp, onComplete, onRefreshData, onSaveStateChange, readOnly = false }: TaskFormProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const parentTaskNoQuery = searchParams.get('parentTaskNo');
@@ -900,7 +902,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     name: "sub_tasks"
   });
 
-  const { fields: executionLogFields, append: appendExecutionLog, remove: removeExecutionLog } = useFieldArray({
+  const { fields: executionLogFields } = useFieldArray({
     control: form.control,
     name: "execution_logs"
   });
@@ -1880,9 +1882,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const informError = form.formState.errors.informed_to;
   const hasInformError = informError && !Array.isArray(informError) && (informError as any).message;
 
-  const executionLogError = form.formState.errors.execution_logs;
-  const hasExecutionLogError = executionLogError && !Array.isArray(executionLogError) && (executionLogError as any).message;
-
   return (
     <Card className="border-none shadow-none bg-transparent relative">
       {isDragging && (
@@ -1903,13 +1902,20 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       )}
       <form
         id="task-form"
-        onSubmit={form.handleSubmit(onSubmit, onValidationError)}
+        onSubmit={readOnly ? (e) => e.preventDefault() : form.handleSubmit(onSubmit, onValidationError)}
         className="space-y-2.5"
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDragEnter={readOnly ? undefined : handleDragEnter}
+        onDragOver={readOnly ? undefined : handleDragOver}
+        onDragLeave={readOnly ? undefined : handleDragLeave}
+        onDrop={readOnly ? undefined : handleDrop}
       >
+        {readOnly && (
+          <div className="rounded-xl border border-[#0EA5E9]/30 bg-[#E5F6FD]/80 dark:bg-[#0C4A6E]/40 dark:border-[#38BDF8]/25 px-3.5 py-2.5 text-xs font-medium text-[#0369A1] dark:text-[#7DD3FC]">
+            View only — you can review this task but cannot edit it. Edit is allowed only for tasks assigned to you.
+          </div>
+        )}
+
+        <fieldset disabled={readOnly} className="min-w-0 space-y-2.5 border-0 p-0 m-0">
 
         {/* 1. Basic Information */}
         <FormSection
@@ -3534,6 +3540,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </Button>
           </div>
         )}
+        </fieldset>
       </form>
 
       {/* Floating Sub-Task Actions */}

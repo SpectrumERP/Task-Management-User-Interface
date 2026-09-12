@@ -10,6 +10,8 @@ import { useFormRights } from '@/hooks/useFormRights';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { useAuthStore } from '@/store/useAuthStore';
+import { canUserEditTask, isTaskViewOnlyForUser } from '@/lib/taskAccess';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -56,6 +58,12 @@ export default function TaskDetail() {
   const [notFoundMessage, setNotFoundMessage] = useState("Task not found.");
 
   const { isSave, isUpdate, isDelete } = useFormRights(1547);
+  const user = useAuthStore((s) => s.user);
+  const viewOnly = isEdit && isTaskViewOnlyForUser(user, task);
+  const canSave = isEdit
+    ? canUserEditTask(user, task, isUpdate)
+    : isSave;
+  const canDelete = isEdit && isDelete && canUserEditTask(user, task, true) && !viewOnly;
 
   // Get status from query params if new task
   const queryParams = new URLSearchParams(location.search);
@@ -270,7 +278,7 @@ export default function TaskDetail() {
             </button>
             <ChevronRight size={14} className="text-slate-400 shrink-0" />
             <span className="text-slate-50 font-bold tracking-tight">
-              {isEdit ? 'Update Task' : 'Create Task'}
+              {!isEdit ? 'Create Task' : viewOnly ? 'View Task' : 'Update Task'}
             </span>
           </div>
 
@@ -284,10 +292,10 @@ export default function TaskDetail() {
               className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
             >
               <X size={14} />
-              <span className="hidden sm:inline">Cancel</span>
+              <span className="hidden sm:inline">{viewOnly ? 'Close' : 'Cancel'}</span>
             </Button>
 
-            {(isEdit ? isUpdate : isSave) && (
+            {canSave && !viewOnly && (
               <Button
                 type="submit"
                 form="task-form"
@@ -307,7 +315,7 @@ export default function TaskDetail() {
                 )}
               </Button>
             )}
-            {isEdit && isDelete && (
+            {canDelete && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -347,6 +355,7 @@ export default function TaskDetail() {
                 onComplete={handleGoBack}
                 onSaveStateChange={setIsSaving}
                 onRefreshData={fetchTaskDetails}
+                readOnly={viewOnly}
               />
             )}
           </div>

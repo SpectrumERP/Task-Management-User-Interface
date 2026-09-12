@@ -609,10 +609,11 @@ export function CompanyList() {
                             >
                               <div className="min-w-0 truncate">{company.name}</div>
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 max-w-[11rem]">
                               <span
+                                title={company.type || undefined}
                                 className={cn(
-                                  'px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border',
+                                  'inline-block max-w-full align-middle px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border leading-snug break-words',
                                   company.type === 'Buy'
                                     ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
                                     : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
@@ -690,8 +691,10 @@ export function CompanyList() {
                                     <h4 className="text-[11px] font-semibold text-slate-50 leading-tight group-hover:text-[#0EA5E9] transition-colors truncate" title={company.name}>{company.name}</h4>
                                     <div className="flex items-center gap-1 mt-1 flex-wrap">
                                       <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-elevated)] text-slate-300 border border-[var(--tm-border)]/80">{company.code}</span>
-                                      <span className={cn("text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] border",
-                                        company.type === 'Buy' ? "bg-sky-500/15 text-sky-400 border-sky-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")}>
+                                      <span className={cn(
+                                        "inline-block max-w-full align-middle text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] border leading-snug break-words",
+                                        company.type === 'Buy' ? "bg-sky-500/15 text-sky-400 border-sky-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                      )} title={company.type || undefined}>
                                         {company.type}
                                       </span>
                                     </div>
@@ -986,7 +989,7 @@ export function CompanyList() {
                 )}
               </div>
 
-              <div className="absolute right-1.5 top-2 bottom-2 w-9 bg-[var(--tm-surface)]/95 backdrop-blur-sm rounded-[8px] border border-[var(--tm-border)]/80 shadow-sm flex flex-col items-center justify-between py-2 z-20 select-none">
+              <div className="absolute right-1.5 top-2 bottom-2 w-8 min-h-0 bg-[var(--tm-surface)]/95 backdrop-blur-sm rounded-[8px] border border-[var(--tm-border)]/80 shadow-sm flex flex-col items-stretch justify-evenly py-1.5 px-0.5 z-20 select-none overflow-hidden">
                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
                   const hasItems = apiAlphabets.includes(char) || apiAlphabets.includes(char.toLowerCase());
                   const isSelected = currentStartsWith === char;
@@ -996,8 +999,9 @@ export function CompanyList() {
                       type="button"
                       disabled={!hasItems}
                       onClick={() => handleAlphabetClick(char)}
+                      title={hasItems ? `Jump to ${char}` : undefined}
                       className={cn(
-                        'h-5 w-5 text-[9px] font-semibold rounded-[5px] flex items-center justify-center transition-colors',
+                        'flex-1 min-h-0 w-full max-h-5 text-[8px] font-semibold rounded-[4px] flex items-center justify-center leading-none transition-colors',
                         isSelected
                           ? 'bg-[#0EA5E9] text-white'
                           : hasItems

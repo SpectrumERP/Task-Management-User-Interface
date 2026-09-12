@@ -114,6 +114,108 @@ const filterTasksByKeyword = (tasks: Task[], kw: string, fillValues: TaskFillVal
   return filterTree(tasks);
 };
 
+/**
+ * When search returns assigned child tasks as top-level rows (with parentTask metadata)
+ * but without nesting under the parent, wrap/attach them under the parent row so
+ * General users can see context while the parent remains view-only in the UI.
+ */
+const nestOrphanSubtasksUnderParents = (tasks: Task[]): Task[] => {
+  const byId = new Map<number, Task>();
+  for (const t of tasks) {
+    byId.set(t.taskNo, { ...t, subTasks: [...(t.subTasks || [])] });
+  }
+
+  const alreadyNested = new Set<number>();
+  for (const t of byId.values()) {
+    for (const st of t.subTasks || []) {
+      if (st?.taskNo != null) alreadyNested.add(Number(st.taskNo));
+    }
+  }
+
+  const orphanIds = new Set<number>();
+  const syntheticParents = new Map<number, Task>();
+
+  for (const t of tasks) {
+    const parentNo = Number(t.parent_task_No || t.parentTask?.operTaskNo || 0);
+    if (!parentNo || parentNo <= 0) continue;
+    if (alreadyNested.has(t.taskNo)) continue;
+
+    const existingParent = byId.get(parentNo);
+    if (existingParent) {
+      const childAlreadyListed = (existingParent.subTasks || []).some(
+        (st: Task) => Number(st.taskNo) === t.taskNo
+      );
+      if (!childAlreadyListed) {
+        existingParent.subTasks = [...(existingParent.subTasks || []), { ...t, parent_task_No: parentNo }];
+      }
+      orphanIds.add(t.taskNo);
+      continue;
+    }
+
+    // Parent not in response — build a lightweight parent shell
+    let synthetic = syntheticParents.get(parentNo);
+    if (!synthetic) {
+      const meta = t.parentTask;
+      synthetic = {
+        taskNo: parentNo,
+        code: meta?.code || '',
+        title: meta?.title || `Parent Task #${parentNo}`,
+        description: '',
+        priority_No: t.priority_No ?? 0,
+        category_No: t.category_No ?? 0,
+        type_No: t.type_No ?? 0,
+        tags: [],
+        originator_user_No: 0,
+        owner_user_No: 0, // not assigned to current user → view-only
+        parent_task_No: undefined,
+        location_No: t.location_No ?? 0,
+        company: t.company,
+        companyName: t.companyName,
+        is_business_benefit_applicable: false,
+        status_No: t.status_No ?? 0,
+        collaborators: [],
+        informed_to: [],
+        actual_efforts: [],
+        check_list: [],
+        task_comments: [],
+        status: t.status || 'Todo',
+        priority: t.priority || 'Low',
+        categoryName: t.categoryName,
+        typeName: t.typeName,
+        folderName: t.folderName,
+        assignedDisplayName: undefined,
+        parentTask: meta,
+        subTasks: [],
+      };
+      syntheticParents.set(parentNo, synthetic);
+      byId.set(parentNo, synthetic);
+    }
+    synthetic.subTasks = [...(synthetic.subTasks || []), { ...t, parent_task_No: parentNo }];
+    orphanIds.add(t.taskNo);
+  }
+
+  if (orphanIds.size === 0 && syntheticParents.size === 0) return tasks;
+
+  const result: Task[] = [];
+  const emitted = new Set<number>();
+
+  for (const t of tasks) {
+    if (orphanIds.has(t.taskNo)) continue;
+    const node = byId.get(t.taskNo) || t;
+    result.push(node);
+    emitted.add(t.taskNo);
+  }
+
+  for (const [parentNo, synthetic] of syntheticParents) {
+    if (!emitted.has(parentNo)) {
+      result.push(synthetic);
+      emitted.add(parentNo);
+    }
+  }
+
+  return result;
+};
+
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   allTasks: [],
@@ -303,6 +405,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         categoryName: item.category?.categoryName,
         typeName: item.type?.typeName,
         assignedDisplayName: item.assignedTo?.displayName,
+        parent_task_No: item.parentTask?.operTaskNo || item.parentTaskNo || item.parent_task_No || null,
+        parentTask: item.parentTask
+          ? {
+              operTaskNo: item.parentTask.operTaskNo,
+              title: item.parentTask.title,
+              code: item.parentTask.code,
+            }
+          : undefined,
         start_date: item.startDate,
         end_date: item.endDate,
         completionDate: item.completionDate || null,
@@ -320,7 +430,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       });
 
       if (response.success) {
-        let mappedTasks: Task[] = response.data.map(mapTaskItem);
+        let mappedTasks: Task[] = nestOrphanSubtasksUnderParents(response.data.map(mapTaskItem));
 
         // Apply PendingGroup filter locally if requested
         if (isPendingGroup) {

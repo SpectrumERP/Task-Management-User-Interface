@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { BrandLoader } from '@/components/ui/BrandLoader';
+import { useAuthStore } from '@/store/useAuthStore';
+import { canUserEditTask } from '@/lib/taskAccess';
 import {
   Edit,
   Calendar,
@@ -184,9 +186,11 @@ function PersonRow({
 export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: TaskDetailModalProps) {
   const navigate = useNavigate();
   const { isUpdate } = useFormRights(1547);
+  const user = useAuthStore((s) => s.user);
   const { fillValues } = useTaskStore();
   const [task, setTask] = useState<Task | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
+  const canEdit = canUserEditTask(user, task, isUpdate);
 
   const getContrastColor = (hexColor?: string) => {
     if (!hexColor) return 'var(--tm-input-fg)';
@@ -394,7 +398,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
           <div className="flex items-center gap-2 pr-10 shrink-0">
             <PageGuideButton guideKey="task-detail-modal" />
-            {task && isUpdate && (
+            {task && canEdit && (
               <Button
                 type="button"
                 data-page-tour="tdm-edit"
@@ -406,6 +410,20 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
               >
                 <Edit size={13} strokeWidth={2.5} />
                 Edit Task
+              </Button>
+            )}
+            {task && !canEdit && (
+              <Button
+                type="button"
+                data-page-tour="tdm-view"
+                variant="outline"
+                onClick={() => {
+                  navigate(taskUrl(task.taskNo, task.categoryName));
+                  onClose();
+                }}
+                className="h-8 text-xs font-semibold gap-1.5 px-3.5 rounded-lg border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200"
+              >
+                View Task
               </Button>
             )}
           </div>

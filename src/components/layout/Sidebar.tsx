@@ -19,12 +19,15 @@ import {
   Monitor,
   Calendar,
   CalendarDays,
-  FileText
+  FileText,
+  Shield,
+  UserRound
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { useAuthStore } from '@/store/useAuthStore';
+import { UserType } from '@/types/enums';
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
   // { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
@@ -103,13 +106,13 @@ function SectionFlyoutMenu({
           "group flex items-center justify-center mx-auto h-10 w-10 rounded-[11px] p-0 transition-all duration-200 relative",
           isSectionActive
             ? "bg-[var(--tm-tint)] text-[#0EA5E9] shadow-sm"
-            : "text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200 hover:shadow-sm"
+            : "text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] hover:shadow-sm"
         )}
       >
         <Icon
           size={18}
           strokeWidth={isSectionActive ? 2.15 : 1.75}
-          className={isSectionActive ? "text-[#0EA5E9]" : "text-slate-400 group-hover:text-slate-500"}
+          className={isSectionActive ? "text-[#0EA5E9]" : "text-slate-400 group-hover:text-[#0EA5E9]"}
         />
         <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
           <div className="tm-sidebar-tip">
@@ -124,7 +127,23 @@ function SectionFlyoutMenu({
 
 export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, onToggleCollapse, hideBrand = false, className }: SidebarProps) {
   const accessibleForms = useAuthStore(state => state.accessibleForms);
+  const user = useAuthStore(state => state.user);
   const fetchAccessibleForms = useAuthStore(state => state.fetchAccessibleForms);
+
+  const userTypeValue = Number(user?.UserType ?? user?.userType ?? user?.role);
+  const roleLabel =
+    userTypeValue === UserType.admin
+      ? 'Admin'
+      : userTypeValue === UserType.General
+        ? 'General'
+        : (typeof user?.role === 'string' && user.role.trim() ? user.role : null);
+  const userDisplayName =
+    user?.PrintingName ||
+    user?.name ||
+    user?.LoginID ||
+    user?.loginId ||
+    user?.username ||
+    null;
 
   useEffect(() => {
     if (accessibleForms === null) {
@@ -165,13 +184,13 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               "justify-center mx-auto h-10 w-10 rounded-[11px] p-0",
               isActive
                 ? "bg-[#0EA5E9] text-white shadow-[0_6px_16px_-6px_rgba(14,165,233,0.55)]"
-                : "text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200 hover:shadow-sm"
+                : "text-slate-500 hover:bg-[#0EA5E9] hover:text-white hover:shadow-[0_6px_16px_-6px_rgba(14,165,233,0.35)]"
             )
             : cn(
               "gap-3 rounded-xl px-3 py-[9px] text-[13px] tracking-[-0.01em]",
               isActive
                 ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
-                : "font-medium text-slate-300 hover:bg-[var(--tm-muted)]/70 hover:text-slate-100"
+                : "font-medium text-slate-300 hover:bg-[var(--tm-chrome-muted)] hover:text-slate-50"
             )
         )}
       >
@@ -190,7 +209,9 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               ? "text-white"
               : isActive
                 ? "text-slate-50"
-                : "text-slate-400 group-hover:text-slate-500"
+                : isCollapsed
+                  ? "text-slate-400 group-hover:text-white"
+                  : "text-slate-400 group-hover:text-slate-50"
           )}
         />
         {!isCollapsed && <span className="truncate">{item.label}</span>}
@@ -231,7 +252,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             "relative ml-4 w-[calc(100%-1rem)] flex items-center gap-2.5 pl-2 pr-2.5 py-[6px] rounded-lg text-[12.5px] tracking-[-0.01em] transition-colors duration-150 group",
             isActive
               ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
-              : "font-medium text-slate-500 hover:bg-[var(--tm-muted)] hover:text-slate-200"
+              : "font-medium text-slate-500 hover:bg-[var(--tm-chrome-muted)] hover:text-slate-50"
           )}
         >
           {isActive && (
@@ -245,7 +266,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             strokeWidth={isActive ? 2.1 : 1.7}
             className={cn(
               "shrink-0",
-              isActive ? "text-slate-50" : "text-slate-400 group-hover:text-slate-500"
+              isActive ? "text-slate-50" : "text-slate-400 group-hover:text-slate-50"
             )}
           />
           <span className="truncate text-left">{item.label}</span>
@@ -282,7 +303,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             "relative w-full flex items-center gap-3 px-3 py-[9px] rounded-xl cursor-pointer transition-colors duration-150 text-[13px] tracking-[-0.01em]",
             showActive
               ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
-              : "font-medium text-slate-300 hover:bg-[var(--tm-muted)]/60 hover:text-slate-100"
+              : "font-medium text-slate-300 hover:bg-[var(--tm-chrome-muted)] hover:text-slate-50"
           )}
         >
           {showActive && (
@@ -294,7 +315,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
           <Icon
             size={16}
             strokeWidth={showActive ? 2.15 : 1.75}
-            className={cn("shrink-0", showActive ? "text-slate-50" : "text-slate-400")}
+            className={cn("shrink-0", showActive ? "text-slate-50" : "text-slate-400 group-hover:text-slate-50")}
           />
           <span className="flex-1 text-left truncate">{title}</span>
           <ChevronDown
@@ -382,7 +403,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="lg:hidden h-8 w-8 rounded-xl hover:bg-[var(--tm-muted)]/80 flex items-center justify-center shrink-0"
+              className="lg:hidden h-8 w-8 rounded-xl hover:bg-[var(--tm-chrome-muted)] flex items-center justify-center shrink-0"
             >
               <X size={18} className="text-slate-500" />
             </Button>
@@ -456,7 +477,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             <button
               key={item.id}
               className={cn(
-                "w-full flex items-center transition-colors font-medium text-sm text-slate-500 hover:bg-[var(--tm-muted)]/70 rounded-xl",
+                "w-full flex items-center transition-colors font-medium text-sm text-slate-500 hover:bg-[var(--tm-chrome-muted)] hover:text-slate-50 rounded-xl",
                 isCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-2"
               )}
               title={item.label}
@@ -465,6 +486,59 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               {!isCollapsed && <span>{item.label}</span>}
             </button>
           ))}
+        </div>
+      )}
+
+      {(userDisplayName || roleLabel) && (
+        <div
+          className={cn(
+            "shrink-0 border-t border-[var(--tm-border)]/70",
+            isCollapsed ? "px-1.5 py-2.5" : "px-2.5 py-3"
+          )}
+        >
+          <div
+            className={cn(
+              "flex items-center rounded-xl border transition-colors",
+              "bg-[#E8F6FD] border-[#BAE6FD]/80 text-[#0369A1]",
+              "dark:bg-[#0C4A6E]/55 dark:border-[#38BDF8]/25 dark:text-[#7DD3FC]",
+              isCollapsed ? "justify-center h-10 w-10 mx-auto" : "gap-2.5 px-3 py-2.5"
+            )}
+            title={[userDisplayName, roleLabel].filter(Boolean).join(' · ')}
+          >
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center justify-center rounded-lg",
+                "bg-white/80 text-[#0284C7] ring-1 ring-[#0EA5E9]/15",
+                "dark:bg-[#082F49]/70 dark:text-[#7DD3FC] dark:ring-[#38BDF8]/20",
+                isCollapsed ? "h-8 w-8" : "h-9 w-9"
+              )}
+            >
+              {roleLabel ? (
+                <Shield size={isCollapsed ? 15 : 15} strokeWidth={2} />
+              ) : (
+                <UserRound size={isCollapsed ? 15 : 15} strokeWidth={2} />
+              )}
+            </span>
+            {!isCollapsed && (
+              <div className="min-w-0 flex flex-col justify-center gap-1">
+                {userDisplayName && (
+                  <span className="text-[13px] font-semibold leading-none truncate text-[#0C4A6E] dark:text-[#E0F2FE]">
+                    {userDisplayName}
+                  </span>
+                )}
+                {roleLabel && (
+                  <span className="inline-flex items-center h-5 rounded-md overflow-hidden bg-[#D0EAF8]/90 dark:bg-[#082F49]/80 ring-1 ring-[#7DD3FC]/35 dark:ring-[#38BDF8]/25">
+                    <span className="inline-flex items-center h-full px-1.5 text-[9px] font-bold uppercase tracking-wider text-[#0284C7]/80 dark:text-[#7DD3FC]/80 bg-[#BFE6F8]/70 dark:bg-[#0C4A6E]/70 leading-none">
+                      Role
+                    </span>
+                    <span className="inline-flex items-center h-full px-1.5 text-[11px] font-semibold capitalize tracking-normal text-[#0369A1] dark:text-[#E0F2FE] leading-none">
+                      {roleLabel}
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </aside>

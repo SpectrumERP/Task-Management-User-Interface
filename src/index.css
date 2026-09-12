@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    /* Light — Zoho ToDo hybrid: dark chrome shell + white workspace */
+    /* Light — full light shell (header + sidebar + workspace) */
     --background: 210 20% 97%;
     --foreground: 215 25% 20%;
 
@@ -50,12 +50,12 @@
     --tm-tint: #E5F6FD;
     --tm-input: #FFFFFF;
     --tm-input-fg: #2C3E50;
-    --tm-chrome: #1E222D;
-    --tm-chrome-end: #181B24;
-    --tm-chrome-border: #2A3140;
-    --tm-chrome-muted: #2A303C;
-    --tm-sidebar: #1E222D;
-    --tm-sidebar-end: #181B24;
+    --tm-chrome: #FFFFFF;
+    --tm-chrome-end: #F5F7F9;
+    --tm-chrome-border: #E2E8F0;
+    --tm-chrome-muted: #EEF1F4;
+    --tm-sidebar: #FFFFFF;
+    --tm-sidebar-end: #F8FAFC;
     --tm-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 12px rgba(16, 24, 40, 0.04);
     --tm-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
     --tm-glow: rgba(14, 165, 233, 0.14);
@@ -238,8 +238,13 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: var(--page-pad);
+    /* Split sides so filter push pad is not wiped by the shorthand */
+    padding-top: var(--page-pad);
+    padding-bottom: var(--page-pad);
+    padding-left: var(--page-pad);
+    padding-right: calc(var(--page-pad) + var(--tm-filters-drawer-width, 0px));
     gap: var(--page-gap);
+    transition: padding-right 300ms ease-out;
   }
 
   main.page-shell {
@@ -252,8 +257,12 @@
     display: flex;
     flex-direction: column;
     overflow: auto;
-    padding: var(--page-pad);
+    padding-top: var(--page-pad);
+    padding-bottom: var(--page-pad);
+    padding-left: var(--page-pad);
+    padding-right: calc(var(--page-pad) + var(--tm-filters-drawer-width, 0px));
     gap: var(--page-gap);
+    transition: padding-right 300ms ease-out;
   }
 
   @media (max-width: 639px) {
@@ -347,23 +356,24 @@ html.dark textarea::placeholder {
 }
 
 html.dark .login-page .login-field {
-  background-color: #1B2738 !important;
-  border-color: #4A5D73 !important;
-  color: #f1f5f9 !important;
+  background-color: #2A6280 !important;
+  border-color: #5B9BB8 !important;
+  color: #f8fafc !important;
 }
 
 html.dark .login-page .login-field::placeholder {
-  color: #94a3b8 !important;
+  color: #cbd5e1 !important;
 }
 
 html.dark .login-page .login-field:hover {
-  border-color: #67b8dc !important;
+  border-color: #7dd3fc !important;
+  background-color: #337196 !important;
 }
 
 html.dark .login-page .login-field:focus,
 html.dark .login-page .login-field:focus-visible {
   border-color: #38bdf8 !important;
-  background-color: #203044 !important;
+  background-color: #3A7A9A !important;
 }
 
 .login-page .login-field[class*='border-red'] {
@@ -466,12 +476,12 @@ html:not(.dark) .page-eyebrow {
   color: #0284c7;
 }
 
-/* Light theme — Zoho ToDo hybrid: dark chrome + white workspace */
+/* Light theme — full light chrome (header + sidebar match workspace) */
 html:not(.dark) header {
   background: var(--tm-chrome) !important;
   backdrop-filter: none;
   border-bottom: 1px solid var(--tm-chrome-border) !important;
-  box-shadow: none;
+  box-shadow: var(--tm-shadow-sm);
 }
 
 html:not(.dark) .theme-header-rail {
@@ -479,85 +489,21 @@ html:not(.dark) .theme-header-rail {
   border-right-color: var(--tm-chrome-border) !important;
 }
 
-/* Header/sidebar sit on dark chrome — keep text light */
-html:not(.dark) header .text-slate-50,
-html:not(.dark) header .text-slate-100,
-html:not(.dark) aside .text-slate-50,
-html:not(.dark) aside .text-slate-100 {
-  color: #f1f5f9 !important;
-}
-
-html:not(.dark) header .text-slate-200,
-html:not(.dark) aside .text-slate-200 {
-  color: #e2e8f0 !important;
-}
-
-html:not(.dark) header .text-slate-300,
-html:not(.dark) aside .text-slate-300 {
-  color: #cbd5e1 !important;
-}
-
-html:not(.dark) header .text-slate-400,
-html:not(.dark) header .text-slate-500,
-html:not(.dark) aside .text-slate-400,
-html:not(.dark) aside .text-slate-500 {
-  color: #94a3b8 !important;
-}
-
-html:not(.dark) header .hover\:text-slate-100:hover,
-html:not(.dark) header .hover\:text-slate-200:hover,
-html:not(.dark) aside .hover\:text-slate-100:hover,
-html:not(.dark) aside .hover\:text-slate-200:hover {
-  color: #f8fafc !important;
-}
-
 html:not(.dark) aside {
-  background: linear-gradient(180deg, var(--tm-chrome) 0%, var(--tm-chrome-end) 100%) !important;
+  background: linear-gradient(180deg, var(--tm-sidebar) 0%, var(--tm-sidebar-end) 100%) !important;
   border-right: 1px solid var(--tm-chrome-border) !important;
   box-shadow: none;
 }
 
-html:not(.dark) aside .bg-\[var\(--tm-tint\)\],
-html:not(.dark) aside .bg-\[var\(--tm-chrome-muted\)\] {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: none;
-}
-
-/* Chrome controls: translucent, not white cards */
-html:not(.dark) header .bg-\[var\(--tm-surface\)\],
-html:not(.dark) header .bg-\[var\(--tm-surface\)\]\/90,
-html:not(.dark) aside .bg-\[var\(--tm-surface\)\] {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-html:not(.dark) header .hover\:bg-\[var\(--tm-muted\)\]:hover,
-html:not(.dark) header .hover\:bg-\[var\(--tm-tint\)\]:hover,
-html:not(.dark) header .bg-\[var\(--tm-tint\)\]\/70,
-html:not(.dark) header .bg-\[var\(--tm-tint\)\]\/80,
-html:not(.dark) aside .hover\:bg-\[var\(--tm-muted\)\]:hover,
-html:not(.dark) aside .hover\:bg-\[var\(--tm-muted\)\]\/80:hover,
-html:not(.dark) aside .hover\:bg-\[var\(--tm-muted\)\]\/70:hover,
-html:not(.dark) aside .hover\:bg-\[var\(--tm-muted\)\]\/60:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-html:not(.dark) header .border-\[var\(--tm-border\)\],
-html:not(.dark) header .border-\[var\(--tm-border\)\]\/80,
-html:not(.dark) header .border-\[var\(--tm-border\)\]\/70,
-html:not(.dark) header .border-\[var\(--tm-border\)\]\/60 {
-  border-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-/* Theme toggle on dark chrome (light hybrid header) */
 html:not(.dark) header .theme-toggle {
-  background: rgba(14, 165, 233, 0.16) !important;
-  border-color: rgba(56, 189, 248, 0.45) !important;
-  color: #7dd3fc !important;
+  background: rgba(14, 165, 233, 0.1) !important;
+  border-color: rgba(14, 165, 233, 0.35) !important;
+  color: #0284c7 !important;
 }
 
 html:not(.dark) header .theme-toggle:hover {
-  background: rgba(14, 165, 233, 0.28) !important;
-  color: #fff !important;
+  background: rgba(14, 165, 233, 0.18) !important;
+  color: #0369a1 !important;
 }
 
 html.dark header .theme-toggle {
@@ -566,17 +512,21 @@ html.dark header .theme-toggle {
   color: #7dd3fc !important;
 }
 
-/* Dark chrome (dark theme + light hybrid shell): force light logo */
+/* Dark chrome only: force light logo */
 html.dark header img,
-html.dark aside img,
-html:not(.dark) header img,
-html:not(.dark) aside img {
+html.dark aside img {
   filter: brightness(0) invert(1);
   opacity: 0.95;
 }
 
-html:not(.dark) header .border-white {
-  border-color: var(--tm-chrome) !important;
+/* Dark mode — sidebar hover matches active (chrome-muted), not a light wash */
+html.dark aside button:hover:not(.bg-\[\#0EA5E9\]) {
+  background-color: var(--tm-chrome-muted) !important;
+  color: #f8fafc !important;
+}
+
+html.dark aside button:hover:not(.bg-\[\#0EA5E9\]) svg {
+  color: #f8fafc !important;
 }
 
 html:not(.dark) .theme-kanban-column {
@@ -660,14 +610,15 @@ html:not(.dark) .theme-status-pill.text-white {
 }
 
 html:not(.dark) .theme-sidebar-edge-toggle {
-  background: #2a303c !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #cbd5e1 !important;
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 html:not(.dark) .theme-sidebar-edge-toggle:hover {
-  background: #353b4a !important;
-  color: #fff !important;
+  background: #f8fafc !important;
+  color: #0ea5e9 !important;
 }
 
 /* Collapsed sidebar flyout tip — readable in light + dark (avoid aside surface remaps) */

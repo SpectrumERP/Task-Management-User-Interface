@@ -186,7 +186,12 @@ function Dashboard() {
 
   return (
     <MainLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      <main className="page-shell gap-4">
+      <main
+        className={cn(
+          "page-shell gap-4",
+          showFilters && "[--tm-filters-drawer-width:min(100vw,24rem)]"
+        )}
+      >
         {/* Unified Top Control Bar */}
         <div className="shrink-0">
           <TaskFilter

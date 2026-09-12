@@ -19,6 +19,7 @@ import { BusinessCardOverlay } from './camera/overlays/BusinessCardOverlay';
 import { CardReviewForm } from './camera/components/CardReviewForm';
 
 import { useClipboardStore } from '@/store/useClipboardStore';
+import { getUserErrorMessage, toErrorMessage } from '@/lib/errorFeedback';
 import { LogoCropperModal } from './camera/components/LogoCropperModal';
 import { BusinessCardData } from './camera/models/BusinessCardData';
 
@@ -436,7 +437,7 @@ export function CameraComp({
       dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error: any) {
       console.error('Camera image upload failed:', error);
-      const message = error?.message || 'Upload failed. Please try again.';
+      const message = getUserErrorMessage(error, 'Upload failed. Please try again.');
       dispatch({ type: 'ERROR', error: message });
       toast.error(message);
     }
@@ -646,7 +647,7 @@ export function CameraComp({
 
       {errorMessage && (
         <div className="mx-4 sm:mx-5 mb-2 rounded-[8px] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
-          {errorMessage}
+          {toErrorMessage(errorMessage, 'Something went wrong')}
         </div>
       )}
 

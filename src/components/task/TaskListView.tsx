@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useSettings } from '@/hooks/useSettings';
 import { taskUrl } from '@/lib/dealMonitor';
+import { useAuthStore } from '@/store/useAuthStore';
+import { canUserEditTask } from '@/lib/taskAccess';
 
 import {
   DropdownMenu,
@@ -61,8 +63,10 @@ const COLUMNS: ColumnDef[] = [
 export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskClick, onCreateTask, hideCategoryColumn = false }: TaskListViewProps) {
   const navigate = useNavigate();
   const { isUpdate } = useFormRights(1547);
+  const user = useAuthStore((s) => s.user);
   const { fillValues } = useTaskStore();
   const { isHideType, isHideFolder } = useSettings();
+  const canEditTask = (task: Task) => canUserEditTask(user, task, isUpdate);
   const isColumnAllowed = (key: ColumnKey) => !(
     (key === 'type' && isHideType) ||
     (key === 'folder' && isHideFolder) ||
@@ -296,7 +300,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           >
             <Eye size={14} strokeWidth={2.25} />
           </Button>
-          {isUpdate ? (
+          {canEditTask(task) ? (
             <Button
               variant="ghost"
               size="icon"
@@ -528,7 +532,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
             >
               <Eye size={14} strokeWidth={2.25} />
             </Button>
-            {isUpdate && (
+            {canEditTask(task) && (
               <Button
                 variant="ghost"
                 size="icon"

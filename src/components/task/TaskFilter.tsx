@@ -497,11 +497,14 @@ export function TaskFilter({
   if (viewMode === 'calendar') {
     return (
       <div className="relative w-full z-50">
-        <div className={cn(
-          "absolute left-0 right-0 top-0 transition-all duration-300 ease-out origin-top z-[100] transform scale-100 opacity-100 translate-y-0",
-          !isFiltersOpen && "scale-95 opacity-0 pointer-events-none -translate-y-2 hidden"
-        )}>
-          <Card className="border border-[var(--tm-border)]/80 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.2)] bg-[var(--tm-surface)] rounded-[12px] p-0 w-full max-h-[80vh] flex flex-col overflow-hidden">
+        <div
+          className={cn(
+            "fixed top-14 right-0 bottom-0 z-[120] w-[min(100vw,24rem)] transition-transform duration-300 ease-out will-change-transform",
+            isFiltersOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
+          )}
+          aria-hidden={!isFiltersOpen}
+        >
+          <Card className="h-full rounded-none border-0 border-l border-[var(--tm-border)] shadow-none bg-[var(--tm-surface)] p-0 flex flex-col overflow-hidden max-h-none">
             <div className="px-4 py-3 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] flex items-center justify-between shrink-0">
               <span className="text-[13px] font-semibold text-slate-100 normal-case flex items-center gap-2">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
@@ -827,7 +830,7 @@ export function TaskFilter({
 
   return (
     <div className={cn("relative w-full z-40", className)}>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form id="task-filter-form" onSubmit={handleSubmit(onSubmit)}>
         {/* Dynamic unified top search & trigger row inside a beautiful Card */}
         <Card className="theme-filter-bar border border-[var(--tm-border)]/70 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] bg-[var(--tm-surface)] rounded-[16px] p-3 mb-2">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
@@ -880,7 +883,7 @@ export function TaskFilter({
                     isFiltersOpen && "bg-[var(--tm-surface)] text-[#0EA5E9] shadow-[0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-[#0EA5E9]/15 hover:bg-[var(--tm-surface)] hover:text-[#0EA5E9]"
                   )}
                 >
-                  <SlidersHorizontal size={14} strokeWidth={1.75} className={cn("transition-transform duration-300", isFiltersOpen && "rotate-180")} />
+                  <SlidersHorizontal size={14} strokeWidth={1.75} className={cn("transition-colors duration-200", isFiltersOpen && "text-[#0EA5E9]")} />
                   <span className="hidden sm:inline">Filters & Sorting</span>
                 </Button>
 
@@ -1098,12 +1101,15 @@ export function TaskFilter({
           })}
         </div>
 
-        {/* Collapsible Unified Filters Grid (Floating Popup Card Overlay) */}
-        <div className={cn(
-          "absolute left-0 right-0 top-full mt-2 transition-all duration-300 ease-out origin-top z-[100] transform scale-100 opacity-100 translate-y-0",
-          !isFiltersOpen && "scale-95 opacity-0 pointer-events-none -translate-y-2 hidden"
-        )}>
-          <Card className="border border-[var(--tm-border)]/80 shadow-[0_16px_40px_-12px_rgba(15,23,42,0.2)] bg-[var(--tm-surface)] rounded-[12px] p-0 w-full max-h-[calc(100vh-220px)] flex flex-col overflow-hidden">
+        {/* Right slide-over drawer — page content shifts via parent padding */}
+        <div
+          className={cn(
+            "fixed top-14 right-0 bottom-0 z-[120] w-[min(100vw,24rem)] transition-transform duration-300 ease-out will-change-transform",
+            isFiltersOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
+          )}
+          aria-hidden={!isFiltersOpen}
+        >
+          <Card className="h-full rounded-none border-0 border-l border-[var(--tm-border)] shadow-none bg-[var(--tm-surface)] p-0 flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] flex items-center justify-between shrink-0">
               <span className="text-[13px] font-semibold text-slate-100 normal-case flex items-center gap-2">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
@@ -1122,8 +1128,8 @@ export function TaskFilter({
             </div>
 
             <div className="overflow-y-auto px-4 py-3 scrollbar-sleek flex-1 space-y-3">
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
-                <FilterPanel title="Task filters" icon={Layers} cols={2} className="lg:col-span-3">
+              <div className="grid grid-cols-1 gap-3 items-start">
+                <FilterPanel title="Task filters" icon={Layers} cols={1}>
                   <div className="space-y-1 min-w-0">
                     <FilterFieldLabel icon={Clipboard}>Status</FilterFieldLabel>
                     <Controller
@@ -1233,7 +1239,7 @@ export function TaskFilter({
                   )}
                 </FilterPanel>
 
-                <FilterPanel title="People" icon={User} cols={1} className="lg:col-span-2">
+                <FilterPanel title="People" icon={User} cols={1}>
                   {!isGeneralUser && (
                     <>
                       <div className="space-y-1 min-w-0" id="form-group-loginNo">
@@ -1319,7 +1325,7 @@ export function TaskFilter({
                 </FilterPanel>
               </div>
 
-              <FilterPanel title="Sorting & dates" icon={ArrowUpDown} cols={2}>
+              <FilterPanel title="Sorting & dates" icon={ArrowUpDown} cols={1}>
                 <div className="space-y-1 min-w-0">
                   <FilterFieldLabel icon={ArrowUpDown}>Sort By Column</FilterFieldLabel>
                   <Controller
@@ -1345,7 +1351,7 @@ export function TaskFilter({
                   />
                 </div>
 
-                <div className="space-y-1 min-w-0 sm:col-span-2">
+                <div className="space-y-1 min-w-0">
                   <FilterFieldLabel icon={CalendarIcon}>Due Date Range</FilterFieldLabel>
                   <DateRangePicker
                     value={{ from: watch('fromDueDate'), to: watch('toDueDate') }}
@@ -1357,7 +1363,7 @@ export function TaskFilter({
                   />
                 </div>
 
-                <div className="space-y-1 min-w-0 sm:col-span-2">
+                <div className="space-y-1 min-w-0">
                   <FilterFieldLabel icon={CalendarIcon}>Created Date Range</FilterFieldLabel>
                   <DateRangePicker
                     value={{ from: watch('fromCreatedDate'), to: watch('toCreatedDate') }}

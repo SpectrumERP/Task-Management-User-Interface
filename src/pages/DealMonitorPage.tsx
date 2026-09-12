@@ -101,7 +101,12 @@ export default function DealMonitorPage() {
   };
 
   return (
-    <main className="page-shell">
+    <main
+      className={cn(
+        "page-shell",
+        showFilters && "[--tm-filters-drawer-width:min(100vw,24rem)]"
+      )}
+    >
       {dealMonitorCategoryNo === null ? (
         <div className="shrink-0 mx-0 mb-2 flex items-start gap-2.5 rounded-xl border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-3.5 py-2.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" strokeWidth={2.25} />

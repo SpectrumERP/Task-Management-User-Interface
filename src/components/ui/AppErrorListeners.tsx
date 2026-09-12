@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { ApiError } from '@/services/apiService';
+import { toErrorMessage } from '@/lib/toErrorMessage';
 
 const TOAST_ID = 'app-unhandled-error';
 
 function messageFromReason(reason: unknown): string {
-  if (reason instanceof ApiError) return reason.message || 'Request failed';
-  if (reason instanceof Error) return reason.message || 'Unexpected error';
-  if (typeof reason === 'string' && reason.trim()) return reason;
-  return 'An unexpected error occurred';
+  return toErrorMessage(
+    reason instanceof ApiError || reason instanceof Error ? reason.message : reason,
+    'An unexpected error occurred'
+  );
 }
 
 /**

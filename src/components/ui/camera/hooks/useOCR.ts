@@ -7,42 +7,45 @@ export interface OCRResult {
   googleText: string | null;
 }
 
+/** Off by default — no client Gemini/Google key required. Set VITE_USE_GEMINI_OCR=true to re-enable. */
+const useGeminiOcr = import.meta.env.VITE_USE_GEMINI_OCR === 'true';
+
 export function useOCR() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const ocrServiceRef = useRef(new OCRService());
-  const googleVisionRef = useRef(new GoogleVisionService());
+  const googleVisionRef = useRef(useGeminiOcr ? new GoogleVisionService() : null);
 
   const processImage = useCallback(async (imageBlob: Blob): Promise<OCRResult> => {
     setIsProcessing(true);
     setProgress(0);
-    
+
     try {
       const result: OCRResult = { tesseractText: '', googleText: null };
 
-      // Try Google Vision API First
-      try {
-        setProgress(0.20);
-        const text = await googleVisionRef.current.extractText(imageBlob);
-        if (text && text.trim()) {
-          result.googleText = text;
-          return result; // Fast path: Google Vision succeeded!
+      // Optional Gemini path (disabled unless VITE_USE_GEMINI_OCR=true)
+      if (useGeminiOcr && googleVisionRef.current) {
+        try {
+          setProgress(0.2);
+          const text = await googleVisionRef.current.extractText(imageBlob);
+          if (text && text.trim()) {
+            result.googleText = text;
+            return result;
+          }
+        } catch (err) {
+          console.warn('Gemini OCR failed, using local Tesseract:', err);
         }
-      } catch (err) {
-        console.error("Google Vision Error, falling back to Tesseract:", err);
       }
 
-      // Fallback to Tesseract if Google Vision failed or returned empty
-      setProgress(0.40);
-      await ocrServiceRef.current.init((p) => setProgress(0.40 + p * 0.50)); 
-      
-      const tesseractText = await ocrServiceRef.current.extractText(imageBlob);
-      result.tesseractText = tesseractText;
+      // Local OCR — no external API / client key
+      setProgress(0.15);
+      await ocrServiceRef.current.init((p) => setProgress(0.15 + p * 0.8));
 
+      result.tesseractText = await ocrServiceRef.current.extractText(imageBlob);
       return result;
     } finally {
       setIsProcessing(false);
-      setProgress(1); // complete
+      setProgress(1);
     }
   }, []);
 

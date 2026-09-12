@@ -2,6 +2,7 @@ import { apiService } from './apiService';
 import { DocumentAttachment } from '@/types/task';
 import { dbService } from './dbService';
 import { toast } from 'sonner';
+import { toErrorMessage } from '@/lib/toErrorMessage';
 
 export interface AttachmentResponse<T> {
   success: boolean;
@@ -38,7 +39,9 @@ export const attachmentService = {
     if (response.success && response.data && response.data.length > 0) {
       return response.data[0];
     } else {
-      throw new Error(response.message || response.error || 'Failed to create database attachment entry');
+      throw new Error(
+        toErrorMessage(response.message ?? response.error, 'Failed to create database attachment entry')
+      );
     }
   },
 
