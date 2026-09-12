@@ -94,6 +94,7 @@ interface FilterFormValues {
   operTaskStatusNo?: string;
   operTaskLocationNo?: string;
   operTaskTypeNo?: string;
+  operTaskCompanyNo?: string;
   ownerLoginNo?: string;
   fromDueDate?: Date;
   toDueDate?: Date;
@@ -278,6 +279,17 @@ export function TaskFilter({
       });
     }
 
+    if (applied.operTaskCompanyNo) {
+      const tc = fillValues?.taskCompany?.find(
+        (c) => String(c.OperTaskCompanyNo) === String(applied.operTaskCompanyNo)
+      );
+      const tcLabel = tc ? ((tc.TaskCompanyAlias && tc.TaskCompanyName) ? `${tc.TaskCompanyAlias} - ${tc.TaskCompanyName}` : (tc.AliasName && tc.CompanyName ? `${tc.AliasName} - ${tc.CompanyName}` : (tc.AliasName || tc.CompanyName || tc.TaskCompanyAlias || tc.TaskCompanyName || 'Unknown'))) : applied.operTaskCompanyNo;
+      chips.push({
+        id: 'taskCompany',
+        label: `Task Company: ${tcLabel}`,
+      });
+    }
+
     if (applied.ownerLoginNo) {
       const name = personLabels[String(applied.ownerLoginNo)];
       chips.push({
@@ -397,6 +409,7 @@ export function TaskFilter({
       operTaskStatusNo: '',
       operTaskLocationNo: '',
       operTaskTypeNo: '',
+      operTaskCompanyNo: '',
       ownerLoginNo: '',
       fromDueDate: undefined,
       toDueDate: undefined,
@@ -480,6 +493,7 @@ export function TaskFilter({
       priority: 'operTaskPriorityNo',
       type: 'operTaskTypeNo',
       location: 'operTaskLocationNo',
+      taskCompany: 'operTaskCompanyNo',
       owner: 'ownerLoginNo',
       loginNo: 'loginNo',
       filterType: 'filterType',
@@ -631,6 +645,28 @@ export function TaskFilter({
                             <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
                               {fillValues?.location.map(l => (
                                 <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()}>{l.Location}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+
+                    <div className="space-y-1 min-w-0">
+                      <FilterFieldLabel icon={Layers}>Task Company</FilterFieldLabel>
+                      <Controller
+                        name="operTaskCompanyNo"
+                        control={control}
+                        render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger className={filterControlClass}>
+                              <SelectValue placeholder="All Task Companies" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
+                              {fillValues?.taskCompany?.map(c => (
+                                <SelectItem key={c.OperTaskCompanyNo} value={c.OperTaskCompanyNo.toString()}>
+                                  {(c.TaskCompanyAlias && c.TaskCompanyName) ? `${c.TaskCompanyAlias} - ${c.TaskCompanyName}` : (c.AliasName && c.CompanyName ? `${c.AliasName} - ${c.CompanyName}` : (c.AliasName || c.CompanyName || c.TaskCompanyAlias || c.TaskCompanyName || 'Unknown'))}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -1031,8 +1067,10 @@ export function TaskFilter({
             const s = fillValues?.status?.find(st =>
               st.Status === statusName ||
               st.Status.toLowerCase() === statusName.toLowerCase() ||
-              (statusName === 'In-Progress' && st.Status === 'In-Progess') ||
-              (statusName === 'In-Progress' && st.Status === 'In Progress')
+              (statusName === 'In-Progress' && (st.Status === 'In-Progess' || st.Status === 'In Progress')) ||
+              (statusName === 'Close' && st.Status === 'Closed') ||
+              (statusName === 'Completed' && st.Status === 'Complete') ||
+              (statusName === 'Hold' && st.Status === 'On Hold')
             );
 
             const count = (() => {
@@ -1208,6 +1246,20 @@ export function TaskFilter({
                       render={({ field }) => (
                         <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.location || []).filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location }))}
                           placeholder="All Locations"
+                          className={cn(filterControlClass, FIELD_TEXT_STYLE)}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-1 min-w-0">
+                    <FilterFieldLabel icon={Layers}>Task Company</FilterFieldLabel>
+                    <Controller
+                      name="operTaskCompanyNo"
+                      control={control}
+                      render={({ field }) => (
+                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.taskCompany || []).map(c => ({ value: c.OperTaskCompanyNo.toString(), label: (c.TaskCompanyAlias && c.TaskCompanyName) ? `${c.TaskCompanyAlias} - ${c.TaskCompanyName}` : (c.AliasName && c.CompanyName ? `${c.AliasName} - ${c.CompanyName}` : (c.AliasName || c.CompanyName || c.TaskCompanyAlias || c.TaskCompanyName || 'Unknown')) }))}
+                          placeholder="All Task Companies"
                           className={cn(filterControlClass, FIELD_TEXT_STYLE)}
                         />
                       )}

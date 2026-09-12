@@ -16,6 +16,7 @@ export interface FilterParams {
   ownerLoginNo?: number;
   fromDueDate?: string;
   toDueDate?: string;
+  operTaskCompanyNo?: number;
   companyNo?: number;
   folderNo?: number;
   isAllFolder?: boolean;
@@ -211,12 +212,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       // Instead of sending title to backend, we'll use it for local keyword filtering across all columns
       // if (searchParamsCamel.title !== undefined) searchParamsPascal.Title = searchParamsCamel.title;
       if (searchParamsCamel.operTaskCategoryNo !== undefined) searchParamsPascal.OperTaskCategoryNo = Number(searchParamsCamel.operTaskCategoryNo);
+      if (searchParamsCamel.operTaskCompanyNo !== undefined) searchParamsPascal.OperTaskCompanyNo = Number(searchParamsCamel.operTaskCompanyNo);
       if (searchParamsCamel.operTaskPriorityNo !== undefined) searchParamsPascal.OperTaskPriorityNo = Number(searchParamsCamel.operTaskPriorityNo);
 
       const rawStatusNo = searchParamsCamel.operTaskStatusNo;
       const statusNoStr = typeof rawStatusNo === 'string' ? rawStatusNo : (rawStatusNo !== undefined && rawStatusNo !== null ? String(rawStatusNo) : undefined);
       const isPendingGroup = statusNoStr === 'PendingGroup';
-      const isMultiStatus = statusNoStr !== undefined && statusNoStr.includes(',');
+      const isMultiStatus = statusNoStr !== undefined && (statusNoStr.includes(',') || isNaN(Number(statusNoStr)));
 
       if (!isPendingGroup && !isMultiStatus && statusNoStr !== undefined && statusNoStr !== '') {
         searchParamsPascal.OperTaskStatusNo = Number(statusNoStr);
@@ -295,8 +297,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         owner_user_No: item.assignedTo?.id || null,
         location_No: item.location?.operTaskLocationNo || null,
         locationName: item.location?.locationName || undefined,
-        company: item.taskCompany?.taskCompanyNo || item.company || undefined,
-        companyName: item.taskCompany?.taskCompanyAlias || item.taskCompany?.taskCompanyName || item.company || undefined,
+        company: item.taskCompany?.taskCompanyNo || item.taskCompanyNo || item.company || undefined,
+        companyName: item.taskCompany?.taskCompanyAlias || item.taskCompany?.taskCompanyName || item.taskCompanyName || item.company || undefined,
         status_No: item.status?.operTaskStatusNo || null,
         status: item.status?.statusName || 'Todo',
         priority: item.priority?.priorityName || 'Low',
@@ -324,11 +326,22 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
         // Apply PendingGroup filter locally if requested
         if (isPendingGroup) {
-          const pendingStatuses = ['Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
+          const pendingStatuses = ['Assigned', 'Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
           mappedTasks = mappedTasks.filter(task => pendingStatuses.includes(task.status));
         } else if (isMultiStatus) {
-          const selectedStatusIds = statusNoStr!.split(',').map(Number);
-          mappedTasks = mappedTasks.filter(task => task.status_No !== null && selectedStatusIds.includes(task.status_No));
+          const statusStrs = statusNoStr!.split(',');
+          const selectedStatusIds = statusStrs.map(Number).filter(n => !isNaN(n));
+          mappedTasks = mappedTasks.filter(task => {
+            return (task.status_No !== null && selectedStatusIds.includes(task.status_No)) ||
+                   statusStrs.includes(task.status) ||
+                   statusStrs.includes(task.status.toLowerCase());
+          });
+        }
+
+        // Apply local Company filter because backend might not filter it
+        if (searchParamsCamel.operTaskCompanyNo !== undefined && searchParamsCamel.operTaskCompanyNo !== '') {
+          const targetCompanyNo = Number(searchParamsCamel.operTaskCompanyNo);
+          mappedTasks = mappedTasks.filter(task => Number(task.company) === targetCompanyNo);
         }
 
         // Apply current search keyword if any

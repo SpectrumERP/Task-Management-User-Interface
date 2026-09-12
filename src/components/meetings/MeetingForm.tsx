@@ -555,255 +555,255 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         <div className="w-full mx-auto p-4">
           <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))} className="space-y-3">
 
-              {/* SECTION 1: Basic Information */}
-              <FormSection
-                title="Meeting Detail"
-                icon={Clock}
-                tourId="meeting-form-detail"
-                headerAction={
+            {/* SECTION 1: Basic Information */}
+            <FormSection
+              title="Meeting Detail"
+              icon={Clock}
+              tourId="meeting-form-detail"
+              headerAction={
+                <Controller
+                  control={form.control}
+                  name="documentStatusNo"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(val) => field.onChange(parseInt(val))}
+                    >
+                      <SelectTrigger className="h-9 rounded-[8px] bg-[var(--tm-surface)] border-[var(--tm-border)]/80 text-xs w-[140px] font-medium">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {documentStatuses?.map(status => (
+                          <SelectItem key={status.documentStatusNo} value={status.documentStatusNo.toString()}>
+                            {status.documentStatusName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              }
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-4">
+                <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
+                  <FieldLabel required>Meeting Title</FieldLabel>
+                  <FieldControl error={form.formState.errors.meetingTitle?.message}>
+                    <Input {...form.register('meetingTitle')} placeholder="e.g. Weekly Sync with Client" className={cn("h-10 rounded-[8px]", form.formState.errors.meetingTitle && "border-red-400")} />
+                  </FieldControl>
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel required>Meeting Category</FieldLabel>
                   <Controller
                     control={form.control}
-                    name="documentStatusNo"
+                    name="meetingCategoryNo"
                     render={({ field }) => (
-                      <Select
-                        value={field.value?.toString()}
-                        onValueChange={(val) => field.onChange(parseInt(val))}
-                      >
-                        <SelectTrigger className="h-9 rounded-[8px] bg-[var(--tm-surface)] border-[var(--tm-border)]/80 text-xs w-[140px] font-medium">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {documentStatuses?.map(status => (
-                            <SelectItem key={status.documentStatusNo} value={status.documentStatusNo.toString()}>
-                              {status.documentStatusName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FieldControl error={form.formState.errors.meetingCategoryNo?.message}>
+                        <Combobox className={cn("rounded-[8px] h-10 w-full", form.formState.errors.meetingCategoryNo && "border-red-400")}
+                          options={meetingCategories.map(c => ({ value: (c.id || c.meetingCategoryNo).toString(), label: c.name || c.meetingCategoryName }))}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select Category"
+                          onAddNew={() => setCategoryModalOpen(true)}
+                          addNewLabel="Add Category"
+                        />
+                      </FieldControl>
                     )}
                   />
-                }
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-4">
-                  <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
-                    <FieldLabel required>Meeting Title</FieldLabel>
-                    <FieldControl error={form.formState.errors.meetingTitle?.message}>
-                      <Input {...form.register('meetingTitle')} placeholder="e.g. Weekly Sync with Client" className={cn("h-10 rounded-[8px]", form.formState.errors.meetingTitle && "border-red-400")} />
-                    </FieldControl>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <FieldLabel required>Meeting Category</FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="meetingCategoryNo"
-                      render={({ field }) => (
-                        <FieldControl error={form.formState.errors.meetingCategoryNo?.message}>
-                          <Combobox className={cn("rounded-[8px] h-10 w-full", form.formState.errors.meetingCategoryNo && "border-red-400")}
-                            options={meetingCategories.map(c => ({ value: (c.id || c.meetingCategoryNo).toString(), label: c.name || c.meetingCategoryName }))}
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Select Category"
-                            onAddNew={() => setCategoryModalOpen(true)}
-                            addNewLabel="Add Category"
-                          />
-                        </FieldControl>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <FieldLabel required>Meeting Type</FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="meetingTypeNo"
-                      render={({ field }) => (
-                        <FieldControl error={form.formState.errors.meetingTypeNo?.message}>
-                          <Combobox className={cn("rounded-[8px] h-10 w-full", form.formState.errors.meetingTypeNo && "border-red-400")}
-                            options={meetingTypes.map(t => ({ value: (t.id || t.meetingTypeNo).toString(), label: t.name || t.meetingTypeName }))}
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Select Type"
-                            onAddNew={() => setTypeModalOpen(true)}
-                            addNewLabel="Add Type"
-                          />
-                        </FieldControl>
-                      )}
-                    />
-                  </div>
-
-
-                  <div className="space-y-1.5">
-                    <FieldLabel required>Company</FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="companyNo"
-                      render={({ field }) => (
-                        <FieldControl error={form.formState.errors.companyNo?.message}>
-                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.companyNo && "border-red-400")}
-                            options={taskFillValues?.taskCompany?.map(c => ({ value: c.CompanyNo?.toString() || c.companyNo?.toString() || c.OperTaskCompanyNo?.toString() || '', label: c.AliasName || c.companyName || c.name || c.AliasName || c.Code || 'Unknown Company' })) || []}
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Select Company"
-                          />
-                        </FieldControl>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <FieldLabel required>Location</FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="operLocationNo"
-                      render={({ field }) => (
-                        <FieldControl error={form.formState.errors.operLocationNo?.message}>
-                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.operLocationNo && "border-red-400")}
-                            options={taskFillValues?.location?.filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location })) || []}
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Select Location"
-                          />
-                        </FieldControl>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <FieldLabel required>Meeting Mode</FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="meetingModeNo"
-                      render={({ field }) => (
-                        <FieldControl error={form.formState.errors.meetingModeNo?.message}>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className={cn("h-10 rounded-[8px]", form.formState.errors.meetingModeNo && "border-red-400")}><SelectValue placeholder="Select Mode" /></SelectTrigger>
-                            <SelectContent>
-                              {meetingModes.map(m => (
-                                <SelectItem key={m.meetingModeNo} value={m.meetingModeNo.toString()}>{m.meetingModeName}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FieldControl>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <FieldLabel required>Start Date & Time</FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="meetingStartDateTime"
-                      render={({ field }) => (
-                        <FieldControl error={form.formState.errors.meetingStartDateTime?.message}>
-                          <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
-                        </FieldControl>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <FieldLabel required>End Date & Time</FieldLabel>
-                    <Controller
-                      control={form.control}
-                      name="meetingEndDateTime"
-                      render={({ field }) => (
-                        <FieldControl error={form.formState.errors.meetingEndDateTime?.message}>
-                          <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
-                        </FieldControl>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-medium text-slate-300">Meeting Duration (In Minutes)</label>
-                    <Input value={form.watch('durationMinutes') || 0} readOnly placeholder="0" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500 text-right" />
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
-                    <label className="text-[11px] font-medium text-slate-300">Meeting Link (URL)</label>
-                    <FieldControl error={form.formState.errors.meetingMinutesUrl?.message}>
-                      <Input {...form.register('meetingMinutesUrl')} placeholder="https://..." className={cn("h-10 rounded-[8px]", form.formState.errors.meetingMinutesUrl && "border-red-400")} />
-                    </FieldControl>
-                  </div>
                 </div>
-              </FormSection>
 
-              {/* SECTION 2: Participants */}
-              <FormSection
-                title="Participants"
-                icon={Users}
-                tourId="meeting-form-participants"
-                headerAction={
-                  <Button type="button" onClick={() => appendParticipant({ participantType: 1 })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
-                    <Plus size={14} className="mr-1" /> Add Participant
-                  </Button>
-                }
-              >
-                {participantFields.length === 0 ? (
-                  <FieldControl
-                    className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center"
-                    error={
-                      (form.formState.errors.participants?.message ||
-                        form.formState.errors.participants?.root?.message) as
-                        | string
-                        | undefined
-                    }
-                  >
-                    <p className="text-xs text-slate-500 font-medium">
-                      No participants added yet.
-                    </p>
+                <div className="space-y-1.5">
+                  <FieldLabel required>Meeting Type</FieldLabel>
+                  <Controller
+                    control={form.control}
+                    name="meetingTypeNo"
+                    render={({ field }) => (
+                      <FieldControl error={form.formState.errors.meetingTypeNo?.message}>
+                        <Combobox className={cn("rounded-[8px] h-10 w-full", form.formState.errors.meetingTypeNo && "border-red-400")}
+                          options={meetingTypes.map(t => ({ value: (t.id || t.meetingTypeNo).toString(), label: t.name || t.meetingTypeName }))}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select Type"
+                          onAddNew={() => setTypeModalOpen(true)}
+                          addNewLabel="Add Type"
+                        />
+                      </FieldControl>
+                    )}
+                  />
+                </div>
+
+
+                <div className="space-y-1.5">
+                  <FieldLabel required>Company</FieldLabel>
+                  <Controller
+                    control={form.control}
+                    name="companyNo"
+                    render={({ field }) => (
+                      <FieldControl error={form.formState.errors.companyNo?.message}>
+                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.companyNo && "border-red-400")}
+                          options={taskFillValues?.taskCompany?.map(c => ({ value: c.CompanyNo?.toString() || c.companyNo?.toString() || c.OperTaskCompanyNo?.toString() || '', label: c.TaskCompanyName || c.CompanyName || c.companyName || c.name || c.AliasName || c.Code || 'Unknown Company' })) || []}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select Company"
+                        />
+                      </FieldControl>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel required>Location</FieldLabel>
+                  <Controller
+                    control={form.control}
+                    name="operLocationNo"
+                    render={({ field }) => (
+                      <FieldControl error={form.formState.errors.operLocationNo?.message}>
+                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.operLocationNo && "border-red-400")}
+                          options={taskFillValues?.location?.filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location })) || []}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select Location"
+                        />
+                      </FieldControl>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel required>Meeting Mode</FieldLabel>
+                  <Controller
+                    control={form.control}
+                    name="meetingModeNo"
+                    render={({ field }) => (
+                      <FieldControl error={form.formState.errors.meetingModeNo?.message}>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className={cn("h-10 rounded-[8px]", form.formState.errors.meetingModeNo && "border-red-400")}><SelectValue placeholder="Select Mode" /></SelectTrigger>
+                          <SelectContent>
+                            {meetingModes.map(m => (
+                              <SelectItem key={m.meetingModeNo} value={m.meetingModeNo.toString()}>{m.meetingModeName}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FieldControl>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel required>Start Date & Time</FieldLabel>
+                  <Controller
+                    control={form.control}
+                    name="meetingStartDateTime"
+                    render={({ field }) => (
+                      <FieldControl error={form.formState.errors.meetingStartDateTime?.message}>
+                        <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                      </FieldControl>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel required>End Date & Time</FieldLabel>
+                  <Controller
+                    control={form.control}
+                    name="meetingEndDateTime"
+                    render={({ field }) => (
+                      <FieldControl error={form.formState.errors.meetingEndDateTime?.message}>
+                        <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                      </FieldControl>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-slate-300">Meeting Duration (In Minutes)</label>
+                  <Input value={form.watch('durationMinutes') || 0} readOnly placeholder="0" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500 text-right" />
+                </div>
+
+                <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
+                  <label className="text-[11px] font-medium text-slate-300">Meeting Link (URL)</label>
+                  <FieldControl error={form.formState.errors.meetingMinutesUrl?.message}>
+                    <Input {...form.register('meetingMinutesUrl')} placeholder="https://..." className={cn("h-10 rounded-[8px]", form.formState.errors.meetingMinutesUrl && "border-red-400")} />
                   </FieldControl>
-                ) : (
-                  <div className="space-y-3">
-                    {participantFields.map((field, index) => {
-                      const participantType = form.watch(`participants.${index}.participantType`);
-                      const participantName = form.watch(`participants.${index}.participantName`);
-                      const participantEmail = form.watch(`participants.${index}.email`);
-                      const summaryName = (participantName || '').trim();
-                      const summaryEmail = (participantEmail || '').trim();
-                      const TypeIcon =
-                        participantType === 2 ? IdCard :
-                        participantType === 3 ? UserPlus :
-                        participantType === 4 ? Building2 :
-                        UserRound;
-                      return (
-                        <div
-                          key={field.id}
-                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                        >
-                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                              {index + 1}
-                            </span>
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
-                              <TypeIcon size={14} strokeWidth={1.75} />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              {summaryName ? (
-                                <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{summaryName}</p>
-                              ) : null}
-                              {summaryEmail ? (
-                                <p className="text-[11px] text-slate-400 truncate mt-0.5">{summaryEmail}</p>
-                              ) : null}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                requestRemoveItem(
-                                  'participant',
-                                  index,
-                                  summaryName || `Participant ${index + 1}`
-                                )
-                              }
-                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                              title="Remove participant"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                </div>
+              </div>
+            </FormSection>
 
-                          <div className="p-4">
+            {/* SECTION 2: Participants */}
+            <FormSection
+              title="Participants"
+              icon={Users}
+              tourId="meeting-form-participants"
+              headerAction={
+                <Button type="button" onClick={() => appendParticipant({ participantType: 1 })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                  <Plus size={14} className="mr-1" /> Add Participant
+                </Button>
+              }
+            >
+              {participantFields.length === 0 ? (
+                <FieldControl
+                  className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center"
+                  error={
+                    (form.formState.errors.participants?.message ||
+                      form.formState.errors.participants?.root?.message) as
+                    | string
+                    | undefined
+                  }
+                >
+                  <p className="text-xs text-slate-500 font-medium">
+                    No participants added yet.
+                  </p>
+                </FieldControl>
+              ) : (
+                <div className="space-y-3">
+                  {participantFields.map((field, index) => {
+                    const participantType = form.watch(`participants.${index}.participantType`);
+                    const participantName = form.watch(`participants.${index}.participantName`);
+                    const participantEmail = form.watch(`participants.${index}.email`);
+                    const summaryName = (participantName || '').trim();
+                    const summaryEmail = (participantEmail || '').trim();
+                    const TypeIcon =
+                      participantType === 2 ? IdCard :
+                        participantType === 3 ? UserPlus :
+                          participantType === 4 ? Building2 :
+                            UserRound;
+                    return (
+                      <div
+                        key={field.id}
+                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                      >
+                        <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                            {index + 1}
+                          </span>
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
+                            <TypeIcon size={14} strokeWidth={1.75} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            {summaryName ? (
+                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{summaryName}</p>
+                            ) : null}
+                            {summaryEmail ? (
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{summaryEmail}</p>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              requestRemoveItem(
+                                'participant',
+                                index,
+                                summaryName || `Participant ${index + 1}`
+                              )
+                            }
+                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                            title="Remove participant"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+
+                        <div className="p-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
 
                             {/* Participant Type — first field in the form row */}
@@ -994,425 +994,411 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                               </>
                             )}
                           </div>
-                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </FormSection>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </FormSection>
 
-              {/* SECTION 4: Discussions & Action Items */}
-              <FormSection
-                title="Discussions & Outcomes"
-                icon={MessageSquare}
-                tourId="meeting-form-discussions"
-                headerAction={
-                  <Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
-                    <Plus size={14} className="mr-1" /> Add Discussion Point
-                  </Button>
-                }
-              >
-                {discussionFields.length === 0 ? (
-                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
-                    <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {discussionFields.map((field, index) => {
-                      const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
-                      const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
-                      return (
-                        <div
-                          key={field.id}
-                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                        >
-                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                              {index + 1}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
-                                {topicValue || 'Discussion point'}
-                              </p>
-                              {isActionRequired ? (
-                                <p className="text-[11px] text-[#0EA5E9] font-medium mt-0.5">Action required</p>
-                              ) : (
-                                <p className="text-[11px] text-slate-400 mt-0.5">Discussion only</p>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                requestRemoveItem(
-                                  'discussion',
-                                  index,
-                                  topicValue || `Discussion ${index + 1}`
-                                )
-                              }
-                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                              title="Remove discussion"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+            {/* SECTION 4: Discussions & Action Items */}
+            <FormSection
+              title="Discussions & Outcomes"
+              icon={MessageSquare}
+              tourId="meeting-form-discussions"
+              headerAction={
+                <Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                  <Plus size={14} className="mr-1" /> Add Discussion Point
+                </Button>
+              }
+            >
+              {discussionFields.length === 0 ? (
+                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                  <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {discussionFields.map((field, index) => {
+                    const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
+                    const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
+                    return (
+                      <div
+                        key={field.id}
+                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                      >
+                        <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
+                              {topicValue || 'Discussion point'}
+                            </p>
+                            {isActionRequired ? (
+                              <p className="text-[11px] text-[#0EA5E9] font-medium mt-0.5">Action required</p>
+                            ) : (
+                              <p className="text-[11px] text-slate-400 mt-0.5">Discussion only</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              requestRemoveItem(
+                                'discussion',
+                                index,
+                                topicValue || `Discussion ${index + 1}`
+                              )
+                            }
+                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                            title="Remove discussion"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                          <div className="space-y-1">
+                            <FieldLabel required>Topic / Agenda</FieldLabel>
+                            <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
+                              <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-10 rounded-[8px] text-xs font-medium bg-[var(--tm-surface)]", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
+                            </FieldControl>
                           </div>
 
-                          <div className="p-4 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                              <FieldLabel required>Topic / Agenda</FieldLabel>
-                              <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
-                                <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-10 rounded-[8px] text-xs font-medium bg-[var(--tm-surface)]", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
-                              </FieldControl>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <label className="text-[11px] font-medium text-slate-300">Discussion Summary</label>
-                                  <span className="text-[10px] text-slate-400 tabular-nums">
-                                    {(form.watch(`discussions.${index}.discussionSummary`) || '').length}/700
-                                  </span>
-                                </div>
-                                <Controller
-                                  control={form.control}
-                                  name={`discussions.${index}.discussionSummary`}
-                                  render={({ field }) => (
-                                    <Textarea
-                                      value={field.value || ''}
-                                      onChange={field.onChange}
-                                      placeholder="Details..."
-                                      maxLength={700}
-                                      className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
-                                    />
-                                  )}
-                                />
+                              <div className="flex items-center justify-between gap-2">
+                                <label className="text-[11px] font-medium text-slate-300">Discussion Summary</label>
+                                <span className="text-[10px] text-slate-400 tabular-nums">
+                                  {(form.watch(`discussions.${index}.discussionSummary`) || '').length}/700
+                                </span>
                               </div>
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <label className="text-[11px] font-medium text-slate-300">Decision Remarks</label>
-                                  <span className="text-[10px] text-slate-400 tabular-nums">
-                                    {(form.watch(`discussions.${index}.decisionRemarks`) || '').length}/300
-                                  </span>
-                                </div>
-                                <Controller
-                                  control={form.control}
-                                  name={`discussions.${index}.decisionRemarks`}
-                                  render={({ field }) => (
-                                    <Textarea
-                                      value={field.value || ''}
-                                      onChange={field.onChange}
-                                      placeholder="Final decision..."
-                                      maxLength={300}
-                                      className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
-                                    />
-                                  )}
-                                />
-                              </div>
+                              <Controller
+                                control={form.control}
+                                name={`discussions.${index}.discussionSummary`}
+                                render={({ field }) => (
+                                  <Textarea
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                    placeholder="Details..."
+                                    maxLength={700}
+                                    className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
+                                  />
+                                )}
+                              />
                             </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <label className="text-[11px] font-medium text-slate-300">Decision Remarks</label>
+                                <span className="text-[10px] text-slate-400 tabular-nums">
+                                  {(form.watch(`discussions.${index}.decisionRemarks`) || '').length}/300
+                                </span>
+                              </div>
+                              <Controller
+                                control={form.control}
+                                name={`discussions.${index}.decisionRemarks`}
+                                render={({ field }) => (
+                                  <Textarea
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                    placeholder="Final decision..."
+                                    maxLength={300}
+                                    className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
+                                  />
+                                )}
+                              />
+                            </div>
+                          </div>
 
-                            <Controller
-                              control={form.control}
-                              name={`discussions.${index}.isActionRequired`}
-                              render={({ field }) => (
-                                <div
-                                  className={cn(
-                                    'w-full flex items-center gap-3 rounded-[10px] border px-3.5 py-3 transition-all duration-200',
-                                    field.value
-                                      ? 'border-[#0EA5E9]/30 bg-gradient-to-r from-[var(--tm-tint)] via-[#f3f9fc] to-[var(--tm-surface)] shadow-[0_8px_20px_-12px_rgba(14,165,233,0.35)]'
-                                      : 'border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]'
-                                  )}
+                          <Controller
+                            control={form.control}
+                            name={`discussions.${index}.isActionRequired`}
+                            render={({ field }) => (
+                              <div
+                                className={cn(
+                                  'w-full flex items-center gap-3 rounded-[10px] border px-3.5 py-3 transition-all duration-200',
+                                  field.value
+                                    ? 'border-[#0EA5E9]/30 bg-gradient-to-r from-[var(--tm-tint)] via-[#f3f9fc] to-[var(--tm-surface)] shadow-[0_8px_20px_-12px_rgba(14,165,233,0.35)]'
+                                    : 'border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]'
+                                )}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className={cn(
+                                    'text-[12px] font-semibold leading-tight transition-colors',
+                                    field.value ? 'text-[#0284C7]' : 'text-slate-200'
+                                  )}>
+                                    Action required
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                    Create a follow-up task from this discussion
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  id={`action-${index}`}
+                                  role="switch"
+                                  aria-checked={!!field.value}
+                                  aria-label="Action required"
+                                  onClick={() => field.onChange(!field.value)}
+                                  className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
                                 >
-                                  <div className="min-w-0 flex-1">
-                                    <p className={cn(
-                                      'text-[12px] font-semibold leading-tight transition-colors',
-                                      field.value ? 'text-[#0284C7]' : 'text-slate-200'
-                                    )}>
-                                      Action required
-                                    </p>
-                                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                                      Create a follow-up task from this discussion
-                                    </p>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    id={`action-${index}`}
-                                    role="switch"
-                                    aria-checked={!!field.value}
-                                    aria-label="Action required"
-                                    onClick={() => field.onChange(!field.value)}
-                                    className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
+                                  <span
+                                    className={cn(
+                                      'text-[10px] font-semibold tracking-wide transition-colors',
+                                      field.value ? 'text-[#0EA5E9]' : 'text-slate-400'
+                                    )}
+                                  >
+                                    {field.value ? 'ON' : 'OFF'}
+                                  </span>
+                                  <span
+                                    aria-hidden
+                                    className={cn(
+                                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
+                                      field.value
+                                        ? 'bg-[#0EA5E9] shadow-[inset_0_0_0_1px_rgba(14,165,233,0.2)]'
+                                        : 'bg-slate-200'
+                                    )}
                                   >
                                     <span
                                       className={cn(
-                                        'text-[10px] font-semibold tracking-wide transition-colors',
-                                        field.value ? 'text-[#0EA5E9]' : 'text-slate-400'
+                                        'absolute h-5 w-5 rounded-full bg-[var(--tm-surface)] shadow-[0_1px_3px_rgba(15,23,42,0.25)] transition-transform duration-200',
+                                        field.value ? 'translate-x-[22px]' : 'translate-x-[2px]'
                                       )}
-                                    >
-                                      {field.value ? 'ON' : 'OFF'}
-                                    </span>
-                                    <span
-                                      aria-hidden
-                                      className={cn(
-                                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
-                                        field.value
-                                          ? 'bg-[#0EA5E9] shadow-[inset_0_0_0_1px_rgba(14,165,233,0.2)]'
-                                          : 'bg-slate-200'
-                                      )}
-                                    >
-                                      <span
-                                        className={cn(
-                                          'absolute h-5 w-5 rounded-full bg-[var(--tm-surface)] shadow-[0_1px_3px_rgba(15,23,42,0.25)] transition-transform duration-200',
-                                          field.value ? 'translate-x-[22px]' : 'translate-x-[2px]'
-                                        )}
-                                      />
-                                    </span>
-                                  </button>
-                                </div>
-                              )}
-                            />
+                                    />
+                                  </span>
+                                </button>
+                              </div>
+                            )}
+                          />
 
-                            {isActionRequired && (
-                              <div className="rounded-[8px] border border-[#d7e8f2] bg-[var(--tm-elevated)] p-3 space-y-3">
-                                <p className="text-[11px] font-semibold text-[#0EA5E9] uppercase tracking-wide">Task details</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                                  <div className="space-y-1">
-                                    <FieldLabel required>Task Category</FieldLabel>
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.operTaskCategoryNo`}
-                                        render={({ field }) => (
-                                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
-                                            options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: cleanMasterLabel(c.Category) })) || []}
-                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                            onChange={(val) => field.onChange(toOptionalInt(val))}
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <FieldLabel required>Task Type</FieldLabel>
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.operTaskTypeNo`}
-                                        render={({ field }) => (
-                                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
-                                            options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: cleanMasterLabel(c["Task Type"]) })) || []}
-                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                            onChange={(val) => field.onChange(toOptionalInt(val))}
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <FieldLabel required>Priority</FieldLabel>
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.operTaskPriorityNo`}
-                                        render={({ field }) => (
-                                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
-                                            options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
-                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                            onChange={(val) => field.onChange(toOptionalInt(val))}
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-slate-300">Folder</label>
+                          {isActionRequired && (
+                            <div className="rounded-[8px] border border-[#d7e8f2] bg-[var(--tm-elevated)] p-3 space-y-3">
+                              <p className="text-[11px] font-semibold text-[#0EA5E9] uppercase tracking-wide">Task details</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                                <div className="space-y-1">
+                                  <FieldLabel required>Task Category</FieldLabel>
+                                  <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
                                     <Controller
                                       control={form.control}
-                                      name={`discussions.${index}.taskFolderNo`}
+                                      name={`discussions.${index}.operTaskCategoryNo`}
                                       render={({ field }) => (
-                                        <Combobox className="rounded-[8px] h-10"
-                                          options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
+                                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
+                                          options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: cleanMasterLabel(c.Category) })) || []}
                                           value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
                                           onChange={(val) => field.onChange(toOptionalInt(val))}
                                         />
                                       )}
                                     />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-slate-300">Task Assign By</label>
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.actionTaskOriginatorNo`}
-                                        render={({ field }) => (
-                                          <UserCombobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
-                                            value={field.value?.toString() || ''}
-                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <FieldLabel required>Assign Task To</FieldLabel>
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.actionTaskOwnerNo`}
-                                        render={({ field }) => (
-                                          <UserCombobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
-                                            value={field.value?.toString() || ''}
-                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </div>
-                                  <div className="space-y-1 w-full min-w-0">
-                                    <FieldLabel required>Due Date & Time</FieldLabel>
-                                    <FieldControl
-                                      className="w-full"
-                                      error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}
-                                    >
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.actionDueDate`}
-                                        render={({ field }) => (
-                                          <DateTimePicker
-                                            className={cn(
-                                              "w-full rounded-[8px]",
-                                              form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400"
-                                            )}
-                                            date={field.value ? new Date(field.value) : undefined}
-                                            onChange={(d) => field.onChange(d ? d.toISOString() : '')}
-                                            placeholder="Pick a date and time"
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </div>
+                                  </FieldControl>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </FormSection>
-
-              {/* SECTION 3: Document Details */}
-              <FormSection
-                title="Document Details"
-                icon={FileText}
-                headerAction={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 rounded-[8px] border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] font-medium text-xs px-3"
-                    onClick={() => appendDocument({ documentType: 0, documentNo: 0 })}
-                  >
-                    <Plus size={14} className="mr-1.5" />
-                    Add Document
-                  </Button>
-                }
-              >
-                {documentFields.length === 0 ? (
-                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
-                    <p className="text-xs text-slate-500 font-medium">No documents added yet.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {documentFields.map((field, index) => {
-                      const docType = form.watch(`documents.${index}.documentType`);
-                      const selectedDocTypeObj =
-                        docType && Number(docType) > 0
-                          ? meetingDocumentTypes.find((d) => d.documentTypeNo === docType)
-                          : undefined;
-                      const docNoYearly = form.watch(`documents.${index}.documentNoYearly`);
-                      const typeName = selectedDocTypeObj?.documentName || '';
-                      const summaryLabel = (docNoYearly || '').trim() || typeName;
-
-                      return (
-                        <div
-                          key={field.id}
-                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                        >
-                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)] rounded-t-[8px]">
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                              {index + 1}
-                            </span>
-                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
-                              <FileText size={14} strokeWidth={1.75} />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              {summaryLabel ? (
-                                <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
-                                  {summaryLabel}
-                                </p>
-                              ) : (
-                                <p className="text-[13px] font-medium text-slate-400 truncate leading-tight">
-                                  Document {index + 1}
-                                </p>
-                              )}
-                              {typeName && docNoYearly ? (
-                                <p className="text-[11px] text-slate-400 truncate mt-0.5">{typeName}</p>
-                              ) : null}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                requestRemoveItem(
-                                  'document',
-                                  index,
-                                  summaryLabel || `Document ${index + 1}`
-                                )
-                              }
-                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                              title="Remove document"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-
-                          <div className="p-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <FieldLabel required>Document Name</FieldLabel>
-                                <FieldControl
-                                  error={
-                                    form.formState.errors.documents?.[index]?.documentType?.message
-                                  }
-                                >
+                                <div className="space-y-1">
+                                  <FieldLabel required>Task Type</FieldLabel>
+                                  <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
+                                    <Controller
+                                      control={form.control}
+                                      name={`discussions.${index}.operTaskTypeNo`}
+                                      render={({ field }) => (
+                                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
+                                          options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: cleanMasterLabel(c["Task Type"]) })) || []}
+                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                          onChange={(val) => field.onChange(toOptionalInt(val))}
+                                        />
+                                      )}
+                                    />
+                                  </FieldControl>
+                                </div>
+                                <div className="space-y-1">
+                                  <FieldLabel required>Priority</FieldLabel>
+                                  <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
+                                    <Controller
+                                      control={form.control}
+                                      name={`discussions.${index}.operTaskPriorityNo`}
+                                      render={({ field }) => (
+                                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
+                                          options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
+                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                          onChange={(val) => field.onChange(toOptionalInt(val))}
+                                        />
+                                      )}
+                                    />
+                                  </FieldControl>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-medium text-slate-300">Folder</label>
                                   <Controller
                                     control={form.control}
-                                    name={`documents.${index}.documentType`}
-                                    render={({ field: typeField }) => {
-                                      const selectedType =
-                                        typeField.value && Number(typeField.value) > 0
-                                          ? String(typeField.value)
-                                          : '__none__';
-                                      return (
-                                        <Select
-                                          value={selectedType}
-                                          onValueChange={(val) => {
-                                            if (val === '__none__') {
-                                              typeField.onChange(0);
-                                              form.setValue(`documents.${index}.documentNo`, 0);
-                                              form.setValue(
-                                                `documents.${index}.documentNoYearly`,
-                                                ''
-                                              );
-                                              void form.trigger(
-                                                `documents.${index}.documentType`
-                                              );
-                                              void form.trigger(
-                                                `documents.${index}.documentNo`
-                                              );
-                                              return;
-                                            }
-                                            typeField.onChange(parseInt(val, 10));
+                                    name={`discussions.${index}.taskFolderNo`}
+                                    render={({ field }) => (
+                                      <Combobox className="rounded-[8px] h-10"
+                                        options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
+                                        value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                        onChange={(val) => field.onChange(toOptionalInt(val))}
+                                      />
+                                    )}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-medium text-slate-300">Task Assign By</label>
+                                  <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
+                                    <Controller
+                                      control={form.control}
+                                      name={`discussions.${index}.actionTaskOriginatorNo`}
+                                      render={({ field }) => (
+                                        <UserCombobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
+                                          value={field.value?.toString() || ''}
+                                          onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                        />
+                                      )}
+                                    />
+                                  </FieldControl>
+                                </div>
+                                <div className="space-y-1">
+                                  <FieldLabel required>Assign Task To</FieldLabel>
+                                  <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
+                                    <Controller
+                                      control={form.control}
+                                      name={`discussions.${index}.actionTaskOwnerNo`}
+                                      render={({ field }) => (
+                                        <UserCombobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
+                                          value={field.value?.toString() || ''}
+                                          onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                        />
+                                      )}
+                                    />
+                                  </FieldControl>
+                                </div>
+                                <div className="space-y-1 w-full min-w-0">
+                                  <FieldLabel required>Due Date & Time</FieldLabel>
+                                  <FieldControl
+                                    className="w-full"
+                                    error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}
+                                  >
+                                    <Controller
+                                      control={form.control}
+                                      name={`discussions.${index}.actionDueDate`}
+                                      render={({ field }) => (
+                                        <DateTimePicker
+                                          className={cn(
+                                            "w-full rounded-[8px]",
+                                            form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400"
+                                          )}
+                                          date={field.value ? new Date(field.value) : undefined}
+                                          onChange={(d) => field.onChange(d ? d.toISOString() : '')}
+                                          placeholder="Pick a date and time"
+                                        />
+                                      )}
+                                    />
+                                  </FieldControl>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </FormSection>
+
+            {/* SECTION 3: Document Details */}
+            <FormSection
+              title="Document Details"
+              icon={FileText}
+              headerAction={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-[8px] border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] font-medium text-xs px-3"
+                  onClick={() => appendDocument({ documentType: 0, documentNo: 0 })}
+                >
+                  <Plus size={14} className="mr-1.5" />
+                  Add Document
+                </Button>
+              }
+            >
+              {documentFields.length === 0 ? (
+                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                  <p className="text-xs text-slate-500 font-medium">No documents added yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {documentFields.map((field, index) => {
+                    const docType = form.watch(`documents.${index}.documentType`);
+                    const selectedDocTypeObj =
+                      docType && Number(docType) > 0
+                        ? meetingDocumentTypes.find((d) => d.documentTypeNo === docType)
+                        : undefined;
+                    const docNoYearly = form.watch(`documents.${index}.documentNoYearly`);
+                    const typeName = selectedDocTypeObj?.documentName || '';
+                    const summaryLabel = (docNoYearly || '').trim() || typeName;
+
+                    return (
+                      <div
+                        key={field.id}
+                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                      >
+                        <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                            {index + 1}
+                          </span>
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
+                            <FileText size={14} strokeWidth={1.75} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            {summaryLabel ? (
+                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
+                                {summaryLabel}
+                              </p>
+                            ) : (
+                              <p className="text-[13px] font-medium text-slate-400 truncate leading-tight">
+                                Document {index + 1}
+                              </p>
+                            )}
+                            {typeName && docNoYearly ? (
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{typeName}</p>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              requestRemoveItem(
+                                'document',
+                                index,
+                                summaryLabel || `Document ${index + 1}`
+                              )
+                            }
+                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                            title="Remove document"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+
+                        <div className="p-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <FieldLabel required>Document Name</FieldLabel>
+                              <FieldControl
+                                error={
+                                  form.formState.errors.documents?.[index]?.documentType?.message
+                                }
+                              >
+                                <Controller
+                                  control={form.control}
+                                  name={`documents.${index}.documentType`}
+                                  render={({ field: typeField }) => {
+                                    const selectedType =
+                                      typeField.value && Number(typeField.value) > 0
+                                        ? String(typeField.value)
+                                        : '__none__';
+                                    return (
+                                      <Select
+                                        value={selectedType}
+                                        onValueChange={(val) => {
+                                          if (val === '__none__') {
+                                            typeField.onChange(0);
                                             form.setValue(`documents.${index}.documentNo`, 0);
                                             form.setValue(
                                               `documents.${index}.documentNoYearly`,
@@ -1421,319 +1407,333 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                             void form.trigger(
                                               `documents.${index}.documentType`
                                             );
-                                          }}
-                                        >
-                                          <SelectTrigger
-                                            className={cn(
-                                              'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
-                                              selectedType === '__none__' && 'text-slate-400',
-                                              form.formState.errors.documents?.[index]
-                                                ?.documentType && 'border-red-400'
-                                            )}
-                                          >
-                                            <SelectValue placeholder="Select document name" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem
-                                              value="__none__"
-                                              className="text-slate-400"
-                                            >
-                                              Select document name
-                                            </SelectItem>
-                                            {meetingDocumentTypes.map((d) => (
-                                              <SelectItem
-                                                key={d.documentTypeNo}
-                                                value={d.documentTypeNo.toString()}
-                                              >
-                                                {d.documentName}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      );
-                                    }}
-                                  />
-                                </FieldControl>
-                              </div>
-
-                              <div className="space-y-1">
-                                <FieldLabel required>Document No</FieldLabel>
-                                <FieldControl
-                                  error={
-                                    form.formState.errors.documents?.[index]?.documentNo?.message
-                                  }
-                                >
-                                  <Controller
-                                    control={form.control}
-                                    name={`documents.${index}.documentNo`}
-                                    render={({ field: noField }) => (
-                                      <DocumentCombobox
-                                        formNo={selectedDocTypeObj?.formNo}
-                                        contextStr={selectedDocTypeObj?.context}
-                                        displayColumnsStr={selectedDocTypeObj?.displayColumns}
-                                        value={
-                                          Number(noField.value) > 0
-                                            ? String(noField.value)
-                                            : ''
-                                        }
-                                        initialLabel={
-                                          form.watch(`documents.${index}.documentNoYearly`) ||
-                                          undefined
-                                        }
-                                        onChange={(doc: any) => {
-                                          if (!doc) {
-                                            noField.onChange(0);
-                                            form.setValue(
-                                              `documents.${index}.documentNoYearly`,
-                                              ''
-                                            );
                                             void form.trigger(
                                               `documents.${index}.documentNo`
                                             );
-                                          } else {
-                                            const no =
-                                              doc.id ||
-                                              doc.documentNo ||
-                                              doc.DocumentNo ||
-                                              doc.Value ||
-                                              0;
-                                            noField.onChange(parseInt(no.toString()) || 0);
-                                            form.setValue(
-                                              `documents.${index}.documentNoYearly`,
-                                              doc.documentNoYearly ||
-                                                doc.DocumentNoYearly ||
-                                                doc.Text ||
-                                                doc.name ||
-                                                ''
-                                            );
-                                            void form.trigger(
-                                              `documents.${index}.documentNo`
-                                            );
+                                            return;
                                           }
+                                          typeField.onChange(parseInt(val, 10));
+                                          form.setValue(`documents.${index}.documentNo`, 0);
+                                          form.setValue(
+                                            `documents.${index}.documentNoYearly`,
+                                            ''
+                                          );
+                                          void form.trigger(
+                                            `documents.${index}.documentType`
+                                          );
                                         }}
-                                        placeholder={
-                                          Number(docType) > 0
-                                            ? 'Search document...'
-                                            : 'Select Document Name first'
+                                      >
+                                        <SelectTrigger
+                                          className={cn(
+                                            'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
+                                            selectedType === '__none__' && 'text-slate-400',
+                                            form.formState.errors.documents?.[index]
+                                              ?.documentType && 'border-red-400'
+                                          )}
+                                        >
+                                          <SelectValue placeholder="Select document name" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem
+                                            value="__none__"
+                                            className="text-slate-400"
+                                          >
+                                            Select document name
+                                          </SelectItem>
+                                          {meetingDocumentTypes.map((d) => (
+                                            <SelectItem
+                                              key={d.documentTypeNo}
+                                              value={d.documentTypeNo.toString()}
+                                            >
+                                              {d.documentName}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    );
+                                  }}
+                                />
+                              </FieldControl>
+                            </div>
+
+                            <div className="space-y-1">
+                              <FieldLabel required>Document No</FieldLabel>
+                              <FieldControl
+                                error={
+                                  form.formState.errors.documents?.[index]?.documentNo?.message
+                                }
+                              >
+                                <Controller
+                                  control={form.control}
+                                  name={`documents.${index}.documentNo`}
+                                  render={({ field: noField }) => (
+                                    <DocumentCombobox
+                                      formNo={selectedDocTypeObj?.formNo}
+                                      contextStr={selectedDocTypeObj?.context}
+                                      displayColumnsStr={selectedDocTypeObj?.displayColumns}
+                                      value={
+                                        Number(noField.value) > 0
+                                          ? String(noField.value)
+                                          : ''
+                                      }
+                                      initialLabel={
+                                        form.watch(`documents.${index}.documentNoYearly`) ||
+                                        undefined
+                                      }
+                                      onChange={(doc: any) => {
+                                        if (!doc) {
+                                          noField.onChange(0);
+                                          form.setValue(
+                                            `documents.${index}.documentNoYearly`,
+                                            ''
+                                          );
+                                          void form.trigger(
+                                            `documents.${index}.documentNo`
+                                          );
+                                        } else {
+                                          const no =
+                                            doc.id ||
+                                            doc.documentNo ||
+                                            doc.DocumentNo ||
+                                            doc.Value ||
+                                            0;
+                                          noField.onChange(parseInt(no.toString()) || 0);
+                                          form.setValue(
+                                            `documents.${index}.documentNoYearly`,
+                                            doc.documentNoYearly ||
+                                            doc.DocumentNoYearly ||
+                                            doc.Text ||
+                                            doc.name ||
+                                            ''
+                                          );
+                                          void form.trigger(
+                                            `documents.${index}.documentNo`
+                                          );
                                         }
-                                        disabled={!(Number(docType) > 0)}
-                                        className={cn(
-                                          'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
-                                          form.formState.errors.documents?.[index]?.documentNo &&
-                                            'border-red-400',
-                                          !(Number(docType) > 0) && 'bg-[var(--tm-muted)]/80 text-slate-400'
-                                        )}
-                                      />
-                                    )}
-                                  />
-                                </FieldControl>
-                              </div>
+                                      }}
+                                      placeholder={
+                                        Number(docType) > 0
+                                          ? 'Search document...'
+                                          : 'Select Document Name first'
+                                      }
+                                      disabled={!(Number(docType) > 0)}
+                                      className={cn(
+                                        'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
+                                        form.formState.errors.documents?.[index]?.documentNo &&
+                                        'border-red-400',
+                                        !(Number(docType) > 0) && 'bg-[var(--tm-muted)]/80 text-slate-400'
+                                      )}
+                                    />
+                                  )}
+                                />
+                              </FieldControl>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </FormSection>
-
-              {/* SECTION 5: Attachments */}
-              <FormSection title="Attachments" icon={Paperclip} tourId="meeting-form-attachments">
-                <div className="space-y-3">
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const files = e.dataTransfer?.files;
-                      if (files?.length) processFiles(Array.from(files));
-                    }}
-                    className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#0EA5E9]/25 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] px-3.5 py-3 cursor-pointer transition-all hover:border-[#0EA5E9]/45 hover:shadow-[0_8px_24px_-16px_rgba(14,165,233,0.35)]"
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept="application/pdf,image/*"
-                      onChange={handleFileSelection}
-                      className="hidden"
-                    />
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12 shadow-sm group-hover:bg-[var(--tm-tint)] transition-colors">
-                      <UploadCloud size={18} strokeWidth={1.75} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-semibold text-slate-100 leading-tight">
-                        Drop files here or{' '}
-                        <span className="text-[#0EA5E9] underline decoration-[#0EA5E9]/30 underline-offset-2">
-                          browse
-                        </span>
-                      </p>
-                      <p className="mt-0.5 text-[10px] font-medium text-slate-400">
-                        PDF &amp; Images · Max 10MB each
-                      </p>
-                    </div>
-                    <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
-                      Upload
-                    </span>
-                  </div>
-
-                  {uploadingFiles.length > 0 && (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between px-0.5">
-                        <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          Uploading
-                        </h4>
-                        <span className="text-[10px] font-medium text-slate-400 tabular-nums">
-                          {uploadingFiles.length}
-                        </span>
                       </div>
-                      <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
-                        {uploadingFiles.map((file) => (
-                          <motion.div
-                            key={file.tempId}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -6 }}
+                    );
+                  })}
+                </div>
+              )}
+            </FormSection>
+
+            {/* SECTION 5: Attachments */}
+            <FormSection title="Attachments" icon={Paperclip} tourId="meeting-form-attachments">
+              <div className="space-y-3">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const files = e.dataTransfer?.files;
+                    if (files?.length) processFiles(Array.from(files));
+                  }}
+                  className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#0EA5E9]/25 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] px-3.5 py-3 cursor-pointer transition-all hover:border-[#0EA5E9]/45 hover:shadow-[0_8px_24px_-16px_rgba(14,165,233,0.35)]"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="application/pdf,image/*"
+                    onChange={handleFileSelection}
+                    className="hidden"
+                  />
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12 shadow-sm group-hover:bg-[var(--tm-tint)] transition-colors">
+                    <UploadCloud size={18} strokeWidth={1.75} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-semibold text-slate-100 leading-tight">
+                      Drop files here or{' '}
+                      <span className="text-[#0EA5E9] underline decoration-[#0EA5E9]/30 underline-offset-2">
+                        browse
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-medium text-slate-400">
+                      PDF &amp; Images · Max 10MB each
+                    </p>
+                  </div>
+                  <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
+                    Upload
+                  </span>
+                </div>
+
+                {uploadingFiles.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between px-0.5">
+                      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        Uploading
+                      </h4>
+                      <span className="text-[10px] font-medium text-slate-400 tabular-nums">
+                        {uploadingFiles.length}
+                      </span>
+                    </div>
+                    <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
+                      {uploadingFiles.map((file) => (
+                        <motion.div
+                          key={file.tempId}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className={cn(
+                            'flex items-center gap-2.5 px-2.5 py-2',
+                            file.status === 'failed' ? 'bg-red-500/10' : 'bg-[var(--tm-surface)]'
+                          )}
+                        >
+                          <span
                             className={cn(
-                              'flex items-center gap-2.5 px-2.5 py-2',
-                              file.status === 'failed' ? 'bg-red-500/10' : 'bg-[var(--tm-surface)]'
+                              'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
+                              file.status === 'failed'
+                                ? 'bg-red-500/10 text-red-400 ring-red-500/30'
+                                : 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
                             )}
                           >
-                            <span
+                            {file.status !== 'failed' ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : file.name.toLowerCase().endsWith('.pdf') ? (
+                              <FileText size={14} />
+                            ) : (
+                              <ImageIcon size={14} />
+                            )}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
+                              {file.name}
+                            </p>
+                            <p
                               className={cn(
-                                'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
-                                file.status === 'failed'
-                                  ? 'bg-red-500/10 text-red-400 ring-red-500/30'
-                                  : 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
+                                'text-[10px] font-medium mt-0.5',
+                                file.status === 'failed' ? 'text-red-400' : 'text-slate-400'
                               )}
                             >
-                              {file.status !== 'failed' ? (
-                                <Loader2 size={14} className="animate-spin" />
-                              ) : file.name.toLowerCase().endsWith('.pdf') ? (
-                                <FileText size={14} />
-                              ) : (
-                                <ImageIcon size={14} />
-                              )}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
-                                {file.name}
-                              </p>
-                              <p
-                                className={cn(
-                                  'text-[10px] font-medium mt-0.5',
-                                  file.status === 'failed' ? 'text-red-400' : 'text-slate-400'
-                                )}
-                              >
-                                {file.status === 'failed' ? 'Upload failed' : file.status}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              {file.status === 'failed' && (
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => handleRetryUpload(file.tempId)}
-                                  className="h-7 w-7 rounded-[7px] text-red-400 hover:bg-red-500/10"
-                                >
-                                  <RefreshCw size={12} />
-                                </Button>
-                              )}
+                              {file.status === 'failed' ? 'Upload failed' : file.status}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {file.status === 'failed' && (
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="ghost"
-                                onClick={() => handleRemoveUploading(file.tempId)}
-                                className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-slate-300 hover:bg-[var(--tm-muted)]"
+                                onClick={() => handleRetryUpload(file.tempId)}
+                                className="h-7 w-7 rounded-[7px] text-red-400 hover:bg-red-500/10"
                               >
-                                <X size={12} />
+                                <RefreshCw size={12} />
                               </Button>
-                            </div>
-                          </motion.div>
-                        ))}
+                            )}
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRemoveUploading(file.tempId)}
+                              className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-slate-300 hover:bg-[var(--tm-muted)]"
+                            >
+                              <X size={12} />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(() => {
+                  const attachments = form.watch('attachments') || [];
+                  if (attachments.length === 0) return null;
+                  return (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between px-0.5">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Attached
+                        </h4>
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                          {attachments.length}
+                        </span>
+                      </div>
+                      <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                        {attachments.map((file: any) => {
+                          const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
+                          return (
+                            <motion.div
+                              key={file.id}
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
+                            >
+                              <span
+                                className={cn(
+                                  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
+                                  isPdf
+                                    ? 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
+                                    : 'bg-violet-500/15 text-violet-400 ring-violet-500/30'
+                                )}
+                              >
+                                {isPdf ? <FileText size={14} /> : <ImageIcon size={14} />}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
+                                    {file.name}
+                                  </p>
+                                  {file.size ? (
+                                    <span className="shrink-0 text-[10px] font-medium text-slate-400 tabular-nums">
+                                      {formatFileSize(file.size)}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    attachmentService.downloadAttachment(file.id, file.name)
+                                  }
+                                  className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
+                                >
+                                  View
+                                </button>
+                              </div>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleRemoveAttachment(file.id, file.name)}
+                                className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                              >
+                                <Trash size={12} />
+                              </Button>
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     </div>
-                  )}
+                  );
+                })()}
+              </div>
+            </FormSection>
 
-                  {(() => {
-                    const attachments = form.watch('attachments') || [];
-                    if (attachments.length === 0) return null;
-                    return (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between px-0.5">
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                            Attached
-                          </h4>
-                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
-                            {attachments.length}
-                          </span>
-                        </div>
-                        <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-                          {attachments.map((file: any) => {
-                            const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
-                            return (
-                              <motion.div
-                                key={file.id}
-                                initial={{ opacity: 0, y: 4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
-                              >
-                                <span
-                                  className={cn(
-                                    'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
-                                    isPdf
-                                      ? 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
-                                      : 'bg-violet-500/15 text-violet-400 ring-violet-500/30'
-                                  )}
-                                >
-                                  {isPdf ? <FileText size={14} /> : <ImageIcon size={14} />}
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
-                                      {file.name}
-                                    </p>
-                                    {file.size ? (
-                                      <span className="shrink-0 text-[10px] font-medium text-slate-400 tabular-nums">
-                                        {formatFileSize(file.size)}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      attachmentService.downloadAttachment(file.id, file.name)
-                                    }
-                                    className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
-                                  >
-                                    View
-                                  </button>
-                                </div>
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => handleRemoveAttachment(file.id, file.name)}
-                                  className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                >
-                                  <Trash size={12} />
-                                </Button>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </FormSection>
-
-            </form>
+          </form>
         </div>
       </div>
 
