@@ -174,7 +174,14 @@ export function MultiSelect({
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => {
+              {[...options]
+                .sort((a, b) =>
+                  String(a.label || '').localeCompare(String(b.label || ''), undefined, {
+                    sensitivity: 'base',
+                    numeric: true,
+                  })
+                )
+                .map((option) => {
                 const isSelected = value.includes(option.value);
                 return (
                   <CommandItem

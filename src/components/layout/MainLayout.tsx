@@ -127,7 +127,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
       ? 'w-56'
       : 'w-0 border-0'
     : isDesktopSidebarCollapsed
-      ? 'w-[80px]'
+      ? 'w-14'
       : 'w-56';
 
   const showDesktopSidebar = !isFocusMode || isFocusSidebarOpen;

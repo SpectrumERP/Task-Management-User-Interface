@@ -31,6 +31,40 @@ interface UserComboboxProps {
   modal?: boolean
 }
 
+export function UserOptionLine({ user }: { user: UserResponse }) {
+  const primary = user.printingName?.trim() || user.loginId?.trim() || "—"
+  const loginId =
+    user.loginId?.trim() && user.loginId.trim() !== primary ? user.loginId.trim() : null
+  const email = user.email?.trim() || null
+
+  return (
+    <div className="min-w-0 flex-1 overflow-hidden">
+      <div className="flex min-w-0 items-center gap-1.5 truncate">
+        <span className="truncate font-semibold text-slate-100">{primary}</span>
+        {loginId ? (
+          <>
+            <span className="shrink-0 text-slate-600" aria-hidden>
+              ·
+            </span>
+            <span className="truncate text-slate-400">{loginId}</span>
+          </>
+        ) : null}
+        {email ? (
+          <>
+            <span className="shrink-0 text-slate-600" aria-hidden>
+              ·
+            </span>
+            <span className="truncate text-slate-500">{email}</span>
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+export const userItemClassName =
+  "flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 cursor-pointer aria-selected:bg-[#0EA5E9]/12 data-[selected=true]:bg-[#0EA5E9]/12 data-[selected=true]:text-slate-50 hover:bg-[var(--tm-muted)]/80"
+
 export function UserCombobox({
   value,
   onChange,
@@ -41,10 +75,11 @@ export function UserCombobox({
   isClearable = true,
   error = false,
   onResolve,
-  modal = true,
+  modal = false,
 }: UserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [options, setOptions] = React.useState<UserResponse[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedLabel, setSelectedLabel] = React.useState(initialLabel || "")
@@ -178,8 +213,13 @@ export function UserCombobox({
     }
   }, [search, open, loginNo])
 
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next)
+    if (!next) setSearch("")
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={modal}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal={modal}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -215,25 +255,26 @@ export function UserCombobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal container={container || document.body}>
         <PopoverPrimitive.Content
-          className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className="z-[100] w-[min(92vw,380px)] p-0 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] text-popover-foreground shadow-[0_16px_40px_-12px_rgba(15,23,42,0.45)] outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           align="start"
+          sideOffset={6}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            requestAnimationFrame(() => searchInputRef.current?.focus())
+          }}
         >
-          <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={false}>
+          <Command className="rounded-xl border-0 bg-transparent" shouldFilter={false}>
             <div className="border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
               <CommandInput
+                ref={searchInputRef}
+                value={search}
                 placeholder="Type to search..."
-                className="h-10 border-none focus:ring-0 bg-transparent"
+                className="h-10 border-none focus:ring-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500"
                 onValueChange={setSearch}
               />
             </div>
 
-            <div className="grid grid-cols-3 px-3 py-2 bg-[var(--tm-muted)]/80 border-b border-[var(--tm-border)] text-[10px] font-black text-slate-500 uppercase tracking-wider">
-              <div>User Name</div>
-              <div>Display Name</div>
-              <div>Email</div>
-            </div>
-
-            <CommandList className="max-h-72 scrollbar-hide">
+            <CommandList className="max-h-72 overflow-y-auto p-1.5 scrollbar-hide">
               {isLoading && (
                 <div className="flex items-center justify-center py-8 text-slate-500">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -247,27 +288,35 @@ export function UserCombobox({
               )}
               {!isLoading && (
                 <CommandGroup>
-                  {options.map((user) => (
-                    <CommandItem
-                      key={user.loginNo}
-                      value={`${user.loginId} ${user.printingName} ${user.email}`}
-                      onSelect={() => {
-                        onChange(user)
-                        setSelectedLabel(user.printingName)
-                        setOpen(false)
-                      }}
-                      className="text-[11px] font-medium py-2 px-3 cursor-pointer"
-                    >
-                      <div className="grid grid-cols-3 w-full items-center gap-2">
-                        <div className="truncate text-slate-50 font-bold">{user.loginId}</div>
-                        <div className="truncate text-slate-300 font-semibold">{user.printingName}</div>
-                        <div className="truncate text-slate-500 font-medium col-span-1">{user.email}</div>
-                      </div>
-                      {value === user.loginNo.toString() && (
-                        <Check className="h-3 w-3 text-[#0EA5E9] ml-2 shrink-0" />
-                      )}
-                    </CommandItem>
-                  ))}
+                  {[...options]
+                    .sort((a, b) => {
+                      const al = (a.printingName || a.loginId || '').toLowerCase()
+                      const bl = (b.printingName || b.loginId || '').toLowerCase()
+                      return al.localeCompare(bl, undefined, { sensitivity: 'base', numeric: true })
+                    })
+                    .map((user) => {
+                    const isSelected = value === user.loginNo.toString()
+                    return (
+                      <CommandItem
+                        key={user.loginNo}
+                        value={`${user.loginId} ${user.printingName} ${user.email}`}
+                        onSelect={() => {
+                          onChange(user)
+                          setSelectedLabel(user.printingName)
+                          setOpen(false)
+                        }}
+                        className={cn(userItemClassName, isSelected && "bg-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/25")}
+                      >
+                        <UserOptionLine user={user} />
+                        <Check
+                          className={cn(
+                            "h-4 w-4 shrink-0 text-[#0EA5E9]",
+                            isSelected ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                      </CommandItem>
+                    )
+                  })}
                 </CommandGroup>
               )}
             </CommandList>

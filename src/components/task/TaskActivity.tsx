@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
@@ -310,12 +311,14 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                   loginNo={(c as any).loginNo}
                   displayName={c.author}
                   size="md"
+                  className="shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-[11px] font-semibold text-slate-100 truncate">
-                      {c.author}
-                    </span>
+                    <TruncatedText
+                      text={c.author || ''}
+                      className="text-[11px] font-semibold text-slate-100"
+                    />
                     <span className="text-[9px] font-medium text-slate-500 shrink-0">
                       {c.timestamp ? format(new Date(c.timestamp), 'MMM dd · h:mm a') : 'Now'}
                     </span>

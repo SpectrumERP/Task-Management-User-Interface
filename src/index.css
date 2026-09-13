@@ -324,8 +324,8 @@ textarea {
   resize: none !important;
 }
 
-/* Centralized form-field border + radius + dark fill */
-input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='color']):not([type='submit']):not([type='button']),
+/* Centralized form-field border + radius + dark fill (skip login fields — they use theme-matched styles) */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='color']):not([type='submit']):not([type='button']):not(.login-field),
 textarea,
 select,
 .input-section,
@@ -338,12 +338,12 @@ button[role='combobox'] {
   color: var(--tm-input-fg) !important;
 }
 
-input::placeholder,
+input:not(.login-field)::placeholder,
 textarea::placeholder {
   color: #64748B !important;
 }
 
-html.dark input::placeholder,
+html.dark input:not(.login-field)::placeholder,
 html.dark textarea::placeholder {
   color: #94A3B8 !important;
 }
@@ -351,27 +351,38 @@ html.dark textarea::placeholder {
 /* Login — beat global input chrome so fields read like light-mode wells */
 .login-page .login-field {
   background-color: #f8fafc !important;
-  border-color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  border-width: 1.5px !important;
   color: #1e293b !important;
 }
 
-html.dark .login-page .login-field {
+html:not(.dark) .login-page input.login-field:hover {
+  border-color: #64748b !important;
+}
+
+html:not(.dark) .login-page input.login-field:focus,
+html:not(.dark) .login-page input.login-field:focus-visible {
+  border-color: #0EA5E9 !important;
+}
+
+/* Dark login: teal wells matching panel (#0C4A6E) — not near-black --tm-input */
+html.dark .login-page input.login-field {
   background-color: #2A6280 !important;
   border-color: #5B9BB8 !important;
   color: #f8fafc !important;
 }
 
-html.dark .login-page .login-field::placeholder {
+html.dark .login-page input.login-field::placeholder {
   color: #cbd5e1 !important;
 }
 
-html.dark .login-page .login-field:hover {
+html.dark .login-page input.login-field:hover {
   border-color: #7dd3fc !important;
   background-color: #337196 !important;
 }
 
-html.dark .login-page .login-field:focus,
-html.dark .login-page .login-field:focus-visible {
+html.dark .login-page input.login-field:focus,
+html.dark .login-page input.login-field:focus-visible {
   border-color: #38bdf8 !important;
   background-color: #3A7A9A !important;
 }
@@ -446,11 +457,11 @@ html:not(.dark) .text-slate-200 {
 }
 
 html:not(.dark) .text-slate-300 {
-  color: #475569;
+  color: #334155;
 }
 
 html:not(.dark) .text-slate-400 {
-  color: #64748b;
+  color: #475569;
 }
 
 html:not(.dark) .text-slate-500 {
@@ -461,19 +472,46 @@ html:not(.dark) .text-white {
   color: #fff;
 }
 
+/* Pale sky accents are for dark UI — remap for light readability */
+html:not(.dark) .text-\[\#7dd3fc\],
+html:not(.dark) .text-\[\#38BDF8\] {
+  color: #0369a1 !important;
+}
+
+html:not(.dark) .text-\[\#0EA5E9\] {
+  color: #0284c7;
+}
+
+html:not(.dark) .text-emerald-400 {
+  color: #047857;
+}
+
+html:not(.dark) .bg-\[\#0EA5E9\]\/20,
+html:not(.dark) .bg-\[\#0EA5E9\]\/12,
+html:not(.dark) .bg-\[\#0EA5E9\]\/15,
+html:not(.dark) .bg-\[\#0EA5E9\]\/18 {
+  background-color: rgba(14, 165, 233, 0.14);
+}
+
+html:not(.dark) .ring-\[\#0EA5E9\]\/35,
+html:not(.dark) .ring-\[\#0EA5E9\]\/30,
+html:not(.dark) .ring-\[\#0EA5E9\]\/25 {
+  --tw-ring-color: rgba(3, 105, 161, 0.35);
+}
+
+html:not(.dark) .border-\[\#7dd3fc\]\/55 {
+  border-color: rgba(14, 165, 233, 0.45);
+}
+
+html:not(.dark) .page-eyebrow {
+  color: #0284c7;
+}
+
 /* Light: give cards/columns depth vs soft page */
 html:not(.dark) .surface-card,
 html:not(.dark) [class*="shadow-[0_8px_30px"],
 html:not(.dark) [class*="shadow-[0_1px_2px"] {
   box-shadow: var(--tm-shadow);
-}
-
-html:not(.dark) .text-\[\#38BDF8\] {
-  color: #0284c7;
-}
-
-html:not(.dark) .page-eyebrow {
-  color: #0284c7;
 }
 
 /* Light theme — full light chrome (header + sidebar match workspace) */
@@ -679,6 +717,17 @@ html:not(.dark) .tm-sidebar-tip-arrow {
 }
 
 /* Zebra striping — paint on TD (tr bg is unreliable with table layout) */
+.tm-data-table > thead > tr > th {
+  white-space: nowrap;
+  /* Keep header controls (sort buttons) clickable; ellipsis only on body cells */
+  overflow: visible;
+}
+
+.tm-data-table > tbody > tr > td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .tm-data-table > tbody > tr:nth-child(odd) > td {
   background-color: var(--tm-row-odd);
 }

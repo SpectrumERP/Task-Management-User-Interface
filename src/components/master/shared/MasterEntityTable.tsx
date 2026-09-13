@@ -1,32 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Download, ChevronUp, ChevronDown } from 'lucide-react';
+import { Edit, Trash2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
-
-function SortableHeader({ label, sortKey, sortCol, sortDesc, onSort }: { label: string, sortKey: string, sortCol: string | null, sortDesc: boolean, onSort: (k: string) => void }) {
-  const isActive = sortCol === sortKey;
-  return (
-    <div 
-      className="flex items-center gap-1 cursor-pointer select-none hover:text-slate-200 transition-colors group/header"
-      onClick={() => onSort(sortKey)}
-    >
-      <span>{label}</span>
-      <span className="flex flex-col opacity-30 group-hover/header:opacity-100 transition-opacity">
-         <ChevronUp size={10} className={cn("-mb-1", isActive && !sortDesc && "text-[#0EA5E9] opacity-100")} />
-         <ChevronDown size={10} className={cn(isActive && sortDesc && "text-[#0EA5E9] opacity-100")} />
-      </span>
-    </div>
-  );
-}
+import { ActionTip, TruncatedText, nodeToPlainText } from './TruncatedCellTip';
+import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
 
 export interface MasterColumn<T> {
   header: string;
   render: (row: T) => React.ReactNode;
   className?: string;
   headerClassName?: string;
+  /** Row field / key used for column sorting. Defaults to header slug if omitted. */
+  sortKey?: string;
+  getSortValue?: (row: T) => unknown;
 }
 
 interface MasterEntityTableProps<T extends { id: string; code?: string; createdBy?: string; createdDate?: string }> {
@@ -50,6 +39,13 @@ interface MasterEntityTableProps<T extends { id: string; code?: string; createdB
   /** When true, skips outer card chrome (use inside a parent section with pagination). */
   embedded?: boolean;
   footer?: React.ReactNode;
+  /** Initial sort column (default: name). */
+  defaultSortKey?: string | null;
+}
+
+function columnSortKey<T>(col: MasterColumn<T>, index: number): string {
+  if (col.sortKey) return col.sortKey;
+  return `col:${index}:${col.header}`;
 }
 
 export function MasterEntityTable<T extends { id: string; code?: string; createdBy?: string; createdDate?: string }>({
@@ -71,60 +67,49 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
   getDeleteLabel,
   embedded = false,
   footer,
+  defaultSortKey = 'name',
 }: MasterEntityTableProps<T>) {
   const shellClass = embedded
     ? 'flex flex-col min-h-0 max-h-full overflow-hidden'
     : 'flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden';
 
-  const [sortCol, setSortCol] = useState<string | null>(null);
-  const [sortDesc, setSortDesc] = useState(false);
-
-  const handleSort = (colKey: string) => {
-    if (sortCol === colKey) {
-      if (sortDesc) {
-        setSortCol(null);
-        setSortDesc(false);
-      } else {
-        setSortDesc(true);
-      }
-    } else {
-      setSortCol(colKey);
-      setSortDesc(false);
-    }
-  };
-
-  const getSortValue = (row: any, key: string) => {
+  const getSortValue = useCallback((row: T, key: string) => {
     if (key === 'code') return row.code || `SYS-${row.id}`;
-    if (key === 'name') return row.name || row.title || row.description || '';
-    return row[key] || '';
-  };
+    if (key === 'name') return (row as { name?: string }).name || nodeToPlainText(getName(row)) || '';
+    if (key === 'createdBy') return row.createdBy || '';
+    if (key === 'createdDate') {
+      const raw = row.createdDate;
+      if (!raw) return '';
+      const t = new Date(String(raw)).getTime();
+      return Number.isNaN(t) ? raw : t;
+    }
 
-  const sortedRows = useMemo(() => {
-    if (!sortCol) return rows;
-    return [...rows].sort((a, b) => {
-      let valA = getSortValue(a, sortCol);
-      let valB = getSortValue(b, sortCol);
-      
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        return sortDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
-      }
-      if (valA < valB) return sortDesc ? 1 : -1;
-      if (valA > valB) return sortDesc ? -1 : 1;
-      return 0;
-    });
-  }, [rows, sortCol, sortDesc]);
+    const colIdx = columns.findIndex((c, i) => columnSortKey(c, i) === key);
+    if (colIdx >= 0) {
+      const col = columns[colIdx];
+      if (col.getSortValue) return col.getSortValue(row);
+      if (col.sortKey && col.sortKey in (row as object)) return (row as Record<string, unknown>)[col.sortKey];
+      return nodeToPlainText(col.render(row));
+    }
+    return (row as Record<string, unknown>)[key] ?? '';
+  }, [columns, getName]);
+
+  const { sortCol, sortDesc, handleSort, sortedRows } = useTableSort(rows, getSortValue, {
+    defaultKey: defaultSortKey,
+    defaultDesc: false,
+  });
 
   const handleExport = () => {
-    if (!rows || rows.length === 0) return;
+    if (!sortedRows || sortedRows.length === 0) return;
     
     // Generic shallow flattening
     // Exclude 'id' and grab all primitive fields
-    const keys = Object.keys(rows[0]).filter(k => k !== 'id');
+    const keys = Object.keys(sortedRows[0]).filter(k => k !== 'id');
     const separator = ',';
     
     const csvContent = [
       keys.join(separator),
-      ...rows.map(row => 
+      ...sortedRows.map(row => 
         keys.map(k => {
           let cell = (row as any)[k];
           if (cell === null || cell === undefined) cell = '';
@@ -208,7 +193,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
           Export CSV
         </Button>
       </div>
-      <div className="overflow-auto min-h-0 max-h-[calc(100dvh-13.5rem)]">
+      <div className="overflow-y-auto overflow-x-hidden min-h-0 max-h-[calc(100dvh-13.5rem)]">
         {/* Mobile cards */}
         <div className="md:hidden flex flex-col gap-2 p-2">
           {sortedRows.map((item) => (
@@ -218,54 +203,63 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">{getCode(item)}</p>
-                  <div className="mt-0.5 text-sm font-semibold text-slate-100 line-clamp-2">{getName(item)}</div>
+                  <TruncatedText text={String(nodeToPlainText(getCode(item)) || '')} className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums" />
+                  <div className="mt-0.5 min-w-0">
+                    <TruncatedText text={nodeToPlainText(getName(item))} className="text-sm font-semibold text-slate-100" />
+                  </div>
                   {columns.length > 0 ? (
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-                      {columns.slice(0, 3).map((col, idx) => (
-                        <div key={idx} className="min-w-0 text-[10px] text-slate-400">
-                          <span className="font-medium text-slate-500">{col.header}: </span>
-                          <span className="text-slate-300">{col.render(item)}</span>
-                        </div>
-                      ))}
+                      {columns.slice(0, 3).map((col, idx) => {
+                        const cell = nodeToPlainText(col.render(item));
+                        return (
+                          <div key={idx} className="min-w-0 max-w-full text-[10px] text-slate-400">
+                            <span className="font-medium text-slate-500">{col.header}: </span>
+                            <div className="inline-block min-w-0 max-w-[10rem] align-bottom">
+                              <TruncatedText text={cell || '-'} className="text-slate-300" />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : null}
-                  <p className="mt-1 text-[10px] text-slate-500 truncate">
-                    {item.createdBy || 'System'}
-                    {item.createdDate
-                      ? ` · ${format(new Date(item.createdDate), 'MMM dd, yyyy')}`
-                      : ''}
-                  </p>
+                  <div className="mt-1 min-w-0">
+                    <TruncatedText
+                      text={`${item.createdBy || 'System'}${item.createdDate ? ` · ${format(new Date(item.createdDate), 'MMM dd, yyyy')}` : ''}`}
+                      className="text-[10px] text-slate-500"
+                    />
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
+                <div className="flex shrink-0 items-center justify-center gap-0.5">
                   {canUpdate ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      title="Edit"
-                      aria-label="Edit"
-                      onClick={() => onEdit(item)}
-                      className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
-                    >
-                      <Edit size={14} />
-                    </Button>
+                    <ActionTip label="Edit">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Edit"
+                        onClick={() => onEdit(item)}
+                        className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
+                      >
+                        <Edit size={14} />
+                      </Button>
+                    </ActionTip>
                   ) : null}
                   {canDelete ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      title="Delete"
-                      aria-label="Delete"
-                      onClick={() => {
-                        const fallback = (item as { name?: string }).name || item.code || item.id;
-                        onDelete(item.id, getDeleteLabel?.(item) || String(fallback));
-                      }}
-                      className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                    >
-                      <Trash2 size={14} />
-                    </Button>
+                    <ActionTip label="Delete">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Delete"
+                        onClick={() => {
+                          const fallback = (item as { name?: string }).name || item.code || item.id;
+                          onDelete(item.id, getDeleteLabel?.(item) || String(fallback));
+                        }}
+                        className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </ActionTip>
                   ) : null}
                 </div>
               </div>
@@ -273,102 +267,125 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
           ))}
         </div>
 
-        <table className="tm-data-table hidden md:table w-full border-collapse text-left min-w-[720px]">
+        <table className="tm-data-table hidden md:table w-full table-fixed border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
             <tr>
-              <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[110px]">
+              <th className="w-[8%] px-2.5 py-2 pl-3 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                 <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 min-w-[140px]">
+              <th className="w-[16%] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                 <SortableHeader label={nameHeader} sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              {columns.map((col, idx) => (
-                <th
-                  key={idx}
-                  className={cn(
-                    'px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap',
-                    col.headerClassName || col.className
-                  )}
-                >
-                  {col.header}
-                </th>
-              ))}
-              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 min-w-[100px]">
+              {columns.map((col, idx) => {
+                const key = columnSortKey(col, idx);
+                return (
+                  <th
+                    key={idx}
+                    style={{ width: `${Math.max(7, Math.floor(45 / Math.max(columns.length, 1)))}%` }}
+                    className={cn(
+                      'px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap',
+                      col.headerClassName || col.className
+                    )}
+                  >
+                    <SortableHeader
+                      label={col.header}
+                      sortKey={key}
+                      sortCol={sortCol}
+                      sortDesc={sortDesc}
+                      onSort={handleSort}
+                    />
+                  </th>
+                );
+              })}
+              <th className="w-[10%] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                 <SortableHeader label="Created By" sortKey="createdBy" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[160px]">
+              <th className="w-[12%] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                 <SortableHeader label="Created Date" sortKey="createdDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-300 w-[88px]">
+              <th className="w-[7%] px-2.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody>
-            {sortedRows.map((item) => (
+            {sortedRows.map((item) => {
+              const codeText = nodeToPlainText(getCode(item)) || String(item.code || `SYS-${item.id}`);
+              const nameText = nodeToPlainText(getName(item)) || String((item as { name?: string }).name || '');
+              const createdByText = item.createdBy || 'System';
+              const createdDateText = item.createdDate
+                ? format(new Date(item.createdDate), 'MMM dd, yyyy h:mm a')
+                : 'N/A';
+              return (
               <tr
                 key={item.id}
                 className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group"
               >
-                <td className="px-3 py-2 pl-4">
-                  <span className="text-[11px] font-medium text-[#0EA5E9] whitespace-nowrap tabular-nums">
-                    {getCode(item)}
-                  </span>
+                <td className="px-2.5 py-2 pl-3 align-middle min-w-0 overflow-hidden">
+                  <TruncatedText
+                    text={codeText}
+                    className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
+                  />
                 </td>
-                <td className="px-3 py-2 text-xs font-semibold text-slate-100 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0 truncate">{getName(item)}</div>
+                <td className="px-2.5 py-2 align-middle min-w-0 overflow-hidden">
+                  <TruncatedText text={nameText} className="text-xs font-semibold text-slate-100" />
                 </td>
-                {columns.map((col, idx) => (
-                  <td
-                    key={idx}
-                    className={cn('px-3 py-2 text-xs font-medium text-slate-300 min-w-0', col.className)}
-                  >
-                    <div className="min-w-0 truncate">{col.render(item)}</div>
-                  </td>
-                ))}
-                <td className="px-3 py-2 text-xs font-medium text-slate-300 min-w-0 truncate">
-                  {item.createdBy || 'System'}
+                {columns.map((col, idx) => {
+                  const cellNode = col.render(item);
+                  const cellText = nodeToPlainText(cellNode);
+                  return (
+                    <td
+                      key={idx}
+                      className={cn('px-2.5 py-2 text-xs font-medium text-slate-300 align-middle min-w-0 overflow-hidden', col.className)}
+                    >
+                      <TruncatedText text={cellText || '-'} className="text-xs font-medium text-slate-300" />
+                    </td>
+                  );
+                })}
+                <td className="px-2.5 py-2 align-middle min-w-0 overflow-hidden">
+                  <TruncatedText text={createdByText} className="text-xs font-medium text-slate-300" />
                 </td>
-                <td className="px-3 py-2 text-xs font-medium text-slate-300 whitespace-nowrap">
-                  {item.createdDate
-                    ? format(new Date(item.createdDate), 'MMM dd, yyyy h:mm a')
-                    : 'N/A'}
+                <td className="px-2.5 py-2 align-middle min-w-0 overflow-hidden">
+                  <TruncatedText text={createdDateText} className="text-xs font-medium text-slate-300" />
                 </td>
-                <td className="px-3 py-2 pr-4 text-right">
-                  <div className="flex items-center justify-end gap-0.5">
+                <td className="px-2.5 py-2 text-center align-middle whitespace-nowrap">
+                  <div className="inline-flex items-center justify-center gap-0.5">
                     {canUpdate ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        title="Edit"
-                        aria-label="Edit"
-                        onClick={() => onEdit(item)}
-                        className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
-                      >
-                        <Edit size={13} />
-                      </Button>
+                      <ActionTip label="Edit">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Edit"
+                          onClick={() => onEdit(item)}
+                          className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
+                        >
+                          <Edit size={13} />
+                        </Button>
+                      </ActionTip>
                     ) : null}
                     {canDelete ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        title="Delete"
-                        aria-label="Delete"
-                        onClick={() => {
-                          const fallback = (item as { name?: string }).name || item.code || item.id;
-                          onDelete(item.id, getDeleteLabel?.(item) || String(fallback));
-                        }}
-                        className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                      >
-                        <Trash2 size={13} />
-                      </Button>
+                      <ActionTip label="Delete">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Delete"
+                          onClick={() => {
+                            const fallback = (item as { name?: string }).name || item.code || item.id;
+                            onDelete(item.id, getDeleteLabel?.(item) || String(fallback));
+                          }}
+                          className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                        >
+                          <Trash2 size={13} />
+                        </Button>
+                      </ActionTip>
                     ) : null}
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

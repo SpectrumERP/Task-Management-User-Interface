@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { AlertTriangle, Download } from 'lucide-react';
 import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
 import { Board } from '@/components/kanban/Board';
@@ -12,6 +12,7 @@ import { useFormRights } from '@/hooks/useFormRights';
 import { cn } from '@/lib/utils';
 import { dealMonitorTaskUrl } from '@/lib/dealMonitor';
 import { exportReportToExcel } from '@/utils/exportToExcel';
+import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 
 const DEAL_MONITOR_FORM_NO = 1548;
 
@@ -27,7 +28,7 @@ export default function DealMonitorPage() {
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
 
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(10);
   const [pageNo, setPageNo] = useState(1);
   const [currentFilters, setCurrentFilters] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -83,13 +84,24 @@ export default function DealMonitorPage() {
 
   useEffect(() => {
     if (currentFilters) {
-      fetchTasks({
-        ...currentFilters,
-        pageSize,
-        pageNo
-      });
+      fetchTasks({ ...currentFilters });
     }
-  }, [currentFilters, pageSize, pageNo, fetchTasks]);
+  }, [currentFilters, fetchTasks]);
+
+  const totalItems = tasks.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize) || 1);
+  const safePageNo = Math.min(pageNo, totalPages);
+
+  useEffect(() => {
+    if (pageNo !== safePageNo) setPageNo(safePageNo);
+  }, [pageNo, safePageNo]);
+
+  const startIndex = totalItems === 0 ? 0 : (safePageNo - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const pagedTasks = useMemo(
+    () => tasks.slice(startIndex, endIndex),
+    [tasks, startIndex, endIndex]
+  );
 
   const handleFilter = (filters: any) => {
     setPageNo(1);
@@ -104,7 +116,7 @@ export default function DealMonitorPage() {
     <main
       className={cn(
         "page-shell",
-        showFilters && "[--tm-filters-drawer-width:min(100vw,24rem)]"
+        showFilters && "[--tm-filters-drawer-width:min(100vw,18rem)]"
       )}
     >
       {dealMonitorCategoryNo === null ? (
@@ -135,7 +147,9 @@ export default function DealMonitorPage() {
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
           {tasks.length > 0 && (
             <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
-              <span className="text-[11px] font-semibold text-slate-400">Total {tasks.length} Records shown</span>
+              <span className="text-[11px] font-semibold text-slate-400">
+                {totalItems === 1 ? '1 task' : `${totalItems} tasks`}
+              </span>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -149,16 +163,12 @@ export default function DealMonitorPage() {
           )}
           <div className="flex-1 min-h-0 overflow-hidden">
             <TaskListView
-              tasks={tasks}
+              tasks={pagedTasks}
               isLoading={isLoading}
               loadError={Boolean(fetchError)}
               onRetryLoad={() => {
                 if (currentFilters) {
-                  fetchTasks({
-                    ...currentFilters,
-                    pageSize,
-                    pageNo,
-                  });
+                  fetchTasks({ ...currentFilters });
                 }
               }}
               onTaskClick={handleTaskClick}
@@ -167,81 +177,34 @@ export default function DealMonitorPage() {
             />
           </div>
 
-          {tasks.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0 select-none">
-              <div className="text-[11px] text-slate-500 font-bold justify-self-center sm:justify-self-start min-w-0 truncate tabular-nums order-1 sm:order-none">
-                Showing <span className="text-slate-100 font-black">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
-                <span className="text-slate-100 font-black">{((pageNo - 1) * pageSize) + tasks.length}</span> records
-              </div>
-
-              <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
-                <span className="text-[10px] font-black text-slate-400 whitespace-nowrap">Per Page:</span>
-                <div className="flex items-center gap-1 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)] shadow-sm">
-                  {[10, 25, 50, 100].map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => {
-                        setPageSize(size);
-                        setPageNo(1);
-                      }}
-                      className={cn(
-                        "h-6 w-9 rounded-md text-[10px] font-black tabular-nums tracking-wide transition-all",
-                        pageSize === size
-                          ? "bg-[#0EA5E9] text-white shadow-sm"
-                          : "text-slate-500 hover:text-slate-50 hover:bg-[var(--tm-muted)]"
-                      )}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={pageNo === 1 || isLoading}
-                  onClick={() => setPageNo((prev) => Math.max(1, prev - 1))}
-                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
-                >
-                  <ChevronLeft size={14} strokeWidth={2.5} />
-                </Button>
-
-                <button
-                  type="button"
-                  disabled
-                  className="h-7 w-7 rounded-lg text-[10px] font-black bg-[#0EA5E9] border border-[#0EA5E9] text-white shadow-md shadow-[#0EA5E9]/10 flex items-center justify-center cursor-default tabular-nums shrink-0"
-                >
-                  {pageNo}
-                </button>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={tasks.length < pageSize || isLoading}
-                  onClick={() => setPageNo((prev) => prev + 1)}
-                  className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
-                >
-                  <ChevronRight size={14} strokeWidth={2.5} />
-                </Button>
-              </div>
-            </div>
+          {totalItems > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={pageSize}
+              onItemsPerPageChange={(size) => {
+                setPageSize(size);
+                setPageNo(1);
+              }}
+              currentPage={safePageNo}
+              totalPages={totalPages}
+              onPageChange={setPageNo}
+              hideBelow={0}
+              pageSizeOptions={[10, 25, 50, 100]}
+            />
           ) : null}
         </div>
       ) : (
         <div className={cn("flex-1 min-h-0", "flex flex-col overflow-hidden")}>
           {viewMode === 'board' ? (
-            <Board onAddTask={handleCreateTask} onTaskClick={handleTaskClick} />
+            <Board onAddTask={handleCreateTask} onTaskClick={handleTaskClick} filterParams={currentFilters} />
           ) : (
             <TaskCalendarView
               tasks={tasks}
               isLoading={isLoading}
               onTaskClick={handleTaskClick}
               onAddTask={handleCreateTask}
-              showFilters={showFilters}
-              onToggleFilters={() => setShowFilters(!showFilters)}
               onViewModeChange={setViewModeAndStore}
             />
           )}

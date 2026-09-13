@@ -70,6 +70,17 @@ export function Combobox({
 
   const selectedOption = options.find((option) => option.value === value)
 
+  const sortedOptions = React.useMemo(
+    () =>
+      [...options].sort((a, b) =>
+        String(a.label || '').localeCompare(String(b.label || ''), undefined, {
+          sensitivity: 'base',
+          numeric: true,
+        })
+      ),
+    [options]
+  )
+
   const trigger = (
     <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger asChild>
@@ -138,7 +149,7 @@ export function Combobox({
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
+              {sortedOptions.map((option) => (
                 <CommandItem
                   key={option.value}
                   value={option.label}

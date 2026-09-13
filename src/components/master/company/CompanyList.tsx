@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
@@ -12,10 +13,12 @@ import {
   Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText, Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
 import { MasterListHeader } from '../shared/MasterListHeader';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
+import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 
 /* API list payloads are loosely shaped; keep runtime mapping unchanged. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -23,6 +26,219 @@ import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 const FORM_NO = 1550;
 const TITLE = 'Business Entity Master';
 type CompanyViewMode = 'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment';
+
+/** Trim + lowercase. Empty / whitespace-only → no active search. */
+function normalizeSearchQuery(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
+function fieldIncludes(value: unknown, query: string): boolean {
+  if (value === null || value === undefined) return false;
+  return String(value).toLowerCase().includes(query);
+}
+
+/** Multi-field match: name, alias, code, geo, contacts, attachments. */
+function companyMatchesSearch(item: any, query: string): boolean {
+  if (
+    fieldIncludes(item.name, query)
+    || fieldIncludes(item.aliasName, query)
+    || fieldIncludes(item.code, query)
+    || fieldIncludes(item.country, query)
+    || fieldIncludes(item.state, query)
+    || fieldIncludes(item.city, query)
+  ) {
+    return true;
+  }
+  if (item.contacts?.some((c: any) =>
+    fieldIncludes(c.contactPersonName || c.contactName || c.name, query)
+    || fieldIncludes(c.email, query)
+    || fieldIncludes(c.phoneNo || c.phone, query)
+    || fieldIncludes(c.designation, query)
+    || fieldIncludes(c.department, query)
+  )) {
+    return true;
+  }
+  if (item.attachments?.some((a: any) =>
+    fieldIncludes(a.fileName || a.name, query)
+    || fieldIncludes(a.fileType, query)
+  )) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Name-primary search priority (lower = better).
+ * 1 exact name · 2 partial name · 3 exact alias · 4 partial alias · 5 other
+ */
+function getCompanySearchPriority(item: any, query: string): number {
+  const name = (item.name ?? '').toString().toLowerCase();
+  const alias = (item.aliasName ?? '').toString().toLowerCase();
+
+  if (name === query) return 1;
+  if (name.includes(query)) return 2;
+  if (alias === query) return 3;
+  if (alias.includes(query)) return 4;
+  return 5;
+}
+
+/** Themed floating hover tip (portal) used by truncated cells + action icons. */
+function HoverTipBubble({
+  text,
+  top,
+  left,
+}: {
+  text: string;
+  top: number;
+  left: number;
+}) {
+  return createPortal(
+    <div
+      role="tooltip"
+      className={cn(
+        'pointer-events-none fixed z-[300] max-w-[min(22rem,calc(100vw-1.5rem))]',
+        '-translate-x-1/2 -translate-y-full',
+        'animate-in fade-in-0 zoom-in-95 duration-150'
+      )}
+      style={{ top, left }}
+    >
+      <div className="relative filter drop-shadow-[0_10px_24px_rgba(15,23,42,0.28)]">
+        <div
+          className={cn(
+            'rounded-xl border border-[#7dd3fc]/55',
+            'bg-[var(--tm-surface)] text-slate-100',
+            'px-3 py-2'
+          )}
+        >
+          <p className="text-[11px] font-medium leading-relaxed whitespace-nowrap text-center">
+            {text}
+          </p>
+        </div>
+        {/* CSS triangle arrow — border layer + fill layer (no diamond cut line) */}
+        <span
+          aria-hidden
+          className="absolute left-1/2 top-full -translate-x-1/2 -mt-px flex flex-col items-center leading-none"
+        >
+          <span
+            className="relative block h-0 w-0 border-x-[7px] border-t-[7px] border-x-transparent border-t-[#7dd3fc]/55"
+          />
+          <span
+            className="absolute left-1/2 top-0 -translate-x-1/2 -mt-[1px] block h-0 w-0 border-x-[6px] border-t-[6px] border-x-transparent border-t-[var(--tm-surface)]"
+          />
+        </span>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function useHoverTipPosition() {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+
+  const showAt = (el: HTMLElement | null, enabled = true) => {
+    if (!el || !enabled) {
+      setOpen(false);
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    setCoords({
+      top: rect.top - 10,
+      left: Math.min(Math.max(rect.left + rect.width / 2, 80), window.innerWidth - 80),
+    });
+    setOpen(true);
+  };
+
+  const hide = () => setOpen(false);
+
+  return { ref, open, coords, showAt, hide, setOpen };
+}
+
+/** Icon/button wrapper — always shows label tip on hover. */
+function ActionTip({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  const { ref, open, coords, showAt, hide } = useHoverTipPosition();
+
+  return (
+    <>
+      <span
+        ref={ref}
+        className="inline-flex"
+        onMouseEnter={() => showAt(ref.current, Boolean(label))}
+        onMouseLeave={hide}
+        onFocus={() => showAt(ref.current, Boolean(label))}
+        onBlur={hide}
+      >
+        {children}
+      </span>
+      {open && label ? <HoverTipBubble text={label} top={coords.top} left={coords.left} /> : null}
+    </>
+  );
+}
+
+/** Truncated cell text with a themed hover tooltip (only when content overflows). */
+function TruncatedText({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  const { ref, open, coords, showAt, hide, setOpen } = useHoverTipPosition();
+
+  const placeTip = () => {
+    const el = ref.current;
+    if (!el || !text || text === '-') {
+      hide();
+      return;
+    }
+    if (el.scrollWidth > el.clientWidth + 0.5) {
+      showAt(el, true);
+      return;
+    }
+    // table-fixed cells can report equal scroll/client widths even with CSS ellipsis
+    const style = window.getComputedStyle(el);
+    const font = [style.fontStyle, style.fontVariant, style.fontWeight, style.fontSize, style.fontFamily]
+      .filter(Boolean)
+      .join(' ');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.font = font;
+      if (ctx.measureText(text).width > el.clientWidth + 1) {
+        showAt(el, true);
+        return;
+      }
+    }
+    hide();
+  };
+
+  useLayoutEffect(() => {
+    setOpen(false);
+  }, [text, setOpen]);
+
+  return (
+    <>
+      <span
+        ref={ref}
+        className={cn('block w-full min-w-0 max-w-full truncate whitespace-nowrap', className)}
+        onMouseEnter={placeTip}
+        onMouseLeave={hide}
+        onFocus={placeTip}
+        onBlur={hide}
+      >
+        {text}
+      </span>
+      {open && text ? <HoverTipBubble text={text} top={coords.top} left={coords.left} /> : null}
+    </>
+  );
+}
 
 export function CompanyList() {
   const navigate = useNavigate();
@@ -172,6 +388,7 @@ export function CompanyList() {
             id: detailNo.toString(),
             code: code.trim(),
             name: beName.trim(),
+            aliasName: (c.aliasName || c.businessEntityAlias || c.AliasName || '').toString().trim(),
             crmBusinessEntityTypeNo: 0,
             type: c.businessEntityTypeName || 'Operation',
             address: '', city: '', state: '', country: '', pinCode: '',
@@ -201,6 +418,7 @@ export function CompanyList() {
             id: detailNo.toString(),
             code: code.trim(),
             name: beName.trim(),
+            aliasName: (c.aliasName || c.businessEntityAlias || c.AliasName || '').toString().trim(),
             crmBusinessEntityTypeNo: 0,
             type: c.businessEntityTypeName || 'Operation',
             address: '', city: cityName, state: stateName, country: countryName, pinCode: '',
@@ -259,6 +477,7 @@ export function CompanyList() {
           id: beNo.toString(),
           code: code.trim(),
           name: name.trim(),
+          aliasName: (c.aliasName || c.businessEntityAlias || c.AliasName || '').toString().trim(),
           crmBusinessEntityTypeNo: typeNo ? parseInt(typeNo) : 0,
           type: typeName,
           address: addr, city: cityName, state: stateName, country: countryName, pinCode: pin,
@@ -395,28 +614,63 @@ export function CompanyList() {
     setCurrentPage(1);
   };
 
-  const filteredList = apiCompanies.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    const matchesName = item.name?.toLowerCase().includes(query);
-    const matchesCode = item.code?.toLowerCase().includes(query);
-    const matchesCountry = item.country?.toString().toLowerCase().includes(query);
-    const matchesState = item.state?.toString().toLowerCase().includes(query);
-    const matchesCity = item.city?.toString().toLowerCase().includes(query);
-    const matchesContactName = item.contacts?.some((c: any) =>
-      (c.contactPersonName || c.contactName || c.name)?.toLowerCase().includes(query)
-    );
-    const matchesAttachmentName = item.attachments?.some((a: any) =>
-      (a.fileName || a.name)?.toLowerCase().includes(query)
-    );
-    return matchesName || matchesCode || matchesCountry || matchesState || matchesCity || matchesContactName || matchesAttachmentName;
-  });
+  // Normalize → Filter → Rank → stable secondary order (original API index)
+  const filteredList = useMemo(() => {
+    const query = normalizeSearchQuery(searchQuery);
+    if (!query) return apiCompanies;
 
-  const totalItems = filteredList.length;
+    const matched: { item: any; priority: number; index: number }[] = [];
+    for (let index = 0; index < apiCompanies.length; index++) {
+      const item = apiCompanies[index];
+      if (!companyMatchesSearch(item, query)) continue;
+      matched.push({
+        item,
+        priority: getCompanySearchPriority(item, query),
+        index,
+      });
+    }
+
+    matched.sort((a, b) => a.priority - b.priority || a.index - b.index);
+    return matched.map((entry) => entry.item);
+  }, [apiCompanies, searchQuery]);
+
+  const getCompanySortValue = useCallback((row: any, key: string) => {
+    switch (key) {
+      case 'code': return row.code ?? '';
+      case 'name': return row.name ?? '';
+      case 'alias': return row.aliasName ?? '';
+      case 'type': return row.type ?? '';
+      case 'address': return row.address ?? '';
+      case 'city': return row.city ?? '';
+      case 'state': return row.state ?? '';
+      case 'country': return row.country ?? '';
+      case 'vatGst': return row.vatGst ?? '';
+      case 'creditLimit': return typeof row.creditLimit === 'number' ? row.creditLimit : Number(row.creditLimit) || 0;
+      case 'contactName': return row.contacts?.[0]?.contactPersonName || row.contacts?.[0]?.contactName || row.contacts?.[0]?.name || '';
+      case 'designation': return row.contacts?.[0]?.designation || '';
+      case 'department': return row.contacts?.[0]?.department || '';
+      case 'phone': return row.contacts?.[0]?.phoneNo || row.contacts?.[0]?.phone || '';
+      case 'email': return row.contacts?.[0]?.email || '';
+      case 'status': return row.contacts?.[0]?.status || row.status || '';
+      case 'fileName': return row.attachments?.[0]?.fileName || row.attachments?.[0]?.name || '';
+      case 'fileSize': return Number(row.attachments?.[0]?.fileSize) || 0;
+      case 'fileType': return row.attachments?.[0]?.fileType || '';
+      default: return (row as Record<string, unknown>)[key] ?? '';
+    }
+  }, []);
+
+  const { sortCol, sortDesc, handleSort, sortedRows: sortedList } = useTableSort(
+    filteredList,
+    getCompanySortValue,
+    { defaultKey: 'name', defaultDesc: false }
+  );
+
+  const totalItems = sortedList.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const paginatedList = filteredList.slice(startIndex, endIndex);
+  const paginatedList = sortedList.slice(startIndex, endIndex);
 
   const groupedCompanies = useMemo(() => {
     const sorted = [...paginatedList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -542,9 +796,9 @@ export function CompanyList() {
           <div className="flex-1 min-h-0 flex flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden relative">
             <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
               <span className="text-[11px] font-semibold text-slate-400">Total {totalItems} Records</span>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => exportBusinessEntityReportToExcel(filteredList, companyViewMode, 'Business_Entity_Report.csv')}
                 className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
               >
@@ -552,9 +806,9 @@ export function CompanyList() {
                 Export CSV
               </Button>
             </div>
-            <div className="flex-1 min-h-0 flex relative">
+            <div className="flex-1 min-h-0 flex overflow-hidden">
               <div
-                className="flex-1 overflow-y-auto overflow-x-auto pr-10 scrollbar-thin min-h-0"
+                className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin min-h-0 min-w-0 relative z-0"
                 id="company-scroll-container"
                 onScroll={(e) => {
                   const target = e.currentTarget;
@@ -575,94 +829,130 @@ export function CompanyList() {
                 }}
               >
                 {companyViewMode === 'list' ? (
-                  <table className="tm-data-table w-full border-collapse text-left">
+                  <table className="tm-data-table w-full min-w-[1100px] table-fixed border-collapse text-left">
                     <thead className="sticky top-0 z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
                       <tr>
-                        <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Code</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business Entity Name</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Type</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Primary Address</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">City</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">State</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Country</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">VAT/GST No.</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Credit Limit</th>
-                        <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                        <th className="w-[7%] px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[14%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Business Entity Name" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[10%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Alias" sortKey="alias" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Type" sortKey="type" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[14%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Primary Address" sortKey="address" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="City" sortKey="city" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="State" sortKey="state" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Country" sortKey="country" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[8%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="VAT/GST No." sortKey="vatGst" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Credit Limit" sortKey="creditLimit" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[100px] px-2 py-2 pr-4 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {paginatedList.map((company: any) => {
                         const locStr = [company.address, company.city, company.state, company.country].filter(Boolean).join(', ') || 'N/A';
+                        const creditStr = company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit';
+                        const cityStr = company.city || 'N/A';
+                        const stateStr = company.state || 'N/A';
+                        const countryStr = company.country || 'N/A';
+                        const vatStr = company.vatGst || 'N/A';
+                        const typeStr = company.type || '';
+                        const nameStr = company.name || '';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
-                            <td className="px-3 py-2 pl-4">
-                              <span className="text-[11px] font-medium text-[#0EA5E9] whitespace-nowrap tabular-nums">
-                                {company.code}
-                              </span>
+                            <td className="px-3 py-2 pl-4 align-middle">
+                              <TruncatedText
+                                text={company.code || ''}
+                                className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
+                              />
                             </td>
                             <td
                               className={cn(
-                                'px-3 py-2 text-xs font-semibold text-slate-100 min-w-0',
+                                'px-3 py-2 text-xs font-semibold text-slate-100 align-middle min-w-0',
                                 isUpdate && 'hover:text-[#0EA5E9] cursor-pointer'
                               )}
                               onClick={() => isUpdate && handleEditClick(company)}
                             >
-                              <div className="min-w-0 truncate">{company.name}</div>
+                              <TruncatedText text={nameStr} className="text-xs font-semibold text-slate-100" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 max-w-[11rem]">
-                              <span
-                                title={company.type || undefined}
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={company.aliasName || '—'} className="text-xs font-medium text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
+                              <TruncatedText
+                                text={typeStr}
                                 className={cn(
-                                  'inline-block max-w-full align-middle px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border leading-snug break-words',
-                                  company.type === 'Buy'
+                                  'inline-block w-full px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border leading-none',
+                                  typeStr === 'Buy'
                                     ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
                                     : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                                 )}
-                              >
-                                {company.type}
-                              </span>
+                              />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 max-w-[200px] truncate" title={locStr}>
-                              {locStr}
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={locStr} className="text-xs font-medium text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              {company.city || 'N/A'}
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={cityStr} className="text-xs font-medium text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              {company.state || 'N/A'}
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={stateStr} className="text-xs font-medium text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              {company.country || 'N/A'}
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={countryStr} className="text-xs font-medium text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 font-mono">
-                              {company.vatGst || 'N/A'}
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 font-mono align-middle min-w-0">
+                              <TruncatedText text={vatStr} className="text-xs font-medium text-slate-300 font-mono" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
+                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={creditStr} className="text-xs font-medium text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 pr-4 text-right">
-                              <div className="flex items-center justify-end gap-0.5">
+                            <td className="px-2 py-2 pr-4 text-center align-middle whitespace-nowrap">
+                              <div className="inline-flex items-center justify-center gap-0.5">
                                 {isUpdate ? (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleEditClick(company)}
-                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
-                                  >
-                                    <Edit size={13} />
-                                  </Button>
+                                  <ActionTip label="Edit">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Edit"
+                                      onClick={() => handleEditClick(company)}
+                                      className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
+                                    >
+                                      <Edit size={13} />
+                                    </Button>
+                                  </ActionTip>
                                 ) : null}
                                 {isDelete ? (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)}
-                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                                  >
-                                    <Trash2 size={13} />
-                                  </Button>
+                                  <ActionTip label="Delete">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Delete"
+                                      onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)}
+                                      className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                                    >
+                                      <Trash2 size={13} />
+                                    </Button>
+                                  </ActionTip>
                                 ) : null}
                               </div>
                             </td>
@@ -688,62 +978,68 @@ export function CompanyList() {
                                     {company.name ? company.name.substring(0, 2) : 'BE'}
                                   </div>
                                   <div className="min-w-0">
-                                    <h4 className="text-[11px] font-semibold text-slate-50 leading-tight group-hover:text-[#0EA5E9] transition-colors truncate" title={company.name}>{company.name}</h4>
-                                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                    <TruncatedText text={company.name || ''} className="text-[11px] font-semibold text-slate-50 leading-tight group-hover:text-[#0EA5E9] transition-colors" />
+                                    <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0">
                                       <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-elevated)] text-slate-300 border border-[var(--tm-border)]/80">{company.code}</span>
-                                      <span className={cn(
-                                        "inline-block max-w-full align-middle text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] border leading-snug break-words",
+                                      <div className={cn(
+                                        "min-w-0 max-w-full text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] border leading-snug",
                                         company.type === 'Buy' ? "bg-sky-500/15 text-sky-400 border-sky-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                                      )} title={company.type || undefined}>
-                                        {company.type}
-                                      </span>
+                                      )}>
+                                        <TruncatedText text={company.type || ''} />
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-0.5 shrink-0">
                                   {isUpdate && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
-                                      <Edit size={11} />
-                                    </Button>
+                                    <ActionTip label="Edit">
+                                      <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                                        <Edit size={11} />
+                                      </Button>
+                                    </ActionTip>
                                   )}
                                   {isDelete && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
-                                      <Trash2 size={11} />
-                                    </Button>
+                                    <ActionTip label="Delete">
+                                      <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
+                                        <Trash2 size={11} />
+                                      </Button>
+                                    </ActionTip>
                                   )}
                                 </div>
                               </div>
 
                               <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 py-1.5 border-t border-b border-[var(--tm-border)] text-[10px] font-medium text-slate-500">
-                                <div className="col-span-2">
+                                <div className="col-span-2 min-w-0">
                                   <span className="text-[8px] font-semibold text-[#0EA5E9] block mb-0.5">Primary Location</span>
-                                  <span className="text-slate-100 font-medium block truncate leading-snug" title={company.address || 'N/A'}>{company.address || 'N/A'}</span>
+                                  <TruncatedText text={company.address || 'N/A'} className="text-slate-100 font-medium leading-snug" />
                                 </div>
                                 <div className="min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">City & PIN Code</span>
-                                  <span className="text-slate-200 font-medium block truncate" title={[company.city, company.pinCode].filter(Boolean).join(' - ')}>
-                                    {[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'}
-                                  </span>
+                                  <TruncatedText text={[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'} className="text-slate-200 font-medium" />
                                 </div>
                                 <div className="min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">State & Country</span>
-                                  <span className="text-slate-200 font-medium block truncate" title={[company.state, company.country].filter(Boolean).join(', ')}>
-                                    {[company.state, company.country].filter(Boolean).join(', ') || 'N/A'}
-                                  </span>
+                                  <TruncatedText text={[company.state, company.country].filter(Boolean).join(', ') || 'N/A'} className="text-slate-200 font-medium" />
                                 </div>
                                 <div className="col-span-2 min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">Credit limit & GST</span>
-                                  <span className="text-slate-200 font-medium block truncate" title={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}>
-                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                    {company.vatGst ? ` | GST: ${company.vatGst}` : ''}
-                                  </span>
+                                  <TruncatedText
+                                    text={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}
+                                    className="text-slate-200 font-medium"
+                                  />
                                 </div>
                               </div>
 
                               <div className="flex items-center justify-between text-[9px] font-medium text-slate-400 pt-0.5 mt-auto">
                                 <span className="flex items-center gap-1 min-w-0">
                                   <User size={10} className="text-slate-400 shrink-0" />
-                                  Created By: <strong className="text-slate-300 truncate max-w-[100px]">{company.createdBy || company.displayName || company.userName || 'System'}</strong>
+                                  <span className="shrink-0">Created By:</span>
+                                  <div className="min-w-0 flex-1 overflow-hidden">
+                                    <TruncatedText
+                                      text={company.createdBy || company.displayName || company.userName || 'System'}
+                                      className="text-slate-300 font-semibold"
+                                    />
+                                  </div>
                                 </span>
                                 <span className="text-[8px] text-slate-400 font-semibold shrink-0">
                                   {company.createdDate ? new Date(company.createdDate).toLocaleDateString() : ''}
@@ -756,74 +1052,104 @@ export function CompanyList() {
                     ))}
                   </div>
                 ) : companyViewMode === 'contact-list' ? (
-                  <div className="space-y-5 p-3">
-                    {groupedCompanies.map((group) => {
-                      const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
-                      if (!hasContacts) return null;
-
-                      return (
-                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
-                            <span>Alphabet {group.letter}</span>
-                            <span className="text-[10px] font-medium opacity-70">Contacts</span>
-                          </div>
-
-                          <div className="rounded-[8px] border border-[var(--tm-border)]/70 overflow-hidden bg-[var(--tm-surface)]">
-                            <table className="tm-data-table w-full border-collapse text-left">
-                              <thead className="sticky top-[28px] z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
-                                <tr>
-                                  <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Contact Name</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business Entity</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Designation</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Department</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Phone</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Email</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Status</th>
-                                  <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {group.items.map((company: any) =>
-                                  (company.contacts || []).map((contact: any, cIdx: number) => (
-                                    <tr key={`${company.id}-${cIdx}`} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors">
-                                      <td className="px-3 py-2 pl-4 text-xs font-semibold text-slate-100">
-                                        {contact.contactPersonName || contact.contactName || contact.name}
-                                      </td>
-                                      <td
-                                        className={cn('px-3 py-2 text-xs font-medium text-slate-200', isUpdate && 'hover:text-[#0EA5E9] cursor-pointer')}
-                                        onClick={() => isUpdate && handleEditClick(company)}
-                                      >
-                                        {company.name}
-                                      </td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.designation || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.department || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-300 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.email || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs">
-                                        <span className={cn(
-                                          'px-2 py-0.5 rounded-[6px] text-[8px] font-semibold',
-                                          (contact.status || 'Active') === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[var(--tm-muted)] text-slate-500 border border-[var(--tm-border)]'
-                                        )}>
-                                          {contact.status || 'Active'}
-                                        </span>
-                                      </td>
-                                      <td className="px-3 py-2 pr-4 text-right">
-                                        {isUpdate ? (
-                                          <Button type="button" variant="ghost" size="icon" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] ml-auto">
-                                            <Edit size={13} />
-                                          </Button>
-                                        ) : null}
-                                      </td>
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <table className="tm-data-table w-full min-w-[960px] table-fixed border-collapse text-left">
+                    <thead className="sticky top-0 z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
+                      <tr>
+                        <th className="w-[14%] px-3 py-2.5 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Contact Name" sortKey="contactName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[18%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Designation" sortKey="designation" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Department" sortKey="department" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Phone" sortKey="phone" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[16%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Email" sortKey="email" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[8%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Status" sortKey="status" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[100px] px-2 py-2.5 pr-4 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedList.map((company: any) => {
+                        const contact = company.contacts?.[0] || {};
+                        const contactName = contact.contactPersonName || contact.contactName || contact.name || '';
+                        const phoneStr = contact.phoneNo || contact.phone || 'N/A';
+                        const emailStr = contact.email || 'N/A';
+                        const designationStr = contact.designation || 'N/A';
+                        const departmentStr = contact.department || 'N/A';
+                        const statusStr = contact.status || company.status || 'Active';
+                        return (
+                          <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors">
+                            <td className="px-3 py-2.5 pl-4 align-middle min-w-0">
+                              <TruncatedText text={contactName} className="text-xs font-semibold text-slate-100" />
+                            </td>
+                            <td
+                              className={cn('px-3 py-2.5 align-middle min-w-0', isUpdate && 'cursor-pointer')}
+                              onClick={() => isUpdate && handleEditClick(company)}
+                            >
+                              <TruncatedText
+                                text={company.name || ''}
+                                className={cn('text-xs font-medium text-slate-200', isUpdate && 'hover:text-[#0EA5E9]')}
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 align-middle min-w-0">
+                              <TruncatedText text={designationStr} className="text-xs font-medium text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2.5 align-middle min-w-0">
+                              <TruncatedText text={departmentStr} className="text-xs font-medium text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2.5 align-middle min-w-0">
+                              <TruncatedText text={phoneStr} className="text-xs font-medium text-slate-300 font-mono" />
+                            </td>
+                            <td className="px-3 py-2.5 align-middle min-w-0">
+                              <TruncatedText text={emailStr} className="text-xs font-medium text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2.5 align-middle whitespace-nowrap">
+                              <span className={cn(
+                                'inline-flex px-2 py-0.5 rounded-[6px] text-[8px] font-semibold',
+                                statusStr === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[var(--tm-muted)] text-slate-500 border border-[var(--tm-border)]'
+                              )}>
+                                {statusStr}
+                              </span>
+                            </td>
+                            <td className="px-2 py-2.5 pr-4 text-center align-middle whitespace-nowrap">
+                              <div className="inline-flex items-center justify-center gap-0.5">
+                                <BusinessEntityShareMenu
+                                  mode="contact"
+                                  contact={{
+                                    companyName: company.name,
+                                    companyCode: company.code,
+                                    name: contactName,
+                                    designation: contact.designation,
+                                    department: contact.department,
+                                    phone: contact.phoneNo || contact.phone,
+                                    email: contact.email,
+                                  }}
+                                />
+                                {isUpdate ? (
+                                  <ActionTip label="Edit">
+                                    <Button type="button" variant="ghost" size="icon" aria-label="Edit" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                                      <Edit size={13} />
+                                    </Button>
+                                  </ActionTip>
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 ) : companyViewMode === 'contact-album' ? (
                   <div className="space-y-5 p-3">
                     {groupedCompanies.map((group) => {
@@ -869,20 +1195,36 @@ export function CompanyList() {
                                         <span className="text-slate-400">Phone:</span>
                                         <span className="text-slate-200 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
                                       </div>
-                                      <div className="flex justify-between gap-2">
-                                        <span className="text-slate-400">Email:</span>
-                                        <span className="text-slate-200 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
+                                      <div className="flex justify-between gap-2 min-w-0">
+                                        <span className="text-slate-400 shrink-0">Email:</span>
+                                        <div className="min-w-0 max-w-[150px] overflow-hidden">
+                                          <TruncatedText text={contact.email || 'N/A'} className="text-slate-200 text-right" />
+                                        </div>
                                       </div>
                                     </div>
 
                                     <div className="pt-2 mt-auto flex items-center justify-between border-t border-[var(--tm-border)]">
                                       <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
-                                      {isUpdate && (
-                                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(company)} className="h-7 rounded-[6px] text-slate-500 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] text-[10px] font-semibold gap-1">
-                                          <Edit size={11} />
-                                          Edit
-                                        </Button>
-                                      )}
+                                      <div className="flex items-center gap-0.5">
+                                        <BusinessEntityShareMenu
+                                          mode="contact"
+                                          contact={{
+                                            companyName: company.name,
+                                            companyCode: company.code,
+                                            name: cName,
+                                            designation: contact.designation,
+                                            department: contact.department,
+                                            phone: contact.phoneNo || contact.phone,
+                                            email: contact.email,
+                                          }}
+                                        />
+                                        {isUpdate && (
+                                          <Button variant="ghost" size="sm" onClick={() => handleEditClick(company)} className="h-7 rounded-[6px] text-slate-500 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] text-[10px] font-semibold gap-1">
+                                            <Edit size={11} />
+                                            Edit
+                                          </Button>
+                                        )}
+                                      </div>
                                     </div>
                                   </Card>
                                 );
@@ -894,102 +1236,95 @@ export function CompanyList() {
                     })}
                   </div>
                 ) : (
-                  <div className="space-y-5 p-3">
-                    {groupedCompanies.map((group) => {
-                      const mergedMap = new Map<string, any>();
-                      group.items.forEach((c: any) => {
-                        const key = c.name || c.id;
-                        if (mergedMap.has(key)) {
-                          mergedMap.get(key).attachments.push(...(c.attachments || []));
-                        } else {
-                          mergedMap.set(key, { ...c, attachments: [...(c.attachments || [])] });
-                        }
-                      });
-
-                      const mergedItems = Array.from(mergedMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                      const hasAttachments = mergedItems.some(c => c.attachments && c.attachments.length > 0);
-                      if (!hasAttachments) return null;
-
-                      return (
-                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
-                            <span>Alphabet {group.letter}</span>
-                            <span className="text-[10px] font-medium opacity-70">{mergedItems.length} Entities</span>
-                          </div>
-                          <div className="space-y-3">
-                            {mergedItems.map((company: any) => {
-                              if (!company.attachments || company.attachments.length === 0) return null;
-                              return (
-                                <div key={company.id} className="bg-[var(--tm-elevated)] rounded-[8px] border border-[var(--tm-border)]/70 p-4">
-                                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--tm-border)]/60 mb-3">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-8 h-8 rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] flex items-center justify-center font-semibold text-sm uppercase">
-                                        {company.name ? company.name.substring(0, 2) : 'BE'}
-                                      </div>
-                                      <div>
-                                        <h4 className={cn('text-xs font-semibold text-slate-50', isUpdate && 'hover:text-[#0EA5E9] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</h4>
-                                        <p className="text-[9px] font-medium text-slate-400">{company.code} Ã¢ÂÂ¢ {company.type}</p>
-                                      </div>
-                                    </div>
-                                    <span className="text-[10px] text-slate-500 font-semibold bg-[var(--tm-surface)] px-2.5 py-1 rounded-[6px] border border-[var(--tm-border)]/80">
-                                      {company.attachments?.length || 0} Document(s)
-                                    </span>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                    {company.attachments.map((att: any, idx: number) => {
-                                      const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
-                                      const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
-                                      const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
-
-                                      return (
-                                        <Card key={idx} className="bg-[var(--tm-surface)] rounded-[8px] border border-[var(--tm-border)]/70 p-3.5 hover:shadow-md hover:border-[#0EA5E9]/30 transition-all flex flex-col justify-between gap-3 group">
-                                          <div className="flex items-start gap-3">
-                                            <div className={cn(
-                                              'p-2 rounded-[8px] shrink-0 flex items-center justify-center',
-                                              isPdf ? 'bg-red-500/10 text-red-500' : isSheet ? 'bg-emerald-500/15 text-emerald-500' : isDoc ? 'bg-blue-500/15 text-blue-500' : 'bg-[var(--tm-muted)] text-slate-500'
-                                            )}>
-                                              <FileText size={18} />
-                                            </div>
-                                            <div className="min-w-0">
-                                              <h5 className="text-xs font-semibold text-slate-200 truncate leading-snug group-hover:text-[#0EA5E9] transition-colors">{att.fileName || att.name}</h5>
-                                              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                                                <p className="text-[9px] text-slate-400 font-medium font-mono">
-                                                  {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
-                                                </p>
-                                                {att.fileType ? (
-                                                  <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-elevated)] text-slate-500 border border-[var(--tm-border)]/80">{att.fileType}</span>
-                                                ) : null}
-                                              </div>
-                                            </div>
-                                          </div>
-
-                                          <div className="flex items-center justify-end pt-2 border-t border-[var(--tm-border)] mt-auto">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
-                                              className="h-7 px-2.5 rounded-[6px] text-[9px] font-semibold text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30"
-                                            >
-                                              Download
-                                            </Button>
-                                          </div>
-                                        </Card>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <table className="tm-data-table w-full min-w-[900px] table-fixed border-collapse text-left">
+                    <thead className="sticky top-0 z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
+                      <tr>
+                        <th className="w-[28%] px-3 py-2.5 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="File Name" sortKey="fileName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[22%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[10%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Type" sortKey="fileType" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                          <SortableHeader label="Size" sortKey="fileSize" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[160px] px-2 py-2.5 pr-4 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedList.map((company: any) => {
+                        const att = company.attachments?.[0] || {};
+                        const fileName = att.fileName || att.name || '';
+                        const fileType = att.fileType || '—';
+                        const sizeStr = att.fileSize ? `${(Number(att.fileSize) / 1024).toFixed(1)} KB` : '—';
+                        return (
+                          <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
+                            <td className="px-3 py-2.5 pl-4 align-middle min-w-0">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText size={14} className="shrink-0 text-slate-400" />
+                                <TruncatedText
+                                  text={fileName}
+                                  className="text-xs font-semibold text-slate-200 group-hover:text-[#0EA5E9] transition-colors"
+                                />
+                              </div>
+                            </td>
+                            <td
+                              className={cn('px-3 py-2.5 align-middle min-w-0', isUpdate && 'cursor-pointer')}
+                              onClick={() => isUpdate && handleEditClick(company)}
+                            >
+                              <TruncatedText
+                                text={company.name || ''}
+                                className={cn('text-xs font-medium text-slate-200', isUpdate && 'hover:text-[#0EA5E9]')}
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 align-middle min-w-0">
+                              <TruncatedText text={company.code || ''} className="text-[11px] font-medium text-[#0EA5E9] tabular-nums" />
+                            </td>
+                            <td className="px-3 py-2.5 align-middle min-w-0">
+                              <TruncatedText text={fileType} className="text-xs font-medium text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2.5 align-middle min-w-0">
+                              <TruncatedText text={sizeStr} className="text-xs font-medium text-slate-300 font-mono" />
+                            </td>
+                            <td className="px-2 py-2.5 pr-4 text-center align-middle whitespace-nowrap">
+                              <div className="inline-flex items-center justify-center gap-1">
+                                {att.id ? (
+                                  <BusinessEntityShareMenu
+                                    mode="attachment"
+                                    attachmentId={att.id}
+                                    fileName={fileName || 'document'}
+                                    companyName={company.name}
+                                    iconOnly={false}
+                                  />
+                                ) : null}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
+                                  className="h-7 px-2.5 rounded-[6px] text-[9px] font-semibold text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30"
+                                >
+                                  Download
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 )}
               </div>
 
-              <div className="absolute right-1.5 top-2 bottom-2 w-8 min-h-0 bg-[var(--tm-surface)]/95 backdrop-blur-sm rounded-[8px] border border-[var(--tm-border)]/80 shadow-sm flex flex-col items-stretch justify-evenly py-1.5 px-0.5 z-20 select-none overflow-hidden">
+              <aside
+                aria-label="Jump to letter"
+                className="shrink-0 w-10 self-stretch border-l border-[var(--tm-border)] bg-[var(--tm-elevated)] z-20 relative flex flex-col items-stretch justify-evenly py-2 px-0.5 select-none overflow-hidden shadow-[-6px_0_12px_-8px_rgba(0,0,0,0.35)]"
+              >
                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
                   const hasItems = apiAlphabets.includes(char) || apiAlphabets.includes(char.toLowerCase());
                   const isSelected = currentStartsWith === char;
@@ -1013,7 +1348,7 @@ export function CompanyList() {
                     </button>
                   );
                 })}
-              </div>
+              </aside>
             </div>
             {paginationBar}
           </div>

@@ -15,6 +15,8 @@ interface MasterDeleteDialogProps {
   onConfirm: () => void;
   /** Optional display name — UX only; does not affect delete API */
   recordName?: string | null;
+  /** e.g. "meeting note" — used in title/copy */
+  entityLabel?: string;
 }
 
 export function MasterDeleteDialog({
@@ -22,8 +24,10 @@ export function MasterDeleteDialog({
   onOpenChange,
   onConfirm,
   recordName,
+  entityLabel = 'record',
 }: MasterDeleteDialogProps) {
   const label = (recordName || '').trim();
+  const entity = (entityLabel || 'record').trim() || 'record';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -33,7 +37,7 @@ export function MasterDeleteDialog({
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/15 text-red-400 ring-1 ring-red-500/25">
               <AlertCircle size={16} strokeWidth={2.5} />
             </span>
-            Delete record?
+            Delete {entity}?
           </DialogTitle>
           <DialogDescription className="text-sm text-slate-400 mt-2 leading-relaxed">
             {label ? (
@@ -41,7 +45,7 @@ export function MasterDeleteDialog({
                 You are about to delete <span className="font-semibold text-slate-200">“{label}”</span>. This cannot be undone.
               </>
             ) : (
-              <>You are about to delete this record. This cannot be undone.</>
+              <>You are about to delete this {entity}. This cannot be undone.</>
             )}
           </DialogDescription>
         </DialogHeader>

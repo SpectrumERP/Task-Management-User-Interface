@@ -57,6 +57,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
   // Header fields
   const [name, setName] = useState('');
+  const [aliasName, setAliasName] = useState('');
   const [companyType, setCompanyType] = useState('');
   const [companyTimeZoneNo, setCompanyTimeZoneNo] = useState('');
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
@@ -132,6 +133,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
         const dl = body.data || body;
         if (dl) {
           setName(dl.businessEntityName || '');
+          setAliasName(dl.aliasName || dl.businessEntityAlias || dl.AliasName || '');
           setCompanyType(dl.businessEntityType?.id?.toString() || '');
           setCompanyVatGst(dl.vatgstNo || '');
           setCreditLimit(dl.creditInsuranceLimit ?? null);
@@ -697,6 +699,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
       const payload = {
         businessEntityNo: editingId ? parseInt(editingId) : null,
         businessEntityName: name,
+        aliasName: aliasName.trim() || null,
+        businessEntityAlias: aliasName.trim() || null,
         crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : null,
         crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : null,
         vatgstNo: companyVatGst || null,
@@ -745,6 +749,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
             editingId={editingId}
             name={name}
             setName={setName}
+            aliasName={aliasName}
+            setAliasName={setAliasName}
             companyType={companyType}
             setCompanyType={setCompanyType}
             companyTimeZoneNo={companyTimeZoneNo}
@@ -777,6 +783,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
         <div data-page-tour="company-contacts">
           <CompanyContactsSection
             contacts={companyContacts}
+            companyName={name}
             onAdd={openAddContactModal}
             onEdit={handleEditContact}
             onRemove={removeCompanyContact}
@@ -795,6 +802,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
         <div data-page-tour="company-attachments">
           <CompanyAttachmentsSection
             attachments={companyAttachments}
+            companyName={name}
             onFileUpload={handleFileUpload}
             onOpenCamera={() => setIsCameraModalOpen(true)}
             onAnalyze={handleAnalyzeAttachment}

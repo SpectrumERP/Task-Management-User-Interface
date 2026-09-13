@@ -11,6 +11,7 @@ import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
+import { SortableHeader } from '@/components/shared/useTableSort';
 
 const FORM_NO = 1546;
 const TITLE = 'User Group Master';
@@ -92,6 +93,8 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<GroupMember[]>([]);
+  const [memberSortCol, setMemberSortCol] = useState<string | null>('userName');
+  const [memberSortDesc, setMemberSortDesc] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -213,6 +216,23 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
     }
     setSelectedUsers(next);
     if (errors.selectedUsers) setErrors((prev) => ({ ...prev, selectedUsers: '' }));
+  };
+
+  const handleMemberSort = (key: string) => {
+    const nextDesc = memberSortCol === key ? !memberSortDesc : false;
+    setMemberSortCol(key);
+    setMemberSortDesc(nextDesc);
+    setSelectedUsers((prev) => {
+      const filled = prev.filter((u) => u.loginNo || u.userName || u.displayName || u.email);
+      const empty = prev.filter((u) => !u.loginNo && !u.userName && !u.displayName && !u.email);
+      const sorted = [...filled].sort((a, b) => {
+        const av = String((a as Record<string, unknown>)[key] ?? '');
+        const bv = String((b as Record<string, unknown>)[key] ?? '');
+        const cmp = av.localeCompare(bv, undefined, { sensitivity: 'base', numeric: true });
+        return nextDesc ? -cmp : cmp;
+      });
+      return [...sorted, ...empty];
+    });
   };
 
   const memberCount = selectedUsers.filter((u) => !!u.userName).length;
@@ -353,13 +373,31 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                 <thead>
                   <tr className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
                     <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
-                      User Name
+                      <SortableHeader
+                        label="User Name"
+                        sortKey="userName"
+                        sortCol={memberSortCol}
+                        sortDesc={memberSortDesc}
+                        onSort={handleMemberSort}
+                      />
                     </th>
                     <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
-                      Display Name
+                      <SortableHeader
+                        label="Display Name"
+                        sortKey="displayName"
+                        sortCol={memberSortCol}
+                        sortDesc={memberSortDesc}
+                        onSort={handleMemberSort}
+                      />
                     </th>
                     <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[36%]">
-                      Email
+                      <SortableHeader
+                        label="Email"
+                        sortKey="email"
+                        sortCol={memberSortCol}
+                        sortDesc={memberSortDesc}
+                        onSort={handleMemberSort}
+                      />
                     </th>
                     <th className="px-2 py-2.5 w-10" />
                   </tr>

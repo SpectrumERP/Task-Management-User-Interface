@@ -28,24 +28,24 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
   tasks: {
     title: 'Tasks Guide',
     steps: [
-      S('task-search', 'Search tasks', 'Filter the list by typing a task title or keyword. Hit Enter or the Search button to refresh results.'),
-      S('task-filters', 'Filters & Sorting', 'Advanced filters open from here — status, category, assign to, dates, etc. You can clear them using Reset.'),
-      S('task-view-mode', 'View mode', 'Switch between List, Board, or Calendar view modes from here.'),
-      S('task-create', 'Create task', 'Press + Create to make a new task. A form will open to fill in the details.', 'left'),
-      S('task-status-pills', 'Status filters', 'Instantly filter the list by status using the Pending, Draft, Complete pills. Click again to clear.'),
-      S('task-table', 'Task list', 'All tasks are shown here. Click the code for details, or the pencil to edit. Columns and badges show priority.', 'top'),
+      S('task-search', 'Search tasks', 'Type to filter instantly by title, code, or person. Clear with the × in the search box.'),
+      S('task-filters', 'Filters', 'Opens the filter drawer — priority, task code, category, assign to, and due date. Use Reset to clear all filters.'),
+      S('task-view-mode', 'View mode', 'Switch between List, Board, or Calendar from this control.'),
+      S('task-create', 'Create task', 'Opens the form to create a new task.', 'left'),
+      S('task-status-pills', 'Status filters', 'Tap status pills (Pending, Draft, Complete, …) to filter. Tap again to clear. Multiple pills work together.'),
+      S('task-table', 'Task list', 'Browse tasks here. Click the code for a quick preview, or edit from the row actions. Sort by clicking column headers.', 'top'),
     ],
   },
 
   'deal-monitor': {
     title: 'Deal Monitor Guide',
     steps: [
-      S('task-search', 'Search', 'Find Deal Monitor tasks by keyword.'),
-      S('task-filters', 'Filters', 'Advanced filters for status, assign to, dates are here. Category is pinned/controlled in this view.'),
-      S('task-view-mode', 'View mode', 'Switch between List, Board, and Calendar views.'),
-      S('task-create', 'Create', '+ Create will make a new Deal Monitor task.', 'left'),
-      S('task-status-pills', 'Status pills', 'Quickly filter using Pending, Draft pills.'),
-      S('task-table', 'Results', 'Click on a row to open the full task page.', 'top'),
+      S('task-search', 'Search', 'Type to filter Deal Monitor tasks by title, code, or person.'),
+      S('task-filters', 'Filters', 'Opens priority, task code, assign to, and due-date filters. Category is fixed for this view.'),
+      S('task-view-mode', 'View mode', 'Switch between List, Board, and Calendar.'),
+      S('task-create', 'Create', 'Create a new Deal Monitor task.', 'left'),
+      S('task-status-pills', 'Status pills', 'Filter quickly with status pills. Tap again to clear.'),
+      S('task-table', 'Results', 'Click a row to open the full task page. Sort with column headers.', 'top'),
     ],
   },
 
@@ -53,20 +53,20 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
     title: 'Meetings Guide',
     steps: [
       S('meeting-create', 'New meeting', '+ New Meeting opens the create form.', 'left'),
-      S('meeting-title-filter', 'Filter by title', 'Filter the list by typing the title.'),
-      S('meeting-status-filter', 'Status filter', 'Narrow down by Initial, Release, or Authorized status.'),
-      S('meeting-date-filter', 'Date range', 'Shortlist the list using meeting dates.'),
+      S('meeting-title-filter', 'Search', 'Filter meetings by typing in the title search box.'),
+      S('meeting-status-filter', 'Status pills', 'Quickly narrow by Initial, Release, or Authorized.'),
+      S('meeting-date-filter', 'Date range', 'Shortlist meetings by schedule dates.'),
       S('meeting-clear-filters', 'Clear filters', 'Reset all list filters in one click.'),
-      S('meeting-table', 'Meeting list', 'Click a row or edit icon for the detail/edit page.', 'top'),
+      S('meeting-table', 'Meeting list', 'Open a row to edit. Send minutes when Release/Authorized. Delete is only for users with Delete right, and only while status is Initial/Draft — confirm dialog pehle aayega.', 'top'),
     ],
   },
 
   'meeting-form': {
     title: 'Meeting Form Guide',
     steps: [
-      S('meeting-form-actions', 'Save / Cancel', 'Save or Update will save the note; Cancel returns you to the list.'),
-      S('meeting-form-detail', 'Meeting details', 'Set title, type, category, schedule, and status here.', 'top'),
-      S('meeting-form-participants', 'Participants', 'Add internal and external participants.'),
+      S('meeting-form-actions', 'Save / Cancel / Send', 'Save or Update the note. After save, use Send Minutes (Release/Authorized) to email attendees.'),
+      S('meeting-form-detail', 'Meeting details', 'Set title, type, category, schedule, status, and location (City · State shown together).', 'top'),
+      S('meeting-form-participants', 'Participants', 'Add internal and external participants — emails here are used when sending minutes.'),
       S('meeting-form-discussions', 'Discussions', 'Write discussion points and outcomes here.'),
       S('meeting-form-attachments', 'Attachments', 'Upload and manage related files.'),
       S('page-guide-btn', 'Page Guide', 'You can restart this tour anytime from the ? / Page Guide button.', 'left'),
@@ -100,7 +100,7 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
     steps: [
       S('task-form-actions', 'Save & actions', 'Save, Update, and Cancel controls are on the top bar.'),
       S('task-form-detail', 'Task Detail', 'Write title and description here — this is the main task identity.', 'top'),
-      S('task-form-category', 'Category Detail', 'Set category, type, folder, priority. Use + to quickly add a master record.'),
+      S('task-form-category', 'Category Detail', 'Set category, type, folder, priority. Reminder frequency follows the selected priority. Use + to quickly add a master record.'),
       S('task-form-ownership', 'Ownership', 'Manage Assign To and collaborators here.'),
       S('task-form-timeline', 'Timeline & Effort', 'Start and due dates, along with estimated effort.'),
       S('task-form-attachments', 'Attachments', 'Attach related files.'),

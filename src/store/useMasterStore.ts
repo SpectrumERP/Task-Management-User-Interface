@@ -23,6 +23,9 @@ export interface PriorityMaster {
   priorityFrequencyNo: string;
   sequence?: number | string;
   colorCoding?: string;
+  /** Reminder rule summary for list (API-ready; may be empty until backend ships). */
+  reminderSummary?: string;
+  isReminderEnabled?: boolean;
 }
 
 export interface FolderMaster {

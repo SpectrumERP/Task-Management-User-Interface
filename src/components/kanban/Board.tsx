@@ -1,5 +1,5 @@
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
-import { useTaskStore } from '@/store/useTaskStore';
+import { useTaskStore, type FilterParams } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Column } from './Column';
 import { TaskStatus, Task } from '@/types/task';
@@ -9,6 +9,8 @@ import { BrandLoader } from '@/components/ui/BrandLoader';
 interface BoardProps {
   onAddTask: (status?: string) => void;
   onTaskClick?: (taskId: number) => void;
+  /** Keep board data aligned with list/calendar filters. */
+  filterParams?: FilterParams | Record<string, unknown> | null;
 }
 
 function sortBoardStatuses(statuses: { StatusNo: number; Status: string }[]) {
@@ -33,7 +35,7 @@ function boardStatusesFromFill(status: { StatusNo: number; Status: string }[] | 
   return sortBoardStatuses(filtered);
 }
 
-export function Board({ onAddTask, onTaskClick }: BoardProps) {
+export function Board({ onAddTask, onTaskClick, filterParams }: BoardProps) {
   const { tasks, moveTask, fetchTasks, isLoading: isTasksLoading, fetchFillValues, fillValues } = useTaskStore();
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
@@ -55,15 +57,19 @@ export function Board({ onAddTask, onTaskClick }: BoardProps) {
         setStatuses(boardStatusesFromFill(statusResponse.status));
         setIsStatusesLoading(false);
 
-        // 2. Fetch Tasks (same API as before; keep board visible if we already have columns/data)
-        await fetchTasks();
+        // 2. Keep the same filter set as list/calendar when available
+        if (filterParams && Object.keys(filterParams).length > 0) {
+          await fetchTasks({ ...filterParams } as FilterParams);
+        } else {
+          await fetchTasks();
+        }
       } catch (error) {
         console.error('Failed to initialize board:', error);
         setIsStatusesLoading(false);
       }
     };
     initBoard();
-  }, [fetchTasks, fetchFillValues, companyNo]);
+  }, [fetchTasks, fetchFillValues, companyNo, filterParams]);
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;

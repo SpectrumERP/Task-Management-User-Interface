@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import { useNavigate, useBlocker, useLocation } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Loader2, Clock, UserRound, IdCard, Building2, UserPlus, X } from 'lucide-react';
+import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Loader2, Clock, UserRound, IdCard, Building2, UserPlus, X, Send } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Combobox } from '@/components/ui/Combobox';
+import { LocationCombobox } from '@/components/ui/LocationCombobox';
+import { formatLocationDisplayLabel } from '@/services/locationService';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { EmployeeCombobox } from '@/components/meetings/EmployeeCombobox';
 import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityCombobox';
@@ -34,6 +36,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { SendMinutesDialog } from '@/components/meetings/SendMinutesDialog';
+import {
+  buildMinutesRecipients,
+  isMinutesSendStatusAllowed,
+  readLastMinutesSentAt,
+} from '@/lib/meetingMinutesShare';
 
 const formatFileSize = (bytes?: number | null) => {
   if (bytes === undefined || bytes === null || bytes === 0) return '';
@@ -129,6 +137,7 @@ function FormSection({ title, icon: Icon, children, headerAction, tourId }: { ti
 
 export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initialData?: any, onComplete?: () => void, meetingNotesNo?: number }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isSave, isUpdate } = useFormRights(1559);
   const { company: authCompanies } = useAuthStore();
   const companyNoStr = authCompanies?.[0]?.CompanyNo?.toString() || authCompanies?.[0]?.companyNo?.toString() || '1';
@@ -164,12 +173,26 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [typeModalOpen, setTypeModalOpen] = useState(false);
+  const [sendMinutesOpen, setSendMinutesOpen] = useState(false);
+  const [lastMinutesSentAt, setLastMinutesSentAt] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [isSavingType, setIsSavingType] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+  const [locationLabel, setLocationLabel] = useState(() =>
+    formatLocationDisplayLabel({
+      operLocationName:
+        initialData?.location?.name ||
+        initialData?.locationName ||
+        initialData?.operLocationName ||
+        '',
+      cityName: initialData?.cityName || initialData?.location?.cityName || '',
+      stateName: initialData?.stateName || initialData?.location?.stateName || '',
+      countryName: initialData?.countryName || initialData?.location?.countryName || '',
+    })
+  );
 
   const form = useForm<MeetingNotesFormData>({
     resolver: zodResolver(getMeetingSchema() as any),
@@ -219,6 +242,36 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               operTaskCompanyNo: res.data.companyNo?.toString(),
               operLocationNo: res.data.operLocationNo?.toString(),
             });
+            setLocationLabel(
+              formatLocationDisplayLabel({
+                operLocationName:
+                  res.data.locationName ||
+                  res.data.operLocationName ||
+                  res.data.location?.name ||
+                  res.data.location?.operLocationName ||
+                  '',
+                cityName:
+                  res.data.cityName ||
+                  res.data.location?.cityName ||
+                  '',
+                stateName:
+                  res.data.stateName ||
+                  res.data.location?.stateName ||
+                  '',
+                countryName:
+                  res.data.countryName ||
+                  res.data.location?.countryName ||
+                  '',
+              })
+            );
+            const apiLastSent =
+              res.data.minutesLastSentAt ||
+              res.data.lastMinutesSentAt ||
+              res.data.minutesSentDate ||
+              null;
+            setLastMinutesSentAt(
+              apiLastSent || readLastMinutesSentAt(meetingNotesNo) || null
+            );
           }
         } catch (error) {
           console.error("Failed to fetch meeting", error);
@@ -273,6 +326,49 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
   const startDateTime = form.watch('meetingStartDateTime');
   const endDateTime = form.watch('meetingEndDateTime');
+  const watchedParticipants = form.watch('participants');
+  const watchedDocumentStatusNo = form.watch('documentStatusNo');
+  const watchedTitle = form.watch('meetingTitle');
+
+  const resolvedMeetingNo = meetingNotesNo || initialData?.meetingNotesNo || null;
+
+  const currentStatusName = useMemo(() => {
+    const match = documentStatuses.find(
+      (s) => String(s.documentStatusNo) === String(watchedDocumentStatusNo)
+    );
+    return match?.documentStatusName || match?.DocumentStatusName || '';
+  }, [documentStatuses, watchedDocumentStatusNo]);
+
+  const minutesRecipients = useMemo(
+    () => buildMinutesRecipients(watchedParticipants || []),
+    [watchedParticipants]
+  );
+
+  const canSendMinutesStatus = isMinutesSendStatusAllowed(currentStatusName);
+  const recipientEmailCount = minutesRecipients.filter((r) => r.hasEmail).length;
+
+  useEffect(() => {
+    if (resolvedMeetingNo && !lastMinutesSentAt) {
+      setLastMinutesSentAt(readLastMinutesSentAt(Number(resolvedMeetingNo)));
+    }
+  }, [resolvedMeetingNo, lastMinutesSentAt]);
+
+  // List "Send" action → open send dialog once meeting data is ready
+  useEffect(() => {
+    const state = location.state as { openSendMinutes?: boolean } | null;
+    if (!state?.openSendMinutes) return;
+    if (isLoadingOptions || isFetchingData) return;
+    if (!resolvedMeetingNo) return;
+    setSendMinutesOpen(true);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [
+    location.state,
+    location.pathname,
+    isLoadingOptions,
+    isFetchingData,
+    resolvedMeetingNo,
+    navigate,
+  ]);
 
   useEffect(() => {
     if (startDateTime && endDateTime) {
@@ -543,6 +639,29 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         <div className="flex items-center gap-2 self-end sm:self-auto" data-page-tour="meeting-form-actions">
           <PageGuideButton guideKey="meeting-form" />
           <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] font-medium border-[var(--tm-border)]/80 text-xs px-4" onClick={requestLeave}>Cancel</Button>
+          {resolvedMeetingNo ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-page-tour="meeting-form-send-minutes"
+              disabled={!canSendMinutesStatus || recipientEmailCount === 0}
+              title={
+                !resolvedMeetingNo
+                  ? 'Save the meeting first'
+                  : !canSendMinutesStatus
+                    ? 'Set status to Release or Authorized'
+                    : recipientEmailCount === 0
+                      ? 'Add attendees with email'
+                      : 'Send Minutes to attendees'
+              }
+              onClick={() => setSendMinutesOpen(true)}
+              className="h-9 rounded-[8px] font-semibold border-[#0EA5E9]/35 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 text-xs px-3 gap-1.5 disabled:opacity-50"
+            >
+              <Send size={13} strokeWidth={2} />
+              Send Minutes
+            </Button>
+          ) : null}
           {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
             <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] text-xs px-5" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
               {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
@@ -550,6 +669,18 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
           )}
         </div>
       </div>
+
+      {resolvedMeetingNo && lastMinutesSentAt ? (
+        <div className="shrink-0 px-4 py-1.5 border-b border-[var(--tm-border)]/50 bg-[var(--tm-elevated)]/40 text-[10px] text-slate-500">
+          Last minutes sent:{' '}
+          <span className="font-semibold text-slate-300">
+            {new Date(lastMinutesSentAt).toLocaleString()}
+          </span>
+          {recipientEmailCount > 0 ? (
+            <span className="text-slate-500"> · {recipientEmailCount} email-ready attendee{recipientEmailCount === 1 ? '' : 's'}</span>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
         <div className="w-full mx-auto p-4">
@@ -658,15 +789,32 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       name="operLocationNo"
                       render={({ field }) => (
                         <FieldControl error={form.formState.errors.operLocationNo?.message}>
-                          <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.operLocationNo && "border-red-400")}
-                            options={taskFillValues?.location?.filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location })) || []}
+                          <LocationCombobox
+                            className={cn(
+                              'rounded-[8px] h-10',
+                              form.formState.errors.operLocationNo && 'border-red-400'
+                            )}
                             value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Select Location"
+                            onChange={(location) => {
+                              field.onChange(
+                                location.operLocationNo ? String(location.operLocationNo) : ''
+                              );
+                              setLocationLabel(
+                                location.operLocationNo
+                                  ? formatLocationDisplayLabel(location)
+                                  : ''
+                              );
+                            }}
+                            initialLabel={locationLabel || undefined}
+                            placeholder="Search city, state or location..."
+                            error={!!form.formState.errors.operLocationNo}
                           />
                         </FieldControl>
                       )}
                     />
+                    <p className="text-[10px] text-slate-500 leading-snug pt-0.5">
+                      City and state show with the location so international places are easier to pick.
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">
@@ -1116,20 +1264,27 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                               render={({ field }) => (
                                 <div
                                   className={cn(
-                                    'w-full flex items-center gap-3 rounded-[10px] border px-3.5 py-3 transition-all duration-200',
+                                    'w-full flex items-center gap-3 rounded-[10px] border px-3.5 py-3 transition-colors duration-200',
                                     field.value
-                                      ? 'border-[#0EA5E9]/30 bg-gradient-to-r from-[var(--tm-tint)] via-[#f3f9fc] to-[var(--tm-surface)] shadow-[0_8px_20px_-12px_rgba(14,165,233,0.35)]'
+                                      ? 'border-[#0EA5E9]/35 bg-[var(--tm-tint)]'
                                       : 'border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]'
                                   )}
                                 >
                                   <div className="min-w-0 flex-1">
-                                    <p className={cn(
-                                      'text-[12px] font-semibold leading-tight transition-colors',
-                                      field.value ? 'text-[#0284C7]' : 'text-slate-200'
-                                    )}>
+                                    <p
+                                      className={cn(
+                                        'text-[12px] font-semibold leading-tight',
+                                        field.value ? 'text-[#0EA5E9]' : 'text-slate-200'
+                                      )}
+                                    >
                                       Action required
                                     </p>
-                                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                    <p
+                                      className={cn(
+                                        'text-[11px] mt-0.5 leading-snug',
+                                        field.value ? 'text-slate-400' : 'text-slate-500'
+                                      )}
+                                    >
                                       Create a follow-up task from this discussion
                                     </p>
                                   </div>
@@ -1144,7 +1299,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   >
                                     <span
                                       className={cn(
-                                        'text-[10px] font-semibold tracking-wide transition-colors',
+                                        'text-[10px] font-semibold tracking-wide',
                                         field.value ? 'text-[#0EA5E9]' : 'text-slate-400'
                                       )}
                                     >
@@ -1154,14 +1309,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                       aria-hidden
                                       className={cn(
                                         'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
-                                        field.value
-                                          ? 'bg-[#0EA5E9] shadow-[inset_0_0_0_1px_rgba(14,165,233,0.2)]'
-                                          : 'bg-slate-200'
+                                        field.value ? 'bg-[#0EA5E9]' : 'bg-slate-600'
                                       )}
                                     >
                                       <span
                                         className={cn(
-                                          'absolute h-5 w-5 rounded-full bg-[var(--tm-surface)] shadow-[0_1px_3px_rgba(15,23,42,0.25)] transition-transform duration-200',
+                                          'absolute h-5 w-5 rounded-full bg-white shadow-[0_1px_3px_rgba(15,23,42,0.28)] transition-transform duration-200',
                                           field.value ? 'translate-x-[22px]' : 'translate-x-[2px]'
                                         )}
                                       />
@@ -1172,7 +1325,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             />
 
                             {isActionRequired && (
-                              <div className="rounded-[8px] border border-[#d7e8f2] bg-[var(--tm-elevated)] p-3 space-y-3">
+                              <div className="rounded-[8px] border border-[#0EA5E9]/25 bg-[var(--tm-elevated)] p-3 space-y-3">
                                 <p className="text-[11px] font-semibold text-[#0EA5E9] uppercase tracking-wide">Task details</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                                   <div className="space-y-1">
@@ -1964,6 +2117,22 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {resolvedMeetingNo ? (
+        <SendMinutesDialog
+          open={sendMinutesOpen}
+          onOpenChange={setSendMinutesOpen}
+          meetingNotesNo={Number(resolvedMeetingNo)}
+          companyNo={Number(form.watch('operTaskCompanyNo') || companyNoStr) || Number(companyNoStr)}
+          meetingTitle={watchedTitle}
+          startDateTime={startDateTime}
+          endDateTime={endDateTime}
+          statusName={currentStatusName}
+          statusAllowed={canSendMinutesStatus}
+          recipients={minutesRecipients}
+          onSent={() => setLastMinutesSentAt(new Date().toISOString())}
+        />
+      ) : null}
     </div>
   );
 }

@@ -307,7 +307,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
           <div
             className={cn(
               "theme-header-rail relative hidden lg:flex h-full items-center shrink-0 overflow-visible border-r border-[var(--tm-chrome-border)] transition-[width] duration-300",
-              isSidebarCollapsed ? "w-[80px] justify-center px-1.5" : "w-56 pl-3 pr-4"
+              isSidebarCollapsed ? "w-14 justify-center px-1" : "w-56 pl-3 pr-4"
             )}
           >
             {!isSidebarCollapsed && (

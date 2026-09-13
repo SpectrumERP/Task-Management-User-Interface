@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Eye, FileDown } from 'lucide-react';
 import { exportReportToExcel } from '@/utils/exportToExcel';
@@ -9,39 +9,12 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useSettings } from '@/hooks/useSettings';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
-
-function TruncatedCell({ text, minWidth = 'min-w-[200px]' }: { text: string, minWidth?: string }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  if (!text || text === '-') return <span className={minWidth}>{text || '-'}</span>;
-
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <div
-          className={`line-clamp-1 cursor-pointer ${minWidth} whitespace-pre-wrap`}
-          onMouseEnter={() => setIsOpen(true)}
-          onMouseLeave={() => setIsOpen(false)}
-        >
-          {text}
-        </div>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto max-w-[400px] p-3 text-sm shadow-lg pointer-events-auto z-[150] bg-[var(--tm-surface)] border border-[var(--tm-border)]"
-        onMouseEnter={() => setIsOpen(true)}
-        onMouseLeave={() => setIsOpen(false)}
-        sideOffset={5}
-      >
-        <div className="max-h-[300px] overflow-y-auto whitespace-pre-wrap select-all cursor-text text-slate-100">
-          {text}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
+import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { UserAvatar } from '@/components/ui/UserAvatar';
+import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { getStatusTextClass } from '@/lib/taskStatusGroups';
 
 interface ReportTableProps {
   data: any[];
@@ -86,14 +59,45 @@ export function ReportTable({ data }: ReportTableProps) {
     setCurrentPage(1);
   }, [data]);
 
-  const totalItems = data.length;
+  const getReportSortValue = useCallback((row: any, key: string) => {
+    switch (key) {
+      case 'srNo': return row.taskNo ?? row.operTaskNo ?? '';
+      case 'title': return row.title ?? '';
+      case 'description': return row.description ?? '';
+      case 'isPending': return row.isPending ? 'Yes' : 'No';
+      case 'crossFunctional': return row.hasCrossFunctionalSupport ? 'Yes' : 'No';
+      case 'company': return row.taskCompany?.taskCompanyAlias || row.taskCompany?.companyName || '';
+      case 'location': return row.location?.locationName || '';
+      case 'category': return row.category?.categoryName || '';
+      case 'type': return row.type?.typeName || '';
+      case 'folder': return row.folder?.folderName || '';
+      case 'priority': return row.priority?.priorityName || '';
+      case 'owner': return row.assignedTo?.displayName || '';
+      case 'originator': return row.originator?.displayName || '';
+      case 'subTaskCount': return typeof row.subTaskCount === 'number' ? row.subTaskCount : Number(row.subTaskCount) || 0;
+      case 'roadBlock': return row.roadBlock || '';
+      case 'progress': return row.taskProgressReview || '';
+      case 'status': return row.status?.statusName || row.status || '';
+      case 'userRemarks': return row.completionRemark || '';
+      case 'managementRemarks': return row.managementRemark || '';
+      default: return (row as Record<string, unknown>)[key] ?? '';
+    }
+  }, []);
+
+  const { sortCol, sortDesc, handleSort, sortedRows } = useTableSort(
+    data,
+    getReportSortValue,
+    { defaultKey: 'title', defaultDesc: false }
+  );
+
+  const totalItems = sortedRows.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const safePage = Math.min(currentPage, totalPages);
   const startIndex = (safePage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const pageRows = useMemo(
-    () => data.slice(startIndex, endIndex),
-    [data, startIndex, endIndex]
+    () => sortedRows.slice(startIndex, endIndex),
+    [sortedRows, startIndex, endIndex]
   );
 
   const handleItemsPerPageChange = (size: number) => {
@@ -207,10 +211,17 @@ export function ReportTable({ data }: ReportTableProps) {
                 return (
                   <th
                     key={col.id}
-                    className="px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 whitespace-nowrap relative group select-none overflow-hidden text-ellipsis"
+                    className="px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 whitespace-nowrap relative group select-none"
                     style={widthStyle}
                   >
-                    {col.label}
+                    <SortableHeader
+                      label={col.label}
+                      sortKey={col.id}
+                      sortCol={sortCol}
+                      sortDesc={sortDesc}
+                      onSort={handleSort}
+                      className="pr-2"
+                    />
                     <div
                       className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors z-20"
                       onMouseDown={(e) => handleResizeStart(e, col.id)}
@@ -235,63 +246,87 @@ export function ReportTable({ data }: ReportTableProps) {
                     <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['srNo'] ? { maxWidth: colWidths['srNo'] } : {}}>{startIndex + index + 1}</td>
                   )}
                   {visibleColumns.includes('title') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-top truncate" style={colWidths['title'] ? { maxWidth: colWidths['title'] } : {}}>
-                      <TruncatedCell text={task.title} minWidth="min-w-[150px]" />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-top min-w-0 overflow-hidden" style={colWidths['title'] ? { maxWidth: colWidths['title'] } : {}}>
+                      <TruncatedText text={task.title || '-'} className="min-w-[150px] font-medium text-slate-50" />
                     </td>
                   )}
                   {visibleColumns.includes('description') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate" style={colWidths['description'] ? { maxWidth: colWidths['description'] } : {}}>
-                      <TruncatedCell text={task.description} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top min-w-0 overflow-hidden" style={colWidths['description'] ? { maxWidth: colWidths['description'] } : {}}>
+                      <TruncatedText text={task.description || '-'} className="min-w-[200px] text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('isPending') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['isPending'] ? { maxWidth: colWidths['isPending'] } : {}}>
-                      <TruncatedCell text={task.isPending ? 'Yes' : 'No'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['isPending'] ? { maxWidth: colWidths['isPending'] } : {}}>
+                      <TruncatedText text={task.isPending ? 'Yes' : 'No'} className="text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('crossFunctional') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['crossFunctional'] ? { maxWidth: colWidths['crossFunctional'] } : {}}>
-                      <TruncatedCell text={task.hasCrossFunctionalSupport ? 'Yes' : 'No'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['crossFunctional'] ? { maxWidth: colWidths['crossFunctional'] } : {}}>
+                      <TruncatedText text={task.hasCrossFunctionalSupport ? 'Yes' : 'No'} className="text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('company') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['company'] ? { maxWidth: colWidths['company'] } : {}}>
-                      <TruncatedCell text={task.taskCompany?.taskCompanyAlias || task.taskCompany?.companyName || '-'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['company'] ? { maxWidth: colWidths['company'] } : {}}>
+                      <TruncatedText text={task.taskCompany?.taskCompanyAlias || task.taskCompany?.companyName || '-'} className="text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('location') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['location'] ? { maxWidth: colWidths['location'] } : {}}>
-                      <TruncatedCell text={task.location?.locationName || '-'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['location'] ? { maxWidth: colWidths['location'] } : {}}>
+                      <TruncatedText text={task.location?.locationName || '-'} className="text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('category') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['category'] ? { maxWidth: colWidths['category'] } : {}}>
-                      <TruncatedCell text={task.category?.categoryName || '-'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['category'] ? { maxWidth: colWidths['category'] } : {}}>
+                      <TruncatedText text={task.category?.categoryName || '-'} className="text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('type') && isColumnAllowed('type') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['type'] ? { maxWidth: colWidths['type'] } : {}}>
-                      <TruncatedCell text={task.type?.typeName || '-'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['type'] ? { maxWidth: colWidths['type'] } : {}}>
+                      <TruncatedText text={task.type?.typeName || '-'} className="text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('folder') && isColumnAllowed('folder') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['folder'] ? { maxWidth: colWidths['folder'] } : {}}>
-                      <TruncatedCell text={task.folder?.folderName || '-'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['folder'] ? { maxWidth: colWidths['folder'] } : {}}>
+                      <TruncatedText text={task.folder?.folderName || '-'} className="text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('priority') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['priority'] ? { maxWidth: colWidths['priority'] } : {}}>
-                      <TruncatedCell text={task.priority?.priorityName || '-'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['priority'] ? { maxWidth: colWidths['priority'] } : {}}>
+                      <TruncatedText text={task.priority?.priorityName || '-'} className="text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('owner') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['owner'] ? { maxWidth: colWidths['owner'] } : {}}>
-                      <TruncatedCell text={task.assignedTo?.displayName || '-'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['owner'] ? { maxWidth: colWidths['owner'] } : {}}>
+                      {task.assignedTo?.displayName ? (
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <UserAvatar
+                            loginNo={task.assignedTo?.id || task.assignedTo?.loginNo}
+                            displayName={task.assignedTo.displayName}
+                            size="sm"
+                            className="shrink-0"
+                          />
+                          <TruncatedText text={task.assignedTo.displayName} className="text-slate-300 text-xs font-medium" />
+                        </div>
+                      ) : (
+                        <TruncatedText text="-" className="text-slate-300" />
+                      )}
                     </td>
                   )}
                   {visibleColumns.includes('originator') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['originator'] ? { maxWidth: colWidths['originator'] } : {}}>
-                      <TruncatedCell text={task.originator?.displayName || '-'} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden" style={colWidths['originator'] ? { maxWidth: colWidths['originator'] } : {}}>
+                      {task.originator?.displayName ? (
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <UserAvatar
+                            loginNo={task.originator?.id || task.originator?.loginNo}
+                            displayName={task.originator.displayName}
+                            size="sm"
+                            className="shrink-0"
+                          />
+                          <TruncatedText text={task.originator.displayName} className="text-slate-300 text-xs font-medium" />
+                        </div>
+                      ) : (
+                        <TruncatedText text="-" className="text-slate-300" />
+                      )}
                     </td>
                   )}
                   {visibleColumns.includes('subTaskCount') && (
@@ -300,28 +335,28 @@ export function ReportTable({ data }: ReportTableProps) {
                     </td>
                   )}
                   {visibleColumns.includes('roadBlock') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate" style={colWidths['roadBlock'] ? { maxWidth: colWidths['roadBlock'] } : {}}>
-                      <TruncatedCell text={task.roadBlock || ''} minWidth="min-w-[150px]" />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top min-w-0 overflow-hidden" style={colWidths['roadBlock'] ? { maxWidth: colWidths['roadBlock'] } : {}}>
+                      <TruncatedText text={task.roadBlock || '-'} className="min-w-[150px] text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('progress') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate" style={colWidths['progress'] ? { maxWidth: colWidths['progress'] } : {}}>
-                      <TruncatedCell text={task.taskProgressReview || ''} />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top min-w-0 overflow-hidden" style={colWidths['progress'] ? { maxWidth: colWidths['progress'] } : {}}>
+                      <TruncatedText text={task.taskProgressReview || '-'} className="min-w-[200px] text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('status') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate" style={colWidths['status'] ? { maxWidth: colWidths['status'] } : {}}>
-                      {task.status?.statusName || task.status || '-'}
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top min-w-0 overflow-hidden" style={colWidths['status'] ? { maxWidth: colWidths['status'] } : {}}>
+                      <TruncatedText text={String(task.status?.statusName || task.status || '-')} className={getStatusTextClass(String(task.status?.statusName || task.status || ''))} />
                     </td>
                   )}
                   {visibleColumns.includes('userRemarks') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate" style={colWidths['userRemarks'] ? { maxWidth: colWidths['userRemarks'] } : {}}>
-                      <TruncatedCell text={task.completionRemark || ''} minWidth="min-w-[150px]" />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top min-w-0 overflow-hidden" style={colWidths['userRemarks'] ? { maxWidth: colWidths['userRemarks'] } : {}}>
+                      <TruncatedText text={task.completionRemark || '-'} className="min-w-[150px] text-slate-300" />
                     </td>
                   )}
                   {visibleColumns.includes('managementRemarks') && (
-                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top truncate" style={colWidths['managementRemarks'] ? { maxWidth: colWidths['managementRemarks'] } : {}}>
-                      <TruncatedCell text={task.managementRemark || ''} minWidth="min-w-[150px]" />
+                    <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top min-w-0 overflow-hidden" style={colWidths['managementRemarks'] ? { maxWidth: colWidths['managementRemarks'] } : {}}>
+                      <TruncatedText text={task.managementRemark || '-'} className="min-w-[150px] text-slate-300" />
                     </td>
                   )}
                 </tr>

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { useAuthStore } from '@/store/useAuthStore';
 import { canUserEditTask } from '@/lib/taskAccess';
+import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import {
   Edit,
   Calendar,
@@ -35,6 +36,7 @@ import { format } from 'date-fns';
 import { useTaskStore } from '@/store/useTaskStore';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import type { ReactNode } from 'react';
 
 interface TaskDetailModalProps {
@@ -167,17 +169,20 @@ function PersonRow({
         'flex items-center gap-2.5 px-3 py-2.5',
         zebra ? 'bg-[var(--tm-row-even)]' : 'bg-[var(--tm-row-odd)]'
       )}
+      onClick={(e) => e.stopPropagation()}
     >
-      <UserAvatar loginNo={loginNo} displayName={displayName} size="sm" />
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
-          {displayName || 'Unknown'}
-        </p>
-        {email && (
-          <span className="text-[9px] font-medium text-slate-400 truncate block mt-0.5">
-            {email}
-          </span>
-        )}
+      <UserAvatar loginNo={loginNo} displayName={displayName} size="sm" className="shrink-0" />
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <TruncatedText
+          text={displayName || 'Unknown'}
+          className="text-[11px] font-semibold text-slate-100 leading-tight"
+        />
+        {email ? (
+          <TruncatedText
+            text={email}
+            className="text-[9px] font-medium text-slate-400 mt-0.5"
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -379,18 +384,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
               {task?.code || (task ? `CP-${100 + task.taskNo}` : '…')}
             </span>
             {task && (
-              <span
-                className={cn(
-                  'inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-semibold border',
-                  task.status === 'Done'
-                    ? 'bg-green-500/15 text-green-400 border-green-500/30'
-                    : task.status === 'In Progress'
-                      ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
-                      : task.status === 'In Review'
-                        ? 'bg-purple-500/15 text-purple-400 border-purple-500/30'
-                        : 'bg-[var(--tm-muted)] text-slate-300 border-[var(--tm-border)]'
-                )}
-              >
+              <span className={cn('text-[10px]', getStatusTextClass(task.status))}>
                 {task.status}
               </span>
             )}
@@ -515,24 +509,17 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             key={st.taskNo || idx}
                             className="rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_65%,var(--tm-surface))] px-3 py-2.5 flex items-start justify-between gap-3"
                           >
-                            <div className="min-w-0">
-                              <span className="text-xs font-semibold text-slate-50 truncate block leading-tight">
-                                {st.title}
-                              </span>
-                              <span className="text-[10px] font-medium text-slate-400 truncate block mt-1">
-                                {st.typeName || 'Task'} · {st.ownerDisplayName || 'Unassigned'}
-                              </span>
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <TruncatedText
+                                text={st.title || '-'}
+                                className="text-xs font-semibold text-slate-50 leading-tight"
+                              />
+                              <TruncatedText
+                                text={`${st.typeName || 'Task'} · ${st.ownerDisplayName || 'Unassigned'}`}
+                                className="text-[10px] font-medium text-slate-400 mt-1"
+                              />
                             </div>
-                            <span
-                              className={cn(
-                                'px-2 py-0.5 rounded-md text-[9px] font-semibold shrink-0 border',
-                                st.status === 'Done'
-                                  ? 'bg-green-500/15 text-green-400 border-green-500/30'
-                                  : st.status === 'In Progress'
-                                    ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
-                                    : 'bg-[var(--tm-muted)] text-slate-300 border-[var(--tm-border)]'
-                              )}
-                            >
+                            <span className={cn('text-[9px] shrink-0', getStatusTextClass(st.status))}>
                               {st.status}
                             </span>
                           </div>
@@ -595,16 +582,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                                       : '-'}
                                   </span>
                                   {statusLabel && (
-                                    <span
-                                      className={cn(
-                                        'px-2 py-0.5 rounded-md text-[9px] font-semibold shrink-0',
-                                        statusLabel === 'Close'
-                                          ? 'bg-emerald-500/15 text-emerald-400'
-                                          : statusLabel === 'In Progress'
-                                            ? 'bg-sky-500/15 text-sky-400'
-                                            : 'bg-[#F59E0B]/15 text-[#F59E0B]'
-                                      )}
-                                    >
+                                    <span className={cn('text-[9px] shrink-0', getStatusTextClass(statusLabel))}>
                                       {statusLabel}
                                     </span>
                                   )}
@@ -651,14 +629,16 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         loginNo={task.owner_user_No}
                         displayName={task.assignedDisplayName}
                         size="lg"
+                        className="shrink-0"
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
                         <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 block">
                           Assign To
                         </span>
-                        <h4 className="text-[13px] font-semibold text-slate-50 leading-tight truncate">
-                          {task.assignedDisplayName || 'Unassigned'}
-                        </h4>
+                        <TruncatedText
+                          text={task.assignedDisplayName || 'Unassigned'}
+                          className="text-[13px] font-semibold text-slate-50 leading-tight"
+                        />
                       </div>
                     </div>
 
@@ -736,9 +716,12 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             )}
 
                             <SpecRow index={next()} icon={Building2} label="Company">
-                              <span className="text-[11px] truncate max-w-[160px] inline-block">
-                                {companyLabel || '—'}
-                              </span>
+                              <div className="min-w-0 max-w-[160px] overflow-hidden">
+                                <TruncatedText
+                                  text={companyLabel || '—'}
+                                  className="text-[11px]"
+                                />
+                              </div>
                             </SpecRow>
 
                             {task.location_No > 0 && (
@@ -770,14 +753,38 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             </SpecRow>
 
                             <SpecRow index={next()} icon={User} label="Assign By">
-                              <span className="text-[11px]">
-                                {task.originatorDisplayName || 'Unknown'}
-                              </span>
+                              {task.originatorDisplayName ? (
+                                <div className="flex items-center gap-1.5 min-w-0 justify-end" onClick={(e) => e.stopPropagation()}>
+                                  <UserAvatar
+                                    loginNo={task.originator_user_No}
+                                    displayName={task.originatorDisplayName}
+                                    size="sm"
+                                    className="shrink-0"
+                                  />
+                                  <TruncatedText
+                                    text={task.originatorDisplayName}
+                                    className="text-[11px] font-medium text-slate-100"
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-[11px]">Unknown</span>
+                              )}
                             </SpecRow>
 
-                            {task.createdBy?.displayName && (
+                            {(task.createdBy?.displayName || task.originatorDisplayName) && (
                               <SpecRow index={next()} icon={UserPlus} label="Created By">
-                                <span className="text-[11px]">{task.createdBy.displayName}</span>
+                                <div className="flex items-center gap-1.5 min-w-0 justify-end" onClick={(e) => e.stopPropagation()}>
+                                  <UserAvatar
+                                    loginNo={task.createdBy?.id || task.createdBy?.loginNo || task.originator_user_No}
+                                    displayName={task.createdBy?.displayName || task.originatorDisplayName}
+                                    size="sm"
+                                    className="shrink-0"
+                                  />
+                                  <TruncatedText
+                                    text={task.createdBy?.displayName || task.originatorDisplayName || ''}
+                                    className="text-[11px] font-medium text-slate-100"
+                                  />
+                                </div>
                               </SpecRow>
                             )}
 
@@ -881,10 +888,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                                 <Image size={15} />
                               )}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[11px] font-semibold text-slate-100 truncate">
-                                {file.name}
-                              </p>
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <TruncatedText
+                                text={file.name || '-'}
+                                className="text-[11px] font-semibold text-slate-100"
+                              />
                               <div className="flex items-center gap-1.5 mt-0.5">
                                 {file.size ? (
                                   <span className="text-[9px] font-medium text-slate-400">

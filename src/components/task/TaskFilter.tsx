@@ -1,17 +1,16 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, MapPin, Calendar as CalendarIcon, Clipboard, Folder, ArrowUpDown, ChevronDown, Plus, LayoutGrid, List as ListIcon, X, User, CircleHelp, type LucideIcon } from 'lucide-react';
+import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, Calendar as CalendarIcon, Clipboard, ChevronDown, Plus, LayoutGrid, List as ListIcon, X, User, CircleHelp, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_TEXT_STYLE } from '@/lib/fieldStyles';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { Combobox } from '@/components/ui/Combobox';
-import { MultiSelect } from '@/components/ui/MultiSelect';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserType } from '@/types/enums';
 import {
@@ -23,6 +22,16 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/hooks/useSettings';
 import { forceStartPageGuide } from '@/components/layout/InternalPageGuideTour';
+import { STATUS_PILL_ORDER, isAllFilterSentinel, sumStatusPillCounts, toStatusPillToken } from '@/lib/taskStatusGroups';
+
+function isAllFillValueId(
+  id: string | undefined,
+  rows: Array<{ id: number | string; label: string }> | undefined
+): boolean {
+  if (!id || !rows?.length) return false;
+  const row = rows.find((r) => String(r.id) === String(id));
+  return row ? isAllFilterSentinel(row.label) : false;
+}
 
 const filterControlClass =
   'h-10 rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none text-xs text-slate-200 focus:ring-2 focus:ring-[#0EA5E9]/15';
@@ -117,6 +126,8 @@ interface TaskFilterProps {
   showFilters?: boolean;
   onToggleFilters?: () => void;
   hideCategoryFilter?: boolean;
+  /** Bump to force a full filter reset (e.g. empty-state Clear filters). */
+  clearNonce?: number;
 }
 
 export function TaskFilter({
@@ -127,22 +138,21 @@ export function TaskFilter({
   onCreateTask,
   showFilters,
   onToggleFilters,
-  hideCategoryFilter = false
+  hideCategoryFilter = false,
+  clearNonce = 0,
 }: TaskFilterProps) {
   const authCompanies = useAuthStore((state) => state.company);
   const authUser = useAuthStore((state) => state.user);
-  const allTasks = useTaskStore(state => state.allTasks);
+  const tasksForStatusCounts = useTaskStore(state => state.tasksForStatusCounts);
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    if (allTasks) {
-      allTasks.forEach(task => {
-        if (task.status) {
-          counts[task.status] = (counts[task.status] || 0) + 1;
-        }
-      });
-    }
+    tasksForStatusCounts.forEach(task => {
+      if (task.status) {
+        counts[task.status] = (counts[task.status] || 0) + 1;
+      }
+    });
     return counts;
-  }, [allTasks]);
+  }, [tasksForStatusCounts]);
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1).toString();
   const isGeneralUser = Number(authUser?.UserType || authUser?.userType) === UserType.General;
 
@@ -162,7 +172,7 @@ export function TaskFilter({
     })
     .map(sc => ({ value: sc.SortingColumnName, label: sc.DisplayName }));
 
-  const { control, handleSubmit, reset, watch, setValue, trigger, formState: { errors } } = useForm<FilterFormValues>({
+  const { control, handleSubmit, reset, watch, setValue, getValues, trigger, formState: { errors } } = useForm<FilterFormValues>({
     defaultValues: {
       taskCode: '',
       title: '',
@@ -186,6 +196,13 @@ export function TaskFilter({
     }
   });
 
+  const taskCodeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (taskCodeDebounceRef.current) clearTimeout(taskCodeDebounceRef.current);
+    };
+  }, []);
 
   // State to track the actually applied filters (only updated on Submit/Reset/Badge Clear)
   const [appliedFilters, setAppliedFilters] = useState<FilterFormValues>({
@@ -200,33 +217,32 @@ export function TaskFilter({
   const toggleFilters = onToggleFilters || (() => setShowFiltersOnMobile(!showFiltersOnMobile));
 
   const watchedTitle = watch('title');
-  const watchedStatus = watch('operTaskStatusNo');
   const watchedAllFolder = watch('isAllFolder');
+  const watchedStatus = watch('operTaskStatusNo');
+  const watchedDrawerPriority = watch('operTaskPriorityNo');
+  const watchedDrawerTaskCode = watch('taskCode');
+  const watchedDrawerCategory = watch('operTaskCategoryNo');
+  const watchedDrawerOwner = watch('ownerLoginNo');
+  const watchedFromDueDate = watch('fromDueDate');
+  const watchedToDueDate = watch('toDueDate');
+
+  /** True when any Filters-drawer field (not status pills / search) has a value. */
+  const hasDrawerFilterChanges = Boolean(
+    String(watchedDrawerPriority || '').trim() ||
+    String(watchedDrawerTaskCode || '').trim() ||
+    String(watchedDrawerCategory || '').trim() ||
+    String(watchedDrawerOwner || '').trim() ||
+    watchedFromDueDate ||
+    watchedToDueDate
+  );
 
   const activeFilterChips = useMemo(() => {
     type Chip = { id: string; label: string };
     const chips: Chip[] = [];
 
-    const resolveStatusLabel = (raw: string) => {
-      if (raw === 'PendingGroup') return 'Pending';
-      const match = fillValues?.status?.find((s) => String(s.StatusNo) === raw);
-      return match?.Status || raw;
-    };
+    // Search does not appear in Active — clear via ✕ inside the search box.
 
-    const titleVal = (watchedTitle || '').trim();
-    if (titleVal) {
-      chips.push({ id: 'title', label: `Search: ${titleVal}` });
-    }
-
-    const statusStr = String(watchedStatus || appliedFilters.operTaskStatusNo || '');
-    if (statusStr) {
-      statusStr.split(',').filter(Boolean).forEach((statusNo) => {
-        chips.push({
-          id: `status:${statusNo}`,
-          label: `Status: ${resolveStatusLabel(statusNo)}`,
-        });
-      });
-    }
+    // Status chips are omitted — selected statuses already show on the status pills below.
 
     if (watchedAllFolder) {
       chips.push({ id: 'all-folders', label: 'All folders' });
@@ -238,7 +254,15 @@ export function TaskFilter({
       chips.push({ id: 'taskCode', label: `Code: ${applied.taskCode}` });
     }
 
-    if (applied.operTaskCategoryNo && !hideCategoryFilter) {
+    const categoryRows = (fillValues?.category || []).map((c) => ({
+      id: c.OperTaskCategoryNo,
+      label: c.Category,
+    }));
+    if (
+      applied.operTaskCategoryNo &&
+      !hideCategoryFilter &&
+      !isAllFillValueId(applied.operTaskCategoryNo, categoryRows)
+    ) {
       const cat = fillValues?.category?.find(
         (c) => String(c.OperTaskCategoryNo) === String(applied.operTaskCategoryNo)
       );
@@ -248,7 +272,14 @@ export function TaskFilter({
       });
     }
 
-    if (applied.operTaskPriorityNo) {
+    const priorityRows = (fillValues?.priority || []).map((p) => ({
+      id: p.OperTaskPriorityNo,
+      label: p.Priority,
+    }));
+    if (
+      applied.operTaskPriorityNo &&
+      !isAllFillValueId(applied.operTaskPriorityNo, priorityRows)
+    ) {
       const pri = fillValues?.priority?.find(
         (p) => String(p.OperTaskPriorityNo) === String(applied.operTaskPriorityNo)
       );
@@ -330,8 +361,6 @@ export function TaskFilter({
     return chips;
   }, [
     appliedFilters,
-    watchedTitle,
-    watchedStatus,
     watchedAllFolder,
     fillValues,
     hideCategoryFilter,
@@ -340,6 +369,22 @@ export function TaskFilter({
     personLabels,
     sortingColumnOptions,
   ]);
+
+  const hasAnythingToReset = Boolean(
+    hasDrawerFilterChanges ||
+    String(watchedStatus || '').trim() ||
+    (watchedTitle || '').trim() ||
+    watchedAllFolder ||
+    activeFilterChips.length > 0
+  );
+
+  const drawerFilterCount = [
+    String(watchedDrawerPriority || '').trim(),
+    String(watchedDrawerTaskCode || '').trim(),
+    String(watchedDrawerCategory || '').trim(),
+    String(watchedDrawerOwner || '').trim(),
+    (watchedFromDueDate || watchedToDueDate) ? 'due' : '',
+  ].filter(Boolean).length;
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -367,11 +412,69 @@ export function TaskFilter({
     }
   }, [selectedFolder, setValue]);
 
+  const scrollTaskTableToTop = () => {
+    // Run after paint so list has updated for the new filter/status.
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>('[data-page-tour="task-table"]')
+        ?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
+  };
+
+  const emitFilter = (cleanFilters: Record<string, unknown>) => {
+    scrollTaskTableToTop();
+    onFilter(cleanFilters);
+  };
+
+  const stripAllSentinelFilters = (data: FilterFormValues): FilterFormValues => {
+    const priorityRows = (fillValues?.priority || []).map((p) => ({
+      id: p.OperTaskPriorityNo,
+      label: p.Priority,
+    }));
+    const categoryRows = (fillValues?.category || []).map((c) => ({
+      id: c.OperTaskCategoryNo,
+      label: c.Category,
+    }));
+    return {
+      ...data,
+      operTaskPriorityNo: isAllFillValueId(data.operTaskPriorityNo, priorityRows)
+        ? ''
+        : data.operTaskPriorityNo,
+      operTaskCategoryNo: isAllFillValueId(data.operTaskCategoryNo, categoryRows)
+        ? ''
+        : data.operTaskCategoryNo,
+    };
+  };
+
+  // Clear legacy "[All]" sentinel selections once fill-values are loaded.
+  useEffect(() => {
+    if (!fillValues) return;
+    const current = getValues();
+    const next = stripAllSentinelFilters(current);
+    if (
+      next.operTaskPriorityNo !== current.operTaskPriorityNo ||
+      next.operTaskCategoryNo !== current.operTaskCategoryNo
+    ) {
+      if (next.operTaskPriorityNo !== current.operTaskPriorityNo) {
+        setValue('operTaskPriorityNo', next.operTaskPriorityNo);
+      }
+      if (next.operTaskCategoryNo !== current.operTaskCategoryNo) {
+        setValue('operTaskCategoryNo', next.operTaskCategoryNo);
+      }
+      setAppliedFilters((prev) => ({
+        ...prev,
+        operTaskPriorityNo: next.operTaskPriorityNo,
+        operTaskCategoryNo: next.operTaskCategoryNo,
+      }));
+    }
+  }, [fillValues, getValues, setValue]);
+
   const onSubmit = (data: FilterFormValues) => {
-    setAppliedFilters(data); // Commit selected values to applied state!
+    const normalized = stripAllSentinelFilters(data);
+    setAppliedFilters(normalized);
     const cleanFilters: Record<string, unknown> = {};
-    Object.entries(data).forEach(([key, value]) => {
-      if (key === 'folderNo' && data.isAllFolder) return;
+    Object.entries(normalized).forEach(([key, value]) => {
+      if (key === 'folderNo' && normalized.isAllFolder) return;
 
       if (value !== undefined && value !== '' && value !== null) {
         if (value instanceof Date) {
@@ -381,10 +484,36 @@ export function TaskFilter({
         }
       }
     });
-    onFilter(cleanFilters);
+    emitFilter(cleanFilters);
     if (isFiltersOpen) {
       toggleFilters();
     }
+  };
+
+  /** Apply current form values immediately without closing the drawer. */
+  const applyLive = () => {
+    window.setTimeout(() => {
+      const data = stripAllSentinelFilters(getValues());
+      setAppliedFilters(data);
+      const cleanFilters: Record<string, unknown> = {};
+      Object.entries(data).forEach(([key, value]) => {
+        if (key === 'folderNo' && data.isAllFolder) return;
+        if (value !== undefined && value !== '' && value !== null) {
+          if (value instanceof Date) {
+            cleanFilters[key] = value.toISOString();
+          } else {
+            cleanFilters[key] = value;
+          }
+        }
+      });
+      emitFilter(cleanFilters);
+    }, 0);
+  };
+
+  const applyTaskCodeLive = (value: string) => {
+    setValue('taskCode', value);
+    if (taskCodeDebounceRef.current) clearTimeout(taskCodeDebounceRef.current);
+    taskCodeDebounceRef.current = setTimeout(() => applyLive(), 400);
   };
 
   const handleReset = () => {
@@ -421,10 +550,37 @@ export function TaskFilter({
     if (selectedFolder) {
       cleanFilters.folderNo = selectedFolder.TaskFolderNo.toString();
     }
-    onFilter(cleanFilters);
+    emitFilter(cleanFilters);
     if (isFiltersOpen) {
       toggleFilters();
     }
+  };
+
+  useEffect(() => {
+    if (clearNonce > 0) {
+      handleReset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only react to clearNonce bumps
+  }, [clearNonce]);
+
+  /** Clears only Filters-drawer fields; keeps search, status pills, and folder. */
+  const handleResetDrawerFilters = () => {
+    setValue('operTaskPriorityNo', '');
+    setValue('taskCode', '');
+    setValue('operTaskCategoryNo', '');
+    setValue('ownerLoginNo', '');
+    setValue('fromDueDate', undefined);
+    setValue('toDueDate', undefined);
+    setAppliedFilters((prev) => ({
+      ...prev,
+      operTaskPriorityNo: '',
+      taskCode: '',
+      operTaskCategoryNo: '',
+      ownerLoginNo: '',
+      fromDueDate: undefined,
+      toDueDate: undefined,
+    }));
+    applyLive();
   };
 
   const clearFilterChip = (chipId: string) => {
@@ -494,337 +650,6 @@ export function TaskFilter({
 
 
 
-  if (viewMode === 'calendar') {
-    return (
-      <div className="relative w-full z-50">
-        <div
-          className={cn(
-            "fixed top-14 right-0 bottom-0 z-[120] w-[min(100vw,24rem)] transition-transform duration-300 ease-out will-change-transform",
-            isFiltersOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
-          )}
-          aria-hidden={!isFiltersOpen}
-        >
-          <Card className="h-full rounded-none border-0 border-l border-[var(--tm-border)] shadow-none bg-[var(--tm-surface)] p-0 flex flex-col overflow-hidden max-h-none">
-            <div className="px-4 py-3 border-b border-[var(--tm-border)] bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] flex items-center justify-between shrink-0">
-              <span className="text-[13px] font-semibold text-slate-100 normal-case flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                  <SlidersHorizontal size={14} strokeWidth={1.75} />
-                </span>
-                Filters & Sorting
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={toggleFilters}
-                className="h-8 w-8 p-0 rounded-[8px] hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors"
-              >
-                <X size={15} strokeWidth={1.75} />
-              </Button>
-            </div>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
-              <div className="overflow-y-auto px-4 py-3 scrollbar-sleek flex-1 max-h-[50vh] space-y-3">
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
-                  <FilterPanel title="Task filters" icon={Layers} cols={2} className="lg:col-span-3">
-                    <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={Clipboard}>Status</FilterFieldLabel>
-                      <Controller
-                        name="operTaskStatusNo"
-                        control={control}
-                        render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className={filterControlClass}>
-                              <SelectValue placeholder="All Status" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                              {fillValues?.status.map(s => (
-                                <SelectItem key={s.StatusNo} value={s.StatusNo.toString()}>{s.Status}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={Tag}>Priority</FilterFieldLabel>
-                      <Controller
-                        name="operTaskPriorityNo"
-                        control={control}
-                        render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className={filterControlClass}>
-                              <SelectValue placeholder="All Priority" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                              {fillValues?.priority.map(p => (
-                                <SelectItem key={p.OperTaskPriorityNo} value={p.OperTaskPriorityNo.toString()}>{p.Priority}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={Clipboard}>Task ID / Code</FilterFieldLabel>
-                      <Controller
-                        name="taskCode"
-                        control={control}
-                        render={({ field }) => (
-                          <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
-                        )}
-                      />
-                    </div>
-
-                    {!hideCategoryFilter && (
-                      <div className="space-y-1 min-w-0">
-                        <FilterFieldLabel icon={Layers}>Category</FilterFieldLabel>
-                        <Controller
-                          name="operTaskCategoryNo"
-                          control={control}
-                          render={({ field }) => (
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger className={filterControlClass}>
-                                <SelectValue placeholder="All Categories" />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                                {fillValues?.category.map(c => (
-                                  <SelectItem key={c.OperTaskCategoryNo} value={c.OperTaskCategoryNo.toString()}>{c.Category}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                      </div>
-                    )}
-
-                    {!isHideType && (
-                      <div className="space-y-1 min-w-0">
-                        <FilterFieldLabel icon={Tag}>Task Type</FilterFieldLabel>
-                        <Controller
-                          name="operTaskTypeNo"
-                          control={control}
-                          render={({ field }) => (
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger className={filterControlClass}>
-                                <SelectValue placeholder="All Types" />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                                {fillValues?.type.map(t => (
-                                  <SelectItem key={t.OperTaskTypeNo} value={t.OperTaskTypeNo.toString()}>{t["Task Type"]}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                      </div>
-                    )}
-
-                    <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={MapPin}>Location</FilterFieldLabel>
-                      <Controller
-                        name="operTaskLocationNo"
-                        control={control}
-                        render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className={filterControlClass}>
-                              <SelectValue placeholder="All Locations" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-[8px] border-[var(--tm-border)]/80">
-                              {fillValues?.location.map(l => (
-                                <SelectItem key={l.OperLocationNo} value={l.OperLocationNo.toString()}>{l.Location}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-
-                    {!isHideFolder && (
-                      <div className="space-y-1 min-w-0">
-                        <FilterFieldLabel icon={Folder}>Workspace Folder</FilterFieldLabel>
-                        <Controller
-                          name="folderNo"
-                          control={control}
-                          render={({ field }) => (
-                            <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
-                              <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
-                                placeholder="All Folders"
-                                className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                              />
-                            </div>
-                          )}
-                        />
-                      </div>
-                    )}
-                  </FilterPanel>
-
-                  <FilterPanel title="People" icon={User} cols={1} className="lg:col-span-2">
-                    {!isGeneralUser && (
-                      <>
-                        <div className="space-y-1 min-w-0" id="dialog-form-group-loginNo">
-                          <FilterFieldLabel icon={User} required={!!(watch('filterType') && watch('filterType') !== 'All')}>User</FilterFieldLabel>
-                          <Controller
-                            name="loginNo"
-                            control={control}
-                            rules={{
-                              validate: (val) => {
-                                const filterType = watch('filterType');
-                                if (filterType && filterType !== 'All' && (!val || val === '')) {
-                                  return 'User is required when filter type is selected';
-                                }
-                                return true;
-                              }
-                            }}
-                            render={({ field }) => (
-                              <UserCombobox value={field.value} onChange={(user) => {
-                                field.onChange(user.loginNo.toString());
-                                setPersonLabels((prev) => ({
-                                  ...prev,
-                                  [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
-                                }));
-                                trigger('filterType');
-                              }}
-                                placeholder="Search user..."
-                                className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-400")}
-                              />
-                            )}
-                          />
-                          {errors.loginNo && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.loginNo.message}</p>}
-                        </div>
-
-                        <div className="space-y-1 min-w-0">
-                          <FilterFieldLabel icon={SlidersHorizontal} required={!!(watch('loginNo') && watch('loginNo') !== '')}>Filter Type</FilterFieldLabel>
-                          <Controller
-                            name="filterType"
-                            control={control}
-                            rules={{
-                              validate: (val) => {
-                                const userVal = watch('loginNo');
-                                if (userVal && userVal !== '' && (!val || val === 'All')) {
-                                  return 'Filter Type is required when User is selected';
-                                }
-                                return true;
-                              }
-                            }}
-                            render={({ field }) => (
-                              <Combobox value={field.value} onChange={(val) => {
-                                field.onChange(val);
-                                trigger('loginNo');
-                              }}
-                                options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
-                                placeholder="Select Filter Type"
-                                className={cn(filterControlClass, FIELD_TEXT_STYLE, errors.filterType && "border-red-400")}
-                              />
-                            )}
-                          />
-                          {errors.filterType && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.filterType.message}</p>}
-                        </div>
-                      </>
-                    )}
-
-                    <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={User}>Assign To</FilterFieldLabel>
-                      <Controller
-                        name="ownerLoginNo"
-                        control={control}
-                        render={({ field }) => (
-                          <UserCombobox value={field.value} onChange={(user) => {
-                            field.onChange(user.loginNo.toString());
-                            setPersonLabels((prev) => ({
-                              ...prev,
-                              [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
-                            }));
-                          }}
-                            placeholder="Search assign to..."
-                            className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE)}
-                          />
-                        )}
-                      />
-                    </div>
-                  </FilterPanel>
-                </div>
-
-                <FilterPanel title="Sorting & dates" icon={ArrowUpDown} cols={2}>
-                  <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={ArrowUpDown}>Sort By Column</FilterFieldLabel>
-                    <Controller
-                      name="sortingColumnName"
-                      control={control}
-                      render={({ field }) => (
-                        <Combobox value={field.value} onChange={field.onChange} options={sortingColumnOptions}
-                          placeholder="Select Sort Column"
-                          className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                        />
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={ArrowUpDown}>Sort Direction</FilterFieldLabel>
-                    <Controller
-                      name="sortingType"
-                      control={control}
-                      render={({ field }) => (
-                        <Combobox value={field.value} onChange={field.onChange} options={[{ value: 'asc', label: 'Ascending' }, { value: 'desc', label: 'Descending' }]} placeholder="Select Direction" className={cn(filterControlClass, FIELD_TEXT_STYLE)} />
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1 min-w-0 sm:col-span-2">
-                    <FilterFieldLabel icon={CalendarIcon}>Due Date Range</FilterFieldLabel>
-                    <DateRangePicker
-                      value={{ from: watch('fromDueDate'), to: watch('toDueDate') }}
-                      onChange={(range) => {
-                        setValue('fromDueDate', range?.from || undefined);
-                        setValue('toDueDate', range?.to || undefined);
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-1 min-w-0 sm:col-span-2">
-                    <FilterFieldLabel icon={CalendarIcon}>Created Date Range</FilterFieldLabel>
-                    <DateRangePicker
-                      value={{ from: watch('fromCreatedDate'), to: watch('toCreatedDate') }}
-                      onChange={(range) => {
-                        setValue('fromCreatedDate', range?.from || undefined);
-                        setValue('toCreatedDate', range?.to || undefined);
-                      }}
-                      className="w-full"
-                    />
-                  </div>
-                </FilterPanel>
-              </div>
-
-              <div className="flex justify-end gap-2 px-4 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleReset}
-                  className="h-9 px-4 rounded-[8px] border-[var(--tm-border)] text-xs font-medium text-slate-300 hover:text-slate-100 hover:bg-[var(--tm-surface)] transition-colors"
-                >
-                  Reset
-                </Button>
-                <Button
-                  type="submit"
-                  className="h-9 px-5 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-xs font-semibold text-white shadow-sm transition-colors"
-                >
-                  Apply Filters
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if ((viewMode as string) === 'calendar' && !isFiltersOpen) {
-    return null;
-  }
-
   // Use a local string variable to avoid TS narrowing from the early-return above
   const currentViewMode: string = viewMode ?? '';
 
@@ -835,22 +660,45 @@ export function TaskFilter({
         <Card className="theme-filter-bar border border-[var(--tm-border)]/70 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] bg-[var(--tm-surface)] rounded-[16px] p-3 mb-2">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
             <div className="relative flex-1 min-w-0" data-page-tour="task-search">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400/90 pointer-events-none" size={15} strokeWidth={1.75} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400/90 pointer-events-none z-[1]" size={15} strokeWidth={1.75} />
               <Controller
                 name="title"
                 control={control}
                 render={({ field }) => (
                   <Input
                     {...field}
-                    placeholder="Search task"
-                    className="pl-10 h-11 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200 placeholder:text-slate-400 w-full shadow-none hover:border-[#3D4F66]/80 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/12 focus-visible:border-[#0EA5E9]/35 transition-all duration-200"
+                    placeholder="Search title, code, person…"
+                    className={cn(
+                      "pl-10 h-11 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200 placeholder:text-slate-400 w-full shadow-none hover:border-[#3D4F66]/80 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/12 focus-visible:border-[#0EA5E9]/35 transition-all duration-200",
+                      (watchedTitle || '').trim() && "pr-10"
+                    )}
                     onChange={(e) => {
                       field.onChange(e);
                       setSearchKeyword(e.target.value);
+                      scrollTaskTableToTop();
                     }}
                   />
                 )}
               />
+              {(watchedTitle || '').trim() && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 z-[1]">
+                  <ActionTip label="Clear search">
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      onClick={() => {
+                        setValue('title', '');
+                        setSearchKeyword('');
+                        setAppliedFilters((prev) => ({ ...prev, title: '' }));
+                        scrollTaskTableToTop();
+                      }}
+                      className="h-7 w-7 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-slate-200 hover:bg-[var(--tm-muted)] transition-colors"
+                    >
+                      <X size={14} strokeWidth={2.25} />
+                    </button>
+                  </ActionTip>
+                </span>
+              )}
             </div>
 
             {/* Action buttons toolbar: distributed evenly on mobile, aligned on desktop */}
@@ -860,78 +708,90 @@ export function TaskFilter({
                   name="isAllFolder"
                   control={control}
                   render={({ field }) => (
-                    <label className="flex items-center gap-1.5 cursor-pointer px-2.5 h-11 rounded-[14px] hover:bg-[var(--tm-elevated)] border border-transparent hover:border-[var(--tm-border)]/70 transition-colors shrink-0">
-                      <Checkbox checked={field.value} onCheckedChange={(val) => {
-                        field.onChange(val);
-                        setTimeout(() => handleSubmit(onSubmit)(), 0);
-                      }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#0EA5E9] data-[state=checked]:border-[#0EA5E9]" />
-                      <span className="text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">Search all folders</span>
-                    </label>
+                    <ActionTip label="Include tasks from every folder, not only the sidebar folder">
+                      <label
+                        className="flex items-center gap-1.5 cursor-pointer px-2.5 h-11 rounded-[14px] hover:bg-[var(--tm-elevated)] border border-transparent hover:border-[var(--tm-border)]/70 transition-colors shrink-0"
+                      >
+                        <Checkbox checked={field.value} onCheckedChange={(val) => {
+                          field.onChange(val);
+                          setTimeout(() => handleSubmit(onSubmit)(), 0);
+                        }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#0EA5E9] data-[state=checked]:border-[#0EA5E9]" />
+                        <span className="text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">All folders</span>
+                      </label>
+                    </ActionTip>
                   )}
                 />
               )}
 
               <div
                 className="flex items-center gap-1.5 rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)]/80 p-1 shrink-0 flex-1 sm:flex-initial"
-                data-page-tour="task-filters"
               >
-                <Button
-                  type="button"
-                  onClick={() => toggleFilters()}
-                  className={cn(
-                    "h-9 px-3 rounded-xl border-0 bg-transparent text-slate-300 font-medium text-xs normal-case transition-all duration-200 gap-1.5 shadow-none shrink-0 flex-1 sm:flex-initial justify-center hover:bg-[var(--tm-surface)] hover:text-slate-100 hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)]",
-                    isFiltersOpen && "bg-[var(--tm-surface)] text-[#0EA5E9] shadow-[0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-[#0EA5E9]/15 hover:bg-[var(--tm-surface)] hover:text-[#0EA5E9]"
-                  )}
-                >
-                  <SlidersHorizontal size={14} strokeWidth={1.75} className={cn("transition-colors duration-200", isFiltersOpen && "text-[#0EA5E9]")} />
-                  <span className="hidden sm:inline">Filters & Sorting</span>
-                </Button>
+                <ActionTip label="Filters">
+                  <Button
+                    type="button"
+                    aria-label="Filters"
+                    data-page-tour="task-filters"
+                    onClick={() => toggleFilters()}
+                    className={cn(
+                      "h-9 px-3 rounded-xl border-0 bg-transparent text-slate-300 font-medium text-xs normal-case transition-all duration-200 gap-1.5 shadow-none shrink-0 flex-1 sm:flex-initial justify-center hover:bg-[var(--tm-surface)] hover:text-slate-100 hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)]",
+                      isFiltersOpen && "bg-[var(--tm-surface)] text-[#0EA5E9] shadow-[0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-[#0EA5E9]/15 hover:bg-[var(--tm-surface)] hover:text-[#0EA5E9]",
+                      drawerFilterCount > 0 && !isFiltersOpen && "text-[#0EA5E9]"
+                    )}
+                  >
+                    <SlidersHorizontal size={14} strokeWidth={1.75} className={cn("transition-colors duration-200", (isFiltersOpen || drawerFilterCount > 0) && "text-[#0EA5E9]")} />
+                    <span className="hidden sm:inline">Filters</span>
+                    {drawerFilterCount > 0 && (
+                      <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0EA5E9] px-1 text-[9px] font-bold text-white">
+                        {drawerFilterCount}
+                      </span>
+                    )}
+                  </Button>
+                </ActionTip>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleReset}
-                  title="Reset filters"
-                  className="h-9 w-9 p-0 rounded-xl border-0 text-slate-400 hover:text-slate-200 bg-transparent hover:bg-[var(--tm-surface)] hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)] shadow-none transition-all active:rotate-180 duration-500 shrink-0 flex items-center justify-center"
-                >
-                  <RotateCcw size={14} strokeWidth={1.75} />
-                </Button>
-
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  className="h-9 px-3 rounded-xl border-0 bg-[var(--tm-surface)] text-[#0EA5E9] font-semibold text-xs normal-case shadow-[0_1px_3px_rgba(15,23,42,0.06)] ring-1 ring-[#0EA5E9]/12 hover:bg-[var(--tm-tint)] hover:ring-[#0EA5E9]/20 transition-all duration-200 gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center"
-                >
-                  <Search size={14} strokeWidth={2.1} />
-                  <span className="hidden sm:inline">Search</span>
-                </Button>
+                {hasAnythingToReset && (
+                  <ActionTip label="Reset all filters">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      aria-label="Reset all filters"
+                      onClick={handleReset}
+                      className="h-9 px-3 rounded-xl border-0 text-slate-400 hover:text-slate-200 bg-transparent hover:bg-[var(--tm-surface)] hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)] shadow-none transition-all gap-1.5 shrink-0 flex items-center justify-center font-medium text-xs normal-case"
+                    >
+                      <RotateCcw size={14} strokeWidth={1.75} />
+                      <span className="hidden sm:inline">Reset</span>
+                    </Button>
+                  </ActionTip>
+                )}
               </div>
 
               {/* Merged View Toggle Dropdown from Dashboard */}
               {viewMode && onViewModeChange && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      data-page-tour="task-view-mode"
-                      className="h-11 px-3 rounded-[14px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] hover:bg-[var(--tm-elevated)] hover:border-[#3D4F66]/80 font-medium text-slate-300 shadow-none gap-1.5 transition-all duration-200 flex items-center justify-between text-xs shrink-0 flex-1 sm:flex-initial"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        {currentViewMode === 'list' ? (
-                          <ListIcon size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
-                        ) : currentViewMode === 'board' ? (
-                          <LayoutGrid size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
-                        ) : (
-                          <CalendarIcon size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
-                        )}
-                        <span className="hidden sm:inline">
-                          {currentViewMode === 'list' ? 'List' : currentViewMode === 'board' ? 'Board' : 'Calendar'}
+                  <ActionTip label="Change view">
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        data-page-tour="task-view-mode"
+                        aria-label="Change view"
+                        className="h-11 px-3 rounded-[14px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] hover:bg-[var(--tm-elevated)] hover:border-[#3D4F66]/80 font-medium text-slate-300 shadow-none gap-1.5 transition-all duration-200 flex items-center justify-between text-xs shrink-0 flex-1 sm:flex-initial"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          {currentViewMode === 'list' ? (
+                            <ListIcon size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
+                          ) : currentViewMode === 'board' ? (
+                            <LayoutGrid size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
+                          ) : (
+                            <CalendarIcon size={14} className="text-[#0EA5E9]" strokeWidth={1.75} />
+                          )}
+                          <span className="hidden sm:inline">
+                            {currentViewMode === 'list' ? 'List' : currentViewMode === 'board' ? 'Board' : 'Calendar'}
+                          </span>
                         </span>
-                      </span>
-                      <ChevronDown size={13} strokeWidth={1.75} className="text-slate-400" />
-                    </Button>
-                  </DropdownMenuTrigger>
+                        <ChevronDown size={13} strokeWidth={1.75} className="text-slate-400" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </ActionTip>
                   <DropdownMenuContent align="end" className="rounded-xl border border-[var(--tm-border)]/70 p-1.5 min-w-[156px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.22)] bg-[var(--tm-surface)]">
                     <DropdownMenuItem
                       onClick={() => onViewModeChange('list')}
@@ -969,27 +829,31 @@ export function TaskFilter({
 
               {/* Create Task Button from Dashboard */}
               {onCreateTask && (
-                <Button
-                  type="button"
-                  onClick={onCreateTask}
-                  data-page-tour="task-create"
-                  className="h-11 px-4 sm:px-5 rounded-[14px] bg-[#0EA5E9] hover:bg-[#0284C7] font-semibold text-xs normal-case text-white shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] hover:shadow-[0_10px_24px_-6px_rgba(14,165,233,0.5)] transition-all duration-200 gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center"
-                >
-                  <Plus size={15} strokeWidth={2.4} />
-                  <span className="hidden sm:inline">Create</span>
-                </Button>
+                <ActionTip label="Create task">
+                  <Button
+                    type="button"
+                    onClick={onCreateTask}
+                    data-page-tour="task-create"
+                    aria-label="Create task"
+                    className="h-11 px-4 sm:px-5 rounded-[14px] bg-[#0EA5E9] hover:bg-[#0284C7] font-semibold text-xs normal-case text-white shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] hover:shadow-[0_10px_24px_-6px_rgba(14,165,233,0.5)] transition-all duration-200 gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center"
+                  >
+                    <Plus size={15} strokeWidth={2.4} />
+                    <span className="hidden sm:inline">Create</span>
+                  </Button>
+                </ActionTip>
               )}
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => forceStartPageGuide('tasks')}
-                title="Tasks Guide — is page ka walkthrough"
-                aria-label="Start Tasks Guide"
-                className="h-11 w-11 p-0 rounded-[14px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 text-[#0EA5E9] hover:bg-[#0EA5E9]/20 shadow-none shrink-0"
-              >
-                <CircleHelp size={16} />
-              </Button>
+              <ActionTip label="Page guide">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => forceStartPageGuide('tasks')}
+                  aria-label="Start page guide"
+                  className="h-11 w-11 p-0 rounded-[14px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 text-[#0EA5E9] hover:bg-[#0EA5E9]/20 shadow-none shrink-0"
+                >
+                  <CircleHelp size={16} />
+                </Button>
+              </ActionTip>
             </div>
           </div>
         </Card>
@@ -1028,35 +892,20 @@ export function TaskFilter({
           </div>
         )}
 
-        {/* Status Filter Buttons */}
+        {/* Status Filter Buttons — multi-select (OR) */}
         <div className="flex flex-nowrap sm:flex-wrap items-center gap-1.5 mt-4 mb-2 px-0.5 overflow-x-auto scrollbar-thin pb-1" data-page-tour="task-status-pills">
-          {['Pending', 'Assigned', 'In-Progress', 'Hold', 'Completed', 'Close'].map(statusName => {
-            const s = fillValues?.status?.find(st =>
-              st.Status === statusName ||
-              st.Status.toLowerCase() === statusName.toLowerCase() ||
-              (statusName === 'In-Progress' && st.Status === 'In-Progess') ||
-              (statusName === 'In-Progress' && st.Status === 'In Progress')
-            );
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mr-0.5 shrink-0">
+            Status
+          </span>
+          {STATUS_PILL_ORDER.map(statusName => {
+            const count = sumStatusPillCounts(statusCounts, statusName);
 
-            const count = (() => {
-              if (statusName === 'Pending') {
-                const pendingStatuses = ['Assigned', 'Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
-                return Object.keys(statusCounts).reduce((sum, key) => {
-                  if (pendingStatuses.includes(key)) return sum + statusCounts[key];
-                  return sum;
-                }, 0);
-              }
-              return statusCounts[s ? s.Status : statusName] || statusCounts[statusName] || 0;
-            })();
-
-            const statusNoStr = statusName === 'Pending' ? 'PendingGroup' : (s ? s.StatusNo.toString() : statusName);
+            const statusNoStr = toStatusPillToken(statusName);
             const currentStatusStr = String(watch('operTaskStatusNo') || '');
-            const activeStatuses = currentStatusStr ? currentStatusStr.split(',') : [];
+            const activeStatuses = currentStatusStr
+              ? currentStatusStr.split(',').map((s) => s.trim()).filter(Boolean)
+              : [];
             const isActive = activeStatuses.includes(statusNoStr);
-            const anyActive = activeStatuses.length > 0;
-
-            // If a status is selected, ONLY show the active ones
-            if (anyActive && !isActive) return null;
 
             const baseClass = "theme-status-pill rounded-full h-7 px-3 text-[11px] font-semibold transition-all duration-200 border bg-[var(--tm-surface)] hover:shadow-md";
             const colorClass =
@@ -1072,9 +921,10 @@ export function TaskFilter({
                     ? isActive
                       ? "border-[#F59E0B] bg-[#F59E0B] text-[#0B1220] shadow-[0_4px_12px_-4px_rgba(245,158,11,0.45)]"
                       : "border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10"
-                    : isActive
-                      ? "border-[#0EA5E9] bg-[var(--tm-tint)] text-[#0EA5E9]"
-                      : "border-[var(--tm-border)]/80 text-slate-300 hover:bg-[var(--tm-muted)]";
+                    : // Assigned (+ any other) — solid fill like the rest when active
+                      isActive
+                      ? "border-[#0EA5E9] bg-[#0EA5E9] text-white shadow-[0_4px_12px_-4px_rgba(14,165,233,0.45)]"
+                      : "border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[#0EA5E9]/10";
 
             return (
               <Button
@@ -1082,15 +932,13 @@ export function TaskFilter({
                 type="button"
                 variant="outline"
                 size="sm"
+                aria-pressed={isActive}
                 onClick={() => {
-                  let newActive = [...activeStatuses];
-                  if (isActive) {
-                    newActive = newActive.filter(x => x !== statusNoStr);
-                  } else {
-                    newActive = [statusNoStr]; // Buttons are quick-select, so they replace if not active
-                  }
-                  setValue('operTaskStatusNo', newActive.join(','));
-                  handleSubmit(onSubmit)();
+                  const next = isActive
+                    ? activeStatuses.filter((x) => x !== statusNoStr)
+                    : [...activeStatuses, statusNoStr];
+                  setValue('operTaskStatusNo', next.join(','));
+                  applyLive();
                 }}
                 className={cn(baseClass, colorClass)}
               >
@@ -1099,12 +947,24 @@ export function TaskFilter({
               </Button>
             );
           })}
+          {String(watch('operTaskStatusNo') || '').split(',').map((s) => s.trim()).filter(Boolean).length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setValue('operTaskStatusNo', '');
+                applyLive();
+              }}
+              className="h-7 px-2.5 rounded-full text-[11px] font-semibold text-slate-400 hover:text-slate-200 hover:bg-[var(--tm-muted)] transition-colors shrink-0"
+            >
+              Clear status
+            </button>
+          )}
         </div>
 
         {/* Right slide-over drawer — page content shifts via parent padding */}
         <div
           className={cn(
-            "fixed top-14 right-0 bottom-0 z-[120] w-[min(100vw,24rem)] transition-transform duration-300 ease-out will-change-transform",
+            "fixed top-14 right-0 bottom-0 z-[120] w-[min(100vw,18rem)] transition-transform duration-300 ease-out will-change-transform",
             isFiltersOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
           )}
           aria-hidden={!isFiltersOpen}
@@ -1115,7 +975,7 @@ export function TaskFilter({
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                   <SlidersHorizontal size={14} strokeWidth={1.75} />
                 </span>
-                Filters & Sorting
+                Filters
               </span>
               <Button
                 type="button"
@@ -1131,32 +991,21 @@ export function TaskFilter({
               <div className="grid grid-cols-1 gap-3 items-start">
                 <FilterPanel title="Task filters" icon={Layers} cols={1}>
                   <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={Clipboard}>Status</FilterFieldLabel>
-                    <Controller
-                      name="operTaskStatusNo"
-                      control={control}
-                      render={({ field }) => (
-                        <MultiSelect
-                          value={field.value ? field.value.split(',') : []}
-                          onChange={(vals) => {
-                            field.onChange(vals.length > 0 ? vals.join(',') : '');
-                          }}
-                          options={(fillValues?.status || []).map(s => ({ value: s.StatusNo.toString(), label: s.Status }))}
-                          placeholder="All Status"
-                          className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                        />
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1 min-w-0">
                     <FilterFieldLabel icon={Tag}>Priority</FilterFieldLabel>
                     <Controller
                       name="operTaskPriorityNo"
                       control={control}
                       render={({ field }) => (
-                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.priority || []).map(p => ({ value: p.OperTaskPriorityNo.toString(), label: p.Priority }))}
-                          placeholder="All Priority"
+                        <Combobox
+                          value={field.value}
+                          onChange={(val) => {
+                            field.onChange(val);
+                            applyLive();
+                          }}
+                          options={(fillValues?.priority || [])
+                            .filter((p) => !isAllFilterSentinel(p.Priority))
+                            .map((p) => ({ value: p.OperTaskPriorityNo.toString(), label: p.Priority }))}
+                          placeholder="All priorities"
                           className={cn(filterControlClass, FIELD_TEXT_STYLE)}
                         />
                       )}
@@ -1169,7 +1018,16 @@ export function TaskFilter({
                       name="taskCode"
                       control={control}
                       render={({ field }) => (
-                        <Input {...field} type="text" placeholder="Enter Task ID / Code" className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)} />
+                        <Input
+                          {...field}
+                          type="text"
+                          placeholder="Enter Task ID / Code"
+                          className={cn(filterControlClass, "focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:ring-offset-0", FIELD_TEXT_STYLE)}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            applyTaskCodeLive(e.target.value);
+                          }}
+                        />
                       )}
                     />
                   </div>
@@ -1181,126 +1039,21 @@ export function TaskFilter({
                         name="operTaskCategoryNo"
                         control={control}
                         render={({ field }) => (
-                          <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.category || []).map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category }))}
-                            placeholder="All Categories"
-                            className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                          />
-                        )}
-                      />
-                    </div>
-                  )}
-
-                  {!isHideType && (
-                    <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={Tag}>Task Type</FilterFieldLabel>
-                      <Controller
-                        name="operTaskTypeNo"
-                        control={control}
-                        render={({ field }) => (
-                          <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.type || []).map(t => ({ value: t.OperTaskTypeNo.toString(), label: t["Task Type"] }))}
-                            placeholder="All Types"
-                            className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                          />
-                        )}
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-1 min-w-0">
-                    <FilterFieldLabel icon={MapPin}>Location</FilterFieldLabel>
-                    <Controller
-                      name="operTaskLocationNo"
-                      control={control}
-                      render={({ field }) => (
-                        <Combobox value={field.value} onChange={field.onChange} options={(fillValues?.location || []).filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location }))}
-                          placeholder="All Locations"
-                          className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                        />
-                      )}
-                    />
-                  </div>
-
-                  {!isHideFolder && (
-                    <div className="space-y-1 min-w-0">
-                      <FilterFieldLabel icon={Folder}>Workspace Folder</FilterFieldLabel>
-                      <Controller
-                        name="folderNo"
-                        control={control}
-                        render={({ field }) => (
-                          <div className={cn("transition-opacity", watch('isAllFolder') && "opacity-50 pointer-events-none")}>
-                            <Combobox value={field.value || (selectedFolder ? selectedFolder.TaskFolderNo.toString() : '')} onChange={field.onChange} options={(fillValues?.folder || []).map(f => ({ value: f.TaskFolderNo.toString(), label: f["Folder Name"] }))}
-                              placeholder="All Folders"
-                              className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                            />
-                          </div>
-                        )}
-                      />
-                    </div>
-                  )}
-                </FilterPanel>
-
-                <FilterPanel title="People" icon={User} cols={1}>
-                  {!isGeneralUser && (
-                    <>
-                      <div className="space-y-1 min-w-0" id="form-group-loginNo">
-                        <FilterFieldLabel icon={User} required={!!(watch('filterType') && watch('filterType') !== 'All')}>User</FilterFieldLabel>
-                        <Controller
-                          name="loginNo"
-                          control={control}
-                          rules={{
-                            validate: (val) => {
-                              const filterType = watch('filterType');
-                              if (filterType && filterType !== 'All' && (!val || val === '')) {
-                                return 'User is required when filter type is selected';
-                              }
-                              return true;
-                            }
-                          }}
-                          render={({ field }) => (
-                            <UserCombobox value={field.value} onChange={(user) => {
-                              field.onChange(user.loginNo.toString());
-                              setPersonLabels((prev) => ({
-                                ...prev,
-                                [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
-                              }));
-                              trigger('filterType');
-                            }}
-                              placeholder="Search user..."
-                              className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE, errors.loginNo && "border-red-400")}
-                            />
-                          )}
-                        />
-                        {errors.loginNo && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.loginNo.message}</p>}
-                      </div>
-
-                      <div className="space-y-1 min-w-0">
-                        <FilterFieldLabel icon={SlidersHorizontal} required={!!(watch('loginNo') && watch('loginNo') !== '')}>Filter Type</FilterFieldLabel>
-                        <Controller
-                          name="filterType"
-                          control={control}
-                          rules={{
-                            validate: (val) => {
-                              const userVal = watch('loginNo');
-                              if (userVal && userVal !== '' && (!val || val === 'All')) {
-                                return 'Filter Type is required when User is selected';
-                              }
-                              return true;
-                            }
-                          }}
-                          render={({ field }) => (
-                            <Combobox value={field.value} onChange={(val) => {
+                          <Combobox
+                            value={field.value}
+                            onChange={(val) => {
                               field.onChange(val);
-                              trigger('loginNo');
+                              applyLive();
                             }}
-                              options={(fillValues?.filterType || []).map(ft => ({ value: ft.FilterTypeName, label: ft.FilterTypeName }))}
-                              placeholder="Select Filter Type"
-                              className={cn(filterControlClass, FIELD_TEXT_STYLE, errors.filterType && "border-red-400")}
-                            />
-                          )}
-                        />
-                        {errors.filterType && <p className="text-[10px] text-red-500 font-medium mt-1">{errors.filterType.message}</p>}
-                      </div>
-                    </>
+                            options={(fillValues?.category || [])
+                              .filter((c) => !isAllFilterSentinel(c.Category))
+                              .map((c) => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category }))}
+                            placeholder="All categories"
+                            className={cn(filterControlClass, FIELD_TEXT_STYLE)}
+                          />
+                        )}
+                      />
+                    </div>
                   )}
 
                   <div className="space-y-1 min-w-0">
@@ -1315,6 +1068,7 @@ export function TaskFilter({
                             ...prev,
                             [String(user.loginNo)]: user.printingName || user.loginId || String(user.loginNo),
                           }));
+                          applyLive();
                         }}
                           placeholder="Search assign to..."
                           className={cn(filterControlClass, "w-full", FIELD_TEXT_STYLE)}
@@ -1322,77 +1076,36 @@ export function TaskFilter({
                       )}
                     />
                   </div>
+
+                  <div className="space-y-1 min-w-0">
+                    <FilterFieldLabel icon={CalendarIcon}>Due Date Range</FilterFieldLabel>
+                    <DateRangePicker
+                      value={{ from: watch('fromDueDate'), to: watch('toDueDate') }}
+                      onChange={(range) => {
+                        setValue('fromDueDate', range?.from || undefined);
+                        setValue('toDueDate', range?.to || undefined);
+                        applyLive();
+                      }}
+                      className="w-full"
+                    />
+                  </div>
                 </FilterPanel>
               </div>
-
-              <FilterPanel title="Sorting & dates" icon={ArrowUpDown} cols={1}>
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={ArrowUpDown}>Sort By Column</FilterFieldLabel>
-                  <Controller
-                    name="sortingColumnName"
-                    control={control}
-                    render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={sortingColumnOptions}
-                        placeholder="Select Sort Column"
-                        className={cn(filterControlClass, FIELD_TEXT_STYLE)}
-                      />
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={ArrowUpDown}>Sort Direction</FilterFieldLabel>
-                  <Controller
-                    name="sortingType"
-                    control={control}
-                    render={({ field }) => (
-                      <Combobox value={field.value} onChange={field.onChange} options={[{ value: 'asc', label: 'Ascending' }, { value: 'desc', label: 'Descending' }]} placeholder="Select Direction" className={cn(filterControlClass, FIELD_TEXT_STYLE)} />
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={CalendarIcon}>Due Date Range</FilterFieldLabel>
-                  <DateRangePicker
-                    value={{ from: watch('fromDueDate'), to: watch('toDueDate') }}
-                    onChange={(range) => {
-                      setValue('fromDueDate', range?.from || undefined);
-                      setValue('toDueDate', range?.to || undefined);
-                    }}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="space-y-1 min-w-0">
-                  <FilterFieldLabel icon={CalendarIcon}>Created Date Range</FilterFieldLabel>
-                  <DateRangePicker
-                    value={{ from: watch('fromCreatedDate'), to: watch('toCreatedDate') }}
-                    onChange={(range) => {
-                      setValue('fromCreatedDate', range?.from || undefined);
-                      setValue('toCreatedDate', range?.to || undefined);
-                    }}
-                    className="w-full"
-                  />
-                </div>
-              </FilterPanel>
             </div>
 
-            <div className="flex justify-end gap-2 px-4 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                className="h-9 px-4 rounded-[8px] border-[var(--tm-border)] text-xs font-medium text-slate-300 hover:text-slate-100 hover:bg-[var(--tm-surface)] transition-colors"
-              >
-                Reset
-              </Button>
-              <Button
-                type="submit"
-                className="h-9 px-5 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-xs font-semibold text-white shadow-sm transition-colors"
-              >
-                Apply Filters
-              </Button>
-            </div>
+            {hasDrawerFilterChanges && (
+              <div className="flex justify-end px-4 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleResetDrawerFilters}
+                  className="h-9 px-4 rounded-[8px] gap-1.5 border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-[#0EA5E9] hover:bg-[#0EA5E9]/10 hover:border-[#0EA5E9]/50 hover:text-[#38BDF8] text-xs font-semibold shadow-none transition-colors"
+                >
+                  <RotateCcw size={13} strokeWidth={2} />
+                  Reset
+                </Button>
+              </div>
+            )}
           </Card>
         </div>
       </form>

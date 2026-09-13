@@ -3,6 +3,7 @@ import { Task, TaskStatus } from '@/types/task';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { isAllFilterSentinel, parseNumericStatusIds, parseStatusPillToken, statusMatchesPill, taskMatchesStatusIds } from '@/lib/taskStatusGroups';
 
 export interface FilterParams {
   operTaskNo?: number;
@@ -46,6 +47,8 @@ export interface TaskFillValues {
 interface TaskState {
   tasks: Task[];
   allTasks: Task[];
+  /** Pre-status-filter list — status pill counts must not collapse when a status is selected. */
+  tasksForStatusCounts: Task[];
   searchKeyword: string;
   setSearchKeyword: (keyword: string) => void;
   isLoading: boolean;
@@ -219,6 +222,7 @@ const nestOrphanSubtasksUnderParents = (tasks: Task[]): Task[] => {
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   allTasks: [],
+  tasksForStatusCounts: [],
   searchKeyword: '',
   setSearchKeyword: (keyword: string) => {
     const kw = keyword.toLowerCase();
@@ -278,6 +282,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     return activeFillValuesPromise;
   },
   fetchTasks: async (filters) => {
+    // Keep previous rows while loading so pagination UI does not flicker / misfire.
     set({ isLoading: true, fetchError: null });
     try {
       const activeFolder = get().selectedFolder;
@@ -312,20 +317,80 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (searchParamsCamel.taskCode !== undefined && searchParamsCamel.taskCode !== '') searchParamsPascal.TaskCode = searchParamsCamel.taskCode;
       // Instead of sending title to backend, we'll use it for local keyword filtering across all columns
       // if (searchParamsCamel.title !== undefined) searchParamsPascal.Title = searchParamsCamel.title;
-      if (searchParamsCamel.operTaskCategoryNo !== undefined) searchParamsPascal.OperTaskCategoryNo = Number(searchParamsCamel.operTaskCategoryNo);
-      if (searchParamsCamel.operTaskPriorityNo !== undefined) searchParamsPascal.OperTaskPriorityNo = Number(searchParamsCamel.operTaskPriorityNo);
+      const fillValues = get().fillValues;
+      const categoryNoRaw = searchParamsCamel.operTaskCategoryNo;
+      const categoryNoParsed =
+        categoryNoRaw !== undefined && categoryNoRaw !== null && categoryNoRaw !== ''
+          ? Number(categoryNoRaw)
+          : NaN;
+      const categoryRow = fillValues?.category?.find(
+        (c) => String(c.OperTaskCategoryNo) === String(categoryNoRaw)
+      );
+      if (
+        !Number.isNaN(categoryNoParsed) &&
+        !(categoryRow && isAllFilterSentinel(categoryRow.Category))
+      ) {
+        searchParamsPascal.OperTaskCategoryNo = categoryNoParsed;
+      }
+
+      const priorityNoRaw = searchParamsCamel.operTaskPriorityNo;
+      const priorityNo =
+        priorityNoRaw !== undefined && priorityNoRaw !== null && priorityNoRaw !== ''
+          ? Number(priorityNoRaw)
+          : NaN;
+      const priorityRow = fillValues?.priority?.find(
+        (p) => String(p.OperTaskPriorityNo) === String(priorityNoRaw)
+      );
+      if (!Number.isNaN(priorityNo) && !(priorityRow && isAllFilterSentinel(priorityRow.Priority))) {
+        searchParamsPascal.OperTaskPriorityNo = priorityNo;
+      }
 
       const rawStatusNo = searchParamsCamel.operTaskStatusNo;
       const statusNoStr = typeof rawStatusNo === 'string' ? rawStatusNo : (rawStatusNo !== undefined && rawStatusNo !== null ? String(rawStatusNo) : undefined);
-      const isPendingGroup = statusNoStr === 'PendingGroup';
-      const isMultiStatus = statusNoStr !== undefined && statusNoStr.includes(',');
+      const statusParts = statusNoStr
+        ? statusNoStr.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
+      const statusPillNames = statusParts
+        .map((part) => parseStatusPillToken(part))
+        .filter((name): name is string => Boolean(name));
+      const numericStatusIds = parseNumericStatusIds(statusNoStr);
 
-      if (!isPendingGroup && !isMultiStatus && statusNoStr !== undefined && statusNoStr !== '') {
-        searchParamsPascal.OperTaskStatusNo = Number(statusNoStr);
+      // Single drawer StatusNo → API (narrow page). Pills / multi-select stay client-side
+      // (StatusNo vs statusName often disagree; multi cannot be expressed as one OperTaskStatusNo).
+      if (statusPillNames.length === 0 && numericStatusIds.length === 1) {
+        searchParamsPascal.OperTaskStatusNo = numericStatusIds[0];
       }
 
-      if (searchParamsCamel.operTaskLocationNo !== undefined) searchParamsPascal.OperTaskLocationNo = Number(searchParamsCamel.operTaskLocationNo);
-      if (!isHideType && searchParamsCamel.operTaskTypeNo !== undefined) searchParamsPascal.OperTaskTypeNo = Number(searchParamsCamel.operTaskTypeNo);
+      const locationNoRawForApi = searchParamsCamel.operTaskLocationNo;
+      const locationNoParsed =
+        locationNoRawForApi !== undefined && locationNoRawForApi !== null && locationNoRawForApi !== ''
+          ? Number(locationNoRawForApi)
+          : NaN;
+      const locationRow = fillValues?.location?.find(
+        (l) => String(l.OperLocationNo) === String(locationNoRawForApi)
+      );
+      if (
+        !Number.isNaN(locationNoParsed) &&
+        !(locationRow && isAllFilterSentinel(locationRow.Location))
+      ) {
+        searchParamsPascal.OperTaskLocationNo = locationNoParsed;
+      }
+
+      const typeNoRawForApi = searchParamsCamel.operTaskTypeNo;
+      const typeNoParsed =
+        !isHideType &&
+        typeNoRawForApi !== undefined &&
+        typeNoRawForApi !== null &&
+        typeNoRawForApi !== ''
+          ? Number(typeNoRawForApi)
+          : NaN;
+      const typeRow = fillValues?.type?.find(
+        (t) => String(t.OperTaskTypeNo) === String(typeNoRawForApi)
+      );
+      const typeLabel = typeRow ? String((typeRow as any)['Task Type'] || (typeRow as any).Type || '') : '';
+      if (!Number.isNaN(typeNoParsed) && !(typeRow && isAllFilterSentinel(typeLabel))) {
+        searchParamsPascal.OperTaskTypeNo = typeNoParsed;
+      }
       if (searchParamsCamel.ownerLoginNo !== undefined) searchParamsPascal.OwnerLoginNo = Number(searchParamsCamel.ownerLoginNo);
       if (searchParamsCamel.fromDueDate !== undefined) searchParamsPascal.FromDueDate = searchParamsCamel.fromDueDate;
       if (searchParamsCamel.toDueDate !== undefined) searchParamsPascal.ToDueDate = searchParamsCamel.toDueDate;
@@ -371,9 +436,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         searchParamsPascal.ToCreatedDate = searchParamsCamel.toCreatedDate;
       }
 
-      // Pagination Parameters
-      searchParamsPascal.PageSize = searchParamsCamel.pageSize !== undefined ? Number(searchParamsCamel.pageSize) : 100;
-      searchParamsPascal.PageNo = searchParamsCamel.pageNo !== undefined ? Number(searchParamsCamel.pageNo) : 1;
+      // Load the full filtered set; UI paginates client-side (10/25/50) from total count.
+      const FETCH_ALL_PAGE_SIZE = 2000;
+      searchParamsPascal.PageSize = FETCH_ALL_PAGE_SIZE;
+      searchParamsPascal.PageNo = 1;
 
       const response = await apiService.get<{ success: boolean, data: any[] }>('/api/crm/tasks/search-data', {
         params: searchParamsPascal
@@ -429,55 +495,127 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         subTasks: item.subTasks ? item.subTasks.map(mapTaskItem) : []
       });
 
-      if (response.success) {
-        let mappedTasks: Task[] = nestOrphanSubtasksUnderParents(response.data.map(mapTaskItem));
+      const rawRows = response?.success && Array.isArray(response.data) ? response.data : [];
+      const mappedTasks: Task[] = nestOrphanSubtasksUnderParents(rawRows.map(mapTaskItem));
 
-        // Apply PendingGroup filter locally if requested
-        if (isPendingGroup) {
-          const pendingStatuses = ['Open', 'Draft', 'In-Progress', 'Reopen', 'In Progress', 'In-Progess'];
-          mappedTasks = mappedTasks.filter(task => pendingStatuses.includes(task.status));
-        } else if (isMultiStatus) {
-          const selectedStatusIds = statusNoStr!.split(',').map(Number);
-          mappedTasks = mappedTasks.filter(task => task.status_No !== null && selectedStatusIds.includes(task.status_No));
+      // Client-side safety net: API may return rows outside selected drawer filters
+      const categoryNo =
+        !Number.isNaN(categoryNoParsed) &&
+        !(categoryRow && isAllFilterSentinel(categoryRow.Category))
+          ? categoryNoParsed
+          : NaN;
+      const typeNo =
+        !Number.isNaN(typeNoParsed) && !(typeRow && isAllFilterSentinel(typeLabel))
+          ? typeNoParsed
+          : NaN;
+      const locationNo =
+        !Number.isNaN(locationNoParsed) &&
+        !(locationRow && isAllFilterSentinel(locationRow.Location))
+          ? locationNoParsed
+          : NaN;
+      const priorityNoForClient =
+        !Number.isNaN(priorityNo) && !(priorityRow && isAllFilterSentinel(priorityRow.Priority))
+          ? priorityNo
+          : NaN;
+      const ownerLoginNoRaw = searchParamsCamel.ownerLoginNo;
+      const ownerLoginNo =
+        ownerLoginNoRaw !== undefined && ownerLoginNoRaw !== null && ownerLoginNoRaw !== ''
+          ? Number(ownerLoginNoRaw)
+          : NaN;
+      const taskCodeFilter =
+        typeof searchParamsCamel.taskCode === 'string' ? searchParamsCamel.taskCode.trim().toLowerCase() : '';
+
+      const filterTasksTree = (nodes: Task[], predicate: (t: Task) => boolean): Task[] =>
+        nodes
+          .map((t) => ({
+            ...t,
+            subTasks: t.subTasks?.length ? filterTasksTree(t.subTasks, predicate) : [],
+          }))
+          .filter((t) => predicate(t));
+
+      const matchesDrawerFilters = (task: Task): boolean => {
+        if (!Number.isNaN(priorityNoForClient) && Number(task.priority_No) !== priorityNoForClient) return false;
+        if (!Number.isNaN(categoryNo) && Number(task.category_No) !== categoryNo) return false;
+        if (!Number.isNaN(typeNo) && Number(task.type_No) !== typeNo) return false;
+        if (!Number.isNaN(locationNo) && Number(task.location_No) !== locationNo) return false;
+        if (!Number.isNaN(ownerLoginNo) && Number(task.owner_user_No) !== ownerLoginNo) return false;
+        if (taskCodeFilter) {
+          const code = String(task.code || '').toLowerCase();
+          if (!code.includes(taskCodeFilter)) return false;
         }
+        return true;
+      };
 
-        // Apply current search keyword if any
-        let filteredTasks = mappedTasks;
-        const kw = get().searchKeyword.toLowerCase();
-        if (kw) {
-          const fillValues = get().fillValues;
-          filteredTasks = filterTasksByKeyword(mappedTasks, kw, fillValues);
-        }
+      const drawerFilteredTasks = filterTasksTree(mappedTasks, matchesDrawerFilters);
 
-        set({ allTasks: mappedTasks, tasks: filteredTasks });
+      // Keep pre-status snapshot so pill counts stay stable while status filters are active
+      // (still respect priority/category/etc. so counts match the filtered table)
+      const tasksForStatusCounts = drawerFilteredTasks;
+
+      let statusFilteredTasks = drawerFilteredTasks;
+      // Apply status filters locally (drawer StatusNos and/or status pills)
+      if (statusPillNames.length > 0 || numericStatusIds.length > 0) {
+        const fillStatuses = get().fillValues?.status || [];
+        statusFilteredTasks = drawerFilteredTasks.filter((task) => {
+          const matchPill = statusPillNames.some((pill) => statusMatchesPill(task.status, pill));
+          const matchNum =
+            numericStatusIds.length > 0
+            && taskMatchesStatusIds(task, numericStatusIds, fillStatuses);
+          return matchPill || matchNum;
+        });
       }
+
+      // Apply current search keyword if any
+      let filteredTasks = statusFilteredTasks;
+      const kw = get().searchKeyword.toLowerCase();
+      if (kw) {
+        const fillValues = get().fillValues;
+        filteredTasks = filterTasksByKeyword(statusFilteredTasks, kw, fillValues);
+      }
+
+      set({
+        allTasks: statusFilteredTasks,
+        tasks: filteredTasks,
+        tasksForStatusCounts,
+      });
     } catch (error) {
       console.error('Failed to fetch tasks:', error);
       const message =
         error instanceof Error && error.message
           ? error.message
           : 'Failed to load tasks';
-      set({ fetchError: message });
+      set({ fetchError: message, tasks: [], allTasks: [], tasksForStatusCounts: [] });
     } finally {
       set({ isLoading: false });
     }
   },
-  addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
+  addTask: (task) => set((state) => ({
+    tasks: [...state.tasks, task],
+    allTasks: [...state.allTasks, task],
+    tasksForStatusCounts: [...state.tasksForStatusCounts, task],
+  })),
   updateTask: (taskNo, updates) =>
     set((state) => {
-      const newAllTasks = state.allTasks.map((t) => (t.taskNo === taskNo ? { ...t, ...updates } : t));
-      const newTasks = state.tasks.map((t) => (t.taskNo === taskNo ? { ...t, ...updates } : t));
-      return { allTasks: newAllTasks, tasks: newTasks };
+      const patch = (list: Task[]) => list.map((t) => (t.taskNo === taskNo ? { ...t, ...updates } : t));
+      return {
+        allTasks: patch(state.allTasks),
+        tasks: patch(state.tasks),
+        tasksForStatusCounts: patch(state.tasksForStatusCounts),
+      };
     }),
   deleteTask: (taskNo) =>
     set((state) => ({
       allTasks: state.allTasks.filter((t) => t.taskNo !== taskNo),
       tasks: state.tasks.filter((t) => t.taskNo !== taskNo),
+      tasksForStatusCounts: state.tasksForStatusCounts.filter((t) => t.taskNo !== taskNo),
     })),
   moveTask: (taskNo, newStatus) =>
     set((state) => {
-      const newAllTasks = state.allTasks.map((t) => t.taskNo === taskNo ? { ...t, status: newStatus } : t);
-      const newTasks = state.tasks.map((t) => t.taskNo === taskNo ? { ...t, status: newStatus } : t);
-      return { allTasks: newAllTasks, tasks: newTasks };
+      const patch = (list: Task[]) => list.map((t) => (t.taskNo === taskNo ? { ...t, status: newStatus } : t));
+      return {
+        allTasks: patch(state.allTasks),
+        tasks: patch(state.tasks),
+        tasksForStatusCounts: patch(state.tasksForStatusCounts),
+      };
     }),
 }));

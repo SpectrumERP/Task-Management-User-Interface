@@ -88,6 +88,8 @@ interface CompanyHeaderFieldsProps {
   editingId: string | null;
   name: string;
   setName: (v: string) => void;
+  aliasName: string;
+  setAliasName: (v: string) => void;
   companyType: string;
   setCompanyType: (v: string) => void;
   companyTimeZoneNo: string;
@@ -110,6 +112,8 @@ export function CompanyHeaderFields({
   editingId,
   name,
   setName,
+  aliasName,
+  setAliasName,
   companyType,
   setCompanyType,
   companyTimeZoneNo,
@@ -270,6 +274,20 @@ export function CompanyHeaderFields({
                 ))}
               </div>
             ) : null}
+          </FieldControl>
+        </div>
+
+        <div className="space-y-1.5 min-w-0">
+          <FieldLabel htmlFor="businessEntityAlias">Alias</FieldLabel>
+          <FieldControl>
+            <Input
+              id="businessEntityAlias"
+              placeholder="Alternate / short name"
+              value={aliasName}
+              maxLength={100}
+              onChange={(e) => setAliasName(e.target.value)}
+              className={fieldClass}
+            />
           </FieldControl>
         </div>
 

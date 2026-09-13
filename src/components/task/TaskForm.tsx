@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, type LucideIcon } from 'lucide-react';
+import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, Bell, type LucideIcon } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
@@ -17,10 +17,18 @@ import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { useTaskStore } from '@/store/useTaskStore';
 
-import { useEffect, useState, useMemo, useRef, lazy, Suspense } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { FieldInfoControl } from '@/components/ui/info-tooltip';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
+import { SortableHeader } from '@/components/shared/useTableSort';
+import { getStatusTextClass } from '@/lib/taskStatusGroups';
+import {
+  formatReminderSummary,
+  guessDailyFrequencyNo,
+  parseReminderFromApi,
+  resolveFrequencyLabel,
+} from '@/lib/priorityReminder';
 import { motion } from 'framer-motion';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -29,6 +37,7 @@ import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { format } from 'date-fns';
 import { TaskActivity } from './TaskActivity';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
@@ -270,7 +279,7 @@ interface TaskFormProps {
 }
 
 interface TaskFillValues {
-  priority: { OperTaskPriorityNo: number; Priority: string; Code: string; PriorityDuration?: number; PriorityDurationFrequencyNo?: number; ColorCoding?: string }[];
+  priority: { OperTaskPriorityNo: number; Priority: string; Code: string; PriorityDuration?: number; PriorityDurationFrequencyNo?: number; ColorCoding?: string; IsReminderEnabled?: boolean; isReminderEnabled?: boolean; ReminderLeadDays?: number; reminderLeadDays?: number; ReminderFrequencyNo?: number; reminderFrequencyNo?: number; IsOverdueReminderEnabled?: boolean; isOverdueReminderEnabled?: boolean }[];
   type: { OperTaskTypeNo: number; "Task Type": string; Code: string }[];
   category: { OperTaskCategoryNo: number; Category: string; Code: string; colorCoding?: string; ColorCoding?: string }[];
   location: { OperLocationNo: number; Location: string; Code: string }[];
@@ -891,6 +900,47 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     control: form.control,
     name: "informed_to"
   });
+
+  const [collabSortCol, setCollabSortCol] = useState<string | null>('userName');
+  const [collabSortDesc, setCollabSortDesc] = useState(false);
+  const [informSortCol, setInformSortCol] = useState<string | null>('userName');
+  const [informSortDesc, setInformSortDesc] = useState(false);
+
+  const sortPeopleRows = useCallback(
+    (
+      rows: Array<{ userName?: string; displayName?: string; email?: string; isFromTeam?: boolean; loginNo?: number | string }>,
+      key: string,
+      desc: boolean
+    ) => {
+      const team = rows.filter((r) => r.isFromTeam);
+      const empty = rows.filter((r) => !r.isFromTeam && !r.loginNo && !r.userName && !r.displayName);
+      const filled = rows.filter((r) => !r.isFromTeam && (r.loginNo || r.userName || r.displayName));
+      const sorted = [...filled].sort((a, b) => {
+        const av = String((a as Record<string, unknown>)[key] ?? '');
+        const bv = String((b as Record<string, unknown>)[key] ?? '');
+        const cmp = av.localeCompare(bv, undefined, { sensitivity: 'base', numeric: true });
+        return desc ? -cmp : cmp;
+      });
+      return [...team, ...sorted, ...empty];
+    },
+    []
+  );
+
+  const handleCollabSort = (key: string) => {
+    const nextDesc = collabSortCol === key ? !collabSortDesc : false;
+    setCollabSortCol(key);
+    setCollabSortDesc(nextDesc);
+    const rows = form.getValues('collaborators') || [];
+    replaceCollab(sortPeopleRows(rows, key, nextDesc) as any);
+  };
+
+  const handleInformSort = (key: string) => {
+    const nextDesc = informSortCol === key ? !informSortDesc : false;
+    setInformSortCol(key);
+    setInformSortDesc(nextDesc);
+    const rows = form.getValues('informed_to') || [];
+    replaceInform(sortPeopleRows(rows, key, nextDesc) as any);
+  };
 
   const { fields: checklistFields, append: appendChecklist, remove: removeChecklist, replace: replaceChecklist } = useFieldArray({
     control: form.control,
@@ -1812,6 +1862,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const selectedPriorityNo = form.watch('priority_No');
   const selectedStartDate = form.watch('start_date');
 
+  const selectedPriorityReminderText = useMemo(() => {
+    if (!fillValues?.priority || !selectedPriorityNo) return '';
+    const priorityObj = fillValues.priority.find(
+      (p) => p.OperTaskPriorityNo.toString() === selectedPriorityNo
+    );
+    if (!priorityObj) return '';
+    const rule = parseReminderFromApi(priorityObj as any, priorityObj.Priority);
+    const freqNo = rule.frequencyNo || guessDailyFrequencyNo(fillValues.frequency as any);
+    const label = resolveFrequencyLabel(freqNo, fillValues.frequency as any);
+    return formatReminderSummary({ ...rule, frequencyNo: freqNo }, label);
+  }, [fillValues, selectedPriorityNo]);
+
   useEffect(() => {
     if (!fillValues?.priority || !selectedPriorityNo) return;
 
@@ -1917,1629 +1979,1688 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
         <fieldset disabled={readOnly} className="min-w-0 space-y-2.5 border-0 p-0 m-0">
 
-        {/* 1. Basic Information */}
-        <FormSection
-          title="Task Detail"
-          icon={Info}
-          tourId="task-form-detail"
-          headerAction={
-            <div className="flex flex-wrap items-center gap-0.5">
-              <Controller
-                name="isPrivate"
-                control={form.control}
-                render={({ field }) => (
-                  <div className="flex items-center space-x-2 mr-2">
-                    <Checkbox id="isPrivate" checked={field.value} onCheckedChange={field.onChange} />
-                    <label htmlFor="isPrivate" className="text-xs font-medium text-slate-200 cursor-pointer">Private Task</label>
-                  </div>
-                )}
-              />
-              <div className="relative flex items-center gap-0.5 sm:gap-3 bg-[var(--tm-muted)]/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-[8px] border border-[var(--tm-border)]/60 shadow-sm">
-                <FieldLabel required className="text-[10px] text-slate-200">Status</FieldLabel>
-                <FieldControl error={form.formState.errors.status?.message}>
-                  <Controller
-                    name="status"
-                    control={form.control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="rounded-[8px] h-8 border-transparent bg-transparent text-slate-50 shadow-none hover:bg-[var(--tm-muted)] w-[120px] sm:w-[160px]">
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-[8px]">
-                          {filteredStatuses.map(s => (
-                            <SelectItem key={s.StatusNo} value={s.Status}>{s.Status}</SelectItem>
-                          ))}
-                          {filteredStatuses.length === 0 && (
-                            <SelectItem value={currentStatus} disabled>{currentStatus}</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </FieldControl>
-              </div>
-            </div>
-          }
-        >
-          <div className="space-y-2.5">
-            {initialData?.parentTask && (
-              <div className="mb-1 flex items-center gap-1.5 border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 rounded-[8px] w-fit">
-                <ExternalLink size={12} className="text-blue-400" />
-                <span className="text-[11px] text-slate-300 font-medium">Parent Task:</span>
-                <Link to={taskUrl(initialData.parentTask.operTaskNo, isDealMonitorCategory ? 'deal monitor' : undefined)} className="text-[11px] font-semibold text-blue-400 hover:text-blue-800 hover:underline transition-colors">
-                  {initialData.parentTask.title} ({initialData.parentTask.code})
-                </Link>
-              </div>
-            )}
-            {/* Row 1: Task ID & Task Title */}
-            <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-2.5 items-start">
-              <div className="space-y-1.5" id="form-group-code">
-                <FieldLabel>Task Code</FieldLabel>
-                <div className="h-10 flex items-center text-xs font-medium text-slate-500 select-none bg-[var(--tm-muted)] px-3 rounded-[8px] border border-[var(--tm-border)] whitespace-nowrap">
-                  {form.watch('code') || 'AUTO-GEN-CODE'}
-                </div>
-              </div>
-              <div className="space-y-1.5 min-w-0" id="form-group-title">
-                <FieldLabel required>Task Title</FieldLabel>
-                <FieldControl error={form.formState.errors.title?.message}>
-                  <Input placeholder="Enter task title" {...form.register('title')} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.title ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={200} />
-                </FieldControl>
-              </div>
-            </div>
-
-            {/* Row 2: Task Description */}
-            <div className="space-y-1.5" id="form-group-description">
-              <FieldLabel>Task Description</FieldLabel>
-              <FieldControl error={form.formState.errors.description?.message}>
-                <Textarea placeholder="Enter task description" className={cn("min-h-[60px] rounded-[8px] border-[var(--tm-border)]/80 p-3 leading-relaxed text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} {...form.register('description')} maxLength={1000} />
-              </FieldControl>
-            </div>
-
-            {/* Row 4: Tags */}
-            <FieldInfoControl info={tagCaption} className="space-y-1.5">
-              <FieldLabel>Tags/Keywords</FieldLabel>
-              <Controller
-                name="tags"
-                control={form.control}
-                render={({ field }) => (
-                  <TagInput
-                    tags={field.value || []}
-                    onChange={field.onChange}
-                    placeholder="Enter tags/keywords"
-                    className="min-h-[40px] py-1 rounded-[8px] border-[var(--tm-border)]/80 shadow-sm input-section"
-                  />
-                )}
-              />
-              <p className="text-[10px] text-slate-500 font-medium mt-1">Note: Press Enter or type a comma to add a tag.</p>
-            </FieldInfoControl>
-          </div>
-        </FormSection>
-
-        {!hiddenSections.includes('categories') && (
+          {/* 1. Basic Information */}
           <FormSection
-            title="Category Detail"
+            title="Task Detail"
             icon={Info}
-            tourId="task-form-category"
-          >
-            {/* Row 3: Category, Type, Priority */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-x-3 gap-y-2.5">
-              <FieldInfoControl info={categoryFieldCaption} className="space-y-1.5" id="form-group-category_No">
-                <FieldLabel required>Category</FieldLabel>
-                <FieldControl error={form.formState.errors.category_No ? 'Category is required' : undefined}>
-                  <Controller
-                    name="category_No"
-                    control={form.control}
-                    render={({ field }) => (
-                      <Combobox disabled={isSubTask || isDealMonitorContext} options={fillValues?.category.filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
-                        .filter(c => isDealMonitorContext || c.Category.toLowerCase() !== 'deal monitor')
-                        .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString(), colorCoding: c.colorCoding || c.ColorCoding })) || []}
-                        value={field.value}
-                        onChange={(val) => {
-                          field.onChange(val);
-                          handleCategoryChange(val);
-                        }}
-                        placeholder="Select category"
-                        className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        isClearable={false}
-                        onAddNew={formRights[1561]?.isSave ? () => {
-                          setActiveMasterType('category');
-                          setIsMasterCreateOpen(true);
-                        } : undefined}
-                        addNewLabel="Add New Category"
-                      />
-                    )}
-                  />
-                </FieldControl>
-              </FieldInfoControl>
-              {
-                !isHideType &&
-                <FieldInfoControl info={typeFieldCaption} className="space-y-1.5" id="form-group-type_No">
-                  <FieldLabel>Type</FieldLabel>
-                  <FieldControl error={form.formState.errors.type_No ? 'Type is required' : undefined}>
+            tourId="task-form-detail"
+            headerAction={
+              <div className="flex flex-wrap items-center gap-0.5">
+                <Controller
+                  name="isPrivate"
+                  control={form.control}
+                  render={({ field }) => (
+                    <div className="flex items-center space-x-2 mr-2">
+                      <Checkbox id="isPrivate" checked={field.value} onCheckedChange={field.onChange} />
+                      <label htmlFor="isPrivate" className="text-xs font-medium text-slate-200 cursor-pointer">Private Task</label>
+                    </div>
+                  )}
+                />
+                <div className="relative flex items-center gap-0.5 sm:gap-3 bg-[var(--tm-muted)]/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-[8px] border border-[var(--tm-border)]/60 shadow-sm">
+                  <FieldLabel required className="text-[10px] text-slate-200">Status</FieldLabel>
+                  <FieldControl error={form.formState.errors.status?.message}>
                     <Controller
-                      name="type_No"
+                      name="status"
                       control={form.control}
                       render={({ field }) => (
-                        <Combobox disabled={isSubTask} options={fillValues?.type.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
-                          .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="rounded-[8px] h-8 border-transparent bg-transparent text-slate-50 shadow-none hover:bg-[var(--tm-muted)] w-[120px] sm:w-[160px]">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-[8px]">
+                            {filteredStatuses.map(s => (
+                              <SelectItem key={s.StatusNo} value={s.Status}>{s.Status}</SelectItem>
+                            ))}
+                            {filteredStatuses.length === 0 && (
+                              <SelectItem value={currentStatus} disabled>{currentStatus}</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </FieldControl>
+                </div>
+              </div>
+            }
+          >
+            <div className="space-y-2.5">
+              {initialData?.parentTask && (
+                <div className="mb-1 flex items-center gap-1.5 border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 rounded-[8px] w-fit">
+                  <ExternalLink size={12} className="text-blue-400" />
+                  <span className="text-[11px] text-slate-300 font-medium">Parent Task:</span>
+                  <Link to={taskUrl(initialData.parentTask.operTaskNo, isDealMonitorCategory ? 'deal monitor' : undefined)} className="text-[11px] font-semibold text-blue-400 hover:text-blue-800 hover:underline transition-colors">
+                    {initialData.parentTask.title} ({initialData.parentTask.code})
+                  </Link>
+                </div>
+              )}
+              {/* Row 1: Task ID & Task Title */}
+              <div className="grid grid-cols-1 lg:grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-2.5 items-start">
+                <div className="space-y-1.5" id="form-group-code">
+                  <FieldLabel>Task Code</FieldLabel>
+                  <div className="h-10 flex items-center text-xs font-medium text-slate-500 select-none bg-[var(--tm-muted)] px-3 rounded-[8px] border border-[var(--tm-border)] whitespace-nowrap">
+                    {form.watch('code') || 'AUTO-GEN-CODE'}
+                  </div>
+                </div>
+                <div className="space-y-1.5 min-w-0" id="form-group-title">
+                  <FieldLabel required>Task Title</FieldLabel>
+                  <FieldControl error={form.formState.errors.title?.message}>
+                    <Input placeholder="Enter task title" {...form.register('title')} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.title ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={200} />
+                  </FieldControl>
+                </div>
+              </div>
+
+              {/* Row 2: Task Description */}
+              <div className="space-y-1.5" id="form-group-description">
+                <FieldLabel>Task Description</FieldLabel>
+                <FieldControl error={form.formState.errors.description?.message}>
+                  <Textarea placeholder="Enter task description" className={cn("min-h-[60px] rounded-[8px] border-[var(--tm-border)]/80 p-3 leading-relaxed text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} {...form.register('description')} maxLength={1000} />
+                </FieldControl>
+              </div>
+
+              {/* Row 4: Tags */}
+              <FieldInfoControl info={tagCaption} className="space-y-1.5">
+                <FieldLabel>Tags/Keywords</FieldLabel>
+                <Controller
+                  name="tags"
+                  control={form.control}
+                  render={({ field }) => (
+                    <TagInput
+                      tags={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Enter tags/keywords"
+                      className="min-h-[40px] py-1 rounded-[8px] border-[var(--tm-border)]/80 shadow-sm input-section"
+                    />
+                  )}
+                />
+                <p className="text-[10px] text-slate-500 font-medium mt-1">Note: Press Enter or type a comma to add a tag.</p>
+              </FieldInfoControl>
+            </div>
+          </FormSection>
+
+          {!hiddenSections.includes('categories') && (
+            <FormSection
+              title="Category Detail"
+              icon={Info}
+              tourId="task-form-category"
+            >
+              {/* Row 3: Category, Type, Priority */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-3 gap-y-2.5">
+                <FieldInfoControl info={categoryFieldCaption} className="space-y-1.5" id="form-group-category_No">
+                  <FieldLabel required>Category</FieldLabel>
+                  <FieldControl error={form.formState.errors.category_No ? 'Category is required' : undefined}>
+                    <Controller
+                      name="category_No"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Combobox disabled={isSubTask || isDealMonitorContext} options={fillValues?.category.filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]')
+                          .filter(c => isDealMonitorContext || c.Category.toLowerCase() !== 'deal monitor')
+                          .map(c => ({ label: c.Category, value: c.OperTaskCategoryNo.toString(), colorCoding: c.colorCoding || c.ColorCoding })) || []}
                           value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select type"
-                          className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          onAddNew={formRights[1560]?.isSave ? () => {
-                            setActiveMasterType('type');
+                          onChange={(val) => {
+                            field.onChange(val);
+                            handleCategoryChange(val);
+                          }}
+                          placeholder="Select category"
+                          className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                          isClearable={false}
+                          onAddNew={formRights[1561]?.isSave ? () => {
+                            setActiveMasterType('category');
                             setIsMasterCreateOpen(true);
                           } : undefined}
-                          addNewLabel="Add New Type"
+                          addNewLabel="Add New Category"
                         />
                       )}
                     />
                   </FieldControl>
                 </FieldInfoControl>
-              }
-              {
-                !isHideFolder &&
-                <div className="space-y-1.5" id="form-group-folder_No">
-                  <FieldLabel>Folder</FieldLabel>
-                  <FieldControl error={form.formState.errors.folder_No ? 'Folder is required' : undefined}>
-                    <Controller
-                      name="folder_No"
-                      control={form.control}
-                      render={({ field }) => (
-                        <Combobox disabled={isSubTask} options={fillValues?.folder.map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select folder"
-                          className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          isClearable={false}
-                          onAddNew={formRights[1542]?.isSave ? () => {
-                            setActiveMasterType('folder');
-                            setIsMasterCreateOpen(true);
-                          } : undefined}
-                          addNewLabel="Add New Folder"
-                        />
-                      )}
-                    />
-                  </FieldControl>
-                </div>
-              }
-              <div className="space-y-1.5" id="form-group-priority_No">
-                <FieldLabel required>Priority</FieldLabel>
-                <FieldControl error={form.formState.errors.priority_No ? 'Priority is required' : undefined}>
-                  <Controller
-                    name="priority_No"
-                    control={form.control}
-                    render={({ field }) => (
-                      <Combobox disabled={isSubTask} options={fillValues?.priority.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
-                        .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString(), colorCoding: p.ColorCoding })) || []}
-                        value={field.value}
-                        onChange={field.onChange}
-                        placeholder="Select priority"
-                        className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                        onAddNew={formRights[1543]?.isSave ? () => {
-                          setActiveMasterType('priority');
-                          setIsMasterCreateOpen(true);
-                        } : undefined}
-                        addNewLabel="Add New Priority"
-                      />
-                    )}
-                  />
-                </FieldControl>
-              </div>
-            </div>
-
-          </FormSection>
-        )}
-
-        {/* 2. Ownership & Responsibility */}
-        {!hiddenSections.includes('ownership') && (
-          <FormSection title="Ownership" icon={Users} tourId="task-form-ownership">
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-1.5" id="form-group-company">
-                  <FieldLabel required>Company</FieldLabel>
-                  <FieldControl error={form.formState.errors.company?.message}>
-                    <Controller
-                      name="company"
-                      control={form.control}
-                      render={({ field }) => (
-                        <Combobox
-                          disabled={isSubTask}
-                          options={companyOptions}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select company"
-                          className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          onAddNew={formRights[1565]?.isSave ? () => {
-                            setActiveMasterType('task-company');
-                            setIsMasterCreateOpen(true);
-                          } : undefined}
-                          addNewLabel="Add New Company"
-                        />
-                      )}
-                    />
-                  </FieldControl>
-                </div>
-                <div className="space-y-1.5" id="form-group-location_No">
-                  <FieldLabel required>Task Location</FieldLabel>
-                  <FieldControl error={form.formState.errors.location_No?.message}>
-                    <Controller
-                      name="location_No"
-                      control={form.control}
-                      render={({ field }) => (
-                        <LocationCombobox
-                          disabled={isSubTask}
-                          value={field.value}
-                          onChange={(location) => field.onChange(location.operLocationNo ? location.operLocationNo.toString() : '')}
-                          initialLabel={initialData?.locationName || undefined}
-                          placeholder="Select location"
-                          error={!!form.formState.errors.location_No}
-                          onAddNew={formRights[1541]?.isSave ? () => {
-                            setActiveMasterType('location');
-                            setIsMasterCreateOpen(true);
-                          } : undefined}
-                          addNewLabel="Add New Location"
-                        />
-                      )}
-                    />
-                  </FieldControl>
-                </div>
-                <div className="space-y-1.5" id="form-group-owner_user_No">
-                  <FieldLabel required>Task Assign To</FieldLabel>
-                  <FieldControl error={form.formState.errors.owner_user_No?.message}>
-                    <Controller
-                      name="owner_user_No"
-                      control={form.control}
-                      render={({ field }) => (
-                        <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
-                          placeholder="Select Assign To"
-                          initialLabel={initialData?.assignedDisplayName || undefined}
-                          className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          disabled={isPrivateTask}
-                        />
-                      )}
-                    />
-                  </FieldControl>
-                </div>
-                <div className="space-y-1.5" id="form-group-originator_user_No">
-                  <FieldLabel required>Task Assign By</FieldLabel>
-                  <FieldControl error={form.formState.errors.originator_user_No?.message}>
-                    <Controller
-                      name="originator_user_No"
-                      control={form.control}
-                      render={({ field }) => (
-                        <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
-                          placeholder="Select Assign By"
-                          initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
-                          className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          isClearable={false}
-                        />
-                      )}
-                    />
-                  </FieldControl>
-                </div>
-              </div>
-            </div>
-          </FormSection>
-        )}
-
-        {/* 2. Inform To */}
-        {!hiddenSections.includes('informto') && !isPrivateTask && (
-          <FormSection title="Inform To" icon={Users}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-              {/* Collaborators / Supporters */}
-              <div
-                id="form-group-collaborators"
-                className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/40 overflow-hidden min-w-0"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                      <UserPlus size={13} strokeWidth={1.75} />
-                    </span>
-                    <div className="min-w-0 flex items-center gap-2">
-                      <p className="text-[12px] font-semibold text-slate-100 truncate">Collaborators / Supporters</p>
-                      {collabFields.length > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
-                          {collabFields.length}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <FieldLabel className="text-[10px] shrink-0">Team</FieldLabel>
-                      <div className="relative flex items-center">
-                        <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
-                          <SelectTrigger className={cn("rounded-[8px] h-8 border-[var(--tm-border)] text-[11px] w-[148px] bg-[var(--tm-surface)] shadow-none", selectedCollabTeam && "[&>span]:pr-5")}>
-                            <SelectValue placeholder="Select team" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-[8px]">
-                            {fillValues?.userGroup.map(group => (
-                              <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-xs">{group.UserGroupName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {selectedCollabTeam && (
-                          <button
-                            type="button"
-                            className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 z-10"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSelectedCollabTeam('');
-                              const current = form.getValues('collaborators') || [];
-                              replaceCollab(current.filter(c => !c.isFromTeam));
-                            }}
-                            title="Clear team"
-                          >
-                            <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => appendCollab({ userName: '', displayName: '', email: '' })}
-                      variant="outline"
-                      size="sm"
-                      className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
-                    >
-                      <Plus size={12} /> Add
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
-                  {collabFields.length === 0 ? (
-                    <FieldControl
-                      className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center"
-                      error={hasCollabError ? (collabError as any).message : undefined}
-                    >
-                      <p className="text-xs text-slate-500 font-medium">No collaborators added yet.</p>
-                    </FieldControl>
-                  ) : (
-                    <FieldControl error={hasCollabError ? (collabError as any).message : undefined}>
-                      <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                        <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[600px]">
-                          <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
-                            <tr>
-                              <th className="px-1 py-2 w-10 text-center">#</th>
-                              <th className="px-1 py-2 w-[30%]">User Name</th>
-                              <th className="px-1 py-2 w-[30%]">Display Name</th>
-                              <th className="px-1 py-2 w-[40%]">Email</th>
-                              <th className="px-1 py-2 w-12 text-center"></th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[var(--tm-border)]">
-                            {collabFields.map((field, index) => {
-                              const displayName = form.watch(`collaborators.${index}.displayName`);
-                              const email = form.watch(`collaborators.${index}.email`);
-                              const loginNo = form.watch(`collaborators.${index}.loginNo`);
-                              const userErr = form.formState.errors.collaborators?.[index]?.userName?.message;
-                              const nameErr = form.formState.errors.collaborators?.[index]?.displayName?.message;
-
-                              if (field.isFromTeam) {
-                                return (
-                                  <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors">
-                                    <td className="px-1 py-2 text-center">
-                                      <input type="hidden" {...form.register(`collaborators.${index}.userName`)} />
-                                      <input type="hidden" {...form.register(`collaborators.${index}.displayName`)} />
-                                      <input type="hidden" {...form.register(`collaborators.${index}.email`)} />
-                                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                        {index + 1}
-                                      </span>
-                                    </td>
-                                    <td className="px-1 py-2">
-                                      <span className="text-slate-400 italic text-[11px]">From Team</span>
-                                    </td>
-                                    <td className="px-1 py-2">
-                                      <div className="flex items-center gap-2">
-                                        <UserAvatar loginNo={loginNo ? Number(loginNo) : null} displayName={displayName} size="sm" />
-                                        <span className="font-semibold text-slate-100">{displayName || '—'}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-1 py-2 text-slate-500 break-all">{email || '—'}</td>
-                                    <td className="px-1 py-2 text-center text-slate-500">-</td>
-                                  </tr>
-                                );
-                              }
-
-                              return (
-                                <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors group">
-                                  <td className="px-1 py-2 text-center align-top pt-3">
-                                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                      {index + 1}
-                                    </span>
-                                  </td>
-                                  <td className="px-1 py-2 align-top">
-                                    <FieldControl error={userErr} className="mb-0">
-                                      <Controller
-                                        name={`collaborators.${index}.userName`}
-                                        control={form.control}
-                                        render={({ field: nameField }) => (
-                                          <UserCombobox
-                                            value={nameField.value}
-                                            onChange={(user) => {
-                                              const currentCollaborators = form.getValues('collaborators') || [];
-
-                                              if (
-                                                currentCollaborators.some((c, i) => i !== index && c.loginNo === user.loginNo)
-                                              ) {
-                                                toast.error('This user is already added as a collaborator.');
-                                                nameField.onChange('');
-                                                return;
-                                              }
-
-                                              nameField.onChange(user.loginId);
-                                              form.setValue(`collaborators.${index}.displayName`, user.printingName);
-                                              form.setValue(`collaborators.${index}.email`, user.email || '');
-                                              form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
-                                              form.clearErrors(`collaborators.${index}.userName`);
-                                              form.clearErrors(`collaborators.${index}.displayName`);
-                                            }}
-                                            placeholder="Select username"
-                                            className={cn("rounded-[6px] h-8 text-[11px] w-full", userErr && "border-red-400")}
-                                            initialLabel={nameField.value}
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </td>
-                                  <td className="px-1 py-2 align-top">
-                                    <FieldControl error={nameErr} className="mb-0">
-                                      <Input
-                                        disabled
-                                        {...form.register(`collaborators.${index}.displayName`)}
-                                        placeholder="Display Name"
-                                        className={cn("h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
-                                      />
-                                    </FieldControl>
-                                  </td>
-                                  <td className="px-1 py-2 align-top">
-                                    <Input
-                                      disabled
-                                      {...form.register(`collaborators.${index}.email`)}
-                                      placeholder="Email"
-                                      className="h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
-                                    />
-                                  </td>
-                                  <td className="px-1 py-2 text-center align-top pt-3">
-                                    <button
-                                      type="button"
-                                      onClick={() => removeCollab(index)}
-                                      className="inline-flex h-6 w-6 items-center justify-center text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-[6px] transition-colors"
-                                      title="Remove collaborator"
-                                    >
-                                      <Trash2 size={13} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </FieldControl>
-                  )}
-                </div>
-              </div>
-
-              {/* Report To */}
-              <div
-                id="form-group-informed_to"
-                className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/40 overflow-hidden min-w-0"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                      <Users size={13} strokeWidth={1.75} />
-                    </span>
-                    <div className="min-w-0 flex items-center gap-2">
-                      <p className="text-[12px] font-semibold text-slate-100 truncate">Report To</p>
-                      {informFields.length > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
-                          {informFields.length}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <FieldLabel className="text-[10px] shrink-0">Team</FieldLabel>
-                      <div className="relative flex items-center">
-                        <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
-                          <SelectTrigger className={cn("rounded-[8px] h-8 border-[var(--tm-border)] text-[11px] w-[148px] bg-[var(--tm-surface)] shadow-none", selectedInformTeam && "[&>span]:pr-5")}>
-                            <SelectValue placeholder="Select team" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-[8px]">
-                            {fillValues?.userGroup.map(group => (
-                              <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-xs">{group.UserGroupName}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {selectedInformTeam && (
-                          <button
-                            type="button"
-                            className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 z-10"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSelectedInformTeam('');
-                              const current = form.getValues('informed_to') || [];
-                              replaceInform(current.filter(i => !i.isFromTeam));
-                            }}
-                            title="Clear team"
-                          >
-                            <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={() => appendInform({ userName: '', displayName: '', email: '' })}
-                      variant="outline"
-                      size="sm"
-                      className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
-                    >
-                      <Plus size={12} /> Add
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
-                  {informFields.length === 0 ? (
-                    <FieldControl
-                      className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center"
-                      error={hasInformError ? (informError as any).message : undefined}
-                    >
-                      <p className="text-xs text-slate-500 font-medium">No report-to users added yet.</p>
-                    </FieldControl>
-                  ) : (
-                    <FieldControl error={hasInformError ? (informError as any).message : undefined}>
-                      <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                        <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[600px]">
-                          <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
-                            <tr>
-                              <th className="px-1 py-2 w-10 text-center">#</th>
-                              <th className="px-1 py-2 w-[30%]">User Name</th>
-                              <th className="px-1 py-2 w-[30%]">Display Name</th>
-                              <th className="px-1 py-2 w-[40%]">Email</th>
-                              <th className="px-1 py-2 w-12 text-center"></th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[var(--tm-border)]">
-                            {informFields.map((field, index) => {
-                              const displayName = form.watch(`informed_to.${index}.displayName`);
-                              const email = form.watch(`informed_to.${index}.email`);
-                              const loginNo = form.watch(`informed_to.${index}.loginNo`);
-                              const userErr = form.formState.errors.informed_to?.[index]?.userName?.message;
-                              const nameErr = form.formState.errors.informed_to?.[index]?.displayName?.message;
-
-                              if (field.isFromTeam) {
-                                return (
-                                  <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors">
-                                    <td className="px-1 py-2 text-center">
-                                      <input type="hidden" {...form.register(`informed_to.${index}.userName`)} />
-                                      <input type="hidden" {...form.register(`informed_to.${index}.displayName`)} />
-                                      <input type="hidden" {...form.register(`informed_to.${index}.email`)} />
-                                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                        {index + 1}
-                                      </span>
-                                    </td>
-                                    <td className="px-1 py-2">
-                                      <span className="text-slate-400 italic text-[11px]">From Team</span>
-                                    </td>
-                                    <td className="px-1 py-2">
-                                      <div className="flex items-center gap-2">
-                                        <UserAvatar loginNo={loginNo ? Number(loginNo) : null} displayName={displayName} size="sm" />
-                                        <span className="font-semibold text-slate-100">{displayName || '—'}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-1 py-2 text-slate-500 break-all">{email || '—'}</td>
-                                    <td className="px-1 py-2 text-center text-slate-500">-</td>
-                                  </tr>
-                                );
-                              }
-
-                              return (
-                                <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors group">
-                                  <td className="px-1 py-2 text-center align-top pt-3">
-                                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                      {index + 1}
-                                    </span>
-                                  </td>
-                                  <td className="px-1 py-2 align-top">
-                                    <FieldControl error={userErr} className="mb-0">
-                                      <Controller
-                                        name={`informed_to.${index}.userName`}
-                                        control={form.control}
-                                        render={({ field: nameField }) => (
-                                          <UserCombobox
-                                            value={nameField.value}
-                                            onChange={(user) => {
-                                              const currentInformed = form.getValues('informed_to') || [];
-
-                                              if (
-                                                currentInformed.some((c, i) => i !== index && c.loginNo === user.loginNo)
-                                              ) {
-                                                toast.error('This user is already added as an Report To user.');
-                                                nameField.onChange('');
-                                                return;
-                                              }
-
-                                              nameField.onChange(user.loginId);
-                                              form.setValue(`informed_to.${index}.displayName`, user.printingName);
-                                              form.setValue(`informed_to.${index}.email`, user.email || '');
-                                              form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
-                                              form.clearErrors(`informed_to.${index}.userName`);
-                                              form.clearErrors(`informed_to.${index}.displayName`);
-                                            }}
-                                            placeholder="Select username"
-                                            className={cn("rounded-[6px] h-8 text-[11px] w-full", userErr && "border-red-400")}
-                                            initialLabel={nameField.value}
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </td>
-                                  <td className="px-1 py-2 align-top">
-                                    <FieldControl error={nameErr} className="mb-0">
-                                      <Input
-                                        disabled
-                                        {...form.register(`informed_to.${index}.displayName`)}
-                                        placeholder="Display Name"
-                                        className={cn("h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
-                                      />
-                                    </FieldControl>
-                                  </td>
-                                  <td className="px-1 py-2 align-top">
-                                    <Input
-                                      disabled
-                                      {...form.register(`informed_to.${index}.email`)}
-                                      placeholder="Email"
-                                      className="h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
-                                    />
-                                  </td>
-                                  <td className="px-1 py-2 text-center align-top pt-3">
-                                    <button
-                                      type="button"
-                                      onClick={() => removeInform(index)}
-                                      className="inline-flex h-6 w-6 items-center justify-center text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-[6px] transition-colors"
-                                      title="Remove report-to user"
-                                    >
-                                      <Trash2 size={13} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </FieldControl>
-                  )}
-                </div>
-              </div>
-            </div>
-          </FormSection>
-        )}
-
-        {isShowTopAdditionalFields && (form.watch('custom_fields') as any[])?.length > 0 && (
-          <FormSection title="Additional Fields" icon={Sparkles}>
-            <CustomFieldsSection
-              customFields={(form.watch('custom_fields') as any) || []}
-              onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
-              companyNo={authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
-              hideAddButton={true}
-              viewMode="grid"
-              hideLabel={true}
-            />
-          </FormSection>
-        )}
-
-        {!hiddenSections.includes('attachments') && (
-          <FormSection title="Attachments" icon={Paperclip} tourId="task-form-attachments">
-            <div className="space-y-3">
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const files = e.dataTransfer?.files;
-                  if (files?.length) processFiles(Array.from(files));
-                }}
-                className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#0EA5E9]/25 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] px-3.5 py-3 cursor-pointer transition-all hover:border-[#0EA5E9]/45 hover:shadow-[0_8px_24px_-16px_rgba(14,165,233,0.35)]"
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="application/pdf,image/*"
-                  onChange={handleFileSelection}
-                  className="hidden"
-                />
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12 shadow-sm group-hover:bg-[var(--tm-tint)] transition-colors">
-                  <UploadCloud size={18} strokeWidth={1.75} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold text-slate-100 leading-tight">
-                    Drop files here or{' '}
-                    <span className="text-[#0EA5E9] underline decoration-[#0EA5E9]/30 underline-offset-2">
-                      browse
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-medium text-slate-400">
-                    PDF &amp; Images · Max 10MB each
-                  </p>
-                </div>
-                <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
-                  Upload
-                </span>
-              </div>
-
-              {uploadingFiles.length > 0 && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between px-0.5">
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                      Uploading
-                    </h4>
-                    <span className="text-[10px] font-medium text-slate-400 tabular-nums">
-                      {uploadingFiles.length}
-                    </span>
-                  </div>
-                  <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
-                    {uploadingFiles.map((file) => (
-                      <motion.div
-                        key={file.tempId}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        className={cn(
-                          'flex items-center gap-2.5 px-2.5 py-2',
-                          file.status === 'failed' ? 'bg-red-500/10' : 'bg-[var(--tm-surface)]'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
-                            file.status === 'failed'
-                              ? 'bg-red-500/10 text-red-400 ring-red-500/30'
-                              : 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
-                          )}
-                        >
-                          {file.status === 'failed' ? (
-                            file.name.toLowerCase().endsWith('.pdf') ? (
-                              <FileText size={14} />
-                            ) : (
-                              <Image size={14} />
-                            )
-                          ) : (
-                            <Loader2 size={14} className="animate-spin" />
-                          )}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
-                            {file.name}
-                          </p>
-                          <p
-                            className={cn(
-                              'text-[10px] font-medium mt-0.5',
-                              file.status === 'failed' ? 'text-red-400' : 'text-slate-400'
-                            )}
-                          >
-                            {file.status === 'pending' && 'Pending upload...'}
-                            {file.status === 'uploading' && 'Registering entry...'}
-                            {file.status === 'verifying' && 'Uploading file payload...'}
-                            {file.status === 'failed' && (file.errorMessage || 'Upload failed')}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          {file.status === 'failed' && (
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleRetryUpload(file.tempId)}
-                              className="h-7 w-7 rounded-[7px] text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
-                            >
-                              <RefreshCw size={12} />
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleRemoveUploading(file.tempId)}
-                            className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                          >
-                            <X size={12} />
-                          </Button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {(() => {
-                const attachments = form.watch('attachments') || [];
-                if (attachments.length === 0) return null;
-
-                return (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 px-0.5">
-                      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                        Attached
-                      </h4>
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
-                        {attachments.length}
-                      </span>
-                    </div>
-                    <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-                      {attachments.map((file: any) => {
-                        const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
-                        return (
-                          <motion.div
-                            key={file.id}
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
-                          >
-                            <span
-                              className={cn(
-                                'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
-                                isPdf
-                                  ? 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
-                                  : 'bg-violet-500/15 text-violet-400 ring-violet-500/30'
-                              )}
-                            >
-                              {isPdf ? <FileText size={14} /> : <Image size={14} />}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
-                                  {file.name}
-                                </p>
-                                {file.size ? (
-                                  <span className="shrink-0 text-[10px] font-medium text-slate-400 tabular-nums">
-                                    {formatFileSize(file.size)}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  attachmentService.downloadAttachment(file.id, file.name)
-                                }
-                                className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
-                              >
-                                View
-                              </button>
-                            </div>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleRemoveAttachment(file.id, file.name)}
-                              className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                            >
-                              <Trash size={12} />
-                            </Button>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </FormSection>
-        )}
-
-        {(!isHideDetailSection || showMoreDetails) && (
-          <>
-            {/* 3. Timeline */}
-            {!hiddenSections.includes('timeline') && (
-              <FormSection title="Timeline & Effort" icon={Clock} tourId="task-form-timeline">
-                <div className="space-y-2.5">
-                  {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-end">
-
-                    <div className="space-y-1.5 flex flex-col justify-end">
+                {
+                  !isHideType &&
+                  <FieldInfoControl info={typeFieldCaption} className="space-y-1.5" id="form-group-type_No">
+                    <FieldLabel>Type</FieldLabel>
+                    <FieldControl error={form.formState.errors.type_No ? 'Type is required' : undefined}>
                       <Controller
-                        name="isAllDay"
+                        name="type_No"
                         control={form.control}
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2 bg-[var(--tm-muted)]/70 border border-[var(--tm-border)]/80 px-4 rounded-[8px] shadow-sm transition-all hover:bg-[var(--tm-muted)]/30 h-10">
-                            <Checkbox
-                              id="isAllDay"
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              className="h-5 w-5 rounded-md border-[#3D4F66] focus-visible:ring-[#0EA5E9]"
-                            />
-                            <label htmlFor="isAllDay" className="text-sm font-semibold text-slate-200 cursor-pointer select-none">All-Day Task</label>
-                          </div>
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-1.5" id="form-group-start_date">
-                      <FieldLabel>Start Date</FieldLabel>
-                      <FieldControl error={form.formState.errors.start_date?.message}>
-                        <Controller
-                          name="start_date"
-                          control={form.control}
-                          render={({ field }) => (
-                            <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                              placeholder={isAllDay ? "Select start date" : "Select start date & time"}
-                              hideTime={isAllDay}
-                              className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                            />
-                          )}
-                        />
-                      </FieldControl>
-                    </div>
-
-                    <div className="space-y-1.5" id="form-group-end_date">
-                      <FieldLabel required={isSubTask}>Due Date</FieldLabel>
-                      <FieldControl error={form.formState.errors.end_date?.message}>
-                        <Controller
-                          name="end_date"
-                          control={form.control}
-                          render={({ field }) => (
-                            <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                              placeholder={isAllDay ? "Select due date" : "Select due date & time"}
-                              hideTime={isAllDay}
-                              className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                            />
-                          )}
-                        />
-                      </FieldControl>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Estimated Effort, Calendar Color */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-start">
-                    <div className="space-y-1.5 md:col-span-1" id="form-group-estimated_effort_value">
-                      <FieldLabel>Estimated Effort</FieldLabel>
-                      <FieldControl error={form.formState.errors.estimated_effort_value?.message || (!form.formState.errors.estimated_effort_value ? form.formState.errors.estimated_effort_unit?.message : undefined)}>
-                        <div className="flex gap-2">
-                          <div className="flex-1 min-w-0">
-                            <Input type="number" step="0" placeholder="" {...form.register('estimated_effort_value')} isDecimal={false} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right w-full transition-all", form.formState.errors.estimated_effort_value ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
-                          </div>
-                          <Controller
-                            name="estimated_effort_unit"
-                            control={form.control}
-                            render={({ field }) => (
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm w-32 transition-all", form.formState.errors.estimated_effort_unit ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
-                                  <SelectValue placeholder="Select estimated effort unit" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-[8px] bg-[var(--tm-surface)] border border-[var(--tm-border)]">
-                                  {fillValues?.frequency?.map(f => (
-                                    <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
-                                      {f.FrequencyName || f.Frequency}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
+                          <Combobox disabled={isSubTask} options={fillValues?.type.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]')
+                            .map(t => ({ label: t["Task Type"], value: t.OperTaskTypeNo.toString() })) || []}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select type"
+                            className={form.formState.errors.type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                            onAddNew={formRights[1560]?.isSave ? () => {
+                              setActiveMasterType('type');
+                              setIsMasterCreateOpen(true);
+                            } : undefined}
+                            addNewLabel="Add New Type"
                           />
-                        </div>
-                      </FieldControl>
-                    </div>
-
-                    <div className="space-y-1.5 md:col-span-1" id="form-group-calendarColor">
-                      <FieldLabel>Calendar Color</FieldLabel>
+                        )}
+                      />
+                    </FieldControl>
+                  </FieldInfoControl>
+                }
+                {
+                  !isHideFolder &&
+                  <div className="space-y-1.5" id="form-group-folder_No">
+                    <FieldLabel>Folder</FieldLabel>
+                    <FieldControl error={form.formState.errors.folder_No ? 'Folder is required' : undefined}>
                       <Controller
-                        name="calendarColor"
+                        name="folder_No"
                         control={form.control}
                         render={({ field }) => (
-                          <div className="flex flex-wrap items-center gap-3">
-                            <Select
-                              value={
-                                !field.value || field.value === 'none' || field.value === '' ? 'none' :
-                                  [
-                                    '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
-                                    '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
-                                  ].includes(field.value) ? field.value : 'custom'
-                              }
-                              onValueChange={(val) => {
-                                if (val === 'none') field.onChange('');
-                                else if (val === 'custom') field.onChange('#000000'); // default custom
-                                else field.onChange(val);
+                          <Combobox disabled={isSubTask} options={fillValues?.folder.map(f => ({ label: f["Folder Name"], value: f.TaskFolderNo.toString() })) || []}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select folder"
+                            className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                            isClearable={false}
+                            onAddNew={formRights[1542]?.isSave ? () => {
+                              setActiveMasterType('folder');
+                              setIsMasterCreateOpen(true);
+                            } : undefined}
+                            addNewLabel="Add New Folder"
+                          />
+                        )}
+                      />
+                    </FieldControl>
+                  </div>
+                }
+                <div className="space-y-1.5" id="form-group-priority_No">
+                  <FieldLabel required>Priority</FieldLabel>
+                  <FieldControl error={form.formState.errors.priority_No ? 'Priority is required' : undefined}>
+                    <Controller
+                      name="priority_No"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Combobox disabled={isSubTask} options={fillValues?.priority.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]')
+                          .map(p => ({ label: p.Priority, value: p.OperTaskPriorityNo.toString(), colorCoding: p.ColorCoding })) || []}
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select priority"
+                          className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                          onAddNew={formRights[1543]?.isSave ? () => {
+                            setActiveMasterType('priority');
+                            setIsMasterCreateOpen(true);
+                          } : undefined}
+                          addNewLabel="Add New Priority"
+                        />
+                      )}
+                    />
+                  </FieldControl>
+                  {selectedPriorityReminderText ? (
+                    <div className="flex items-start gap-1.5 rounded-[8px] border border-[#0EA5E9]/15 bg-[var(--tm-tint)]/35 px-2.5 py-1.5">
+                      <Bell size={12} className="mt-0.5 shrink-0 text-[#0EA5E9]" strokeWidth={2} />
+                      <p className="text-[10px] leading-snug text-slate-400">
+                        <span className="font-semibold text-[#0EA5E9]">{selectedPriorityReminderText}</span>
+                        <span className="block mt-0.5 text-slate-500">
+                          Based on priority master. Notifications send when the reminder service is live.
+                        </span>
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+            </FormSection>
+          )}
+
+          {/* 2. Ownership & Responsibility */}
+          {!hiddenSections.includes('ownership') && (
+            <FormSection title="Ownership" icon={Users} tourId="task-form-ownership">
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-1.5" id="form-group-company">
+                    <FieldLabel required>Company</FieldLabel>
+                    <FieldControl error={form.formState.errors.company?.message}>
+                      <Controller
+                        name="company"
+                        control={form.control}
+                        render={({ field }) => (
+                          <Combobox
+                            disabled={isSubTask}
+                            options={companyOptions}
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select company"
+                            className={form.formState.errors.company ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                            onAddNew={formRights[1565]?.isSave ? () => {
+                              setActiveMasterType('task-company');
+                              setIsMasterCreateOpen(true);
+                            } : undefined}
+                            addNewLabel="Add New Company"
+                          />
+                        )}
+                      />
+                    </FieldControl>
+                  </div>
+                  <div className="space-y-1.5" id="form-group-location_No">
+                    <FieldLabel required>Task Location</FieldLabel>
+                    <FieldControl error={form.formState.errors.location_No?.message}>
+                      <Controller
+                        name="location_No"
+                        control={form.control}
+                        render={({ field }) => (
+                          <LocationCombobox
+                            disabled={isSubTask}
+                            value={field.value}
+                            onChange={(location) => field.onChange(location.operLocationNo ? location.operLocationNo.toString() : '')}
+                            initialLabel={initialData?.locationName || undefined}
+                            placeholder="Select location"
+                            error={!!form.formState.errors.location_No}
+                            onAddNew={formRights[1541]?.isSave ? () => {
+                              setActiveMasterType('location');
+                              setIsMasterCreateOpen(true);
+                            } : undefined}
+                            addNewLabel="Add New Location"
+                          />
+                        )}
+                      />
+                    </FieldControl>
+                  </div>
+                  <div className="space-y-1.5" id="form-group-owner_user_No">
+                    <FieldLabel required>Task Assign To</FieldLabel>
+                    <FieldControl error={form.formState.errors.owner_user_No?.message}>
+                      <Controller
+                        name="owner_user_No"
+                        control={form.control}
+                        render={({ field }) => (
+                          <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
+                            placeholder="Select Assign To"
+                            initialLabel={initialData?.assignedDisplayName || undefined}
+                            className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                            disabled={isPrivateTask}
+                          />
+                        )}
+                      />
+                    </FieldControl>
+                  </div>
+                  <div className="space-y-1.5" id="form-group-originator_user_No">
+                    <FieldLabel required>Task Assign By</FieldLabel>
+                    <FieldControl error={form.formState.errors.originator_user_No?.message}>
+                      <Controller
+                        name="originator_user_No"
+                        control={form.control}
+                        render={({ field }) => (
+                          <UserCombobox value={field.value} onChange={(user) => field.onChange(user.loginNo.toString())}
+                            placeholder="Select Assign By"
+                            initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
+                            className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                            isClearable={false}
+                          />
+                        )}
+                      />
+                    </FieldControl>
+                  </div>
+                </div>
+              </div>
+            </FormSection>
+          )}
+
+          {/* 2. Inform To */}
+          {!hiddenSections.includes('informto') && !isPrivateTask && (
+            <FormSection title="Inform To" icon={Users}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+                {/* Collaborators / Supporters */}
+                <div
+                  id="form-group-collaborators"
+                  className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/40 overflow-hidden min-w-0"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                        <UserPlus size={13} strokeWidth={1.75} />
+                      </span>
+                      <div className="min-w-0 flex items-center gap-2">
+                        <p className="text-[12px] font-semibold text-slate-100 truncate">Collaborators / Supporters</p>
+                        {collabFields.length > 0 && (
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
+                            {collabFields.length}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <FieldLabel className="text-[10px] shrink-0">Team</FieldLabel>
+                        <div className="relative flex items-center">
+                          <Select value={selectedCollabTeam} onValueChange={(val) => handleTeamSelection(val, 'collaborator')}>
+                            <SelectTrigger className={cn("rounded-[8px] h-8 border-[var(--tm-border)] text-[11px] w-[148px] bg-[var(--tm-surface)] shadow-none", selectedCollabTeam && "[&>span]:pr-5")}>
+                              <SelectValue placeholder="Select team" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-[8px]">
+                              {fillValues?.userGroup.map(group => (
+                                <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-xs">{group.UserGroupName}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {selectedCollabTeam && (
+                            <button
+                              type="button"
+                              className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 z-10"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedCollabTeam('');
+                                const current = form.getValues('collaborators') || [];
+                                replaceCollab(current.filter(c => !c.isFromTeam));
                               }}
+                              title="Clear team"
                             >
-                              <SelectTrigger className="w-full sm:w-[220px] h-10 bg-[var(--tm-surface)] border-[var(--tm-border)]/80 rounded-[8px] text-xs focus:ring-[#0EA5E9]/20">
-                                <SelectValue placeholder="Select color" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">
-                                  <div className="flex items-center gap-2">
-                                    <X size={14} className="text-slate-400" />
-                                    <span>None</span>
-                                  </div>
-                                </SelectItem>
-                                {[
-                                  { hex: '#93c5fd', name: 'Blue' },
-                                  { hex: '#fca5a5', name: 'Red' },
-                                  { hex: '#86efac', name: 'Green' },
-                                  { hex: '#fdba74', name: 'Orange' },
-                                  { hex: '#d8b4fe', name: 'Purple' },
-                                  { hex: '#f9a8d4', name: 'Pink' },
-                                  { hex: '#a5b4fc', name: 'Indigo' },
-                                  { hex: '#67e8f9', name: 'Cyan' },
-                                ].map((preset) => (
-                                  <SelectItem key={preset.hex} value={preset.hex}>
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-4 h-4 rounded-full border border-[var(--tm-border)]" style={{ backgroundColor: preset.hex }} />
-                                      <span>{preset.name}</span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                                <SelectItem value="custom">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded-full border border-[var(--tm-border)] bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
-                                    <span>Custom Color</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                              <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => appendCollab({ userName: '', displayName: '', email: '' })}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
+                      >
+                        <Plus size={12} /> Add
+                      </Button>
+                    </div>
+                  </div>
 
-                            {/* Custom Color Input */}
-                            {field.value && field.value !== 'none' && ![
-                              '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
-                              '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
-                            ].includes(field.value) && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 border border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-muted)]">
-                                  <input
-                                    type="color"
-                                    value={field.value || '#000000'}
-                                    onChange={(e) => field.onChange(e.target.value)}
-                                    className="w-7 h-7 border-0 bg-transparent cursor-pointer rounded"
+                  <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
+                    {collabFields.length === 0 ? (
+                      <FieldControl
+                        className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center"
+                        error={hasCollabError ? (collabError as any).message : undefined}
+                      >
+                        <p className="text-xs text-slate-500 font-medium">No collaborators added yet.</p>
+                      </FieldControl>
+                    ) : (
+                      <FieldControl error={hasCollabError ? (collabError as any).message : undefined}>
+                        <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
+                          <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[600px]">
+                            <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
+                              <tr>
+                                <th className="px-1 py-2 w-10 text-center">#</th>
+                                <th className="px-1 py-2 w-[30%]">
+                                  <SortableHeader
+                                    label="User Name"
+                                    sortKey="userName"
+                                    sortCol={collabSortCol}
+                                    sortDesc={collabSortDesc}
+                                    onSort={handleCollabSort}
                                   />
-                                  <span className="text-xs font-mono font-medium text-slate-500 uppercase">{field.value}</span>
-                                </div>
-                              )}
-                          </div>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </FormSection>
-            )}
-            {/* 4. Business Impact */}
-            {!hiddenSections.includes('business_benefit') && (
-              <FormSection
-                title="Business Benefit"
-                icon={TrendingUp}
-                headerAction={
-                  <div className="flex items-center gap-2 shrink-0 border border-[var(--tm-border)]/80 rounded-[8px] px-2 py-1 bg-[var(--tm-surface)]">
-                    <Controller
-                      name="is_business_benefit_applicable"
-                      control={form.control}
-                      render={({ field }) => (
-                        <Checkbox
-                          id="benefit-section"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          disabled={isBenefitDisabled}
-                          className="h-4 w-4 rounded-md border-slate-400"
-                        />
-                      )}
-                    />
-                    <Label htmlFor="benefit-section" className="text-xs font-medium text-slate-200 cursor-pointer">Business Benefit Applicable</Label>
-                  </div>
-                }
-              >
-                <div className="space-y-2.5">
-                  {isBenefitApplicable && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="space-y-1.5" id="form-group-business_benefit_type_No">
-                        <FieldLabel required>Benefit Type</FieldLabel>
-                        <FieldControl error={form.formState.errors.business_benefit_type_No?.message}>
-                          <Controller
-                            name="business_benefit_type_No"
-                            control={form.control}
-                            render={({ field }) => (
-                              <Combobox options={(fillValues?.benefitType || []).filter((b: any) => {
-                                const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
-                                const lower = label.toLowerCase();
-                                return lower !== 'all' && lower !== '[all]';
-                              })
-                                .map((b: any) => {
-                                  const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
-                                  const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
-                                  return { label, value: val };
-                                })
-                              }
-                                value={field.value}
-                                onChange={field.onChange}
-                                placeholder="Select business benefit type"
-                                className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                                onAddNew={formRights[1545]?.isSave ? () => {
-                                  setActiveMasterType('benefit-type');
-                                  setIsMasterCreateOpen(true);
-                                } : undefined}
-                              />
-                            )}
-                          />
-                        </FieldControl>
-                      </div>
-                      <div className="space-y-1.5" id="form-group-benefit_period">
-                        <FieldLabel required>Benefit Period</FieldLabel>
-                        <FieldControl error={form.formState.errors.benefit_period?.message}>
-                          <Controller
-                            name="benefit_period"
-                            control={form.control}
-                            render={({ field }) => (
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.benefit_period ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
-                                  <SelectValue placeholder="Select benefit period" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-[8px]">
-                                  <SelectItem value="One Time">One Time</SelectItem>
-                                  <SelectItem value="Monthly">Monthly</SelectItem>
-                                  <SelectItem value="Annually">Annually</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                        </FieldControl>
-                      </div>
-                      {!shouldHideBenefitAmount && (
-                        <>
-                          <div className="space-y-1.5" id="form-group-estimated_benefit_amount">
-                            <FieldLabel required>Estimated Benefit Amount</FieldLabel>
-                            <FieldControl error={form.formState.errors.estimated_benefit_amount?.message}>
-                              <Input type="number" step="0.01" placeholder="" {...form.register('estimated_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.estimated_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
-                            </FieldControl>
-                          </div>
-                          <div className="space-y-1.5" id="form-group-actual_benefit_amount">
-                            <FieldLabel>Actual Benefit Amount</FieldLabel>
-                            <FieldControl error={form.formState.errors.actual_benefit_amount?.message}>
-                              <Input type="number" step="0.01" placeholder="" {...form.register('actual_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.actual_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
-                            </FieldControl>
-                          </div>
-                        </>
-                      )}
-                      <div className="space-y-1.5 md:col-span-2" id="form-group-business_benefit_description">
-                        <FieldLabel required>Benefit Description</FieldLabel>
-                        <FieldControl error={form.formState.errors.business_benefit_description?.message}>
-                          <Textarea placeholder="Enter business benefit description" {...form.register('business_benefit_description')} className={cn("min-h-[80px] rounded-[8px] border-[var(--tm-border)]/80 input-section text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.business_benefit_description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} />
-                        </FieldControl>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </FormSection>
-            )}
-
-
-            {/* 5. Checklist */}
-            {!hiddenSections.includes('checklist') && (
-              <FormSection
-                title="Checklist"
-                icon={CheckCircle}
-                headerAction={
-                  <div className="flex flex-wrap items-center gap-2">
-                    {checklistFields.length > 0 && (
-                      <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--tm-tint)] px-2.5 py-1 text-[10px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                        {completedCount}/{checklistFields.length}
-                        <span className="text-[#0EA5E9]/70 font-medium">({progressPercent}%)</span>
-                      </span>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
-                      className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
-                    >
-                      <Plus size={12} className="text-[#0EA5E9]" /> Add Checklist Item
-                    </Button>
-                  </div>
-                }
-              >
-                <div className="space-y-3">
-                  {checklistFields.length > 0 && (
-                    <div className="h-1.5 w-full rounded-full bg-[var(--tm-muted)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-[#0EA5E9] transition-all duration-300"
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
-                  )}
-
-                  {checklistFields.length === 0 ? (
-                    <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
-                      <p className="text-xs text-slate-500 font-medium">No checklist items yet.</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Add items to track task completion.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {checklistFields.map((field, index) => {
-                        const isCompleted = form.watch(`check_list.${index}.completed`);
-                        const descError = form.formState.errors.check_list?.[index]?.description?.message;
-                        return (
-                          <motion.div
-                            key={field.id}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: Math.min(index * 0.04, 0.2) }}
-                            className={cn(
-                              "relative rounded-[8px] border bg-[var(--tm-surface)] overflow-hidden transition-all",
-                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
-                              isCompleted
-                                ? "border-[var(--tm-border)]/80 bg-[var(--tm-muted)]/60"
-                                : "border-[var(--tm-border)]/80 hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
-                              descError && "border-red-300"
-                            )}
-                          >
-                            <div className="relative flex items-start gap-3 pl-3 pr-11 py-3">
-                              <span className={cn(
-                                "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[11px] font-semibold ring-1 mt-0.5",
-                                isCompleted
-                                  ? "bg-[var(--tm-muted)] text-slate-400 ring-[var(--tm-border)]"
-                                  : "bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12"
-                              )}>
-                                {index + 1}
-                              </span>
-
-                              <Controller
-                                name={`check_list.${index}.completed`}
-                                control={form.control}
-                                render={({ field: checkField }) => (
-                                  <button
-                                    type="button"
-                                    onClick={() => checkField.onChange(!checkField.value)}
-                                    className={cn(
-                                      "mt-0.5 h-7 w-7 shrink-0 rounded-[7px] border-2 flex items-center justify-center transition-all duration-200",
-                                      checkField.value
-                                        ? "bg-[#0EA5E9] border-[#0EA5E9] text-white"
-                                        : "border-[#3D4F66] text-transparent hover:border-[#0EA5E9] bg-[var(--tm-surface)]"
-                                    )}
-                                    title={checkField.value ? "Mark incomplete" : "Mark complete"}
-                                  >
-                                    <Check size={14} strokeWidth={3} />
-                                  </button>
-                                )}
-                              />
-
-                              <div className="min-w-0 flex-1 space-y-1">
-                                <FieldLabel required className="sr-only">Checklist item</FieldLabel>
-                                <FieldControl error={descError}>
-                                  <Input
-                                    {...form.register(`check_list.${index}.description`)}
-                                    placeholder="Enter checklist item…"
-                                    className={cn(
-                                      "rounded-[8px] h-10 text-xs border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none",
-                                      isCompleted && "text-slate-400 line-through decoration-slate-300 bg-[var(--tm-muted)]",
-                                      descError && "border-red-400"
-                                    )}
+                                </th>
+                                <th className="px-1 py-2 w-[30%]">
+                                  <SortableHeader
+                                    label="Display Name"
+                                    sortKey="displayName"
+                                    sortCol={collabSortCol}
+                                    sortDesc={collabSortDesc}
+                                    onSort={handleCollabSort}
                                   />
-                                </FieldControl>
-                              </div>
+                                </th>
+                                <th className="px-1 py-2 w-[40%]">
+                                  <SortableHeader
+                                    label="Email"
+                                    sortKey="email"
+                                    sortCol={collabSortCol}
+                                    sortDesc={collabSortDesc}
+                                    onSort={handleCollabSort}
+                                  />
+                                </th>
+                                <th className="px-1 py-2 w-12 text-center"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--tm-border)]">
+                              {collabFields.map((field, index) => {
+                                const displayName = form.watch(`collaborators.${index}.displayName`);
+                                const email = form.watch(`collaborators.${index}.email`);
+                                const loginNo = form.watch(`collaborators.${index}.loginNo`);
+                                const userErr = form.formState.errors.collaborators?.[index]?.userName?.message;
+                                const nameErr = form.formState.errors.collaborators?.[index]?.displayName?.message;
 
-                              <button
-                                type="button"
-                                onClick={() => removeChecklist(index)}
-                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                                title="Remove checklist item"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </FormSection>
-            )}
+                                if (field.isFromTeam) {
+                                  return (
+                                    <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors">
+                                      <td className="px-1 py-2 text-center">
+                                        <input type="hidden" {...form.register(`collaborators.${index}.userName`)} />
+                                        <input type="hidden" {...form.register(`collaborators.${index}.displayName`)} />
+                                        <input type="hidden" {...form.register(`collaborators.${index}.email`)} />
+                                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                          {index + 1}
+                                        </span>
+                                      </td>
+                                      <td className="px-1 py-2">
+                                        <span className="text-slate-400 italic text-[11px]">From Team</span>
+                                      </td>
+                                      <td className="px-1 py-2">
+                                        <div className="flex items-center gap-2">
+                                          <UserAvatar loginNo={loginNo ? Number(loginNo) : null} displayName={displayName} size="sm" />
+                                          <span className="font-semibold text-slate-100">{displayName || '—'}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-1 py-2 text-slate-500 break-all">{email || '—'}</td>
+                                      <td className="px-1 py-2 text-center text-slate-500">-</td>
+                                    </tr>
+                                  );
+                                }
 
-            {/* 6. Task Execution Log */}
-            {!hiddenSections.includes('execution_note') && (
-              <FormSection
-                title="Task Completion Log"
-                icon={FileText}
-                headerAction={
-                  <div className="flex flex-wrap items-center gap-2">
-                    {executionLogFields.length > 0 && (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
-                        {executionLogFields.length}
-                      </span>
-                    )}
-                  </div>
-                }
-              >
-                <div className="space-y-3">
+                                return (
+                                  <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors group">
+                                    <td className="px-1 py-2 text-center align-top pt-3">
+                                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                        {index + 1}
+                                      </span>
+                                    </td>
+                                    <td className="px-1 py-2 align-top">
+                                      <FieldControl error={userErr} className="mb-0">
+                                        <Controller
+                                          name={`collaborators.${index}.userName`}
+                                          control={form.control}
+                                          render={({ field: nameField }) => (
+                                            <UserCombobox
+                                              value={nameField.value}
+                                              onChange={(user) => {
+                                                const currentCollaborators = form.getValues('collaborators') || [];
 
-                  {/* Completion panel */}
-                  <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                        <CheckCircle size={12} strokeWidth={1.75} />
-                      </span>
-                      <p className="text-[11px] font-semibold text-slate-200">Completion</p>
-                    </div>
-                    <div className="p-3.5 space-y-3.5">
-                      <div className="space-y-1" id="form-group-completionDate">
-                        <FieldLabel>Completion Date</FieldLabel>
-                        <FieldControl error={form.formState.errors.completionDate?.message}>
-                          <Controller
-                            name="completionDate"
-                            control={form.control}
-                            render={({ field }) => (
-                              <DateTimePicker
-                                date={field.value ? new Date(field.value) : undefined}
-                                onChange={(date) => field.onChange(date ? date.toISOString() : '')}
-                                placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
-                                hideTime={isAllDay}
-                                className={cn(
-                                  "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
-                                  form.formState.errors.completionDate && "border-red-400"
-                                )}
-                              />
-                            )}
-                          />
-                        </FieldControl>
-                      </div>
+                                                if (
+                                                  currentCollaborators.some((c, i) => i !== index && c.loginNo === user.loginNo)
+                                                ) {
+                                                  toast.error('This user is already added as a collaborator.');
+                                                  nameField.onChange('');
+                                                  return;
+                                                }
 
-                      <div className="space-y-1" id="form-group-completionRemark">
-                        <FieldLabel>Completion Remark</FieldLabel>
-                        <FieldControl error={form.formState.errors.completionRemark?.message}>
-                          <Textarea
-                            placeholder="Enter completion remark"
-                            {...form.register('completionRemark')}
-                            maxLength={500}
-                            rows={4}
-                            className={cn(
-                              "min-h-[100px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
-                              form.formState.errors.completionRemark && "border-red-400"
-                            )}
-                          />
-                        </FieldControl>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </FormSection>
-            )}
-
-            {/* 6b. Challenges */}
-            {!hiddenSections.includes('execution_note') && (
-              <FormSection
-                title="Challenges"
-                icon={AlertCircle}
-                headerAction={
-                  <div className="flex flex-wrap items-center gap-2">
-                    {roadBlockFields.length > 0 && (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
-                        {roadBlockFields.length}
-                      </span>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      onClick={() => appendRoadBlock({ id: Date.now().toString(), date: '', remark: '', proposedSolution: '', status_No: '' })}
-                      className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
-                    >
-                      <Plus size={12} className="text-[#0EA5E9]" /> Add Challenges
-                    </Button>
-                  </div>
-                }
-              >
-                <div className="space-y-2.5">
-                  {roadBlockFields.length === 0 ? (
-                    <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
-                      <p className="text-xs text-slate-500 font-medium">No challenges added yet.</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Track blockers with date, remark, and status.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5 max-h-[420px] overflow-y-auto scrollbar-hide">
-                      {roadBlockFields.map((field, index) => {
-                        const dateErr = form.formState.errors.road_block_remarks?.[index]?.date?.message;
-                        const remarkErr = form.formState.errors.road_block_remarks?.[index]?.remark?.message;
-                        const statusErr = form.formState.errors.road_block_remarks?.[index]?.status_No?.message;
-                        const challengeDate = form.watch(`road_block_remarks.${index}.date`);
-                        const challengeRemark = form.watch(`road_block_remarks.${index}.remark`);
-                        const challengeStatus = form.watch(`road_block_remarks.${index}.status_No`);
-                        const statusLabel = fillValues?.status.find(s => s.StatusNo.toString() === challengeStatus)?.Status;
-                        return (
-                          <div
-                            key={field.id}
-                            className={cn(
-                              "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
-                              "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
-                              (dateErr || remarkErr || statusErr) && "border-red-300"
-                            )}
-                          >
-                            <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                {index + 1}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-[12px] font-semibold text-slate-100 leading-snug">
-                                    {challengeDate
-                                      ? new Date(challengeDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
-                                      : `Challenge ${index + 1}`}
-                                  </p>
-                                  {statusLabel ? (
-                                    <span className="inline-flex items-center rounded-[6px] bg-[var(--tm-tint)] px-1.5 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
-                                      {statusLabel}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
-                                  {challengeRemark?.trim() || 'Add remark, solution, and status'}
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeRoadBlock(index)}
-                                className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                                title="Remove challenge"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-
-                            <div className="p-3.5 space-y-3">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <FieldLabel required>Date</FieldLabel>
-                                  <Controller
-                                    name={`road_block_remarks.${index}.date`}
-                                    control={form.control}
-                                    render={({ field: dateField }) => (
-                                      <FieldControl error={dateErr}>
-                                        <DateTimePicker
-                                          date={dateField.value ? new Date(dateField.value) : undefined}
-                                          onChange={(date) => {
-                                            dateField.onChange(date ? date.toISOString() : '');
-                                            form.clearErrors(`road_block_remarks.${index}.date`);
-                                          }}
-                                          placeholder="Select date"
-                                          hideTime
-                                          className={cn(
-                                            "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full",
-                                            dateErr && "border-red-400"
+                                                nameField.onChange(user.loginId);
+                                                form.setValue(`collaborators.${index}.displayName`, user.printingName);
+                                                form.setValue(`collaborators.${index}.email`, user.email || '');
+                                                form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
+                                                form.clearErrors(`collaborators.${index}.userName`);
+                                                form.clearErrors(`collaborators.${index}.displayName`);
+                                              }}
+                                              placeholder="Select username"
+                                              className={cn("rounded-[6px] h-8 text-[11px] w-full", userErr && "border-red-400")}
+                                              initialLabel={nameField.value}
+                                            />
                                           )}
                                         />
                                       </FieldControl>
-                                    )}
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <FieldLabel required>Status</FieldLabel>
-                                  <Controller
-                                    name={`road_block_remarks.${index}.status_No`}
-                                    control={form.control}
-                                    render={({ field: statusField }) => (
-                                      <FieldControl error={statusErr}>
-                                        <Select
-                                          onValueChange={(val) => {
-                                            statusField.onChange(val);
-                                            form.clearErrors(`road_block_remarks.${index}.status_No`);
-                                          }}
-                                          value={statusField.value}
-                                        >
-                                          <SelectTrigger className={cn(
-                                            "rounded-[8px] h-10 border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none",
-                                            statusErr && "border-red-400"
-                                          )}>
-                                            <SelectValue placeholder="Select status" />
-                                          </SelectTrigger>
-                                          <SelectContent className="rounded-[8px]">
-                                            {fillValues?.status
-                                              .filter(s => ['Open', 'In Progress', 'Close'].includes(s.Status))
-                                              .map(s => (
-                                                <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs">{s.Status}</SelectItem>
-                                              ))}
-                                          </SelectContent>
-                                        </Select>
+                                    </td>
+                                    <td className="px-1 py-2 align-top">
+                                      <FieldControl error={nameErr} className="mb-0">
+                                        <Input
+                                          disabled
+                                          {...form.register(`collaborators.${index}.displayName`)}
+                                          placeholder="Display Name"
+                                          className={cn("h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
+                                        />
                                       </FieldControl>
-                                    )}
+                                    </td>
+                                    <td className="px-1 py-2 align-top">
+                                      <Input
+                                        disabled
+                                        {...form.register(`collaborators.${index}.email`)}
+                                        placeholder="Email"
+                                        className="h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
+                                      />
+                                    </td>
+                                    <td className="px-1 py-2 text-center align-top pt-3">
+                                      <button
+                                        type="button"
+                                        onClick={() => removeCollab(index)}
+                                        className="inline-flex h-6 w-6 items-center justify-center text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-[6px] transition-colors"
+                                        title="Remove collaborator"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </FieldControl>
+                    )}
+                  </div>
+                </div>
+
+                {/* Report To */}
+                <div
+                  id="form-group-informed_to"
+                  className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/40 overflow-hidden min-w-0"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                        <Users size={13} strokeWidth={1.75} />
+                      </span>
+                      <div className="min-w-0 flex items-center gap-2">
+                        <p className="text-[12px] font-semibold text-slate-100 truncate">Report To</p>
+                        {informFields.length > 0 && (
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
+                            {informFields.length}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <FieldLabel className="text-[10px] shrink-0">Team</FieldLabel>
+                        <div className="relative flex items-center">
+                          <Select value={selectedInformTeam} onValueChange={(val) => handleTeamSelection(val, 'inform')}>
+                            <SelectTrigger className={cn("rounded-[8px] h-8 border-[var(--tm-border)] text-[11px] w-[148px] bg-[var(--tm-surface)] shadow-none", selectedInformTeam && "[&>span]:pr-5")}>
+                              <SelectValue placeholder="Select team" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-[8px]">
+                              {fillValues?.userGroup.map(group => (
+                                <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-xs">{group.UserGroupName}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {selectedInformTeam && (
+                            <button
+                              type="button"
+                              className="absolute right-7 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-200 z-10"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedInformTeam('');
+                                const current = form.getValues('informed_to') || [];
+                                replaceInform(current.filter(i => !i.isFromTeam));
+                              }}
+                              title="Clear team"
+                            >
+                              <X className="h-3 w-3 text-slate-400 hover:text-slate-300" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => appendInform({ userName: '', displayName: '', email: '' })}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
+                      >
+                        <Plus size={12} /> Add
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
+                    {informFields.length === 0 ? (
+                      <FieldControl
+                        className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center"
+                        error={hasInformError ? (informError as any).message : undefined}
+                      >
+                        <p className="text-xs text-slate-500 font-medium">No report-to users added yet.</p>
+                      </FieldControl>
+                    ) : (
+                      <FieldControl error={hasInformError ? (informError as any).message : undefined}>
+                        <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
+                          <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[600px]">
+                            <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
+                              <tr>
+                                <th className="px-1 py-2 w-10 text-center">#</th>
+                                <th className="px-1 py-2 w-[30%]">
+                                  <SortableHeader
+                                    label="User Name"
+                                    sortKey="userName"
+                                    sortCol={informSortCol}
+                                    sortDesc={informSortDesc}
+                                    onSort={handleInformSort}
+                                  />
+                                </th>
+                                <th className="px-1 py-2 w-[30%]">
+                                  <SortableHeader
+                                    label="Display Name"
+                                    sortKey="displayName"
+                                    sortCol={informSortCol}
+                                    sortDesc={informSortDesc}
+                                    onSort={handleInformSort}
+                                  />
+                                </th>
+                                <th className="px-1 py-2 w-[40%]">
+                                  <SortableHeader
+                                    label="Email"
+                                    sortKey="email"
+                                    sortCol={informSortCol}
+                                    sortDesc={informSortDesc}
+                                    onSort={handleInformSort}
+                                  />
+                                </th>
+                                <th className="px-1 py-2 w-12 text-center"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--tm-border)]">
+                              {informFields.map((field, index) => {
+                                const displayName = form.watch(`informed_to.${index}.displayName`);
+                                const email = form.watch(`informed_to.${index}.email`);
+                                const loginNo = form.watch(`informed_to.${index}.loginNo`);
+                                const userErr = form.formState.errors.informed_to?.[index]?.userName?.message;
+                                const nameErr = form.formState.errors.informed_to?.[index]?.displayName?.message;
+
+                                if (field.isFromTeam) {
+                                  return (
+                                    <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors">
+                                      <td className="px-1 py-2 text-center">
+                                        <input type="hidden" {...form.register(`informed_to.${index}.userName`)} />
+                                        <input type="hidden" {...form.register(`informed_to.${index}.displayName`)} />
+                                        <input type="hidden" {...form.register(`informed_to.${index}.email`)} />
+                                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                          {index + 1}
+                                        </span>
+                                      </td>
+                                      <td className="px-1 py-2">
+                                        <span className="text-slate-400 italic text-[11px]">From Team</span>
+                                      </td>
+                                      <td className="px-1 py-2">
+                                        <div className="flex items-center gap-2">
+                                          <UserAvatar loginNo={loginNo ? Number(loginNo) : null} displayName={displayName} size="sm" />
+                                          <span className="font-semibold text-slate-100">{displayName || '—'}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-1 py-2 text-slate-500 break-all">{email || '—'}</td>
+                                      <td className="px-1 py-2 text-center text-slate-500">-</td>
+                                    </tr>
+                                  );
+                                }
+
+                                return (
+                                  <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors group">
+                                    <td className="px-1 py-2 text-center align-top pt-3">
+                                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                        {index + 1}
+                                      </span>
+                                    </td>
+                                    <td className="px-1 py-2 align-top">
+                                      <FieldControl error={userErr} className="mb-0">
+                                        <Controller
+                                          name={`informed_to.${index}.userName`}
+                                          control={form.control}
+                                          render={({ field: nameField }) => (
+                                            <UserCombobox
+                                              value={nameField.value}
+                                              onChange={(user) => {
+                                                const currentInformed = form.getValues('informed_to') || [];
+
+                                                if (
+                                                  currentInformed.some((c, i) => i !== index && c.loginNo === user.loginNo)
+                                                ) {
+                                                  toast.error('This user is already added as an Report To user.');
+                                                  nameField.onChange('');
+                                                  return;
+                                                }
+
+                                                nameField.onChange(user.loginId);
+                                                form.setValue(`informed_to.${index}.displayName`, user.printingName);
+                                                form.setValue(`informed_to.${index}.email`, user.email || '');
+                                                form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
+                                                form.clearErrors(`informed_to.${index}.userName`);
+                                                form.clearErrors(`informed_to.${index}.displayName`);
+                                              }}
+                                              placeholder="Select username"
+                                              className={cn("rounded-[6px] h-8 text-[11px] w-full", userErr && "border-red-400")}
+                                              initialLabel={nameField.value}
+                                            />
+                                          )}
+                                        />
+                                      </FieldControl>
+                                    </td>
+                                    <td className="px-1 py-2 align-top">
+                                      <FieldControl error={nameErr} className="mb-0">
+                                        <Input
+                                          disabled
+                                          {...form.register(`informed_to.${index}.displayName`)}
+                                          placeholder="Display Name"
+                                          className={cn("h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
+                                        />
+                                      </FieldControl>
+                                    </td>
+                                    <td className="px-1 py-2 align-top">
+                                      <Input
+                                        disabled
+                                        {...form.register(`informed_to.${index}.email`)}
+                                        placeholder="Email"
+                                        className="h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
+                                      />
+                                    </td>
+                                    <td className="px-1 py-2 text-center align-top pt-3">
+                                      <button
+                                        type="button"
+                                        onClick={() => removeInform(index)}
+                                        className="inline-flex h-6 w-6 items-center justify-center text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-[6px] transition-colors"
+                                        title="Remove report-to user"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </FieldControl>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </FormSection>
+          )}
+
+          {isShowTopAdditionalFields && (form.watch('custom_fields') as any[])?.length > 0 && (
+            <FormSection title="Additional Fields" icon={Sparkles}>
+              <CustomFieldsSection
+                customFields={(form.watch('custom_fields') as any) || []}
+                onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
+                companyNo={authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
+                hideAddButton={true}
+                viewMode="grid"
+                hideLabel={true}
+              />
+            </FormSection>
+          )}
+
+          {!hiddenSections.includes('attachments') && (
+            <FormSection title="Attachments" icon={Paperclip} tourId="task-form-attachments">
+              <div className="space-y-3">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const files = e.dataTransfer?.files;
+                    if (files?.length) processFiles(Array.from(files));
+                  }}
+                  className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#0EA5E9]/25 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] px-3.5 py-3 cursor-pointer transition-all hover:border-[#0EA5E9]/45 hover:shadow-[0_8px_24px_-16px_rgba(14,165,233,0.35)]"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="application/pdf,image/*"
+                    onChange={handleFileSelection}
+                    className="hidden"
+                  />
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12 shadow-sm group-hover:bg-[var(--tm-tint)] transition-colors">
+                    <UploadCloud size={18} strokeWidth={1.75} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-semibold text-slate-100 leading-tight">
+                      Drop files here or{' '}
+                      <span className="text-[#0EA5E9] underline decoration-[#0EA5E9]/30 underline-offset-2">
+                        browse
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-medium text-slate-400">
+                      PDF &amp; Images · Max 10MB each
+                    </p>
+                  </div>
+                  <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
+                    Upload
+                  </span>
+                </div>
+
+                {uploadingFiles.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between px-0.5">
+                      <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        Uploading
+                      </h4>
+                      <span className="text-[10px] font-medium text-slate-400 tabular-nums">
+                        {uploadingFiles.length}
+                      </span>
+                    </div>
+                    <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
+                      {uploadingFiles.map((file) => (
+                        <motion.div
+                          key={file.tempId}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className={cn(
+                            'flex items-center gap-2.5 px-2.5 py-2',
+                            file.status === 'failed' ? 'bg-red-500/10' : 'bg-[var(--tm-surface)]'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
+                              file.status === 'failed'
+                                ? 'bg-red-500/10 text-red-400 ring-red-500/30'
+                                : 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
+                            )}
+                          >
+                            {file.status === 'failed' ? (
+                              file.name.toLowerCase().endsWith('.pdf') ? (
+                                <FileText size={14} />
+                              ) : (
+                                <Image size={14} />
+                              )
+                            ) : (
+                              <Loader2 size={14} className="animate-spin" />
+                            )}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
+                              {file.name}
+                            </p>
+                            <p
+                              className={cn(
+                                'text-[10px] font-medium mt-0.5',
+                                file.status === 'failed' ? 'text-red-400' : 'text-slate-400'
+                              )}
+                            >
+                              {file.status === 'pending' && 'Pending upload...'}
+                              {file.status === 'uploading' && 'Registering entry...'}
+                              {file.status === 'verifying' && 'Uploading file payload...'}
+                              {file.status === 'failed' && (file.errorMessage || 'Upload failed')}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {file.status === 'failed' && (
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleRetryUpload(file.tempId)}
+                                className="h-7 w-7 rounded-[7px] text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
+                              >
+                                <RefreshCw size={12} />
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRemoveUploading(file.tempId)}
+                              className="h-7 w-7 rounded-[7px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                            >
+                              <X size={12} />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(() => {
+                  const attachments = form.watch('attachments') || [];
+                  if (attachments.length === 0) return null;
+
+                  return (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 px-0.5">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Attached
+                        </h4>
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                          {attachments.length}
+                        </span>
+                      </div>
+                      <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                        {attachments.map((file: any) => {
+                          const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
+                          return (
+                            <motion.div
+                              key={file.id}
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
+                            >
+                              <span
+                                className={cn(
+                                  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
+                                  isPdf
+                                    ? 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
+                                    : 'bg-violet-500/15 text-violet-400 ring-violet-500/30'
+                                )}
+                              >
+                                {isPdf ? <FileText size={14} /> : <Image size={14} />}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
+                                    {file.name}
+                                  </p>
+                                  {file.size ? (
+                                    <span className="shrink-0 text-[10px] font-medium text-slate-400 tabular-nums">
+                                      {formatFileSize(file.size)}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    attachmentService.downloadAttachment(file.id, file.name)
+                                  }
+                                  className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
+                                >
+                                  View
+                                </button>
+                              </div>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleRemoveAttachment(file.id, file.name)}
+                                className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                              >
+                                <Trash size={12} />
+                              </Button>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </FormSection>
+          )}
+
+          {(!isHideDetailSection || showMoreDetails) && (
+            <>
+              {/* 3. Timeline */}
+              {!hiddenSections.includes('timeline') && (
+                <FormSection title="Timeline & Effort" icon={Clock} tourId="task-form-timeline">
+                  <div className="space-y-2.5">
+                    {/* Row 1: Start Date, Due Date, All-Day Checkbox */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-end">
+
+                      <div className="space-y-1.5 flex flex-col justify-end">
+                        <Controller
+                          name="isAllDay"
+                          control={form.control}
+                          render={({ field }) => (
+                            <div className="flex items-center space-x-2 bg-[var(--tm-muted)]/70 border border-[var(--tm-border)]/80 px-4 rounded-[8px] shadow-sm transition-all hover:bg-[var(--tm-muted)]/30 h-10">
+                              <Checkbox
+                                id="isAllDay"
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                className="h-5 w-5 rounded-md border-[#3D4F66] focus-visible:ring-[#0EA5E9]"
+                              />
+                              <label htmlFor="isAllDay" className="text-sm font-semibold text-slate-200 cursor-pointer select-none">All-Day Task</label>
+                            </div>
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-1.5" id="form-group-start_date">
+                        <FieldLabel>Start Date</FieldLabel>
+                        <FieldControl error={form.formState.errors.start_date?.message}>
+                          <Controller
+                            name="start_date"
+                            control={form.control}
+                            render={({ field }) => (
+                              <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                                placeholder={isAllDay ? "Select start date" : "Select start date & time"}
+                                hideTime={isAllDay}
+                                className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                              />
+                            )}
+                          />
+                        </FieldControl>
+                      </div>
+
+                      <div className="space-y-1.5" id="form-group-end_date">
+                        <FieldLabel required={isSubTask}>Due Date</FieldLabel>
+                        <FieldControl error={form.formState.errors.end_date?.message}>
+                          <Controller
+                            name="end_date"
+                            control={form.control}
+                            render={({ field }) => (
+                              <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                                placeholder={isAllDay ? "Select due date" : "Select due date & time"}
+                                hideTime={isAllDay}
+                                className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                              />
+                            )}
+                          />
+                        </FieldControl>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Estimated Effort, Calendar Color */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-2.5 items-start">
+                      <div className="space-y-1.5 md:col-span-1" id="form-group-estimated_effort_value">
+                        <FieldLabel>Estimated Effort</FieldLabel>
+                        <FieldControl error={form.formState.errors.estimated_effort_value?.message || (!form.formState.errors.estimated_effort_value ? form.formState.errors.estimated_effort_unit?.message : undefined)}>
+                          <div className="flex gap-2">
+                            <div className="flex-1 min-w-0">
+                              <Input type="number" step="0" placeholder="" {...form.register('estimated_effort_value')} isDecimal={false} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right w-full transition-all", form.formState.errors.estimated_effort_value ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
+                            </div>
+                            <Controller
+                              name="estimated_effort_unit"
+                              control={form.control}
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm w-32 transition-all", form.formState.errors.estimated_effort_unit ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
+                                    <SelectValue placeholder="Select estimated effort unit" />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-[8px] bg-[var(--tm-surface)] border border-[var(--tm-border)]">
+                                    {fillValues?.frequency?.map(f => (
+                                      <SelectItem key={f.FrequencyNo} value={f.FrequencyNo.toString()}>
+                                        {f.FrequencyName || f.Frequency}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                        </FieldControl>
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-1" id="form-group-calendarColor">
+                        <FieldLabel>Calendar Color</FieldLabel>
+                        <Controller
+                          name="calendarColor"
+                          control={form.control}
+                          render={({ field }) => (
+                            <div className="flex flex-wrap items-center gap-3">
+                              <Select
+                                value={
+                                  !field.value || field.value === 'none' || field.value === '' ? 'none' :
+                                    [
+                                      '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
+                                      '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
+                                    ].includes(field.value) ? field.value : 'custom'
+                                }
+                                onValueChange={(val) => {
+                                  if (val === 'none') field.onChange('');
+                                  else if (val === 'custom') field.onChange('#000000'); // default custom
+                                  else field.onChange(val);
+                                }}
+                              >
+                                <SelectTrigger className="w-full sm:w-[220px] h-10 bg-[var(--tm-surface)] border-[var(--tm-border)]/80 rounded-[8px] text-xs focus:ring-[#0EA5E9]/20">
+                                  <SelectValue placeholder="Select color" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">
+                                    <div className="flex items-center gap-2">
+                                      <X size={14} className="text-slate-400" />
+                                      <span>None</span>
+                                    </div>
+                                  </SelectItem>
+                                  {[
+                                    { hex: '#93c5fd', name: 'Blue' },
+                                    { hex: '#fca5a5', name: 'Red' },
+                                    { hex: '#86efac', name: 'Green' },
+                                    { hex: '#fdba74', name: 'Orange' },
+                                    { hex: '#d8b4fe', name: 'Purple' },
+                                    { hex: '#f9a8d4', name: 'Pink' },
+                                    { hex: '#a5b4fc', name: 'Indigo' },
+                                    { hex: '#67e8f9', name: 'Cyan' },
+                                  ].map((preset) => (
+                                    <SelectItem key={preset.hex} value={preset.hex}>
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 rounded-full border border-[var(--tm-border)]" style={{ backgroundColor: preset.hex }} />
+                                        <span>{preset.name}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                  <SelectItem value="custom">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-4 h-4 rounded-full border border-[var(--tm-border)] bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
+                                      <span>Custom Color</span>
+                                    </div>
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                              {/* Custom Color Input */}
+                              {field.value && field.value !== 'none' && ![
+                                '#93c5fd', '#fca5a5', '#86efac', '#fdba74',
+                                '#d8b4fe', '#f9a8d4', '#a5b4fc', '#67e8f9'
+                              ].includes(field.value) && (
+                                  <div className="flex items-center gap-2 px-3 py-1.5 border border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-muted)]">
+                                    <input
+                                      type="color"
+                                      value={field.value || '#000000'}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                      className="w-7 h-7 border-0 bg-transparent cursor-pointer rounded"
+                                    />
+                                    <span className="text-xs font-mono font-medium text-slate-500 uppercase">{field.value}</span>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </FormSection>
+              )}
+              {/* 4. Business Impact */}
+              {!hiddenSections.includes('business_benefit') && (
+                <FormSection
+                  title="Business Benefit"
+                  icon={TrendingUp}
+                  headerAction={
+                    <div className="flex items-center gap-2 shrink-0 border border-[var(--tm-border)]/80 rounded-[8px] px-2 py-1 bg-[var(--tm-surface)]">
+                      <Controller
+                        name="is_business_benefit_applicable"
+                        control={form.control}
+                        render={({ field }) => (
+                          <Checkbox
+                            id="benefit-section"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isBenefitDisabled}
+                            className="h-4 w-4 rounded-md border-slate-400"
+                          />
+                        )}
+                      />
+                      <Label htmlFor="benefit-section" className="text-xs font-medium text-slate-200 cursor-pointer">Business Benefit Applicable</Label>
+                    </div>
+                  }
+                >
+                  <div className="space-y-2.5">
+                    {isBenefitApplicable && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="space-y-1.5" id="form-group-business_benefit_type_No">
+                          <FieldLabel required>Benefit Type</FieldLabel>
+                          <FieldControl error={form.formState.errors.business_benefit_type_No?.message}>
+                            <Controller
+                              name="business_benefit_type_No"
+                              control={form.control}
+                              render={({ field }) => (
+                                <Combobox options={(fillValues?.benefitType || []).filter((b: any) => {
+                                  const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || '';
+                                  const lower = label.toLowerCase();
+                                  return lower !== 'all' && lower !== '[all]';
+                                })
+                                  .map((b: any) => {
+                                    const val = (b.BusinessBenefitTypeNo ?? b.businessBenefitTypeNo ?? '').toString();
+                                    const label = b["Business Benefit"] || b.BusinessBenefitTypeName || b.businessBenefitTypeName || b.BenefitTypeName || b.benefitTypeName || b.typeName || b.Name || b.name || b.Code || b.code || `Benefit Type #${val}`;
+                                    return { label, value: val };
+                                  })
+                                }
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  placeholder="Select business benefit type"
+                                  className={form.formState.errors.business_benefit_type_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
+                                  onAddNew={formRights[1545]?.isSave ? () => {
+                                    setActiveMasterType('benefit-type');
+                                    setIsMasterCreateOpen(true);
+                                  } : undefined}
+                                />
+                              )}
+                            />
+                          </FieldControl>
+                        </div>
+                        <div className="space-y-1.5" id="form-group-benefit_period">
+                          <FieldLabel required>Benefit Period</FieldLabel>
+                          <FieldControl error={form.formState.errors.benefit_period?.message}>
+                            <Controller
+                              name="benefit_period"
+                              control={form.control}
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.benefit_period ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")}>
+                                    <SelectValue placeholder="Select benefit period" />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-[8px]">
+                                    <SelectItem value="One Time">One Time</SelectItem>
+                                    <SelectItem value="Monthly">Monthly</SelectItem>
+                                    <SelectItem value="Annually">Annually</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </FieldControl>
+                        </div>
+                        {!shouldHideBenefitAmount && (
+                          <>
+                            <div className="space-y-1.5" id="form-group-estimated_benefit_amount">
+                              <FieldLabel required>Estimated Benefit Amount</FieldLabel>
+                              <FieldControl error={form.formState.errors.estimated_benefit_amount?.message}>
+                                <Input type="number" step="0.01" placeholder="" {...form.register('estimated_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.estimated_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
+                              </FieldControl>
+                            </div>
+                            <div className="space-y-1.5" id="form-group-actual_benefit_amount">
+                              <FieldLabel>Actual Benefit Amount</FieldLabel>
+                              <FieldControl error={form.formState.errors.actual_benefit_amount?.message}>
+                                <Input type="number" step="0.01" placeholder="" {...form.register('actual_benefit_amount')} isDecimal={true} decimalPlaces={2} className={cn("h-10 rounded-[8px] border-[var(--tm-border)]/80 text-xs text-slate-50 shadow-sm text-right transition-all", form.formState.errors.actual_benefit_amount ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} maxLength={8} />
+                              </FieldControl>
+                            </div>
+                          </>
+                        )}
+                        <div className="space-y-1.5 md:col-span-2" id="form-group-business_benefit_description">
+                          <FieldLabel required>Benefit Description</FieldLabel>
+                          <FieldControl error={form.formState.errors.business_benefit_description?.message}>
+                            <Textarea placeholder="Enter business benefit description" {...form.register('business_benefit_description')} className={cn("min-h-[80px] rounded-[8px] border-[var(--tm-border)]/80 input-section text-xs text-slate-50 shadow-sm transition-all", form.formState.errors.business_benefit_description ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : "focus:ring-[#0EA5E9]/15 focus:border-[#0EA5E9]")} />
+                          </FieldControl>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </FormSection>
+              )}
+
+
+              {/* 5. Checklist */}
+              {!hiddenSections.includes('checklist') && (
+                <FormSection
+                  title="Checklist"
+                  icon={CheckCircle}
+                  headerAction={
+                    <div className="flex flex-wrap items-center gap-2">
+                      {checklistFields.length > 0 && (
+                        <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-[var(--tm-tint)] px-2.5 py-1 text-[10px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                          {completedCount}/{checklistFields.length}
+                          <span className="text-[#0EA5E9]/70 font-medium">({progressPercent}%)</span>
+                        </span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => appendChecklist({ id: Date.now().toString(), description: '', completed: false })}
+                        className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+                      >
+                        <Plus size={12} className="text-[#0EA5E9]" /> Add Checklist Item
+                      </Button>
+                    </div>
+                  }
+                >
+                  <div className="space-y-3">
+                    {checklistFields.length > 0 && (
+                      <div className="h-1.5 w-full rounded-full bg-[var(--tm-muted)] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[#0EA5E9] transition-all duration-300"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    )}
+
+                    {checklistFields.length === 0 ? (
+                      <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
+                        <p className="text-xs text-slate-500 font-medium">No checklist items yet.</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Add items to track task completion.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {checklistFields.map((field, index) => {
+                          const isCompleted = form.watch(`check_list.${index}.completed`);
+                          const descError = form.formState.errors.check_list?.[index]?.description?.message;
+                          return (
+                            <motion.div
+                              key={field.id}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: Math.min(index * 0.04, 0.2) }}
+                              className={cn(
+                                "relative rounded-[8px] border bg-[var(--tm-surface)] overflow-hidden transition-all",
+                                "shadow-[0_1px_2px_rgba(15,23,42,0.03)]",
+                                isCompleted
+                                  ? "border-[var(--tm-border)]/80 bg-[var(--tm-muted)]/60"
+                                  : "border-[var(--tm-border)]/80 hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
+                                descError && "border-red-300"
+                              )}
+                            >
+                              <div className="relative flex items-start gap-3 pl-3 pr-11 py-3">
+                                <span className={cn(
+                                  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] text-[11px] font-semibold ring-1 mt-0.5",
+                                  isCompleted
+                                    ? "bg-[var(--tm-muted)] text-slate-400 ring-[var(--tm-border)]"
+                                    : "bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12"
+                                )}>
+                                  {index + 1}
+                                </span>
+
+                                <Controller
+                                  name={`check_list.${index}.completed`}
+                                  control={form.control}
+                                  render={({ field: checkField }) => (
+                                    <button
+                                      type="button"
+                                      onClick={() => checkField.onChange(!checkField.value)}
+                                      className={cn(
+                                        "mt-0.5 h-7 w-7 shrink-0 rounded-[7px] border-2 flex items-center justify-center transition-all duration-200",
+                                        checkField.value
+                                          ? "bg-[#0EA5E9] border-[#0EA5E9] text-white"
+                                          : "border-[#3D4F66] text-transparent hover:border-[#0EA5E9] bg-[var(--tm-surface)]"
+                                      )}
+                                      title={checkField.value ? "Mark incomplete" : "Mark complete"}
+                                    >
+                                      <Check size={14} strokeWidth={3} />
+                                    </button>
+                                  )}
+                                />
+
+                                <div className="min-w-0 flex-1 space-y-1">
+                                  <FieldLabel required className="sr-only">Checklist item</FieldLabel>
+                                  <FieldControl error={descError}>
+                                    <Input
+                                      {...form.register(`check_list.${index}.description`)}
+                                      placeholder="Enter checklist item…"
+                                      className={cn(
+                                        "rounded-[8px] h-10 text-xs border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none",
+                                        isCompleted && "text-slate-400 line-through decoration-slate-300 bg-[var(--tm-muted)]",
+                                        descError && "border-red-400"
+                                      )}
+                                    />
+                                  </FieldControl>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => removeChecklist(index)}
+                                  className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                                  title="Remove checklist item"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </FormSection>
+              )}
+
+              {/* 6. Task Execution Log */}
+              {!hiddenSections.includes('execution_note') && (
+                <FormSection
+                  title="Task Completion Log"
+                  icon={FileText}
+                  headerAction={
+                    <div className="flex flex-wrap items-center gap-2">
+                      {executionLogFields.length > 0 && (
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
+                          {executionLogFields.length}
+                        </span>
+                      )}
+                    </div>
+                  }
+                >
+                  <div className="space-y-3">
+
+                    {/* Completion panel */}
+                    <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                          <CheckCircle size={12} strokeWidth={1.75} />
+                        </span>
+                        <p className="text-[11px] font-semibold text-slate-200">Completion</p>
+                      </div>
+                      <div className="p-3.5 space-y-3.5">
+                        <div className="space-y-1" id="form-group-completionDate">
+                          <FieldLabel>Completion Date</FieldLabel>
+                          <FieldControl error={form.formState.errors.completionDate?.message}>
+                            <Controller
+                              name="completionDate"
+                              control={form.control}
+                              render={({ field }) => (
+                                <DateTimePicker
+                                  date={field.value ? new Date(field.value) : undefined}
+                                  onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                                  placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
+                                  hideTime={isAllDay}
+                                  className={cn(
+                                    "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
+                                    form.formState.errors.completionDate && "border-red-400"
+                                  )}
+                                />
+                              )}
+                            />
+                          </FieldControl>
+                        </div>
+
+                        <div className="space-y-1" id="form-group-completionRemark">
+                          <FieldLabel>Completion Remark</FieldLabel>
+                          <FieldControl error={form.formState.errors.completionRemark?.message}>
+                            <Textarea
+                              placeholder="Enter completion remark"
+                              {...form.register('completionRemark')}
+                              maxLength={500}
+                              rows={4}
+                              className={cn(
+                                "min-h-[100px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                                form.formState.errors.completionRemark && "border-red-400"
+                              )}
+                            />
+                          </FieldControl>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </FormSection>
+              )}
+
+              {/* 6b. Challenges */}
+              {!hiddenSections.includes('execution_note') && (
+                <FormSection
+                  title="Challenges"
+                  icon={AlertCircle}
+                  headerAction={
+                    <div className="flex flex-wrap items-center gap-2">
+                      {roadBlockFields.length > 0 && (
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0EA5E9] px-1.5 text-[10px] font-semibold text-white">
+                          {roadBlockFields.length}
+                        </span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => appendRoadBlock({ id: Date.now().toString(), date: '', remark: '', proposedSolution: '', status_No: '' })}
+                        className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+                      >
+                        <Plus size={12} className="text-[#0EA5E9]" /> Add Challenges
+                      </Button>
+                    </div>
+                  }
+                >
+                  <div className="space-y-2.5">
+                    {roadBlockFields.length === 0 ? (
+                      <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
+                        <p className="text-xs text-slate-500 font-medium">No challenges added yet.</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Track blockers with date, remark, and status.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 max-h-[420px] overflow-y-auto scrollbar-hide">
+                        {roadBlockFields.map((field, index) => {
+                          const dateErr = form.formState.errors.road_block_remarks?.[index]?.date?.message;
+                          const remarkErr = form.formState.errors.road_block_remarks?.[index]?.remark?.message;
+                          const statusErr = form.formState.errors.road_block_remarks?.[index]?.status_No?.message;
+                          const challengeDate = form.watch(`road_block_remarks.${index}.date`);
+                          const challengeRemark = form.watch(`road_block_remarks.${index}.remark`);
+                          const challengeStatus = form.watch(`road_block_remarks.${index}.status_No`);
+                          const statusLabel = fillValues?.status.find(s => s.StatusNo.toString() === challengeStatus)?.Status;
+                          return (
+                            <div
+                              key={field.id}
+                              className={cn(
+                                "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
+                                "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
+                                (dateErr || remarkErr || statusErr) && "border-red-300"
+                              )}
+                            >
+                              <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                  {index + 1}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-[12px] font-semibold text-slate-100 leading-snug">
+                                      {challengeDate
+                                        ? new Date(challengeDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                                        : `Challenge ${index + 1}`}
+                                    </p>
+                                    {statusLabel ? (
+                                      <span className="inline-flex items-center rounded-[6px] bg-[var(--tm-tint)] px-1.5 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
+                                        {statusLabel}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
+                                    {challengeRemark?.trim() || 'Add remark, solution, and status'}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeRoadBlock(index)}
+                                  className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                                  title="Remove challenge"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+
+                              <div className="p-3.5 space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Date</FieldLabel>
+                                    <Controller
+                                      name={`road_block_remarks.${index}.date`}
+                                      control={form.control}
+                                      render={({ field: dateField }) => (
+                                        <FieldControl error={dateErr}>
+                                          <DateTimePicker
+                                            date={dateField.value ? new Date(dateField.value) : undefined}
+                                            onChange={(date) => {
+                                              dateField.onChange(date ? date.toISOString() : '');
+                                              form.clearErrors(`road_block_remarks.${index}.date`);
+                                            }}
+                                            placeholder="Select date"
+                                            hideTime
+                                            className={cn(
+                                              "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full",
+                                              dateErr && "border-red-400"
+                                            )}
+                                          />
+                                        </FieldControl>
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Status</FieldLabel>
+                                    <Controller
+                                      name={`road_block_remarks.${index}.status_No`}
+                                      control={form.control}
+                                      render={({ field: statusField }) => (
+                                        <FieldControl error={statusErr}>
+                                          <Select
+                                            onValueChange={(val) => {
+                                              statusField.onChange(val);
+                                              form.clearErrors(`road_block_remarks.${index}.status_No`);
+                                            }}
+                                            value={statusField.value}
+                                          >
+                                            <SelectTrigger className={cn(
+                                              "rounded-[8px] h-10 border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none",
+                                              statusErr && "border-red-400"
+                                            )}>
+                                              <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-[8px]">
+                                              {fillValues?.status
+                                                .filter(s => ['Open', 'In Progress', 'Close'].includes(s.Status))
+                                                .map(s => (
+                                                  <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs">{s.Status}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </FieldControl>
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <FieldLabel required>Remarks</FieldLabel>
+                                  <FieldControl error={remarkErr}>
+                                    <Textarea
+                                      {...form.register(`road_block_remarks.${index}.remark`)}
+                                      placeholder="Enter remark"
+                                      rows={3}
+                                      className={cn(
+                                        "min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                                        remarkErr && "border-red-400"
+                                      )}
+                                    />
+                                  </FieldControl>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <FieldLabel>Proposed Solution</FieldLabel>
+                                  <Textarea
+                                    {...form.register(`road_block_remarks.${index}.proposedSolution`)}
+                                    placeholder="Enter proposed solution"
+                                    rows={3}
+                                    className="min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full"
                                   />
                                 </div>
-                              </div>
-
-                              <div className="space-y-1">
-                                <FieldLabel required>Remarks</FieldLabel>
-                                <FieldControl error={remarkErr}>
-                                  <Textarea
-                                    {...form.register(`road_block_remarks.${index}.remark`)}
-                                    placeholder="Enter remark"
-                                    rows={3}
-                                    className={cn(
-                                      "min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
-                                      remarkErr && "border-red-400"
-                                    )}
-                                  />
-                                </FieldControl>
-                              </div>
-
-                              <div className="space-y-1">
-                                <FieldLabel>Proposed Solution</FieldLabel>
-                                <Textarea
-                                  {...form.register(`road_block_remarks.${index}.proposedSolution`)}
-                                  placeholder="Enter proposed solution"
-                                  rows={3}
-                                  className="min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full"
-                                />
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </FormSection>
-            )}
-
-            {/* 8. Time Logs */}
-            {initialData?.taskNo && !hiddenSections.includes('actual_efforts') && (
-              <FormSection title="Time Logs" icon={History}>
-                <div className="space-y-2.5">
-                  <TaskActivity
-                    taskNo={initialData.taskNo}
-                    comments={initialData.task_comments || []}
-                    efforts={initialData.actual_efforts || []}
-                    onRefresh={() => {
-                      if (onRefreshData) {
-                        onRefreshData();
-                      } else {
-                        window.location.reload();
-                      }
-                    }}
-                  />
-                </div>
-              </FormSection>
-            )}
-
-            {!isShowTopAdditionalFields && (form.watch('custom_fields') as any[])?.length > 0 && (
-              <FormSection title="Additional Fields" icon={Sparkles}>
-                <div className="space-y-2.5">
-                  <CustomFieldsSection
-                    customFields={(form.watch('custom_fields') as any) || []}
-                    onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
-                    companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
-                    hideAddButton={true}
-                    viewMode="grid"
-                  />
-                </div>
-              </FormSection>
-            )}
-          </>
-        )}
-
-        {isHideDetailSection && (
-          <div className="flex justify-center py-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowMoreDetails(v => !v)}
-              className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-9 px-4 text-xs shadow-sm gap-1.5 transition-all active:scale-95"
-            >
-              {showMoreDetails ? (
-                <>Show less details <ChevronUp size={14} /></>
-              ) : (
-                <>Show more details <ChevronDown size={14} /></>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </FormSection>
               )}
-            </Button>
-          </div>
-        )}
+
+              {/* 8. Time Logs */}
+              {initialData?.taskNo && !hiddenSections.includes('actual_efforts') && (
+                <FormSection title="Time Logs" icon={History}>
+                  <div className="space-y-2.5">
+                    <TaskActivity
+                      taskNo={initialData.taskNo}
+                      comments={initialData.task_comments || []}
+                      efforts={initialData.actual_efforts || []}
+                      onRefresh={() => {
+                        if (onRefreshData) {
+                          onRefreshData();
+                        } else {
+                          window.location.reload();
+                        }
+                      }}
+                    />
+                  </div>
+                </FormSection>
+              )}
+
+              {!isShowTopAdditionalFields && (form.watch('custom_fields') as any[])?.length > 0 && (
+                <FormSection title="Additional Fields" icon={Sparkles}>
+                  <div className="space-y-2.5">
+                    <CustomFieldsSection
+                      customFields={(form.watch('custom_fields') as any) || []}
+                      onChange={(fields) => form.setValue('custom_fields', fields as any, { shouldDirty: true, shouldValidate: true })}
+                      companyNo={currentCompany || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
+                      hideAddButton={true}
+                      viewMode="grid"
+                    />
+                  </div>
+                </FormSection>
+              )}
+            </>
+          )}
+
+          {isHideDetailSection && (
+            <div className="flex justify-center py-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowMoreDetails(v => !v)}
+                className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-9 px-4 text-xs shadow-sm gap-1.5 transition-all active:scale-95"
+              >
+                {showMoreDetails ? (
+                  <>Show less details <ChevronUp size={14} /></>
+                ) : (
+                  <>Show more details <ChevronDown size={14} /></>
+                )}
+              </Button>
+            </div>
+          )}
         </fieldset>
       </form>
 
@@ -3954,13 +4075,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <div className="min-w-0 flex-1">
                             <p className="text-[13px] font-semibold text-slate-100 break-words leading-snug">{task.title}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                              <span className={cn(
-                                "px-2 py-0.5 rounded-[6px] text-[10px] font-semibold",
-                                task.status === 'Done' || task.status === 'Complete' ? "bg-emerald-500/15 text-emerald-400" :
-                                  task.status === 'In Progress' ? "bg-sky-500/15 text-sky-400" :
-                                    task.status === 'In Review' ? "bg-violet-500/15 text-violet-400" :
-                                      "bg-[var(--tm-muted)] text-slate-300"
-                              )}>
+                              <span className={cn('text-[10px]', getStatusTextClass(task.status))}>
                                 {task.status || 'Assigned'}
                               </span>
                               {(task.code || task.taskNo > 0) && (
@@ -3990,10 +4105,22 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           <div className="min-w-0">
                             <p className="text-[10px] font-medium text-slate-400 mb-1">Assign To</p>
                             <div className="flex items-center gap-2 min-w-0">
-                              {task.assignedDisplayName && task.assignedDisplayName !== '-' && (
-                                <UserAvatar loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined} displayName={task.assignedDisplayName} size="sm" />
+                              {task.assignedDisplayName && task.assignedDisplayName !== '-' ? (
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <UserAvatar
+                                    loginNo={task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined}
+                                    displayName={task.assignedDisplayName}
+                                    size="sm"
+                                    className="shrink-0"
+                                  />
+                                  <TruncatedText
+                                    text={task.assignedDisplayName}
+                                    className="text-xs font-medium text-slate-200"
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-xs font-medium text-slate-200 break-words">-</span>
                               )}
-                              <span className="text-xs font-medium text-slate-200 break-words">{task.assignedDisplayName || '-'}</span>
                             </div>
                           </div>
                           <div>

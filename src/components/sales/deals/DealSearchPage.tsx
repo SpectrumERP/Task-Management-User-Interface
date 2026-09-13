@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { AlertCircle, ChevronRight, Edit, FileText, Loader2, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
@@ -16,12 +16,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuthStore } from '@/store/useAuthStore';
-import { cn } from '@/lib/utils';
 import { DealRecord, DealSearchFilters } from '@/types/deal';
 import { DealOption, deleteDeal, fetchDivisionsByCompany, searchDeals } from './dealApi';
 import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
 
 export function DealSearchPage() {
   const navigate = useNavigate();
@@ -151,6 +152,23 @@ export function DealSearchPage() {
     }
   };
 
+  const getDealSortValue = useCallback((row: DealRecord, key: string) => {
+    switch (key) {
+      case 'companyName': return row.companyName || row.companyNo || '';
+      case 'divisionName': return row.divisionName || row.divisionNo || '';
+      case 'documentNoYearly': return row.documentNoYearly || '';
+      case 'documentDate': return row.documentDate || '';
+      case 'description': return row.description || '';
+      default: return (row as Record<string, unknown>)[key] ?? '';
+    }
+  }, []);
+
+  const { sortCol, sortDesc, handleSort, sortedRows: sortedDeals } = useTableSort(
+    deals,
+    getDealSortValue,
+    { defaultKey: 'documentNoYearly', defaultDesc: false }
+  );
+
   return (
     <div className="page-shell">
       <div className="shrink-0">
@@ -235,11 +253,22 @@ export function DealSearchPage() {
             <table className="tm-data-table w-full min-w-[760px] text-left">
               <thead className="bg-[var(--tm-muted)] border-b border-[var(--tm-border)]">
                 <tr>
-                  {['Company', 'Division', 'Document No Yearly', 'Document Date', 'Description', 'Actions'].map((heading) => (
-                    <th key={heading} className={cn("px-4 py-3 text-[11px] font-semibold text-slate-300  ", heading === 'Actions' && "text-right")}>
-                      {heading}
-                    </th>
-                  ))}
+                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                    <SortableHeader label="Company" sortKey="companyName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                  </th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                    <SortableHeader label="Division" sortKey="divisionName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                  </th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                    <SortableHeader label="Document No Yearly" sortKey="documentNoYearly" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                  </th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                    <SortableHeader label="Document Date" sortKey="documentDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                  </th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                    <SortableHeader label="Description" sortKey="description" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                  </th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
@@ -270,15 +299,29 @@ export function DealSearchPage() {
                       </div>
                     </td>
                   </tr>
-                ) : deals.map((deal) => (
+                ) : sortedDeals.map((deal) => (
                   <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="hover:bg-[var(--tm-muted)]/70 transition-colors">
-                    <td className="px-4 py-3 text-xs font-medium text-slate-200">{deal.companyName || deal.companyNo}</td>
-                    <td className="px-4 py-3 text-xs font-medium text-slate-200">{deal.divisionName || deal.divisionNo || 'N/A'}</td>
-                    <td className="px-4 py-3 text-xs font-medium text-slate-100">{deal.documentNoYearly}</td>
-                    <td className="px-4 py-3 text-xs font-semibold text-slate-300">
-                      {deal.documentDate ? format(new Date(deal.documentDate), 'MMM dd, yyyy') : 'N/A'}
+                    <td className="px-4 py-3 text-xs font-medium text-slate-200 max-w-[10rem] min-w-0 overflow-hidden">
+                      <TruncatedText text={String(deal.companyName || deal.companyNo || '-')} className="text-xs font-medium text-slate-200" />
                     </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[320px] truncate">{deal.description}</td>
+                    <td className="px-4 py-3 text-xs font-medium text-slate-200 max-w-[9rem] min-w-0 overflow-hidden">
+                      <TruncatedText text={String(deal.divisionName || deal.divisionNo || 'N/A')} className="text-xs font-medium text-slate-200" />
+                    </td>
+                    <td className="px-4 py-3 text-xs font-medium text-slate-100 max-w-[9rem] min-w-0 overflow-hidden">
+                      <TruncatedText text={String(deal.documentNoYearly || '-')} className="text-xs font-medium text-slate-100" />
+                    </td>
+                    <td className="px-4 py-3 text-xs font-semibold text-slate-300 max-w-[8rem] min-w-0 overflow-hidden">
+                      <TruncatedText
+                        text={deal.documentDate ? format(new Date(deal.documentDate), 'MMM dd, yyyy') : 'N/A'}
+                        className="text-xs font-semibold text-slate-300"
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[320px] min-w-0 overflow-hidden">
+                      <TruncatedText
+                        text={deal.description || '-'}
+                        className="text-xs font-semibold text-slate-500"
+                      />
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button

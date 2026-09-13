@@ -15,6 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { userService, UserResponse } from "@/services/userService"
+import { UserOptionLine, userItemClassName } from "@/components/ui/UserCombobox"
 
 interface MultiUserComboboxProps {
   value: string[]
@@ -34,6 +35,7 @@ export function MultiUserCombobox({
 }: MultiUserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [options, setOptions] = React.useState<UserResponse[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [container, setContainer] = React.useState<HTMLElement | null>(null)
@@ -105,8 +107,13 @@ export function MultiUserCombobox({
 
   const isAllSelected = value.includes('All') || value.length === 0;
 
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next)
+    if (!next) setSearch("")
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={modal}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal={modal}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -142,19 +149,26 @@ export function MultiUserCombobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal container={container || document.body}>
       <PopoverPrimitive.Content 
-          className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto" 
+          className="z-[100] w-[min(92vw,380px)] p-0 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] text-popover-foreground shadow-[0_16px_40px_-12px_rgba(15,23,42,0.45)] outline-none pointer-events-auto" 
           align="start"
+          sideOffset={6}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            requestAnimationFrame(() => searchInputRef.current?.focus())
+          }}
         >
-        <Command className="rounded-xl border-[var(--tm-border)]">
+        <Command className="rounded-xl border-0 bg-transparent" shouldFilter={false}>
           <div className="border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
             <CommandInput
+              ref={searchInputRef}
+              value={search}
               placeholder="Search user..."
-              className="h-10 border-none focus:ring-0 bg-transparent"
+              className="h-10 border-none focus:ring-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500"
               onValueChange={setSearch}
             />
           </div>
 
-          <CommandList className="max-h-72 scrollbar-hide">
+          <CommandList className="max-h-72 overflow-y-auto p-1.5 scrollbar-hide">
             {isLoading && (
               <div className="flex items-center justify-center py-8 text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -167,38 +181,42 @@ export function MultiUserCombobox({
                 <CommandItem
                   value="all"
                   onSelect={handleSelectAll}
-                  className="text-[11px] font-medium py-2 px-3 cursor-pointer"
+                  className={cn(userItemClassName, isAllSelected && "bg-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/25")}
                 >
-                  <div className="w-full flex items-center font-bold text-blue-400">
-                    All Users
-                  </div>
-                  {isAllSelected && <Check className="h-3 w-3 text-[#0EA5E9] ml-2 shrink-0" />}
+                  <span className="font-semibold text-[#0EA5E9]">All Users</span>
+                  <Check
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-[#0EA5E9]",
+                      isAllSelected ? "opacity-100" : "opacity-0"
+                    )}
+                  />
                 </CommandItem>
 
-                {options.map((user) => (
-                  <CommandItem
-                    key={user.loginNo}
-                    value={`${user.loginId} ${user.printingName} ${user.email}`}
-                    onSelect={() => {
-                      // If 'All' was selected, clear it before selecting individual users
-                      if (isAllSelected) {
-                        onChange([user.loginNo.toString()]);
-                      } else {
-                        toggleUser(user.loginNo.toString());
-                      }
-                    }}
-                    className="text-[11px] font-medium py-2 px-3 cursor-pointer"
-                  >
-                    <div className="grid grid-cols-3 w-full items-center gap-2">
-                      <div className="truncate text-slate-50 font-bold">{user.loginId}</div>
-                      <div className="truncate text-slate-300">{user.printingName}</div>
-                      <div className="truncate text-slate-400 font-normal">{user.email || 'N/A'}</div>
-                    </div>
-                    {value.includes(user.loginNo.toString()) && !isAllSelected && (
-                      <Check className="h-3 w-3 text-[#0EA5E9] ml-2 shrink-0" />
-                    )}
-                  </CommandItem>
-                ))}
+                {options.map((user) => {
+                  const isSelected = value.includes(user.loginNo.toString()) && !isAllSelected
+                  return (
+                    <CommandItem
+                      key={user.loginNo}
+                      value={`${user.loginId} ${user.printingName} ${user.email}`}
+                      onSelect={() => {
+                        if (isAllSelected) {
+                          onChange([user.loginNo.toString()])
+                        } else {
+                          toggleUser(user.loginNo.toString())
+                        }
+                      }}
+                      className={cn(userItemClassName, isSelected && "bg-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/25")}
+                    >
+                      <UserOptionLine user={user} />
+                      <Check
+                        className={cn(
+                          "h-4 w-4 shrink-0 text-[#0EA5E9]",
+                          isSelected ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    </CommandItem>
+                  )
+                })}
               </CommandGroup>
             )}
           </CommandList>

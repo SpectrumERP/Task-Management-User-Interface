@@ -303,7 +303,7 @@ export default function Login() {
                     aria-invalid={!!errors.loginId}
                     className={`login-field pl-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${errors.loginId
                       ? '!border-2 !border-red-500 focus:!border-red-500'
-                      : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
+                      : '!border-[1.5px] !border-slate-400 dark:!border-[#5B9BB8] focus:!border-[#0EA5E9] hover:!border-slate-500 dark:hover:!border-sky-400/70'
                       }`}
                     {...register('loginId', {
                       onChange: () => setServerError(''),
@@ -336,7 +336,7 @@ export default function Login() {
                     aria-invalid={!!errors.password}
                     className={`login-field pl-10 pr-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${errors.password
                       ? '!border-2 !border-red-500 focus:!border-red-500'
-                      : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
+                      : '!border-[1.5px] !border-slate-400 dark:!border-[#5B9BB8] focus:!border-[#0EA5E9] hover:!border-slate-500 dark:hover:!border-sky-400/70'
                       }`}
                     {...register('password', {
                       onChange: () => setServerError(''),
