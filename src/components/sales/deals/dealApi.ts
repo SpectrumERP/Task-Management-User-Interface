@@ -1,5 +1,6 @@
 import { apiService } from '@/services/apiService';
 import { DealFormValues, DealRecord, DealSearchFilters } from '@/types/deal';
+import { toUtcIso } from '@/lib/dateTime';
 
 export const DEAL_ENDPOINTS = {
   searchData: '/api/sales/deals/search-data',
@@ -14,11 +15,7 @@ export interface DealOption {
   label: string;
 }
 
-const toIsoDate = (date?: Date | string | null) => {
-  if (!date) return undefined;
-  if (typeof date === 'string') return date;
-  return date.toISOString();
-};
+const toIsoDate = (date?: Date | string | null) => toUtcIso(date) ?? undefined;
 
 const pickId = (item: any) => (
   item?.dealEntryNo ??

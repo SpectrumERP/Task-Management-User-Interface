@@ -14,7 +14,6 @@ import {
   Building2,
   Trash2,
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +27,7 @@ import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback
 import { exportMeetingReportToExcel } from '@/utils/exportToExcel';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { formatUtcScheduleLine, formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 import { cn } from '@/lib/utils';
 import {
@@ -62,13 +62,7 @@ function meetingStatusBadgeClass(statusName?: string | null) {
 }
 
 function formatScheduleLine(value?: string | null) {
-  if (!value) return { date: '—', time: '' };
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return { date: '—', time: '' };
-  return {
-    date: format(d, 'MMM dd, yyyy'),
-    time: format(d, 'h:mm a'),
-  };
+  return formatUtcScheduleLine(value);
 }
 
 export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
@@ -163,16 +157,12 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
       case 'companyName':
         return row.companyName ?? '';
       case 'meetingStartDateTime': {
-        const raw = row.meetingStartDateTime;
-        if (!raw) return '';
-        const t = new Date(raw).getTime();
-        return Number.isNaN(t) ? raw : t;
+        const t = toUtcMs(row.meetingStartDateTime);
+        return t ?? row.meetingStartDateTime ?? '';
       }
       case 'meetingEndDateTime': {
-        const raw = row.meetingEndDateTime;
-        if (!raw) return '';
-        const t = new Date(raw).getTime();
-        return Number.isNaN(t) ? raw : t;
+        const t = toUtcMs(row.meetingEndDateTime);
+        return t ?? row.meetingEndDateTime ?? '';
       }
       case 'docStatusName':
         return row.docStatusName || row.statusName || '';
@@ -465,7 +455,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                     </div>
                     {lastSent ? (
                       <p className="mt-1.5 text-[10px] text-slate-500">
-                        Minutes sent {format(new Date(lastSent), 'MMM dd, h:mm a')}
+                        Minutes sent {formatUtcDateTime(lastSent)}
                       </p>
                     ) : null}
                   </button>
@@ -611,7 +601,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                           />
                           {lastSent ? (
                             <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                              Sent {format(new Date(lastSent), 'MMM dd, h:mm a')}
+                              Sent {formatUtcDateTime(lastSent)}
                             </p>
                           ) : null}
                         </td>

@@ -368,6 +368,7 @@ export function PriorityForm({ id }: PriorityFormProps) {
                     }
                   }}
                   placeholder="Select default estimation unit"
+                  sortAlphabetically={false}
                   className={cn(
                     fieldClass,
                     errors.priorityFrequencyNo &&
@@ -549,6 +550,7 @@ export function PriorityForm({ id }: PriorityFormProps) {
                     }
                   }}
                   placeholder="e.g. Days / Weekly"
+                  sortAlphabetically={false}
                   className={cn(
                     fieldClass,
                     errors.reminderFrequencyNo &&

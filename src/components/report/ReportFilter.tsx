@@ -177,6 +177,7 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
                     .filter((s) => s.Status !== '[All]' && s.Status !== 'All')
                     .map((s) => ({ value: s.StatusNo.toString(), label: s.Status }))}
                   placeholder="Select Status"
+                  sortAlphabetically={false}
                   className={fieldClass}
                 />
               )}
@@ -199,6 +200,7 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
                       label: p.Priority,
                     }))}
                   placeholder="Select Priority"
+                  sortAlphabetically={false}
                   className={fieldClass}
                 />
               )}

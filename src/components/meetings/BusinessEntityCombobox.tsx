@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { apiService } from "@/services/apiService"
+import { sortByLabel } from "@/lib/sortOptions"
 
 export interface BusinessEntityContactResponse {
   businessEntityContactPersonDetailNo: number;
@@ -229,7 +230,10 @@ export function BusinessEntityCombobox({
             )}
             {!isLoading && (
               <CommandGroup>
-                {options.map((contact) => (
+                {sortByLabel(options, {
+                  getLabel: (c) => c.contactPersonName || '',
+                  getValue: (c) => String(c.businessEntityContactPersonDetailNo),
+                }).map((contact) => (
                   <CommandItem
                     key={contact.businessEntityContactPersonDetailNo}
                     value={`${contact.contactPersonName} ${contact.designation} ${contact.department} ${contact.email}`}

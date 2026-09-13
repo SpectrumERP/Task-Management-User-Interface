@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/popover"
 
 import { getContrastColor } from "@/lib/colorUtils"
+import { sortByLabel } from "@/lib/sortOptions"
 
 interface ComboboxProps {
   options: { label: string; value: string; colorCoding?: string; description?: string }[]
@@ -35,6 +36,15 @@ interface ComboboxProps {
   modal?: boolean
   onSearchChange?: (search: string) => void
   shouldFilter?: boolean
+  /**
+   * Sort options A–Z by label (default true).
+   * Set false for workflow, rank, frequency, chronology, or fixed UX order.
+   */
+  sortAlphabetically?: boolean
+  /** Option values kept at the top before A–Z sort (e.g. "none"). */
+  pinValues?: string[]
+  /** Extra classes for the dropdown panel (e.g. min-w for long labels). */
+  contentClassName?: string
 }
 
 export function Combobox({
@@ -52,6 +62,9 @@ export function Combobox({
   modal = false,
   onSearchChange,
   shouldFilter = true,
+  sortAlphabetically = true,
+  pinValues,
+  contentClassName,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -71,14 +84,8 @@ export function Combobox({
   const selectedOption = options.find((option) => option.value === value)
 
   const sortedOptions = React.useMemo(
-    () =>
-      [...options].sort((a, b) =>
-        String(a.label || '').localeCompare(String(b.label || ''), undefined, {
-          sensitivity: 'base',
-          numeric: true,
-        })
-      ),
-    [options]
+    () => sortByLabel(options, { enabled: sortAlphabetically, pinValues }),
+    [options, sortAlphabetically, pinValues]
   )
 
   const trigger = (
@@ -133,7 +140,10 @@ export function Combobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal container={container || document.body}>
       <PopoverPrimitive.Content 
-          className="z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
+          className={cn(
+            "z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            contentClassName
+          )}
           align="start"
         >
         <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={shouldFilter}>

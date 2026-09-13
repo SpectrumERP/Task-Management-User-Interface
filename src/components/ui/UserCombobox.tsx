@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/popover"
 import { userService, UserResponse } from "@/services/userService"
 import { useAuthStore } from "@/store/useAuthStore"
+import { sortByLabel } from "@/lib/sortOptions"
 
 interface UserComboboxProps {
   value: string | undefined
@@ -288,13 +289,10 @@ export function UserCombobox({
               )}
               {!isLoading && (
                 <CommandGroup>
-                  {[...options]
-                    .sort((a, b) => {
-                      const al = (a.printingName || a.loginId || '').toLowerCase()
-                      const bl = (b.printingName || b.loginId || '').toLowerCase()
-                      return al.localeCompare(bl, undefined, { sensitivity: 'base', numeric: true })
-                    })
-                    .map((user) => {
+                  {sortByLabel(options, {
+                    getLabel: (u) => u.printingName || u.loginId || '',
+                    getValue: (u) => String(u.loginNo),
+                  }).map((user) => {
                     const isSelected = value === user.loginNo.toString()
                     return (
                       <CommandItem

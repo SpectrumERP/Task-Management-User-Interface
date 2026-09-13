@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
 import { useTaskStore } from '@/store/useTaskStore';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+import { sortByLabel } from '@/lib/sortOptions';
 
 interface MeetingReportFilterValues {
   meetingDateRange?: { from: Date | undefined; to: Date | undefined };
@@ -252,8 +253,13 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
                     <SelectValue placeholder="Select Mode" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(fillValues?.data?.meetingModes || fillValues?.meetingModes || []).map(
-                      (m: any) => (
+                    {sortByLabel(
+                      fillValues?.data?.meetingModes || fillValues?.meetingModes || [],
+                      {
+                        getLabel: (m: any) => m.meetingModeName || '',
+                        getValue: (m: any) => String(m.meetingModeNo),
+                      }
+                    ).map((m: any) => (
                         <SelectItem key={m.meetingModeNo} value={m.meetingModeNo.toString()}>
                           {m.meetingModeName}
                         </SelectItem>

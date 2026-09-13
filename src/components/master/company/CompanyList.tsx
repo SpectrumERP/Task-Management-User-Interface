@@ -13,6 +13,7 @@ import {
   Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText, Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatUtcDateTime } from '@/lib/dateTime';
 import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
 import { MasterListHeader } from '../shared/MasterListHeader';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
@@ -24,7 +25,7 @@ import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const FORM_NO = 1550;
-const TITLE = 'Business Entity Master';
+const TITLE = 'Business Entity';
 type CompanyViewMode = 'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment';
 
 /** Trim + lowercase. Empty / whitespace-only → no active search. */
@@ -1042,7 +1043,7 @@ export function CompanyList() {
                                   </div>
                                 </span>
                                 <span className="text-[8px] text-slate-400 font-semibold shrink-0">
-                                  {company.createdDate ? new Date(company.createdDate).toLocaleDateString() : ''}
+                                  {company.createdDate ? formatUtcDateTime(company.createdDate) : ''}
                                 </span>
                               </div>
                             </Card>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { apiService } from '@/services/apiService';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,11 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Building, Camera as CameraIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+import {
+  buildTimeZoneComboboxOptions,
+  formatTimeZoneDisplay,
+  type TimeZoneOptionLike,
+} from '@/lib/windowsTimeZones';
 import { CompanyFormSection } from './CompanyFormSection';
 
 const fieldClass = FIELD_CONTROL_CLASS;
@@ -15,10 +20,7 @@ type BusinessEntityTypeOption = {
   operCRMBusinessEntityTypeNo?: string | number;
 };
 
-type TimeZoneOption = {
-  crmTimeZoneName?: string;
-  crmTimeZoneNo?: string | number;
-};
+type TimeZoneOption = TimeZoneOptionLike;
 
 type BeSuggestion = {
   businessEntityName?: string;
@@ -94,6 +96,9 @@ interface CompanyHeaderFieldsProps {
   setCompanyType: (v: string) => void;
   companyTimeZoneNo: string;
   setCompanyTimeZoneNo: (v: string) => void;
+  /** Loaded timezone id/name for edit mode until fill-values resolve. */
+  selectedTimeZoneName?: string;
+  setSelectedTimeZoneName?: (v: string) => void;
   creditLimit: number | null;
   setCreditLimit: (v: number | null) => void;
   creditInsuranceCompanyName: string;
@@ -118,6 +123,8 @@ export function CompanyHeaderFields({
   setCompanyType,
   companyTimeZoneNo,
   setCompanyTimeZoneNo,
+  selectedTimeZoneName,
+  setSelectedTimeZoneName,
   creditLimit,
   setCreditLimit,
   creditInsuranceCompanyName,
@@ -137,6 +144,24 @@ export function CompanyHeaderFields({
 
   const canSearchSuggestions = name.trim().length >= 2;
   const visibleSuggestions = canSearchSuggestions ? beSuggestions : [];
+
+  const timeZoneOptions = useMemo(() => {
+    const opts = buildTimeZoneComboboxOptions(timeZones);
+    if (
+      companyTimeZoneNo &&
+      !opts.some((o) => o.value === companyTimeZoneNo) &&
+      selectedTimeZoneName
+    ) {
+      return [
+        ...opts,
+        {
+          value: companyTimeZoneNo,
+          label: formatTimeZoneDisplay(selectedTimeZoneName),
+        },
+      ];
+    }
+    return opts;
+  }, [timeZones, companyTimeZoneNo, selectedTimeZoneName]);
 
   useEffect(() => {
     if (!canSearchSuggestions) {
@@ -318,14 +343,18 @@ export function CompanyHeaderFields({
         <div className="space-y-1.5 min-w-0">
           <FieldLabel>Timezone</FieldLabel>
           <Combobox
-            options={timeZones.map((tz) => ({
-              label: tz.crmTimeZoneName || '',
-              value: String(tz.crmTimeZoneNo ?? ''),
-            }))}
+            options={timeZoneOptions}
             value={companyTimeZoneNo}
-            onChange={(val) => setCompanyTimeZoneNo(val)}
+            onChange={(val) => {
+              setCompanyTimeZoneNo(val);
+              const opt = timeZoneOptions.find((o) => o.value === val);
+              setSelectedTimeZoneName?.(opt?.label || '');
+            }}
             placeholder="Select timezone"
-            className={cn(fieldClass, 'px-3')}
+            searchPlaceholder="Search timezone..."
+            sortAlphabetically={false}
+            className={cn(fieldClass, 'px-3 min-w-0')}
+            contentClassName="min-w-[min(100vw-2rem,28rem)] w-[var(--radix-popover-trigger-width)]"
           />
         </div>
 

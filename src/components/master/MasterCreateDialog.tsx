@@ -671,6 +671,7 @@ export function MasterCreateDialog({
                   value={priorityFrequencyNo}
                   onChange={setPriorityFrequencyNo}
                   placeholder="Select frequency..."
+                  sortAlphabetically={false}
                   className="h-10 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
               </div>

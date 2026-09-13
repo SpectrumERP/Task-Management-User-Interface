@@ -7,7 +7,7 @@ import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
-import { format } from 'date-fns';
+import { formatDateOnly, formatUtcDateTime, toDateOnlyLocal, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import {
   MessageSquare,
   Clock,
@@ -45,7 +45,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
   const [showEffortForm, setShowEffortForm] = useState(false);
   const [effortHours, setEffortHours] = useState('');
   const [effortDesc, setEffortDesc] = useState('');
-  const [effortDate, setEffortDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [effortDate, setEffortDate] = useState(toDateOnlyLocal(new Date()) || '');
   const [isSubmittingEffort, setIsSubmittingEffort] = useState(false);
 
   const handlePostComment = async (e?: React.FormEvent | React.MouseEvent) => {
@@ -93,7 +93,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
       setIsSubmittingEffort(true);
       const payload = {
         operTaskNo: taskNo,
-        effortDate: new Date(effortDate).toISOString(),
+        effortDate: toUtcIso(effortDate),
         effortHours: hours,
         effortDescription: effortDesc.trim(),
         loginNo: loginNo,
@@ -161,7 +161,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                 <div className="relative">
                   <DateTimePicker
                     date={effortDate ? new Date(effortDate) : undefined}
-                    onChange={(date) => setEffortDate(date ? date.toISOString() : '')}
+                    onChange={(date) => setEffortDate(toUtcIsoOrEmpty(date))}
                     hideTime={true}
                     className="h-8 text-[11px] font-medium rounded-lg border-[var(--tm-border)] text-slate-50 w-full"
                   />
@@ -247,7 +247,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                     {e.description}
                   </p>
                   <span className="text-[9px] font-medium text-slate-500 block mt-1">
-                    {e.date ? format(new Date(e.date), 'MMM dd, yyyy') : 'Recent'}
+                    {e.date ? formatDateOnly(e.date) : 'Recent'}
                   </span>
                 </div>
               </div>
@@ -320,7 +320,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                       className="text-[11px] font-semibold text-slate-100"
                     />
                     <span className="text-[9px] font-medium text-slate-500 shrink-0">
-                      {c.timestamp ? format(new Date(c.timestamp), 'MMM dd · h:mm a') : 'Now'}
+                      {c.timestamp ? formatUtcDateTime(c.timestamp) : 'Now'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed font-medium whitespace-pre-line">

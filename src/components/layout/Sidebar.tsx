@@ -129,7 +129,6 @@ function SectionFlyoutMenu({
 export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, onToggleCollapse, hideBrand = false, className }: SidebarProps) {
   const accessibleForms = useAuthStore(state => state.accessibleForms);
   const user = useAuthStore(state => state.user);
-  const fetchAccessibleForms = useAuthStore(state => state.fetchAccessibleForms);
 
   const userTypeValue = Number(user?.UserType ?? user?.userType ?? user?.role);
   const roleLabel =
@@ -158,11 +157,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
     .filter(Boolean)
     .join(' · ');
 
-  useEffect(() => {
-    if (accessibleForms === null) {
-      fetchAccessibleForms();
-    }
-  }, [accessibleForms, fetchAccessibleForms]);
+  // Menu rights are loaded once by MainLayout — avoid a second task-management-menu call here.
 
   const filteredNavItems = accessibleForms ? navItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
   const filteredMasterItems = accessibleForms ? masterItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];

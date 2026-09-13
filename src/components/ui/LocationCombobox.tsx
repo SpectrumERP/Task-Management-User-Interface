@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { locationService, LocationResponse, formatLocationDisplayLabel } from "@/services/locationService"
+import { sortByLabel } from "@/lib/sortOptions"
 
 interface LocationComboboxProps {
   value: string | undefined
@@ -227,7 +228,10 @@ export function LocationCombobox({
               )}
               {!isLoading && options.length > 0 && (
                 <CommandGroup className="overflow-visible p-1">
-                  {options.map((location) => {
+                  {sortByLabel(options, {
+                    getLabel: (loc) => formatLocationDisplayLabel(loc) || loc.operLocationName || '',
+                    getValue: (loc) => String(loc.operLocationNo),
+                  }).map((location) => {
                     const isSelected = value === location.operLocationNo.toString()
                     const cityState = [location.cityName, location.stateName]
                       .filter(Boolean)

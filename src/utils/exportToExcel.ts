@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { formatDateOnly, formatUtcDateTime } from '@/lib/dateTime';
 
 export const exportReportToExcel = (data: any[], groupedByUser: boolean, filename: string = 'Task_Report.xlsx') => {
   const wb = XLSX.utils.book_new();
@@ -19,13 +20,12 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
-    try {
-      const d = new Date(dateString);
-      if (isNaN(d.getTime())) return dateString;
-      return `${d.getDate().toString().padStart(2, '0')}-${d.toLocaleString('default', { month: 'short' })}-${d.getFullYear()}`;
-    } catch {
-      return dateString;
-    }
+    return formatDateOnly(dateString, '-');
+  };
+
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return '-';
+    return formatUtcDateTime(dateString, '-');
   };
 
   const activeCols: { key: string; label: string; getVal: (t: any) => any }[] = [];
@@ -40,7 +40,7 @@ export const exportReportToExcel = (data: any[], groupedByUser: boolean, filenam
   if (visibleSet.has('completionDate')) activeCols.push({ key: 'completionDate', label: 'Completion Date', getVal: t => formatDate(t.completionDate) });
   if (visibleSet.has('folder')) activeCols.push({ key: 'folder', label: 'Folder', getVal: t => t.folderName || t.folder?.folderName || '' });
   if (visibleSet.has('createdBy')) activeCols.push({ key: 'createdBy', label: 'Created By', getVal: t => t.createdByDisplayName || t.createdBy?.displayName || t.createdBy?.printingName || '' });
-  if (visibleSet.has('createdDate')) activeCols.push({ key: 'createdDate', label: 'Created Date', getVal: t => formatDate(t.createdDate) });
+  if (visibleSet.has('createdDate')) activeCols.push({ key: 'createdDate', label: 'Created Date', getVal: t => formatDateTime(t.createdDate) });
   if (visibleSet.has('owner') && !groupedByUser) activeCols.push({ key: 'owner', label: 'Assign To', getVal: t => t.assignedDisplayName || t.assignedTo?.displayName || t.ownerLoginNo || 'Unassigned' });
   if (visibleSet.has('originator')) activeCols.push({ key: 'originator', label: 'Assign By', getVal: t => t.originatorDisplayName || t.originator?.displayName || t.originatorLoginNo || '' });
   if (visibleSet.has('companyName')) activeCols.push({ key: 'companyName', label: 'Company', getVal: t => t.companyName || t.taskCompany?.taskCompanyAlias || t.taskCompany?.companyName || '' });
@@ -111,13 +111,7 @@ export const exportMeetingReportToExcel = (data: any[], filename: string = 'Meet
 
   const formatDateTime = (dateString: string) => {
     if (!dateString) return '-';
-    try {
-      const d = new Date(dateString);
-      if (isNaN(d.getTime())) return dateString;
-      return `${d.getDate().toString().padStart(2, '0')}-${d.toLocaleString('default', { month: 'short' })}-${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-    } catch {
-      return dateString;
-    }
+    return formatUtcDateTime(dateString, '-');
   };
 
   const mapMeetingToRow = (meeting: any, idx: number) => [

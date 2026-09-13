@@ -11,9 +11,10 @@ import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 import { BusinessEntityTypeMaster } from '@/store/useMasterStore';
+import { pickDescription } from '@/lib/pickDescription';
 
 const FORM_NO = 1564;
-const TITLE = 'Business Entity Type Master';
+const TITLE = 'Business Entity Type';
 
 export function BusinessEntityTypeList() {
   const navigate = useNavigate();
@@ -38,14 +39,39 @@ export function BusinessEntityTypeList() {
       const response = await apiService.get<any>(`/api/master/business-entity-types/search-data?companyNo=${companyNo}`);
       if (response) {
         const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
-        const mapped = rawItems.map((b: any) => ({
+        let mapped: BusinessEntityTypeMaster[] = rawItems.map((b: any) => ({
           id: (b.operCRMBusinessEntityTypeNo ?? b.OperCRMBusinessEntityTypeNo ?? b.id ?? '').toString(),
           code: b.code || b.Code || '',
           name: b.operCRMBusinessEntityTypeName || b.OperCRMBusinessEntityTypeName || b.name || '',
-          description: b.description || b.Description || '',
+          description: pickDescription(b),
           createdBy: b.createdBy?.printingName || b.createdBy?.displayName || b.createdBy?.loginId || b.createdByName || (typeof b.createdBy === 'string' || typeof b.createdBy === 'number' ? b.createdBy : '') || 'System',
           createdDate: b.createdDate || b.createdDateTime || b.createdOn || ''
         }));
+
+        // search-data may omit description or return empty — hydrate from load-data when blank
+        const needsHydrate = mapped.filter((item) => item.id && !item.description);
+        if (needsHydrate.length > 0) {
+          const hydrated = await Promise.all(
+            needsHydrate.map(async (item) => {
+              try {
+                const detail = await apiService.get<any>(
+                  `/api/master/business-entity-types/load-data/${item.id}?companyNo=${companyNo}`
+                );
+                const body = detail?.data || detail;
+                const dl = body?.data || body;
+                return { id: item.id, description: pickDescription(dl) };
+              } catch {
+                return { id: item.id, description: '' };
+              }
+            })
+          );
+          const byId = new Map(hydrated.map((h) => [h.id, h.description]));
+          mapped = mapped.map((item) => {
+            const next = byId.get(item.id);
+            return next ? { ...item, description: next } : item;
+          });
+        }
+
         setApiBusinessEntityTypes(mapped);
       }
     } catch (error) {
@@ -103,6 +129,7 @@ export function BusinessEntityTypeList() {
           columns={[
             {
               header: 'Description',
+              sortKey: 'description',
               render: (item) => item.description || <span className="italic text-slate-300 font-medium">No description</span>,
             },
           ]}
@@ -113,8 +140,8 @@ export function BusinessEntityTypeList() {
           canUpdate={isUpdate}
           canDelete={isDelete}
           isLoading={isLoading}
-        loadError={loadError}
-        onRetryLoad={fetchBusinessEntityTypes}
+          loadError={loadError}
+          onRetryLoad={fetchBusinessEntityTypes}
           emptyIcon={Building2}
         />
         {!isLoading && filteredList.length > 0 && (
@@ -136,7 +163,7 @@ export function BusinessEntityTypeList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+      />
     </div>
   );
 }

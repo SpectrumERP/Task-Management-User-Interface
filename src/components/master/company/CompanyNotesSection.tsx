@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import { DatePicker } from '../../ui/DatePicker';
 import { StickyNote, Plus, Trash2, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatDateOnly, toDateOnlyLocal } from '@/lib/dateTime';
 import { CONTROL_BORDER, CONTROL_RADIUS, FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { CompanyFormSection } from './CompanyFormSection';
 
@@ -17,17 +18,9 @@ interface CompanyNotesSectionProps {
   onChange: (value: FollowUpNote[]) => void;
 }
 
-const toIso = (d: Date) => {
-  const offset = d.getTimezoneOffset();
-  return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
-};
+const toIso = (d: Date) => toDateOnlyLocal(d) ?? '';
 
-const formatDate = (iso: string) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-};
+const formatDate = (iso: string) => formatDateOnly(iso, '');
 
 export function CompanyNotesSection({ notes, onChange }: CompanyNotesSectionProps) {
   const [draftDate, setDraftDate] = useState<Date | undefined>(undefined);

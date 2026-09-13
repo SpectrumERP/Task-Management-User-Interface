@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { formatDateOnly } from '@/lib/dateTime';
 import { AlertCircle, ChevronRight, Edit, FileText, Loader2, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Button } from '@/components/ui/button';
@@ -312,7 +312,7 @@ export function DealSearchPage() {
                     </td>
                     <td className="px-4 py-3 text-xs font-semibold text-slate-300 max-w-[8rem] min-w-0 overflow-hidden">
                       <TruncatedText
-                        text={deal.documentDate ? format(new Date(deal.documentDate), 'MMM dd, yyyy') : 'N/A'}
+                        text={deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
                         className="text-xs font-semibold text-slate-300"
                       />
                     </td>

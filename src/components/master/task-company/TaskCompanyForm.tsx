@@ -9,6 +9,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+import { toUtcIso } from '@/lib/dateTime';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterCreateDialog } from '../MasterCreateDialog';
 import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
@@ -192,7 +193,7 @@ export function TaskCompanyForm({ id }: TaskCompanyFormProps) {
         stateNo: parseInt(tcStateNo) || null,
         countryNo: parseInt(tcCountryNo) || null,
         pinCode: tcPinCode,
-        incorporationDate: tcIncorporationDate ? tcIncorporationDate.toISOString() : null,
+        incorporationDate: tcIncorporationDate ? toUtcIso(tcIncorporationDate) : null,
       };
       await apiService.post('/api/crm/task-companies/save', payload);
       setShowSuccessAlert(true);

@@ -11,6 +11,7 @@ import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 import { FolderMaster } from '@/store/useMasterStore';
+import { pickDescription } from '@/lib/pickDescription';
 
 const FORM_NO = 1542;
 const TITLE = 'Folder Master';
@@ -38,16 +39,40 @@ export function FolderList() {
       const response = await apiService.get<any>(`/api/master/task-folders/search-data?companyNo=${companyNo}`);
       if (response) {
         const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
-        const mapped = rawItems.map((f: any) => ({
+        let mapped: FolderMaster[] = rawItems.map((f: any) => ({
           id: (f.taskFolderNo ?? '').toString(),
           code: f.code || f.taskFolderNo,
           name: f.taskFolderName || '',
-          description: f.description || '',
+          description: pickDescription(f),
           parentFolderNo: (f.parentFolderNo ?? '').toString(),
           sequence: f.sequenceNo || f.sequence || '',
           createdBy: f.createdBy?.printingName || f.createdBy?.displayName || f.createdBy?.loginId || f.createdByName || (typeof f.createdBy === 'string' || typeof f.createdBy === 'number' ? f.createdBy : '') || 'System',
           createdDate: f.createdDate || f.createdDateTime || f.createdOn || ''
         }));
+
+        const needsHydrate = mapped.filter((item) => item.id && !item.description);
+        if (needsHydrate.length > 0) {
+          const hydrated = await Promise.all(
+            needsHydrate.map(async (item) => {
+              try {
+                const detail = await apiService.get<any>(
+                  `/api/master/task-folders/load-data/${item.id}?companyNo=${companyNo}`
+                );
+                const body = detail?.data || detail;
+                const dl = body?.data || body;
+                return { id: item.id, description: pickDescription(dl) };
+              } catch {
+                return { id: item.id, description: '' };
+              }
+            })
+          );
+          const byId = new Map(hydrated.map((h) => [h.id, h.description]));
+          mapped = mapped.map((item) => {
+            const next = byId.get(item.id);
+            return next ? { ...item, description: next } : item;
+          });
+        }
+
         setApiFolders(mapped);
       }
     } catch (error) {
@@ -103,8 +128,16 @@ export function FolderList() {
           rows={paginatedList}
           nameHeader="Folder Name"
           columns={[
-            { header: 'Sequence', render: (item) => item.sequence },
-            { header: 'Parent Folder', render: (item) => item.parentFolderNo || 'Root' },
+            { header: 'Sequence', sortKey: 'sequence', render: (item) => item.sequence },
+            {
+              header: 'Description',
+              sortKey: 'description',
+              render: (item) =>
+                item.description || (
+                  <span className="italic text-slate-300 font-medium">No description</span>
+                ),
+            },
+            { header: 'Parent Folder', sortKey: 'parentFolderNo', render: (item) => item.parentFolderNo || 'Root' },
           ]}
           getCode={(item) => item.code || `SYS-${item.id}`}
           getName={(item) => <span>{item.name}</span>}

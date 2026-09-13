@@ -4,9 +4,9 @@ import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { ClipboardList, Settings2, Edit2, Eye, Search, Plus, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { formatDateOnly, formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useSettings } from '@/hooks/useSettings';
@@ -198,8 +198,8 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   const toSortTime = (raw: unknown) => {
     if (raw == null || raw === '') return '';
     if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
-    const t = new Date(String(raw)).getTime();
-    return Number.isNaN(t) ? String(raw) : t;
+    const t = toUtcMs(raw as string | number | Date);
+    return t ?? String(raw);
   };
 
   const getTaskSortValue = useCallback((task: Task, key: string) => {
@@ -391,7 +391,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           <TruncatedText text={task.title || ''} className="text-sm font-semibold text-slate-100 leading-snug" />
           <div className="mt-1 min-w-0">
             <TruncatedText
-              text={`${task.assignedDisplayName || 'Unassigned'}${task.end_date ? ` · Due ${format(new Date(task.end_date), 'MMM dd')}` : ''}`}
+              text={`${task.assignedDisplayName || 'Unassigned'}${task.end_date ? ` · Due ${formatDateOnly(task.end_date, '')}` : ''}`}
               className="text-[11px] text-slate-400"
             />
           </div>
@@ -575,7 +575,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('dueDate') && (
         <td className={cellOverflowClass}>
           <TruncatedText
-            text={task.end_date ? format(new Date(task.end_date), 'MMM dd, yyyy') : '-'}
+            text={task.end_date ? formatDateOnly(task.end_date) : '-'}
             className="text-xs font-medium text-slate-200"
           />
         </td>
@@ -585,7 +585,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('completionDate') && (
         <td className={cellOverflowClass}>
           <TruncatedText
-            text={task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}
+            text={task.completionDate ? formatDateOnly(task.completionDate) : '-'}
             className="text-xs font-medium text-slate-200"
           />
         </td>
@@ -671,9 +671,9 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           <TruncatedText
             text={
               task.createdDate
-                ? format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')
+                ? formatUtcDateTime(task.createdDate)
                 : task.start_date
-                  ? format(new Date(task.start_date), 'MMM dd, yyyy h:mm a')
+                  ? formatUtcDateTime(task.start_date)
                   : '-'
             }
             className="text-xs font-medium text-slate-200"

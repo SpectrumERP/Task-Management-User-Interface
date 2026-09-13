@@ -728,6 +728,34 @@ html:not(.dark) .tm-sidebar-tip-arrow {
   text-overflow: ellipsis;
 }
 
+/* Icon-only actions — never show "..." clipping */
+.tm-data-table > tbody > tr > td.tm-col-actions {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+/* Sticky Code (left) + Actions (right) — keep opaque row bg while scrolling */
+.tm-data-table > thead > tr > th.tm-col-sticky-code,
+.tm-data-table > thead > tr > th.tm-col-actions {
+  background-color: var(--tm-elevated);
+}
+
+.tm-data-table > tbody > tr:nth-child(odd) > td.tm-col-sticky-code,
+.tm-data-table > tbody > tr:nth-child(odd) > td.tm-col-actions {
+  background-color: var(--tm-row-odd);
+}
+
+.tm-data-table > tbody > tr:nth-child(even) > td.tm-col-sticky-code,
+.tm-data-table > tbody > tr:nth-child(even) > td.tm-col-actions {
+  background-color: var(--tm-row-even);
+}
+
+.tm-data-table > tbody > tr:hover > td.tm-col-sticky-code,
+.tm-data-table > tbody > tr:hover > td.tm-col-actions {
+  background-color: var(--tm-row-hover);
+}
+
 .tm-data-table > tbody > tr:nth-child(odd) > td {
   background-color: var(--tm-row-odd);
 }

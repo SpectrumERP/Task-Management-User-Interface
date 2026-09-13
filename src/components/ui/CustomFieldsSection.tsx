@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Plus, Trash2, Loader2, Check, ChevronsUpDown, X, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { sortByLabel } from '@/lib/sortOptions';
 
 // -------------------------------------------------------------
 // Helper AutoComplete Async Selector Component (fieldTypeNo: 8)
@@ -225,7 +226,10 @@ export function AsyncAutoCompleteList({
                         <div className="w-3 shrink-0" />
                       </div>
                     )}
-                    {options.map((opt, i) => {
+                    {sortByLabel(options, {
+                      getLabel: (opt) => getOptionLabel(opt),
+                      getValue: (opt) => String(getOptionValue(opt) ?? ''),
+                    }).map((opt, i) => {
                       const optLabel = getOptionLabel(opt);
                       const optValue = getOptionValue(opt);
                       const itemCols = getDynamicCols(opt);
@@ -314,17 +318,19 @@ export function CustomFieldsSection({
 }: CustomFieldsSectionProps) {
   const [internalFillValues, setInternalFillValues] = useState<any>(null);
 
-  // If no fill values prop is passed, fetch them asynchronously internally
+  // Parent owns data when prop is passed (even null while loading) — do not double-fetch.
+  // Self-fetch only when the prop is omitted (e.g. TaskForm).
   useEffect(() => {
-    if (categoryFillValuesProp) {
+    if (categoryFillValuesProp !== undefined) {
       setInternalFillValues(categoryFillValuesProp);
       return;
     }
 
+    let cancelled = false;
     const fetchFillValues = async () => {
       try {
         const response = await apiService.get<any>(`/api/master/task-categories/fill-values?companyNo=${companyNo}`);
-        if (response) {
+        if (!cancelled && response) {
           setInternalFillValues(response.data || response);
         }
       } catch (err) {
@@ -332,10 +338,12 @@ export function CustomFieldsSection({
       }
     };
     fetchFillValues();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryFillValuesProp]);
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryFillValuesProp, companyNo]);
 
-  const fillValues = categoryFillValuesProp || internalFillValues;
+  const fillValues = categoryFillValuesProp ?? internalFillValues;
 
   const addField = () => {
     onChange([...customFields, { customFieldNo: '', fieldValue: '' }]);
@@ -397,6 +405,7 @@ export function CustomFieldsSection({
       case 4: // Yes/No dropdown
         return (
           <Combobox options={[{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }]} value={cf.fieldValue} onChange={(val) => updateField(index, 'fieldValue', val)}
+            sortAlphabetically={false}
             placeholder="Select..."
             className={baseClasses}
           />

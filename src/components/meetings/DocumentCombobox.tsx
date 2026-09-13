@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { apiService } from "@/services/apiService"
+import { sortByLabel } from "@/lib/sortOptions"
 
 interface DocumentComboboxProps {
   value: string | undefined
@@ -212,7 +213,10 @@ export function DocumentCombobox({
             )}
             {!isLoading && (
               <CommandGroup>
-                {options.map((doc, idx) => (
+                {sortByLabel(options, {
+                  getLabel: (doc) => getLabel(doc),
+                  getValue: (doc) => String(getId(doc) ?? ''),
+                }).map((doc, idx) => (
                   <CommandItem
                     key={getId(doc) || idx}
                     value={getId(doc)?.toString()}

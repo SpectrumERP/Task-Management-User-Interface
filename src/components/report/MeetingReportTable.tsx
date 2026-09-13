@@ -8,11 +8,11 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { format } from 'date-fns';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
+import { formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 
 interface MeetingReportTableProps {
   data: any[];
@@ -57,9 +57,9 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
       case 'location': return row.locationName || row.location?.locationName || '';
       case 'mode': return row.mode || row.meetingMode?.meetingModeName || '';
       case 'startDateTime':
-        return row.meetingStartDateTime || row.startDateTime || row.startDate || '';
+        return toUtcMs(row.meetingStartDateTime || row.startDateTime || row.startDate) ?? '';
       case 'endDateTime':
-        return row.meetingEndDateTime || row.endDateTime || row.endDate || '';
+        return toUtcMs(row.meetingEndDateTime || row.endDateTime || row.endDate) ?? '';
       case 'participants':
         return Array.isArray(row.participants)
           ? row.participants
@@ -91,7 +91,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
   const { sortCol, sortDesc, handleSort, sortedRows } = useTableSort(
     data,
     getMeetingReportSortValue,
-    { defaultKey: 'meetingTitle', defaultDesc: false }
+    { defaultKey: 'startDateTime', defaultDesc: true }
   );
 
   const totalItems = sortedRows.length;
@@ -141,11 +141,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
-    try {
-      return format(new Date(dateString), 'dd-MMM-yyyy HH:mm');
-    } catch {
-      return dateString;
-    }
+    return formatUtcDateTime(dateString, '-');
   };
 
   return (

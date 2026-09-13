@@ -18,6 +18,8 @@ import { DocumentCombobox } from '@/components/meetings/DocumentCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { cn } from '@/lib/utils';
+import { sortByLabel } from '@/lib/sortOptions';
+import { formatUtcDateTime, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { apiService } from '@/services/apiService';
@@ -674,7 +676,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         <div className="shrink-0 px-4 py-1.5 border-b border-[var(--tm-border)]/50 bg-[var(--tm-elevated)]/40 text-[10px] text-slate-500">
           Last minutes sent:{' '}
           <span className="font-semibold text-slate-300">
-            {new Date(lastMinutesSentAt).toLocaleString()}
+            {formatUtcDateTime(lastMinutesSentAt)}
           </span>
           {recipientEmailCount > 0 ? (
             <span className="text-slate-500"> · {recipientEmailCount} email-ready attendee{recipientEmailCount === 1 ? '' : 's'}</span>
@@ -827,7 +829,10 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                           <Select value={field.value} onValueChange={field.onChange}>
                             <SelectTrigger className={cn("h-10 rounded-[8px]", form.formState.errors.meetingModeNo && "border-red-400")}><SelectValue placeholder="Select Mode" /></SelectTrigger>
                             <SelectContent>
-                              {meetingModes.map(m => (
+                              {sortByLabel(meetingModes, {
+                                getLabel: (m) => m.meetingModeName || '',
+                                getValue: (m) => String(m.meetingModeNo),
+                              }).map(m => (
                                 <SelectItem key={m.meetingModeNo} value={m.meetingModeNo.toString()}>{m.meetingModeName}</SelectItem>
                               ))}
                             </SelectContent>
@@ -844,7 +849,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       name="meetingStartDateTime"
                       render={({ field }) => (
                         <FieldControl error={form.formState.errors.meetingStartDateTime?.message}>
-                          <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                          <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))} />
                         </FieldControl>
                       )}
                     />
@@ -857,7 +862,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       name="meetingEndDateTime"
                       render={({ field }) => (
                         <FieldControl error={form.formState.errors.meetingEndDateTime?.message}>
-                          <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                          <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))} />
                         </FieldControl>
                       )}
                     />
@@ -966,7 +971,10 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                       <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {participantTypes.map(pt => (
+                                      {sortByLabel(participantTypes, {
+                                        getLabel: (pt) => pt.participantType || '',
+                                        getValue: (pt) => String(pt.id),
+                                      }).map(pt => (
                                         <SelectItem key={pt.id} value={pt.id.toString()}>{pt.participantType}</SelectItem>
                                       ))}
                                     </SelectContent>
@@ -1371,6 +1379,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                             options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
                                             value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
                                             onChange={(val) => field.onChange(toOptionalInt(val))}
+                                            sortAlphabetically={false}
                                           />
                                         )}
                                       />
@@ -1436,7 +1445,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                               form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400"
                                             )}
                                             date={field.value ? new Date(field.value) : undefined}
-                                            onChange={(d) => field.onChange(d ? d.toISOString() : '')}
+                                            onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
                                             placeholder="Pick a date and time"
                                           />
                                         )}
@@ -1593,7 +1602,10 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                             >
                                               Select document name
                                             </SelectItem>
-                                            {meetingDocumentTypes.map((d) => (
+                                            {sortByLabel(meetingDocumentTypes, {
+                                              getLabel: (d) => d.documentName || '',
+                                              getValue: (d) => String(d.documentTypeNo),
+                                            }).map((d) => (
                                               <SelectItem
                                                 key={d.documentTypeNo}
                                                 value={d.documentTypeNo.toString()}
@@ -2130,7 +2142,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
           statusName={currentStatusName}
           statusAllowed={canSendMinutesStatus}
           recipients={minutesRecipients}
-          onSent={() => setLastMinutesSentAt(new Date().toISOString())}
+          onSent={() => setLastMinutesSentAt(toUtcIso(new Date()) || new Date().toISOString())}
         />
       ) : null}
     </div>

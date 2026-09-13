@@ -1,5 +1,6 @@
 import { apiService } from '@/services/apiService';
 import { toast } from 'sonner';
+import { formatUtcDateTime, toUtcIso } from '@/lib/dateTime';
 
 export type MeetingParticipantLike = {
   participantType?: number | string | null;
@@ -128,9 +129,9 @@ export function formatMinutesEmailSubject(meetingTitle?: string, startDateTime?:
   const title = String(meetingTitle || 'Meeting').trim() || 'Meeting';
   let dateBit = '';
   if (startDateTime) {
-    const d = new Date(startDateTime);
-    if (!Number.isNaN(d.getTime())) {
-      dateBit = ` — ${d.toLocaleDateString()}`;
+    const formatted = formatUtcDateTime(startDateTime, '');
+    if (formatted) {
+      dateBit = ` — ${formatted}`;
     }
   }
   return `Minutes of Meeting: ${title}${dateBit}`;
@@ -150,12 +151,12 @@ export function formatMinutesEmailBody(opts: {
     `Meeting: ${opts.meetingTitle || '—'}`,
   ];
   if (opts.startDateTime) {
-    const d = new Date(opts.startDateTime);
-    if (!Number.isNaN(d.getTime())) lines.push(`Start: ${d.toLocaleString()}`);
+    const formatted = formatUtcDateTime(opts.startDateTime, '');
+    if (formatted) lines.push(`Start: ${formatted}`);
   }
   if (opts.endDateTime) {
-    const d = new Date(opts.endDateTime);
-    if (!Number.isNaN(d.getTime())) lines.push(`End: ${d.toLocaleString()}`);
+    const formatted = formatUtcDateTime(opts.endDateTime, '');
+    if (formatted) lines.push(`End: ${formatted}`);
   }
   if (opts.statusName) lines.push(`Status: ${opts.statusName}`);
 
@@ -186,7 +187,7 @@ export function readLastMinutesSentAt(meetingNotesNo: number): string | null {
   }
 }
 
-export function writeLastMinutesSentAt(meetingNotesNo: number, iso: string = new Date().toISOString()) {
+export function writeLastMinutesSentAt(meetingNotesNo: number, iso: string = toUtcIso(new Date()) || '') {
   try {
     const raw = localStorage.getItem(LAST_SENT_KEY);
     const map = raw ? (JSON.parse(raw) as Record<string, string>) : {};

@@ -32,7 +32,7 @@ import {
 import { cn } from '@/lib/utils';
 
 import { taskUrl } from '@/lib/dealMonitor';
-import { format } from 'date-fns';
+import { formatDateOnly, formatUtcDateTime, toUtcIso } from '@/lib/dateTime';
 import { useTaskStore } from '@/store/useTaskStore';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
@@ -257,7 +257,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           id: (c.operTaskCommentDetailNo || Math.floor(Math.random() * 10000)).toString(),
           author: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || 'Unknown',
           text: c.description || c.comment || '',
-          timestamp: c.createdDate || new Date().toISOString(),
+          timestamp: c.createdDate || toUtcIso(new Date()) || '',
           loginNo: c.createdBy?.id || c.loginNo || null
         }));
 
@@ -544,7 +544,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             >
                               <span className="text-[10px] font-medium text-slate-400">
                                 {entry.logDate
-                                  ? format(new Date(entry.logDate), 'MMM dd, yyyy')
+                                  ? formatDateOnly(entry.logDate)
                                   : '-'}
                               </span>
                               <span className="text-xs font-medium text-slate-100 whitespace-pre-wrap">
@@ -578,7 +578,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-[10px] font-medium text-slate-400">
                                     {entry.logDate
-                                      ? format(new Date(entry.logDate), 'MMM dd, yyyy')
+                                      ? formatDateOnly(entry.logDate)
                                       : '-'}
                                   </span>
                                   {statusLabel && (
@@ -733,10 +733,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             <SpecRow index={next()} icon={Calendar} label="Start Date">
                               <span className="text-[11px] tabular-nums">
                                 {task.start_date
-                                  ? format(
-                                    new Date(task.start_date),
-                                    task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a'
-                                  )
+                                  ? (task.isAllDay ? formatDateOnly(task.start_date) : formatUtcDateTime(task.start_date))
                                   : 'No date'}
                               </span>
                             </SpecRow>
@@ -744,10 +741,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             <SpecRow index={next()} icon={Calendar} label="Due Date">
                               <span className="text-[11px] tabular-nums">
                                 {task.end_date
-                                  ? format(
-                                    new Date(task.end_date),
-                                    task.isAllDay ? 'MMM dd, yyyy' : 'MMM dd, yyyy h:mm a'
-                                  )
+                                  ? (task.isAllDay ? formatDateOnly(task.end_date) : formatUtcDateTime(task.end_date))
                                   : 'No date'}
                               </span>
                             </SpecRow>
@@ -791,7 +785,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             {task.createdDate && (
                               <SpecRow index={next()} icon={Clock} label="Created Date">
                                 <span className="text-[11px] tabular-nums">
-                                  {format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}
+                                  {formatUtcDateTime(task.createdDate)}
                                 </span>
                               </SpecRow>
                             )}

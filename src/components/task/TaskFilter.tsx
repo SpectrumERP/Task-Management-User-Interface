@@ -23,6 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/hooks/useSettings';
 import { forceStartPageGuide } from '@/components/layout/InternalPageGuideTour';
 import { STATUS_PILL_ORDER, isAllFilterSentinel, sumStatusPillCounts, toStatusPillToken } from '@/lib/taskStatusGroups';
+import { formatDateOnly, toUtcIso } from '@/lib/dateTime';
 
 function isAllFillValueId(
   id: string | undefined,
@@ -331,20 +332,20 @@ export function TaskFilter({
 
     if (applied.fromDueDate || applied.toDueDate) {
       const from = applied.fromDueDate
-        ? new Date(applied.fromDueDate).toLocaleDateString()
+        ? formatDateOnly(applied.fromDueDate)
         : '…';
       const to = applied.toDueDate
-        ? new Date(applied.toDueDate).toLocaleDateString()
+        ? formatDateOnly(applied.toDueDate)
         : '…';
       chips.push({ id: 'due-range', label: `Due: ${from} – ${to}` });
     }
 
     if (applied.fromCreatedDate || applied.toCreatedDate) {
       const from = applied.fromCreatedDate
-        ? new Date(applied.fromCreatedDate).toLocaleDateString()
+        ? formatDateOnly(applied.fromCreatedDate)
         : '…';
       const to = applied.toCreatedDate
-        ? new Date(applied.toCreatedDate).toLocaleDateString()
+        ? formatDateOnly(applied.toCreatedDate)
         : '…';
       chips.push({ id: 'created-range', label: `Created: ${from} – ${to}` });
     }
@@ -478,7 +479,7 @@ export function TaskFilter({
 
       if (value !== undefined && value !== '' && value !== null) {
         if (value instanceof Date) {
-          cleanFilters[key] = value.toISOString();
+          cleanFilters[key] = toUtcIso(value);
         } else {
           cleanFilters[key] = value;
         }
@@ -500,7 +501,7 @@ export function TaskFilter({
         if (key === 'folderNo' && data.isAllFolder) return;
         if (value !== undefined && value !== '' && value !== null) {
           if (value instanceof Date) {
-            cleanFilters[key] = value.toISOString();
+            cleanFilters[key] = toUtcIso(value);
           } else {
             cleanFilters[key] = value;
           }
@@ -1006,6 +1007,7 @@ export function TaskFilter({
                             .filter((p) => !isAllFilterSentinel(p.Priority))
                             .map((p) => ({ value: p.OperTaskPriorityNo.toString(), label: p.Priority }))}
                           placeholder="All priorities"
+                          sortAlphabetically={false}
                           className={cn(filterControlClass, FIELD_TEXT_STYLE)}
                         />
                       )}

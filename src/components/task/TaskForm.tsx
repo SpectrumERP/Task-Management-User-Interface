@@ -23,6 +23,8 @@ import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
 import { SortableHeader } from '@/components/shared/useTableSort';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
+import { sortByLabel } from '@/lib/sortOptions';
+import { formatDateOnly, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import {
   formatReminderSummary,
   guessDailyFrequencyNo,
@@ -38,7 +40,6 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
-import { format } from 'date-fns';
 import { TaskActivity } from './TaskActivity';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -313,7 +314,7 @@ const splitExecutionChallenges = (challenges?: any[] | null) => {
   const toDateInputValue = (iso?: string | null) => {
     if (!iso) return '';
     const d = new Date(iso);
-    return isNaN(d.getTime()) ? '' : d.toISOString();
+    return toUtcIsoOrEmpty(d);
   };
   const execution_logs = list
     .filter((c: any) => Number(c.typeNo ?? c.TypeNo) === 1)
@@ -694,9 +695,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       folder_No: (initialData as any)?.folder_No?.toString() || (initialData as any)?.folderNo?.toString() || (isSubTask && parentTask ? (parentTask.project_No || (parentTask as any).folder_No || (parentTask as any).folderNo)?.toString() : '') || selectedFolder?.TaskFolderNo?.toString() || searchParams.get('folder_No') || '1',
       category_No: initialData?.category_No?.toString() || (isSubTask && parentTask ? parentTask.category_No.toString() : '') || searchParams.get('category_No') || '',
       location_No: initialData?.location_No?.toString() || (isSubTask && parentTask ? parentTask.location_No.toString() : '') || searchParams.get('location_No') || '',
-      start_date: initialData?.start_date ? new Date(initialData.start_date).toISOString() : (dateParam ? new Date(dateParam).toISOString() : (searchParams.get('start_date') ? new Date(searchParams.get('start_date') as string).toISOString() : '')),
-      end_date: initialData?.end_date ? new Date(initialData.end_date).toISOString() : (searchParams.get('end_date') ? new Date(searchParams.get('end_date') as string).toISOString() : ''),
-      completionDate: initialData?.completionDate ? new Date(initialData.completionDate).toISOString() : '',
+      start_date: initialData?.start_date ? toUtcIsoOrEmpty(initialData.start_date) : (dateParam ? toUtcIsoOrEmpty(dateParam) : (searchParams.get('start_date') ? toUtcIsoOrEmpty(searchParams.get('start_date') as string) : '')),
+      end_date: initialData?.end_date ? toUtcIsoOrEmpty(initialData.end_date) : (searchParams.get('end_date') ? toUtcIsoOrEmpty(searchParams.get('end_date') as string) : ''),
+      completionDate: initialData?.completionDate ? toUtcIsoOrEmpty(initialData.completionDate) : '',
       completionRemark: initialData?.completionRemark || '',
       road_block_remarks: executionChallengeDefaults.road_block_remarks,
       estimated_effort_value: initialData?.estimated_effort_value?.toString() || searchParams.get('estimated_effort_value') || '',
@@ -1202,7 +1203,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     const fetchOptions = async () => {
       try {
         const initialCompany = form.getValues('company') || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
-        const response = await fetchFillValues(initialCompany.toString(), true);
+        const response = await fetchFillValues(initialCompany.toString());
         if (response) {
           setFillValues(response as TaskFillValues);
         }
@@ -1677,14 +1678,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     const executionChallenges = [
       ...(data.execution_logs || []).map((r: any) => ({
         typeNo: 1,
-        logDate: r.date ? new Date(r.date).toISOString() : null,
+        logDate: r.date ? toUtcIso(r.date) : null,
         remarks: r.remark || null,
         proposedSolution: null,
         statusNo: null,
       })),
       ...(data.road_block_remarks || []).map((r: any) => ({
         typeNo: 2,
-        logDate: r.date ? new Date(r.date).toISOString() : null,
+        logDate: r.date ? toUtcIso(r.date) : null,
         remarks: r.remark || null,
         proposedSolution: r.proposedSolution || null,
         statusNo: parseInt(r.status_No) || null,
@@ -1711,9 +1712,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       ownerLoginNo: parseInt(data.owner_user_No) || null,
       parentTaskNo: parentTaskNo || null,
       operTaskLocationNo: parseInt(data.location_No) || null,
-      startDate: data.start_date ? new Date(data.start_date).toISOString() : null,
-      endDate: data.end_date ? new Date(data.end_date).toISOString() : null,
-      completionDate: data.completionDate ? new Date(data.completionDate).toISOString() : null,
+      startDate: data.start_date ? toUtcIso(data.start_date) : null,
+      endDate: data.end_date ? toUtcIso(data.end_date) : null,
+      completionDate: data.completionDate ? toUtcIso(data.completionDate) : null,
       completionRemark: data.completionRemark || null,
       estimatedEfforts: parseFloat(data.estimated_effort_value) || null,
       estimatedEffortsFequencyNo: data.estimated_effort_unit ? parseInt(data.estimated_effort_unit) : null,
@@ -1728,12 +1729,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       isAllday: data.isAllDay,
       colorCoding: data.calendarColor || null,
       createdBy: authUser?.loginNo || authUser?.LoginNo || 1,
-      createdDate: new Date().toISOString(),
+      createdDate: toUtcIso(new Date()),
       checkLists: data.check_list.map((item: any, index: number) => ({
         description: item.description || null,
         sequenceNo: index + 1,
         isChecked: item.completed || false,
-        checkedOn: new Date().toISOString()
+        checkedOn: toUtcIso(new Date())
       })),
       subTasks: [
         ...(!initialData ? localSubtasks.map((st: any) => ({
@@ -1742,9 +1743,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           title: st.title || null,
           description: st.description || null,
           ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
-          endDate: st.endDate ? new Date(st.endDate).toISOString() : null,
+          endDate: st.endDate ? toUtcIso(st.endDate) : null,
           completionRemark: st.completionRemark || null,
-          completionDate: st.completionDate ? new Date(st.completionDate).toISOString() : null,
+          completionDate: st.completionDate ? toUtcIso(st.completionDate) : null,
           statusNo: 1
         })) : []),
         ...(data.sub_tasks || []).map((st: any) => ({
@@ -1753,9 +1754,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           title: st.title || null,
           description: st.description || null,
           ownerLoginNo: st.ownerLoginNo ? parseInt(st.ownerLoginNo) : null,
-          endDate: st.endDate ? new Date(st.endDate).toISOString() : null,
+          endDate: st.endDate ? toUtcIso(st.endDate) : null,
           completionRemark: st.completionRemark || null,
-          completionDate: st.completionDate ? new Date(st.completionDate).toISOString() : null,
+          completionDate: st.completionDate ? toUtcIso(st.completionDate) : null,
           statusNo: 1
         }))
       ],
@@ -1766,7 +1767,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       comments: [],
       effortLogs: data.actual_efforts.map((effort: any) => ({
         LoginNo: effort.createdBy?.loginNo || null,
-        effortDate: effort.date ? new Date(effort.date).toISOString() : null,
+        effortDate: effort.date ? toUtcIso(effort.date) : null,
         efforts: parseFloat(effort.hours) || null,
         description: effort.description || null
       })),
@@ -1903,7 +1904,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         else if (freqNo === 2) newEndDate.setDate(newEndDate.getDate() + duration);
       }
 
-      form.setValue('end_date', newEndDate.toISOString());
+      form.setValue('end_date', toUtcIsoOrEmpty(newEndDate));
     }
   }, [selectedPriorityNo, selectedStartDate, fillValues, form]);
 
@@ -2177,6 +2178,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           value={field.value}
                           onChange={field.onChange}
                           placeholder="Select priority"
+                          sortAlphabetically={false}
                           className={form.formState.errors.priority_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
                           onAddNew={formRights[1543]?.isSave ? () => {
                             setActiveMasterType('priority');
@@ -2328,7 +2330,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <SelectValue placeholder="Select team" />
                             </SelectTrigger>
                             <SelectContent className="rounded-[8px]">
-                              {fillValues?.userGroup.map(group => (
+                              {sortByLabel(fillValues?.userGroup || [], {
+                                getLabel: (g) => g.UserGroupName || '',
+                                getValue: (g) => String(g.UserGroupNo),
+                              }).map(group => (
                                 <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-xs">{group.UserGroupName}</SelectItem>
                               ))}
                             </SelectContent>
@@ -2550,7 +2555,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <SelectValue placeholder="Select team" />
                             </SelectTrigger>
                             <SelectContent className="rounded-[8px]">
-                              {fillValues?.userGroup.map(group => (
+                              {sortByLabel(fillValues?.userGroup || [], {
+                                getLabel: (g) => g.UserGroupName || '',
+                                getValue: (g) => String(g.UserGroupNo),
+                              }).map(group => (
                                 <SelectItem key={group.UserGroupNo} value={group.UserGroupNo.toString()} className="text-xs">{group.UserGroupName}</SelectItem>
                               ))}
                             </SelectContent>
@@ -2996,7 +3004,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             name="start_date"
                             control={form.control}
                             render={({ field }) => (
-                              <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                              <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(toUtcIsoOrEmpty(date))}
                                 placeholder={isAllDay ? "Select start date" : "Select start date & time"}
                                 hideTime={isAllDay}
                                 className={form.formState.errors.start_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
@@ -3013,7 +3021,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             name="end_date"
                             control={form.control}
                             render={({ field }) => (
-                              <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                              <DateTimePicker date={field.value ? new Date(field.value) : undefined} onChange={(date) => field.onChange(toUtcIsoOrEmpty(date))}
                                 placeholder={isAllDay ? "Select due date" : "Select due date & time"}
                                 hideTime={isAllDay}
                                 className={form.formState.errors.end_date ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
@@ -3401,7 +3409,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               render={({ field }) => (
                                 <DateTimePicker
                                   date={field.value ? new Date(field.value) : undefined}
-                                  onChange={(date) => field.onChange(date ? date.toISOString() : '')}
+                                  onChange={(date) => field.onChange(toUtcIsoOrEmpty(date))}
                                   placeholder={isAllDay ? "Select completion date" : "Select completion date & time"}
                                   hideTime={isAllDay}
                                   className={cn(
@@ -3492,7 +3500,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   <div className="flex flex-wrap items-center gap-2">
                                     <p className="text-[12px] font-semibold text-slate-100 leading-snug">
                                       {challengeDate
-                                        ? new Date(challengeDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                                        ? formatDateOnly(challengeDate)
                                         : `Challenge ${index + 1}`}
                                     </p>
                                     {statusLabel ? (
@@ -3527,7 +3535,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                           <DateTimePicker
                                             date={dateField.value ? new Date(dateField.value) : undefined}
                                             onChange={(date) => {
-                                              dateField.onChange(date ? date.toISOString() : '');
+                                              dateField.onChange(toUtcIsoOrEmpty(date));
                                               form.clearErrors(`road_block_remarks.${index}.date`);
                                             }}
                                             placeholder="Select date"
@@ -4020,7 +4028,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 render={({ field: subField }) => (
                                   <DateTimePicker
                                     date={subField.value ? new Date(subField.value) : undefined}
-                                    onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                    onChange={(date) => subField.onChange(toUtcIsoOrEmpty(date))}
                                     placeholder="Select date"
                                     hideTime={true}
                                     className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
@@ -4036,7 +4044,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 render={({ field: subField }) => (
                                   <DateTimePicker
                                     date={subField.value ? new Date(subField.value) : undefined}
-                                    onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                    onChange={(date) => subField.onChange(toUtcIsoOrEmpty(date))}
                                     placeholder="Select date"
                                     hideTime={true}
                                     className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
@@ -4125,11 +4133,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           </div>
                           <div>
                             <p className="text-[10px] font-medium text-slate-400 mb-1">Due Date</p>
-                            <p className="text-xs font-medium text-slate-200">{task.endDate ? format(new Date(task.endDate), 'MMM dd, yyyy') : '-'}</p>
+                            <p className="text-xs font-medium text-slate-200">{task.endDate ? formatDateOnly(task.endDate) : '-'}</p>
                           </div>
                           <div>
                             <p className="text-[10px] font-medium text-slate-400 mb-1">Completion Date</p>
-                            <p className="text-xs font-medium text-slate-200">{task.completionDate ? format(new Date(task.completionDate), 'MMM dd, yyyy') : '-'}</p>
+                            <p className="text-xs font-medium text-slate-200">{task.completionDate ? formatDateOnly(task.completionDate) : '-'}</p>
                           </div>
                           <div className="sm:col-span-2 min-w-0">
                             <p className="text-[10px] font-medium text-slate-400 mb-1">Completion Remark</p>
@@ -4230,7 +4238,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               render={({ field: subField }) => (
                                 <DateTimePicker
                                   date={subField.value ? new Date(subField.value) : undefined}
-                                  onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                  onChange={(date) => subField.onChange(toUtcIsoOrEmpty(date))}
                                   placeholder="Select date"
                                   hideTime={true}
                                   className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
@@ -4246,7 +4254,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               render={({ field: subField }) => (
                                 <DateTimePicker
                                   date={subField.value ? new Date(subField.value) : undefined}
-                                  onChange={(date) => subField.onChange(date ? date.toISOString() : '')}
+                                  onChange={(date) => subField.onChange(toUtcIsoOrEmpty(date))}
                                   placeholder="Select date"
                                   hideTime={true}
                                   className="h-10 rounded-[8px] text-xs border-[var(--tm-border)]"
@@ -4570,7 +4578,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       render={({ field }) => (
                         <DateTimePicker
                           date={field.value ? new Date(field.value) : undefined}
-                          onChange={(date) => field.onChange(date ? date.toISOString() : "")}
+                          onChange={(date) => field.onChange(toUtcIsoOrEmpty(date))}
                           placeholder="Select date & time"
                         />
                       )}
@@ -4585,7 +4593,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       render={({ field }) => (
                         <DateTimePicker
                           date={field.value ? new Date(field.value) : undefined}
-                          onChange={(date) => field.onChange(date ? date.toISOString() : "")}
+                          onChange={(date) => field.onChange(toUtcIsoOrEmpty(date))}
                           placeholder="Select date & time"
                         />
                       )}

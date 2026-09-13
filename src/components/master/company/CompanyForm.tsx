@@ -25,7 +25,7 @@ import { CompanyNotesSection, FollowUpNote } from './CompanyNotesSection';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const FORM_NO = 1550;
-const TITLE = 'Business Entity Master';
+const TITLE = 'Business Entity';
 
 /** Loose shapes returned by master geo / fill-values APIs */
 type GeoCountry = { countryName?: string; countryNo?: string | number };
@@ -60,6 +60,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [aliasName, setAliasName] = useState('');
   const [companyType, setCompanyType] = useState('');
   const [companyTimeZoneNo, setCompanyTimeZoneNo] = useState('');
+  const [selectedTimeZoneName, setSelectedTimeZoneName] = useState('');
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
   const [creditInsuranceCompanyName, setCreditInsuranceCompanyName] = useState('');
   const [companyVatGst, setCompanyVatGst] = useState('');
@@ -139,6 +140,13 @@ export function CompanyForm({ id }: CompanyFormProps) {
           setCreditLimit(dl.creditInsuranceLimit ?? null);
           setCreditInsuranceCompanyName(dl.creditInsuranceCompanyName || '');
           setCompanyTimeZoneNo(dl.timeZone?.timeZoneNo?.toString() || '');
+          setSelectedTimeZoneName(
+            dl.timeZone?.timeZoneName ||
+              dl.timeZone?.crmTimeZoneName ||
+              dl.timeZone?.name ||
+              dl.timeZoneName ||
+              ''
+          );
           const mappedFollowUpNotes: FollowUpNote[] = Array.isArray(dl.followUpDetails)
             ? dl.followUpDetails.map((n: any) => ({ date: n.followUpDate || '', note: n.followUpNotes || '' }))
             : (dl.notes ? [{ date: '', note: dl.notes }] : []);
@@ -755,6 +763,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
             setCompanyType={setCompanyType}
             companyTimeZoneNo={companyTimeZoneNo}
             setCompanyTimeZoneNo={setCompanyTimeZoneNo}
+            selectedTimeZoneName={selectedTimeZoneName}
+            setSelectedTimeZoneName={setSelectedTimeZoneName}
             creditLimit={creditLimit}
             setCreditLimit={setCreditLimit}
             creditInsuranceCompanyName={creditInsuranceCompanyName}

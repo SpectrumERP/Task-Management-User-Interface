@@ -712,6 +712,9 @@ const router = createBrowserRouter([
   },
 ]);
 
+/** Prevent StrictMode remount from hitting version.json twice in the same tick window. */
+let lastAppVersionCheckAt = 0;
+
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -732,13 +735,13 @@ function App() {
 
   // Version Cache Busting Check
   useEffect(() => {
-    // Initial cleanup
-    cleanupExpiredDrafts();
-
-    // Check app version periodically
     const checkVersion = async () => {
+      const now = Date.now();
+      if (now - lastAppVersionCheckAt < 3000) return;
+      lastAppVersionCheckAt = now;
+
       try {
-        const response = await fetch('/version.json?t=' + new Date().getTime());
+        const response = await fetch('/version.json?t=' + now);
         if (response.ok) {
           const data = await response.json();
           const currentVersion = localStorage.getItem('app_version');
@@ -765,6 +768,9 @@ function App() {
         console.error('Failed to check app version:', err);
       }
     };
+
+    // Initial cleanup
+    cleanupExpiredDrafts();
 
     checkVersion();
     // Check version every 5 minutes

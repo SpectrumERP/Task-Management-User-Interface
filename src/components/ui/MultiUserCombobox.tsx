@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/popover"
 import { userService, UserResponse } from "@/services/userService"
 import { UserOptionLine, userItemClassName } from "@/components/ui/UserCombobox"
+import { sortByLabel } from "@/lib/sortOptions"
 
 interface MultiUserComboboxProps {
   value: string[]
@@ -192,7 +193,10 @@ export function MultiUserCombobox({
                   />
                 </CommandItem>
 
-                {options.map((user) => {
+                {sortByLabel(options, {
+                  getLabel: (u) => u.printingName || u.loginId || '',
+                  getValue: (u) => String(u.loginNo),
+                }).map((user) => {
                   const isSelected = value.includes(user.loginNo.toString()) && !isAllSelected
                   return (
                     <CommandItem

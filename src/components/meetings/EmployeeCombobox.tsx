@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { apiService } from "@/services/apiService"
+import { sortByLabel } from "@/lib/sortOptions"
 
 export interface EmployeeResponse {
   empNo: number;
@@ -214,7 +215,10 @@ export function EmployeeCombobox({
             )}
             {!isLoading && (
               <CommandGroup>
-                {options.map((emp) => (
+                {sortByLabel(options, {
+                  getLabel: (emp) => emp.empName || emp.empCode || '',
+                  getValue: (emp) => String(emp.empNo),
+                }).map((emp) => (
                   <CommandItem
                     key={emp.empNo}
                     value={`${emp.empName} ${emp.empCode}`}

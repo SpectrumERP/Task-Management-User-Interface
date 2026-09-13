@@ -12,6 +12,7 @@ import { attachmentService } from '@/services/attachmentService';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { useAuthStore } from '@/store/useAuthStore';
 import { canUserEditTask, isTaskViewOnlyForUser } from '@/lib/taskAccess';
+import { toUtcIso } from '@/lib/dateTime';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -154,7 +155,7 @@ export default function TaskDetail() {
           id: (c.operTaskCommentDetailNo || Math.floor(Math.random() * 10000)).toString(),
           author: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || 'Unknown',
           text: c.description || c.comment || '',
-          timestamp: c.createdDate || new Date().toISOString(),
+          timestamp: c.createdDate || toUtcIso(new Date()) || '',
           loginNo: c.createdBy?.id || c.loginNo || null
         }));
 

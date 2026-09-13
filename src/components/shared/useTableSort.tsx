@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { looksLikeDateValue, toUtcIso, toUtcMs } from '@/lib/dateTime';
 
 export type TableSortState = {
   sortCol: string | null;
@@ -15,25 +16,19 @@ function toComparable(value: unknown): { blank: boolean; num: number | null; str
     return { blank: false, num: value, str: String(value) };
   }
   if (value instanceof Date) {
-    const t = value.getTime();
-    if (!Number.isNaN(t)) return { blank: false, num: t, str: value.toISOString() };
+    const t = toUtcMs(value);
+    if (t != null) return { blank: false, num: t, str: toUtcIso(value) || '' };
     return { blank: true, num: null, str: '' };
   }
 
   const str = String(value).trim();
   if (!str) return { blank: true, num: null, str: '' };
 
-  // Prefer numeric timestamps / date-like strings for stable chronological sort
-  const looksLikeDate =
-    /^\d{4}-\d{2}-\d{2}/.test(str) ||
-    /^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(str) ||
-    /T\d{2}:\d{2}/.test(str) ||
-    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(str);
-
-  if (looksLikeDate) {
-    const parsed = Date.parse(str);
-    if (!Number.isNaN(parsed)) {
-      return { blank: false, num: parsed, str };
+  // Prefer UTC epoch for date-like values so chronological sort is timezone-safe
+  if (looksLikeDateValue(str)) {
+    const parsed = toUtcMs(str);
+    if (parsed != null) {
+      return { blank: false, num: parsed, str: toUtcIso(str) || str };
     }
   }
 
@@ -81,7 +76,12 @@ export function useTableSort<T>(
       return;
     }
     setSortCol(colKey);
-    setSortDesc(false);
+    // Timestamp / audit columns: first click = newest first.
+    // Due / start schedule targets stay ascending (soonest first).
+    const newestFirst =
+      /(created|updated|completion|logDate|meetingStart|schedule|timestamp|sentAt)/i.test(colKey) &&
+      !/(dueDate|end_date|start_date|^due$)/i.test(colKey);
+    setSortDesc(newestFirst);
   };
 
   const sortedRows = useMemo(() => {

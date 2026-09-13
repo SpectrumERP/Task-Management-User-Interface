@@ -17,6 +17,7 @@ import {
   Popover,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { sortByLabel } from "@/lib/sortOptions"
 
 interface MultiSelectProps {
   options: { label: string; value: string }[]
@@ -30,6 +31,9 @@ interface MultiSelectProps {
   isClearable?: boolean
   modal?: boolean
   maxVisible?: number
+  /** Sort options A–Z by label (default true). */
+  sortAlphabetically?: boolean
+  pinValues?: string[]
 }
 
 const CHIP_GAP_PX = 4 // matches the chip row's gap-1
@@ -46,6 +50,8 @@ export function MultiSelect({
   isClearable = true,
   modal = false,
   maxVisible,
+  sortAlphabetically = true,
+  pinValues,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -174,14 +180,7 @@ export function MultiSelect({
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
             <CommandGroup>
-              {[...options]
-                .sort((a, b) =>
-                  String(a.label || '').localeCompare(String(b.label || ''), undefined, {
-                    sensitivity: 'base',
-                    numeric: true,
-                  })
-                )
-                .map((option) => {
+              {sortByLabel(options, { enabled: sortAlphabetically, pinValues }).map((option) => {
                 const isSelected = value.includes(option.value);
                 return (
                   <CommandItem

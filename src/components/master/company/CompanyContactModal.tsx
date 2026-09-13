@@ -274,6 +274,7 @@ export function CompanyContactModal({
                 value={contactStatus}
                 onChange={(val) => setContactStatus(val)}
                 placeholder="Select status"
+                sortAlphabetically={false}
                 className={cn(fieldClass, 'px-3')}
               />
             </div>

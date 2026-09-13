@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+import { pickDescription } from '@/lib/pickDescription';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 
 const FORM_NO = 1564;
-const TITLE = 'Business Entity Type Master';
+const TITLE = 'Business Entity Type';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
@@ -100,7 +101,7 @@ export function BusinessEntityTypeForm({ id }: BusinessEntityTypeFormProps) {
         const dl = body.data || body;
         if (dl) {
           setName(dl.operCRMBusinessEntityTypeName || dl.OperCRMBusinessEntityTypeName || dl.name || '');
-          setDescription(dl.description || dl.Description || '');
+          setDescription(pickDescription(dl));
           setCode(dl.code || '');
         }
       }

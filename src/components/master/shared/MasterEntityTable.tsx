@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Download } from 'lucide-react';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { ActionTip, TruncatedText, nodeToPlainText } from './TruncatedCellTip';
@@ -79,9 +79,8 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
     if (key === 'createdBy') return row.createdBy || '';
     if (key === 'createdDate') {
       const raw = row.createdDate;
-      if (!raw) return '';
-      const t = new Date(String(raw)).getTime();
-      return Number.isNaN(t) ? raw : t;
+      const t = toUtcMs(raw);
+      return t ?? raw ?? '';
     }
 
     const colIdx = columns.findIndex((c, i) => columnSortKey(c, i) === key);
@@ -113,7 +112,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
         keys.map(k => {
           let cell = (row as any)[k];
           if (cell === null || cell === undefined) cell = '';
-          else if (cell instanceof Date) cell = cell.toLocaleString();
+          else if (cell instanceof Date) cell = formatUtcDateTime(cell);
           else if (typeof cell === 'object') cell = JSON.stringify(cell);
           else cell = String(cell);
           
@@ -193,7 +192,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
           Export CSV
         </Button>
       </div>
-      <div className="overflow-y-auto overflow-x-hidden min-h-0 max-h-[calc(100dvh-13.5rem)]">
+      <div className="overflow-auto min-h-0 max-h-[calc(100dvh-13.5rem)]">
         {/* Mobile cards */}
         <div className="md:hidden flex flex-col gap-2 p-2">
           {sortedRows.map((item) => (
@@ -224,7 +223,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                   ) : null}
                   <div className="mt-1 min-w-0">
                     <TruncatedText
-                      text={`${item.createdBy || 'System'}${item.createdDate ? ` · ${format(new Date(item.createdDate), 'MMM dd, yyyy')}` : ''}`}
+                      text={`${item.createdBy || 'System'}${item.createdDate ? ` · ${formatUtcDateTime(item.createdDate)}` : ''}`}
                       className="text-[10px] text-slate-500"
                     />
                   </div>
@@ -267,23 +266,24 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
           ))}
         </div>
 
-        <table className="tm-data-table hidden md:table w-full table-fixed border-collapse text-left">
-          <thead className="sticky top-0 z-10 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
+        <table className="tm-data-table hidden md:table w-full min-w-[1100px] table-fixed border-collapse text-left">
+          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
             <tr>
-              <th className="w-[8%] px-2.5 py-2 pl-3 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+              <th className="tm-col-sticky-code sticky left-0 z-[45] w-[72px] px-2 py-2 pl-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
                 <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              <th className="w-[16%] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+              <th className="w-[18%] min-w-[140px] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                 <SortableHeader label={nameHeader} sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
               {columns.map((col, idx) => {
                 const key = columnSortKey(col, idx);
+                const isDescription = /description/i.test(col.header) || col.sortKey === 'description';
                 return (
                   <th
                     key={idx}
-                    style={{ width: `${Math.max(7, Math.floor(45 / Math.max(columns.length, 1)))}%` }}
                     className={cn(
                       'px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap',
+                      isDescription ? 'w-[22%] min-w-[160px]' : 'w-[12%] min-w-[110px]',
                       col.headerClassName || col.className
                     )}
                   >
@@ -297,13 +297,13 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                   </th>
                 );
               })}
-              <th className="w-[10%] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+              <th className="w-[150px] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                 <SortableHeader label="Created By" sortKey="createdBy" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              <th className="w-[12%] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+              <th className="w-[170px] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                 <SortableHeader label="Created Date" sortKey="createdDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              <th className="w-[7%] px-2.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+              <th className="tm-col-actions sticky right-0 z-40 w-[72px] px-1 py-2 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">
                 Actions
               </th>
             </tr>
@@ -314,14 +314,14 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
               const nameText = nodeToPlainText(getName(item)) || String((item as { name?: string }).name || '');
               const createdByText = item.createdBy || 'System';
               const createdDateText = item.createdDate
-                ? format(new Date(item.createdDate), 'MMM dd, yyyy h:mm a')
+                ? formatUtcDateTime(item.createdDate)
                 : 'N/A';
               return (
               <tr
                 key={item.id}
                 className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group"
               >
-                <td className="px-2.5 py-2 pl-3 align-middle min-w-0 overflow-hidden">
+                <td className="tm-col-sticky-code sticky left-0 z-20 px-2 py-2 pl-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
                   <TruncatedText
                     text={codeText}
                     className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
@@ -346,10 +346,10 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                   <TruncatedText text={createdByText} className="text-xs font-medium text-slate-300" />
                 </td>
                 <td className="px-2.5 py-2 align-middle min-w-0 overflow-hidden">
-                  <TruncatedText text={createdDateText} className="text-xs font-medium text-slate-300" />
+                  <TruncatedText text={createdDateText} className="text-xs font-medium text-slate-300 tabular-nums" />
                 </td>
-                <td className="px-2.5 py-2 text-center align-middle whitespace-nowrap">
-                  <div className="inline-flex items-center justify-center gap-0.5">
+                <td className="tm-col-actions sticky right-0 z-10 px-1 py-2 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                  <div className="inline-flex items-center justify-center gap-0">
                     {canUpdate ? (
                       <ActionTip label="Edit">
                         <Button
