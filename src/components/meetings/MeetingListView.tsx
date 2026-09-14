@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { EmptyState } from '@/components/ui/EmptyState';
 import {
   ClipboardList,
   Edit2,
@@ -252,23 +253,24 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
 
   if (meetings.length === 0) {
     return (
-      <Card className="h-full min-h-0 flex flex-col items-center justify-center px-6 bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
-        <div className="h-14 w-14 rounded-2xl bg-[var(--tm-tint)] flex items-center justify-center mb-2.5">
-          <ClipboardList className="text-[#0EA5E9]" size={26} strokeWidth={1.75} />
-        </div>
-        <h3 className="text-base font-semibold text-slate-100 tracking-tight">No meeting notes yet</h3>
-        <p className="text-slate-500 text-sm font-medium mt-0.5 max-w-sm text-center">
-          Capture discussions, attendees, and minutes in one place — then send MoM when ready.
-        </p>
-        {isSave && (
-          <Button
-            onClick={() => navigate('/meetings/new')}
-            className="mt-6 h-10 px-5 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)]"
-          >
-            <Plus className="w-4 h-4 mr-1.5" strokeWidth={2.4} />
-            New Meeting Note
-          </Button>
-        )}
+      <Card className="h-full min-h-0 flex flex-col bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] overflow-hidden">
+        <EmptyState
+          className="flex-1"
+          icon={ClipboardList}
+          title="No meeting notes yet"
+          description="Capture discussions, attendees, and minutes in one place — then send MoM when ready."
+          actions={
+            isSave ? (
+              <Button
+                onClick={() => navigate('/meetings/new')}
+                className="h-10 px-5 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold shadow-sm shadow-brand/20"
+              >
+                <Plus className="w-4 h-4 mr-1.5" strokeWidth={2.4} />
+                New Meeting Note
+              </Button>
+            ) : null
+          }
+        />
       </Card>
     );
   }
@@ -290,7 +292,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           <Button
             data-page-tour="meeting-create"
             onClick={() => navigate('/meetings/new')}
-            className="shrink-0 h-10 rounded-[12px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] gap-1.5 px-4"
+            className="shrink-0 h-10 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold shadow-sm shadow-brand/20 gap-1.5 px-4"
           >
             <Plus size={15} strokeWidth={2.4} />
             <span className="hidden sm:inline">New Meeting</span>
@@ -359,26 +361,25 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
       </Card>
 
       {filteredMeetings.length === 0 ? (
-        <Card className="flex-1 min-h-[220px] flex flex-col items-center justify-center px-6 bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl">
-          <div className="h-12 w-12 rounded-2xl bg-[var(--tm-tint)] flex items-center justify-center mb-2.5">
-            <ClipboardList className="text-[#0EA5E9]" size={22} strokeWidth={1.75} />
-          </div>
-          <h3 className="text-sm font-semibold text-slate-100 tracking-tight">
-            No meetings match these filters
-          </h3>
-          <p className="text-slate-500 text-xs font-medium mt-1 max-w-sm text-center">
-            Try another title, status, or date — or clear filters to see everything.
-          </p>
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              className="mt-4 h-9 px-4 rounded-lg text-xs font-semibold border-[var(--tm-border)] gap-1.5"
-              onClick={clearFilters}
-            >
-              <RotateCcw size={13} />
-              Clear filters
-            </Button>
-          )}
+        <Card className="flex-1 min-h-[220px] bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl overflow-hidden">
+          <EmptyState
+            icon={ClipboardList}
+            title="No meetings match these filters"
+            description="Try another title, status, or date — or clear filters to see everything."
+            compact
+            actions={
+              hasActiveFilters ? (
+                <Button
+                  variant="outline"
+                  className="h-9 px-4 rounded-lg text-xs font-semibold border-[var(--tm-border)] gap-1.5"
+                  onClick={clearFilters}
+                >
+                  <RotateCcw size={13} />
+                  Clear filters
+                </Button>
+              ) : null
+            }
+          />
         </Card>
       ) : (
         <>
@@ -644,7 +645,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                           </span>
                         </td>
                         <td
-                          className="px-1.5 py-3 pr-2.5 align-middle text-right sticky right-0 z-10 tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)]/70 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
+                          className="px-1.5 py-3 pr-2.5 align-middle text-right sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)]/70 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="inline-flex items-center justify-end gap-0">

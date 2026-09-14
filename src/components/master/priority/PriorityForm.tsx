@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, Flag, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
@@ -15,6 +15,7 @@ import { MasterFormShell } from '../shared/MasterFormShell';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 import { getContrastColor } from '@/lib/colorUtils';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 import {
   defaultReminderForPriorityName,
   formatReminderSummary,
@@ -41,58 +42,6 @@ const COLOR_PRESETS = [
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
-function FieldErrorTip({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <span
-      role="alert"
-      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-    >
-      {message}
-    </span>
-  );
-}
-
-function FieldControl({
-  children,
-  error,
-  className,
-}: {
-  children: ReactNode;
-  error?: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn('relative min-w-0', className)}>
-      {children}
-      <FieldErrorTip message={error} />
-    </div>
-  );
-}
-
-function FieldLabel({
-  children,
-  required,
-  htmlFor,
-}: {
-  children: ReactNode;
-  required?: boolean;
-  htmlFor?: string;
-}) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
-    >
-      <span>{children}</span>
-      {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
-          *
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 interface PriorityFormProps {
   id?: string;
@@ -120,6 +69,9 @@ export function PriorityForm({ id }: PriorityFormProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isLoadingRecord, setIsLoadingRecord] = useState(!!editingId);
+  const [loadError, setLoadError] = useState(false);
+  const [loadRetryKey, setLoadRetryKey] = useState(0);
   const reminderTouchedRef = useRef(false);
 
   const patchReminder = (patch: Partial<PriorityReminderRule>) => {
@@ -145,10 +97,18 @@ export function PriorityForm({ id }: PriorityFormProps) {
   }, [name, editingId, fillValues?.frequency]);
 
   useEffect(() => {
-    if (!editingId) return;
+    if (!editingId) {
+      setIsLoadingRecord(false);
+      setLoadError(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingRecord(true);
+    setLoadError(false);
     apiService
       .get<any>(`/api/master/task-priorities/load-data/${editingId}?companyNo=${companyNo}`)
       .then((response) => {
+        if (cancelled) return;
         if (response) {
           const body = response.data || response;
           const dl = body.data || body;
@@ -168,11 +128,24 @@ export function PriorityForm({ id }: PriorityFormProps) {
               ...parsed,
               frequencyNo: parsed.frequencyNo || daily,
             });
+          } else {
+            setLoadError(true);
           }
+        } else {
+          setLoadError(true);
         }
       })
-      .catch((err) => console.error('Failed to load priority details:', err));
-  }, [editingId, companyNo, fillValues?.frequency]);
+      .catch((err) => {
+        console.error('Failed to load priority details:', err);
+        if (!cancelled) setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingRecord(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingId, companyNo, fillValues?.frequency, loadRetryKey]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -280,6 +253,9 @@ export function PriorityForm({ id }: PriorityFormProps) {
         setShowSuccessAlert(false);
         goToList();
       }}
+      isLoadingRecord={isLoadingRecord}
+      loadError={loadError}
+      onRetryLoad={() => setLoadRetryKey((k) => k + 1)}
     >
       <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
         <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">

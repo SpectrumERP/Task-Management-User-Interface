@@ -1,27 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDateOnly } from '@/lib/dateTime';
-import { AlertCircle, ChevronRight, Edit, FileText, Loader2, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { ChevronRight, Edit, FileText, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Button } from '@/components/ui/button';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { Card } from '@/components/ui/card';
 import { Combobox } from '@/components/ui/Combobox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 import { useAuthStore } from '@/store/useAuthStore';
 import { DealRecord, DealSearchFilters } from '@/types/deal';
 import { DealOption, deleteDeal, fetchDivisionsByCompany, searchDeals } from './dealApi';
 import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
-import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FieldLabel } from '@/components/ui/form-field';
 import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
 
 export function DealSearchPage() {
@@ -183,7 +178,7 @@ export function DealSearchPage() {
             type="button"
             data-page-tour="deal-create"
             onClick={() => navigate('/sales/deals/new')}
-            className="h-9 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-medium gap-0.5 shadow-lg shadow-[#0EA5E9]/20"
+            className="h-10 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold gap-1.5 shadow-sm shadow-brand/20"
           >
             <Plus size={15} />
             New Deal
@@ -195,7 +190,7 @@ export function DealSearchPage() {
         <Card data-page-tour="deal-filters" className="rounded-2xl border-[var(--tm-border)] shadow-sm p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
             <div className="space-y-0.5">
-              <label className="text-[11px] font-medium text-slate-200 normal-case ml-1">Company</label>
+              <FieldLabel className="text-[11px] font-medium text-slate-200 normal-case ml-1">Company</FieldLabel>
               <Combobox options={companyOptions} value={filters.companyNo || ''} onChange={(value) => setFilters((prev) => ({
                 ...prev,
                 companyNo: value,
@@ -208,7 +203,7 @@ export function DealSearchPage() {
             </div>
 
             <div className="space-y-0.5">
-              <label className="text-[11px] font-medium text-slate-200 normal-case ml-1">Division</label>
+              <FieldLabel className="text-[11px] font-medium text-slate-200 normal-case ml-1">Division</FieldLabel>
               <Combobox options={divisionOptions} value={filters.divisionNo || ''} onChange={(value) => setFilters((prev) => ({ ...prev, divisionNo: value }))}
                 disabled={!filters.companyNo || isLoadingDivisions}
                 placeholder={!filters.companyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "All divisions"}
@@ -236,11 +231,11 @@ export function DealSearchPage() {
             </div> */}
 
             <div className="flex items-end gap-0.5">
-              <Button type="button" variant="outline" data-page-tour="deal-reset" onClick={resetFilters} className="h-11 rounded-xl text-xs font-medium gap-0.5 flex-1">
+              <Button type="button" variant="outline" data-page-tour="deal-reset" onClick={resetFilters} className="h-11 rounded-[8px] text-xs font-medium gap-0.5 flex-1">
                 <RotateCcw size={14} />
                 Reset
               </Button>
-              <Button type="button" data-page-tour="deal-search-btn" onClick={applyFilters} className="h-11 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-medium gap-0.5 flex-1">
+              <Button type="button" data-page-tour="deal-search-btn" onClick={applyFilters} className="h-11 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold gap-0.5 flex-1">
                 <Search size={14} />
                 Search
               </Button>
@@ -249,145 +244,187 @@ export function DealSearchPage() {
         </Card>
 
         <Card data-page-tour="deal-table" className="rounded-2xl border-[var(--tm-border)] shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="tm-data-table w-full min-w-[760px] text-left">
-              <thead className="bg-[var(--tm-muted)] border-b border-[var(--tm-border)]">
-                <tr>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
-                    <SortableHeader label="Company" sortKey="companyName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
-                    <SortableHeader label="Division" sortKey="divisionName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
-                    <SortableHeader label="Document No Yearly" sortKey="documentNoYearly" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
-                    <SortableHeader label="Document Date" sortKey="documentDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
-                    <SortableHeader label="Description" sortKey="description" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-slate-300 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
-                {isLoading && deals.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-16 text-center">
-                      <div className="flex items-center justify-center">
-                        <BrandLoader size="sm" message="Loading sales deals" />
+          {isLoading && deals.length === 0 ? (
+            <div className="px-4 py-16 flex items-center justify-center">
+              <BrandLoader size="sm" message="Loading sales deals" />
+            </div>
+          ) : loadError && deals.length === 0 ? (
+            <div className="px-4 py-8">
+              <LoadErrorState
+                title="Failed to load sales deals"
+                onRetry={() => fetchDeals(filters)}
+                compact
+              />
+            </div>
+          ) : deals.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title="No records found"
+              description="No sales deals match the current filters. Try adjusting company or division, then search again."
+              compact
+            />
+          ) : (
+            <>
+              <div className="md:hidden flex flex-col gap-2 p-2">
+                {sortedDeals.map((deal) => (
+                  <div
+                    key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`}
+                    className="rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 px-3 py-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <TruncatedText
+                          text={String(deal.companyName || deal.companyNo || '-')}
+                          className="text-sm font-semibold text-slate-100"
+                        />
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400">
+                          <span className="min-w-0 truncate">
+                            <span className="text-slate-500">Division: </span>
+                            {String(deal.divisionName || deal.divisionNo || 'N/A')}
+                          </span>
+                          <span className="min-w-0 truncate">
+                            <span className="text-slate-500">Doc: </span>
+                            {String(deal.documentNoYearly || '-')}
+                          </span>
+                          <span className="min-w-0 truncate">
+                            <span className="text-slate-500">Date: </span>
+                            {deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
+                          </span>
+                        </div>
+                        {deal.description ? (
+                          <TruncatedText
+                            text={deal.description}
+                            className="mt-1 text-[11px] text-slate-500"
+                          />
+                        ) : null}
                       </div>
-                    </td>
-                  </tr>
-                ) : loadError && deals.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center">
-                      <LoadErrorState
-                        title="Failed to load sales deals"
-                        onRetry={() => fetchDeals(filters)}
-                        compact
-                      />
-                    </td>
-                  </tr>
-                ) : deals.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-16 text-center">
-                      <div className="flex flex-col items-center gap-0.5 text-slate-400">
-                        <FileText size={26} />
-                        <p className="text-xs font-medium">No records found</p>
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <ActionTip label="Edit">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Edit"
+                            onClick={() => handleEdit(deal)}
+                            className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+                          >
+                            <Edit size={14} />
+                          </Button>
+                        </ActionTip>
+                        <ActionTip label="Delete">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Delete"
+                            onClick={() => setDeleteTarget(deal)}
+                            disabled={!deal.id}
+                            className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </ActionTip>
                       </div>
-                    </td>
-                  </tr>
-                ) : sortedDeals.map((deal) => (
-                  <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="hover:bg-[var(--tm-muted)]/70 transition-colors">
-                    <td className="px-4 py-3 text-xs font-medium text-slate-200 max-w-[10rem] min-w-0 overflow-hidden">
-                      <TruncatedText text={String(deal.companyName || deal.companyNo || '-')} className="text-xs font-medium text-slate-200" />
-                    </td>
-                    <td className="px-4 py-3 text-xs font-medium text-slate-200 max-w-[9rem] min-w-0 overflow-hidden">
-                      <TruncatedText text={String(deal.divisionName || deal.divisionNo || 'N/A')} className="text-xs font-medium text-slate-200" />
-                    </td>
-                    <td className="px-4 py-3 text-xs font-medium text-slate-100 max-w-[9rem] min-w-0 overflow-hidden">
-                      <TruncatedText text={String(deal.documentNoYearly || '-')} className="text-xs font-medium text-slate-100" />
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-slate-300 max-w-[8rem] min-w-0 overflow-hidden">
-                      <TruncatedText
-                        text={deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
-                        className="text-xs font-semibold text-slate-300"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[320px] min-w-0 overflow-hidden">
-                      <TruncatedText
-                        text={deal.description || '-'}
-                        className="text-xs font-semibold text-slate-500"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(deal)}
-                          title="Edit"
-                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
-                        >
-                          <Edit size={14} />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteTarget(deal)}
-                          disabled={!deal.id}
-                          title="Delete"
-                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                        >
-                          <Trash2 size={14} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+
+              <div className="hidden md:block overflow-x-auto">
+                <table className="tm-data-table w-full min-w-[760px] text-left">
+                  <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
+                    <tr>
+                      <th className="tm-col-sticky-code sticky left-0 z-[45] px-4 py-3 text-[11px] font-semibold text-slate-300 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
+                        <SortableHeader label="Company" sortKey="companyName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                        <SortableHeader label="Division" sortKey="divisionName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                        <SortableHeader label="Document No Yearly" sortKey="documentNoYearly" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                        <SortableHeader label="Document Date" sortKey="documentDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                      </th>
+                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                        <SortableHeader label="Description" sortKey="description" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                      </th>
+                      <th className="tm-col-actions sticky right-0 z-40 px-4 py-3 text-[11px] font-semibold text-slate-300 text-right border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
+                    {sortedDeals.map((deal) => (
+                      <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="hover:bg-[var(--tm-muted)]/70 transition-colors">
+                        <td className="tm-col-sticky-code sticky left-0 z-20 px-4 py-3 text-xs font-medium text-slate-200 max-w-[10rem] min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                          <TruncatedText text={String(deal.companyName || deal.companyNo || '-')} className="text-xs font-medium text-slate-200" />
+                        </td>
+                        <td className="px-4 py-3 text-xs font-medium text-slate-200 max-w-[9rem] min-w-0 overflow-hidden">
+                          <TruncatedText text={String(deal.divisionName || deal.divisionNo || 'N/A')} className="text-xs font-medium text-slate-200" />
+                        </td>
+                        <td className="px-4 py-3 text-xs font-medium text-slate-100 max-w-[9rem] min-w-0 overflow-hidden">
+                          <TruncatedText text={String(deal.documentNoYearly || '-')} className="text-xs font-medium text-slate-100" />
+                        </td>
+                        <td className="px-4 py-3 text-xs font-semibold text-slate-300 max-w-[8rem] min-w-0 overflow-hidden">
+                          <TruncatedText
+                            text={deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
+                            className="text-xs font-semibold text-slate-300"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[320px] min-w-0 overflow-hidden">
+                          <TruncatedText
+                            text={deal.description || '-'}
+                            className="text-xs font-semibold text-slate-500"
+                          />
+                        </td>
+                        <td className="tm-col-actions sticky right-0 z-10 px-4 py-3 text-right border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                          <div className="flex items-center justify-end gap-1">
+                            <ActionTip label="Edit">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Edit"
+                                onClick={() => handleEdit(deal)}
+                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+                              >
+                                <Edit size={14} />
+                              </Button>
+                            </ActionTip>
+                            <ActionTip label="Delete">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Delete"
+                                onClick={() => setDeleteTarget(deal)}
+                                disabled={!deal.id}
+                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </ActionTip>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </Card>
       </div>
 
-      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}>
-        <DialogContent className="rounded-2xl max-w-sm p-0 border-none shadow-xl">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-lg font-medium text-slate-100 tracking-tight flex items-center gap-0.5">
-              <AlertCircle size={20} className="text-red-500" />
-              Confirm Deletion
-            </DialogTitle>
-            <DialogDescription className="text-sm text-slate-500 mt-2">
-              Do you want to delete?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-2xl">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isDeleting}
-              onClick={() => setDeleteTarget(null)}
-              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-300 hover:bg-[var(--tm-muted)] border-transparent shadow-none"
-            >
-              No
-            </Button>
-            <Button
-              type="button"
-              disabled={isDeleting}
-              onClick={confirmDelete}
-              className="h-10 px-5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium text-xs normal-case shadow-md shadow-red-500/20 gap-0.5"
-            >
-              {isDeleting && <Loader2 size={14} className="animate-spin" />}
-              Yes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MasterDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteTarget(null);
+        }}
+        onConfirm={confirmDelete}
+        recordName={deleteTarget?.documentNoYearly || deleteTarget?.description || null}
+        entityLabel="sales deal"
+        confirming={isDeleting}
+      />
     </div>
   );
 }

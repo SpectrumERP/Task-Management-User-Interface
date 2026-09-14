@@ -105,7 +105,7 @@ export function UserGroupList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/security/user-groups/delete', {
       params: { userGroupNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchUserGroups(); }).catch(err => { console.error('Failed to delete user group:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('User group deleted'); fetchUserGroups(); }).catch(err => { console.error('Failed to delete user group:', err); toast.error('Failed to delete user group'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -168,7 +168,8 @@ export function UserGroupList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="user group"
+      />
     </div>
   );
 }

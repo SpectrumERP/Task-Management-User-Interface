@@ -90,12 +90,12 @@ export function MeetingTypeList() {
         params: { meetingTypeNo: deleteTargetId },
       })
       .then(() => {
-        toast.success('Record deleted');
+        toast.success('Meeting type deleted');
         fetchMeetingTypes();
       })
       .catch((err) => {
         console.error('Failed to delete meeting type:', err);
-        toast.error('Failed to delete record');
+        toast.error('Failed to delete meeting type');
       });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
@@ -152,7 +152,8 @@ export function MeetingTypeList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="meeting type"
+      />
     </div>
   );
 }

@@ -65,7 +65,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <Button
               type="button"
               onClick={this.handleReload}
-              className="h-9 rounded-xl text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+              className="h-9 rounded-xl text-xs font-semibold bg-brand hover:bg-brand-hover text-brand-foreground"
             >
               Reload app
             </Button>

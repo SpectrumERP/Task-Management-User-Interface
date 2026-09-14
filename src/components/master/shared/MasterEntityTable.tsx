@@ -5,8 +5,11 @@ import { cn } from '@/lib/utils';
 import { formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ActionTip, TruncatedText, nodeToPlainText } from './TruncatedCellTip';
 import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+
+/** Sticky column policy (wide desktop tables): Code left, Actions right. */
 
 export interface MasterColumn<T> {
   header: string;
@@ -16,6 +19,11 @@ export interface MasterColumn<T> {
   /** Row field / key used for column sorting. Defaults to header slug if omitted. */
   sortKey?: string;
   getSortValue?: (row: T) => unknown;
+  /**
+   * When false, render the cell node as-is (chips/badges).
+   * Default true flattens via TruncatedText (legacy master behavior).
+   */
+  plainText?: boolean;
 }
 
 interface MasterEntityTableProps<T extends { id: string; code?: string; createdBy?: string; createdDate?: string }> {
@@ -41,6 +49,11 @@ interface MasterEntityTableProps<T extends { id: string; code?: string; createdB
   footer?: React.ReactNode;
   /** Initial sort column (default: name). */
   defaultSortKey?: string | null;
+  /**
+   * When true, render getName() as React (color chips / badges).
+   * Sort/export still use plain text via getName or row.name.
+   */
+  nameAsRich?: boolean;
 }
 
 function columnSortKey<T>(col: MasterColumn<T>, index: number): string {
@@ -68,6 +81,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
   embedded = false,
   footer,
   defaultSortKey = 'name',
+  nameAsRich = false,
 }: MasterEntityTableProps<T>) {
   const shellClass = embedded
     ? 'flex flex-col min-h-0 max-h-full overflow-hidden'
@@ -164,15 +178,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
   if (rows.length === 0) {
     return (
       <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')}>
-        <div className="flex flex-col items-center justify-center p-10 text-center min-h-[200px]">
-          <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--tm-tint)] text-[#0EA5E9]/70">
-            <EmptyIcon size={22} strokeWidth={1.75} />
-          </span>
-          <h3 className="text-sm font-semibold text-slate-100 tracking-tight">{emptyTitle}</h3>
-          <p className="mt-1 max-w-sm text-[11px] font-medium text-slate-400 leading-relaxed">
-            {emptyDescription}
-          </p>
-        </div>
+        <EmptyState icon={EmptyIcon} title={emptyTitle} description={emptyDescription} />
         {footer}
       </div>
     );
@@ -204,11 +210,23 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                 <div className="min-w-0 flex-1">
                   <TruncatedText text={String(nodeToPlainText(getCode(item)) || '')} className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums" />
                   <div className="mt-0.5 min-w-0">
-                    <TruncatedText text={nodeToPlainText(getName(item))} className="text-sm font-semibold text-slate-100" />
+                    {nameAsRich ? (
+                      <div className="flex items-center gap-1.5 min-w-0 text-sm font-semibold text-slate-100">{getName(item)}</div>
+                    ) : (
+                      <TruncatedText text={nodeToPlainText(getName(item))} className="text-sm font-semibold text-slate-100" />
+                    )}
                   </div>
                   {columns.length > 0 ? (
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
                       {columns.slice(0, 3).map((col, idx) => {
+                        if (col.plainText === false) {
+                          return (
+                            <div key={idx} className="min-w-0 max-w-full text-[10px] text-slate-400">
+                              <span className="font-medium text-slate-500">{col.header}: </span>
+                              <div className="mt-0.5">{col.render(item)}</div>
+                            </div>
+                          );
+                        }
                         const cell = nodeToPlainText(col.render(item));
                         return (
                           <div key={idx} className="min-w-0 max-w-full text-[10px] text-slate-400">
@@ -328,10 +346,25 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                   />
                 </td>
                 <td className="px-2.5 py-2 align-middle min-w-0 overflow-hidden">
-                  <TruncatedText text={nameText} className="text-xs font-semibold text-slate-100" />
+                  {nameAsRich ? (
+                    <div className="flex items-center gap-1.5 min-w-0 text-xs font-semibold text-slate-100">{getName(item)}</div>
+                  ) : (
+                    <TruncatedText text={nameText} className="text-xs font-semibold text-slate-100" />
+                  )}
                 </td>
                 {columns.map((col, idx) => {
                   const cellNode = col.render(item);
+                  const asPlain = col.plainText !== false;
+                  if (!asPlain) {
+                    return (
+                      <td
+                        key={idx}
+                        className={cn('px-2.5 py-2 text-xs font-medium text-slate-300 align-middle min-w-0', col.className)}
+                      >
+                        {cellNode}
+                      </td>
+                    );
+                  }
                   const cellText = nodeToPlainText(cellNode);
                   return (
                     <td

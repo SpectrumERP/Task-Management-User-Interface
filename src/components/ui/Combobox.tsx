@@ -97,13 +97,13 @@ export function Combobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-medium text-sm h-9 shadow-sm transition-all border border-[var(--tm-border)] relative pr-8",
-            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[var(--tm-elevated)] disabled:hover:bg-[var(--tm-elevated)]",
+            "w-full justify-between font-medium text-sm h-10 shadow-tm-sm transition-all border border-tm-border relative pr-8",
+            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-tm-elevated disabled:hover:bg-tm-elevated",
             className,
             FIELD_TEXT_STYLE,
-            !value && "text-slate-400",
-            "rounded-[8px]",
-            !(typeof className === "string" && /border-red/.test(className)) && "!border-[var(--tm-border)]"
+            !value && "text-tm-placeholder",
+            "rounded-md",
+            !(typeof className === "string" && /border-red/.test(className)) && "!border-tm-border"
           )}
         >
           <div className="flex-1 overflow-hidden flex items-center pr-2">
@@ -190,7 +190,7 @@ export function Combobox({
                   </div>
                   <Check
                     className={cn(
-                      "ml-auto h-4 w-4 text-[#0EA5E9]",
+                      "ml-auto h-4 w-4 text-brand",
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
@@ -199,7 +199,7 @@ export function Combobox({
             </CommandGroup>
           </CommandList>
           {onAddNew && (
-            <div className="p-1 border-t border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
+            <div className="p-1 border-t border-tm-border bg-tm-muted/50">
               <Button
                 type="button"
                 variant="ghost"
@@ -210,7 +210,7 @@ export function Combobox({
                     if (onAddNew) onAddNew();
                   }, 0);
                 }}
-                className="w-full justify-start text-[#0EA5E9] hover:text-[#0284C7] hover:bg-[var(--tm-muted)]/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-lg transition-all active:scale-[0.98] select-none"
+                className="w-full justify-start text-brand hover:text-brand hover:bg-tm-muted/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-md transition-all active:scale-[0.98] select-none"
               >
                 <Plus className="h-3.5 w-3.5 stroke-[3]" />
                 {addNewLabel}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -9,67 +9,18 @@ import { Users, UserPlus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
+import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
+import { useConfirmDelete } from '../shared/useConfirmDelete';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 import { SortableHeader } from '@/components/shared/useTableSort';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
 const FORM_NO = 1546;
 const TITLE = 'User Group Master';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
-function FieldErrorTip({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <span
-      role="alert"
-      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-    >
-      {message}
-    </span>
-  );
-}
-
-function FieldControl({
-  children,
-  error,
-  className,
-}: {
-  children: ReactNode;
-  error?: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn('relative min-w-0', className)}>
-      {children}
-      <FieldErrorTip message={error} />
-    </div>
-  );
-}
-
-function FieldLabel({
-  children,
-  required,
-  htmlFor,
-}: {
-  children: ReactNode;
-  required?: boolean;
-  htmlFor?: string;
-}) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
-    >
-      <span>{children}</span>
-      {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
-          *
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 interface UserGroupFormProps {
   id?: string;
@@ -85,6 +36,7 @@ interface GroupMember {
 export function UserGroupForm({ id }: UserGroupFormProps) {
   const editingId = id ?? null;
   const rights = useFormRights(FORM_NO);
+  const deleteConfirm = useConfirmDelete('member');
   const { goToList } = useMasterFormGuard('user-group', editingId, rights);
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
@@ -199,6 +151,16 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
     next.splice(index, 1);
     setSelectedUsers(next);
     if (errors.selectedUsers) setErrors((prev) => ({ ...prev, selectedUsers: '' }));
+  };
+
+  const requestRemoveGridUser = (index: number) => {
+    const user = selectedUsers[index];
+    const label = user?.displayName || user?.userName || user?.email || 'Member';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'member',
+      recordName: label,
+      onConfirm: () => removeGridUser(index),
+    });
   };
 
   const updateGridUser = (index: number, user: any) => {
@@ -443,7 +405,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                         <td className="px-1 py-1.5 text-center">
                           <button
                             type="button"
-                            onClick={() => removeGridUser(index)}
+                            onClick={() => requestRemoveGridUser(index)}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                             aria-label="Remove member"
                           >
@@ -474,6 +436,15 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
           ) : null}
         </div>
       </section>
+
+      <MasterDeleteDialog
+        open={deleteConfirm.open}
+        onOpenChange={deleteConfirm.onOpenChange}
+        onConfirm={deleteConfirm.handleConfirm}
+        recordName={deleteConfirm.recordName}
+        entityLabel={deleteConfirm.entityLabel}
+        confirming={deleteConfirm.confirming}
+      />
     </MasterFormShell>
   );
 }

@@ -512,71 +512,67 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
       {(userDisplayName || roleLabel) && (
         <div
           className={cn(
-            "shrink-0 border-t border-[var(--tm-border)]/70 overflow-visible",
-            isCollapsed ? "px-1.5 py-2.5" : "px-2.5 py-3"
+            'shrink-0 border-t border-[var(--tm-border)]/70 overflow-visible',
+            isCollapsed ? 'px-1.5 py-2.5' : 'px-2.5 py-2.5'
           )}
         >
           <div
             className={cn(
-              "overflow-visible transition-colors",
+              'overflow-visible',
               isCollapsed
-                ? "mx-auto flex h-9 w-9 items-center justify-center"
-                : "flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 bg-[var(--tm-muted)]/40 ring-1 ring-[var(--tm-border)]"
+                ? 'mx-auto flex h-9 w-9 items-center justify-center'
+                : 'flex items-center justify-center'
             )}
           >
-            <span
+            <div
               className={cn(
-                "group/shield relative inline-flex shrink-0 items-center justify-center cursor-default",
-                isCollapsed ? "h-9 w-9" : "h-8 w-8"
+                'inline-flex items-center min-w-0 max-w-full',
+                isCollapsed ? '' : 'gap-1.5'
               )}
-              aria-label={userShieldTip}
             >
               <span
                 className={cn(
-                  "inline-flex items-center justify-center rounded-lg",
-                  "bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[var(--tm-border)]",
-                  isCollapsed ? "h-8 w-8" : "h-8 w-8"
+                  'group/shield relative inline-flex shrink-0 items-center justify-center cursor-default text-[#0EA5E9]',
+                  isCollapsed ? 'h-9 w-9' : 'h-4 w-4'
                 )}
+                aria-label={userShieldTip}
               >
                 {roleLabel ? (
-                  <Shield size={14} strokeWidth={1.75} />
+                  <Shield size={isCollapsed ? 15 : 13} strokeWidth={1.75} />
                 ) : (
-                  <UserRound size={14} strokeWidth={1.75} />
+                  <UserRound size={isCollapsed ? 15 : 13} strokeWidth={1.75} />
                 )}
-              </span>
-              {userShieldTip ? (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover/shield:opacity-100 transition-opacity duration-200">
-                  <div className="tm-sidebar-tip">
-                    {userShieldTip}
-                    <span className="tm-sidebar-tip-arrow" aria-hidden />
+                {userShieldTip ? (
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover/shield:opacity-100 transition-opacity duration-200">
+                    <div className="tm-sidebar-tip">
+                      {userShieldTip}
+                      <span className="tm-sidebar-tip-arrow" aria-hidden />
+                    </div>
                   </div>
-                </div>
-              ) : null}
-            </span>
+                ) : null}
+              </span>
 
-            {!isCollapsed && (
-              <div className="min-w-0 flex-1 overflow-hidden flex items-center gap-1.5">
-                {userDisplayName ? (
-                  <TruncatedText
-                    text={userDisplayName}
-                    className="min-w-0 flex-1 text-[13px] font-semibold leading-none text-slate-800 dark:text-slate-100"
-                  />
-                ) : null}
-                {userDisplayName && roleLabel ? (
-                  <span
-                    className="shrink-0 text-[11px] font-medium text-slate-500 dark:text-slate-500"
-                    aria-hidden
-                  >
-                    ·
-                  </span>
-                ) : null}
-                {roleLabel ? (
-                  <span className="shrink-0 text-[11px] font-semibold leading-none text-[#0EA5E9]">
-                    {roleLabel}
-                  </span>
-                ) : null}
-              </div>
-            )}
+              {!isCollapsed && (
+                <div className="min-w-0 overflow-hidden inline-flex items-center gap-1">
+                  {userDisplayName ? (
+                    <TruncatedText
+                      text={userDisplayName}
+                      className="min-w-0 w-auto max-w-[7.5rem] text-[13px] font-medium leading-none text-[var(--tm-input-fg)]"
+                    />
+                  ) : null}
+                  {userDisplayName && roleLabel ? (
+                    <span className="shrink-0 text-[12px] leading-none text-slate-400" aria-hidden>
+                      ·
+                    </span>
+                  ) : null}
+                  {roleLabel ? (
+                    <span className="shrink-0 text-[12px] font-medium leading-none text-[#0EA5E9]">
+                      {roleLabel}
+                    </span>
+                  ) : null}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

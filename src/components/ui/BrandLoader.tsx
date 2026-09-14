@@ -59,12 +59,12 @@ export function BrandLoader({
       <div className={cn('relative flex items-center justify-center', dims.wrap)}>
         <span
           aria-hidden
-          className="brand-loader-orbit-cw absolute inset-0 rounded-full border-2 border-transparent border-t-[#0EA5E9] border-r-[#0EA5E9]/40"
+          className="brand-loader-orbit-cw absolute inset-0 rounded-full border-2 border-transparent border-t-brand border-r-brand/40"
         />
         <span
           aria-hidden
           className={cn(
-            'brand-loader-orbit-ccw absolute rounded-full border-2 border-transparent border-b-[#F59E0B] border-l-[#F59E0B]/50',
+            'brand-loader-orbit-ccw absolute rounded-full border-2 border-transparent border-b-accent-warm border-l-accent-warm/50',
             dims.mid
           )}
         />

@@ -30,6 +30,8 @@ import { getMeetingSchema, MeetingNotesFormData } from '@/types/meeting';
 import { attachmentService } from '@/services/attachmentService';
 import { UploadCloud, Image as ImageIcon, Trash, RefreshCw, AlertCircle, } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
+import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 import {
   Dialog,
   DialogContent,
@@ -61,60 +63,6 @@ const toOptionalInt = (val: string) => {
   return Number.isNaN(n) ? null : n;
 };
 
-function FieldErrorTip({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <span
-      role="alert"
-      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-    >
-      {message}
-    </span>
-  );
-}
-
-function FieldControl({
-  children,
-  error,
-  className,
-}: {
-  children: React.ReactNode;
-  error?: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn('relative min-w-0', className)}>
-      {children}
-      <FieldErrorTip message={error} />
-    </div>
-  );
-}
-
-function FieldLabel({
-  children,
-  required,
-  className,
-  htmlFor,
-}: {
-  children: React.ReactNode;
-  required?: boolean;
-  className?: string;
-  htmlFor?: string;
-}) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className={cn('inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300', className)}
-    >
-      <span>{children}</span>
-      {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
-          *
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
   return (
@@ -596,7 +544,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       }
 
       await apiService.post(url, cleanEmptyStrings(payload));
-      toast.success(isUpdate ? "Meeting Notes Updated Successfully" : "Meeting Notes Saved Successfully");
+      toast.success(isUpdate ? 'Meeting notes updated successfully.' : 'Meeting notes saved successfully.');
       form.reset(form.getValues());
       if (onComplete) onComplete();
     } catch (error) {
@@ -640,7 +588,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
         <div className="flex items-center gap-2 self-end sm:self-auto" data-page-tour="meeting-form-actions">
           <PageGuideButton guideKey="meeting-form" />
-          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] font-medium border-[var(--tm-border)]/80 text-xs px-4" onClick={requestLeave}>Cancel</Button>
+          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] text-slate-300 shadow-none px-3" onClick={requestLeave}>
+            Cancel
+          </Button>
           {resolvedMeetingNo ? (
             <Button
               type="button"
@@ -665,7 +615,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
             </Button>
           ) : null}
           {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
-            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] text-xs px-5" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
+            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-sm shadow-[#0EA5E9]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
               {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
             </Button>
           )}
@@ -1902,91 +1852,32 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         </div>
       </div>
 
-      <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-[2%]">
-          {itemToDelete && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-            >
-              <DialogHeader className="p-6 pb-3 text-center sm:text-center items-center">
-                <motion.div
-                  initial={{ scale: 0.6, rotate: -12 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }}
-                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 ring-8 ring-red-500/10"
-                >
-                  <Trash2 size={22} strokeWidth={1.75} />
-                </motion.div>
-                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">
-                  {itemToDelete.type === 'participant'
-                    ? 'Remove participant?'
-                    : itemToDelete.type === 'discussion'
-                      ? 'Remove discussion?'
-                      : 'Remove document?'}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
-                  <span className="font-medium text-slate-200">“{itemToDelete.label}”</span>
-                  {' '}will be removed from this meeting note. This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setItemToDelete(null)}
-                  className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={confirmRemoveItem}
-                  className="h-10 px-5 rounded-[8px] bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/20 transition-transform hover:scale-[1.02] active:scale-95"
-                >
-                  Delete
-                </Button>
-              </DialogFooter>
-            </motion.div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <MasterDeleteDialog
+        open={!!itemToDelete}
+        onOpenChange={(open) => {
+          if (!open) setItemToDelete(null);
+        }}
+        onConfirm={confirmRemoveItem}
+        recordName={itemToDelete?.label}
+        entityLabel={
+          itemToDelete?.type === 'participant'
+            ? 'participant'
+            : itemToDelete?.type === 'discussion'
+              ? 'discussion'
+              : 'document'
+        }
+      />
 
-      <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
-        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95">
-          {attachmentToDelete && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-            >
-              <DialogHeader className="p-6 pb-3 text-center sm:text-center items-center">
-                <motion.div
-                  initial={{ scale: 0.6, rotate: -12 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }}
-                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 ring-8 ring-red-500/10"
-                >
-                  <Trash2 size={22} strokeWidth={1.75} />
-                </motion.div>
-                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">Remove attachment?</DialogTitle>
-                <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
-                  <span className="font-medium text-slate-200">“{attachmentToDelete.name}”</span>
-                  {' '}will be deleted. This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
-                <Button type="button" variant="outline" disabled={isDeletingAttachment} onClick={() => setAttachmentToDelete(null)} className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none">Cancel</Button>
-                <Button disabled={isDeletingAttachment} onClick={confirmRemoveAttachment} className="h-10 px-5 rounded-[8px] bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/20 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95">
-                  {isDeletingAttachment ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-                  Delete
-                </Button>
-              </DialogFooter>
-            </motion.div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <MasterDeleteDialog
+        open={!!attachmentToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingAttachment) setAttachmentToDelete(null);
+        }}
+        onConfirm={confirmRemoveAttachment}
+        recordName={attachmentToDelete?.name}
+        entityLabel="attachment"
+        confirming={isDeletingAttachment}
+      />
 
       <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
         <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl">
@@ -2022,7 +1913,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Enter category name" className="h-10 rounded-[8px]" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <Button type="button" variant="outline" onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" className="h-9 rounded-[8px]" onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
               <Button type="button" disabled={isSavingCategory || !newCategoryName.trim()} onClick={async () => {
                 setIsSavingCategory(true);
                 try {
@@ -2065,7 +1956,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <Input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Enter type name" className="h-10 rounded-[8px]" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <Button type="button" variant="outline" onClick={() => setTypeModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" className="h-9 rounded-[8px]" onClick={() => setTypeModalOpen(false)}>Cancel</Button>
               <Button type="button" disabled={isSavingType || !newTypeName.trim()} onClick={async () => {
                 setIsSavingType(true);
                 try {

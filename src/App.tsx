@@ -206,7 +206,7 @@ function Dashboard() {
       <main
         className={cn(
           "page-shell gap-4",
-          showFilters && "[--tm-filters-drawer-width:min(100vw,18rem)]"
+          showFilters && "lg:[--tm-filters-drawer-width:min(100vw,18rem)]"
         )}
       >
         {/* Unified Top Control Bar */}
@@ -299,6 +299,12 @@ function Dashboard() {
               <TaskCalendarView
                 tasks={tasks}
                 isLoading={isLoading}
+                loadError={Boolean(fetchError)}
+                onRetryLoad={() => {
+                  if (currentFilters) {
+                    fetchTasks({ ...currentFilters } as FilterParams);
+                  }
+                }}
                 onTaskClick={handleTaskClick}
                 onAddTask={(date) => {
                   const dateStr = date ? `?date=${date.toISOString()}` : '';
@@ -800,7 +806,7 @@ function App() {
         <RouterProvider router={router} />
       </ErrorBoundary>
       <PWAInstallBanner />
-      <Toaster position="top-right" richColors closeButton />
+      <Toaster position="top-right" richColors closeButton duration={4000} />
     </>
   );
 }

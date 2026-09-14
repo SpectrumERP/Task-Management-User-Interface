@@ -86,7 +86,7 @@ export function BenefitTypeList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/business-benefit-types/delete', {
       params: { businessBenefitTypeNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchBusinessBenefitTypes(); }).catch(err => { console.error('Failed to delete benefit type:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Benefit type deleted'); fetchBusinessBenefitTypes(); }).catch(err => { console.error('Failed to delete benefit type:', err); toast.error('Failed to delete benefit type'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -142,7 +142,8 @@ export function BenefitTypeList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="benefit type"
+      />
     </div>
   );
 }

@@ -53,7 +53,7 @@ export function RouteErrorFallback() {
           <Button
             type="button"
             onClick={() => window.location.reload()}
-            className="h-9 rounded-xl text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white gap-1.5"
+            className="h-9 rounded-xl text-xs font-semibold bg-brand hover:bg-brand-hover text-brand-foreground gap-1.5"
           >
             <RefreshCw size={14} />
             Reload app

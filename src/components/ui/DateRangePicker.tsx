@@ -173,11 +173,11 @@ export function DateRangePicker({
             variant={"outline"}
             disabled={disabled}
             className={cn(
-              "w-full h-10 justify-start text-left font-medium rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs shadow-none transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-[#0EA5E9]/35 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15",
+              "w-full h-10 justify-start text-left font-medium rounded-md border border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs shadow-none transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-brand/35 focus-visible:ring-2 focus-visible:ring-brand/15",
               !range && "text-slate-400"
             )}
           >
-            <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+            <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-brand">
               <CalendarIcon className="h-3.5 w-3.5" />
             </span>
             {range?.from ? (
@@ -222,7 +222,7 @@ export function DateRangePicker({
                     "text-[11px] px-2.5 py-1.5 rounded-xl font-bold transition-all flex items-center justify-between shrink-0",
                     isMobile ? "h-8 px-3" : "w-full py-1.5 text-left",
                     isActive
-                      ? "bg-[#0EA5E9] text-white shadow-md shadow-[#0EA5E9]/10"
+                      ? "bg-brand text-white shadow-md shadow-brand/10"
                       : "text-slate-300 hover:bg-[var(--tm-muted)]/80 hover:text-slate-50"
                   )}
                 >
@@ -257,7 +257,7 @@ export function DateRangePicker({
               <Button
                 type="button"
                 onClick={handleOk}
-                className="h-8 px-5 text-xs font-bold rounded-xl bg-[#0EA5E9] text-white hover:bg-[#0284C7] shadow-sm"
+                className="h-8 px-5 text-xs font-bold rounded-xl bg-brand text-white hover:bg-brand-hover shadow-sm"
               >
                 OK
               </Button>

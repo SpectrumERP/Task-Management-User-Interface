@@ -79,7 +79,7 @@ export function TypeList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-types/delete', {
       params: { operTaskTypeNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchTypes(); }).catch(err => { console.error('Failed to delete type:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Type deleted'); fetchTypes(); }).catch(err => { console.error('Failed to delete type:', err); toast.error('Failed to delete type'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -129,7 +129,8 @@ export function TypeList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="type"
+      />
     </div>
   );
 }

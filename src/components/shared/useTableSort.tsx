@@ -117,7 +117,6 @@ export function SortableHeader({
         'inline-flex max-w-full items-center gap-1 cursor-pointer select-none text-inherit',
         'hover:text-[#0EA5E9] transition-colors group/header bg-transparent border-0 p-0 font-inherit',
         'focus-visible:outline-none focus-visible:text-[#0EA5E9]',
-        isActive && 'text-[#0EA5E9]',
         className
       )}
       onClick={(e) => {
@@ -126,16 +125,22 @@ export function SortableHeader({
         onSort(sortKey);
       }}
       aria-label={`Sort by ${label}`}
+      aria-sort={isActive ? (sortDesc ? 'descending' : 'ascending') : 'none'}
     >
       <span className="whitespace-nowrap truncate">{label}</span>
-      <span className="flex flex-col opacity-40 group-hover/header:opacity-100 transition-opacity shrink-0 text-current">
+      <span
+        className={cn(
+          'flex flex-col shrink-0 text-current transition-opacity',
+          isActive ? 'opacity-100' : 'opacity-40 group-hover/header:opacity-100'
+        )}
+      >
         <ChevronUp
           size={10}
-          className={cn('-mb-1', isActive && !sortDesc && 'text-[#0EA5E9] opacity-100')}
+          className={cn('-mb-1', isActive && !sortDesc && 'text-[#0EA5E9]')}
         />
         <ChevronDown
           size={10}
-          className={cn(isActive && sortDesc && 'text-[#0EA5E9] opacity-100')}
+          className={cn(isActive && sortDesc && 'text-[#0EA5E9]')}
         />
       </span>
     </button>

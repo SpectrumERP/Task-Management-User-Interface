@@ -37,13 +37,13 @@ export function InfoTooltip({ text, className }: InfoTooltipProps) {
           aria-label="Field information"
           className={cn(
             'tm-info-tip-trigger inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
-            'bg-[color-mix(in_srgb,var(--tm-tint)_55%,var(--tm-surface))] text-[#0EA5E9]',
-            'border border-[color-mix(in_srgb,#0EA5E9_22%,var(--tm-border))]',
-            'shadow-[var(--tm-shadow-sm)]',
+            'bg-[color-mix(in_srgb,var(--tm-tint)_55%,var(--tm-surface))] text-brand',
+            'border border-[color-mix(in_srgb,var(--brand)_22%,var(--tm-border))]',
+            'shadow-tm-sm',
             'transition-all duration-150',
-            'hover:bg-[#0EA5E9] hover:text-white hover:border-[#0EA5E9]',
+            'hover:bg-brand hover:text-brand-foreground hover:border-brand',
             'hover:shadow-[0_0_0_3px_var(--tm-glow)]',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--tm-surface)]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/40 focus-visible:ring-offset-1 focus-visible:ring-offset-tm-surface',
             'active:scale-95',
             className
           )}
@@ -94,14 +94,14 @@ export function InfoTooltip({ text, className }: InfoTooltipProps) {
                 className={cn(
                   'inline-flex h-6 w-6 items-center justify-center rounded-lg',
                   'bg-[color-mix(in_srgb,var(--tm-tint)_70%,var(--tm-surface))]',
-                  'border border-[color-mix(in_srgb,#0EA5E9_20%,var(--tm-border))]',
-                  'text-[#0EA5E9]'
+                  'border border-[color-mix(in_srgb,var(--brand)_20%,var(--tm-border))]',
+                  'text-brand'
                 )}
               >
                 <Lightbulb size={12} strokeWidth={2.25} />
               </span>
               <div className="min-w-0 leading-tight">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0EA5E9]">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-brand">
                   Tip
                 </span>
                 <span className="block text-[9px] font-medium text-slate-500 dark:text-slate-400">

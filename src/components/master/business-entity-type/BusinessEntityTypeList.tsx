@@ -106,7 +106,7 @@ export function BusinessEntityTypeList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/business-entity-types/delete', {
       params: { operCRMBusinessEntityTypeNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchBusinessEntityTypes(); }).catch(err => { console.error('Failed to delete business entity type:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Business entity type deleted'); fetchBusinessEntityTypes(); }).catch(err => { console.error('Failed to delete business entity type:', err); toast.error('Failed to delete business entity type'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -163,6 +163,7 @@ export function BusinessEntityTypeList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
+        entityLabel="business entity type"
       />
     </div>
   );

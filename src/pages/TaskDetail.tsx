@@ -23,11 +23,11 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 
 const reverseEffortFrequencyMap: Record<number, string> = {
   1: 'hours',
@@ -322,6 +322,7 @@ export default function TaskDetail() {
                   <Button
                     variant="outline"
                     size="icon"
+                    aria-label="More actions"
                     className="h-9 w-9 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
                   >
                     <MoreVertical size={16} className="text-slate-300" />
@@ -363,45 +364,17 @@ export default function TaskDetail() {
         </div>
       </div>
 
-      {/* Premium Alert Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">
-          <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/30">
-              <Trash2 className="h-6 w-6 text-red-400" />
-            </div>
-            <DialogTitle className="text-center text-lg font-black text-slate-50 leading-tight">
-              Delete Task
-            </DialogTitle>
-            <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
-              Do you want to delete?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 sm:space-x-3 flex items-center justify-center">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              className="w-full sm:w-auto rounded-xl font-bold text-slate-300 hover:bg-[var(--tm-muted)] text-xs px-5 h-9"
-            >
-              No
-            </Button>
-            <Button
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="w-full sm:w-auto rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white shadow-lg shadow-red-600/20 text-xs px-6 h-9 gap-2 transition-all"
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin text-white" />
-              ) : (
-                <Trash2 size={14} />
-              )}
-              Yes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete confirmation */}
+      <MasterDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setIsDeleteDialogOpen(open);
+        }}
+        onConfirm={handleDelete}
+        recordName={task?.title || task?.taskNo?.toString() || null}
+        entityLabel="task"
+        confirming={isDeleting}
+      />
       {/* Task Not Found Alert Dialog */}
       <Dialog open={isNotFoundDialogOpen} onOpenChange={() => { }}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">

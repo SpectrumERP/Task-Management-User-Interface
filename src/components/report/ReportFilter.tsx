@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSettings } from '@/hooks/useSettings';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
 interface ReportFilterValues {
   DateOnFilter?: string;
@@ -34,25 +35,6 @@ interface ReportFilterProps {
 }
 
 const fieldClass = FIELD_CONTROL_CLASS;
-
-function FieldLabel({
-  children,
-  required,
-}: {
-  children: ReactNode;
-  required?: boolean;
-}) {
-  return (
-    <label className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300">
-      <span>{children}</span>
-      {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
-          *
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 export function ReportFilter({ onApply }: ReportFilterProps) {
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
@@ -135,33 +117,30 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
             />
           </div>
 
-          <div className="space-y-1.5 min-w-0 relative">
+          <div className="space-y-1.5 min-w-0">
             <FieldLabel required>Date Range</FieldLabel>
-            <Controller
-              name="dateRange"
-              control={control}
-              rules={{
-                validate: (val) => {
-                  if (!val || !val.from || !val.to) return 'Date Range is required';
-                  return true;
-                },
-              }}
-              render={({ field }) => (
-                <DateRangePicker
-                  value={{ from: field.value?.from, to: field.value?.to }}
-                  onChange={(val) => field.onChange({ from: val?.from, to: val?.to })}
-                  className={cn(errors.dateRange && '[&_button]:border-red-400')}
-                />
-              )}
-            />
-            {errors.dateRange ? (
-              <span
-                role="alert"
-                className="pointer-events-none absolute right-1.5 top-[22px] z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)]"
-              >
-                {errors.dateRange.message as string}
-              </span>
-            ) : null}
+            <FieldControl
+              error={errors.dateRange?.message as string | undefined}
+              tipClassName="top-[22px]"
+            >
+              <Controller
+                name="dateRange"
+                control={control}
+                rules={{
+                  validate: (val) => {
+                    if (!val || !val.from || !val.to) return 'Date Range is required';
+                    return true;
+                  },
+                }}
+                render={({ field }) => (
+                  <DateRangePicker
+                    value={{ from: field.value?.from, to: field.value?.to }}
+                    onChange={(val) => field.onChange({ from: val?.from, to: val?.to })}
+                    className={cn(errors.dateRange && '[&_button]:border-red-400')}
+                  />
+                )}
+              />
+            </FieldControl>
           </div>
 
           <div className="space-y-1.5 min-w-0">

@@ -36,7 +36,7 @@ export function TagInput({ tags, onChange, placeholder = "Add tag...", className
 
   return (
     <div className={cn(
-      "flex flex-wrap gap-2 p-2 min-h-[40px] w-full rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-[#0EA5E9] transition-all",
+      "flex flex-wrap gap-2 p-2 min-h-[40px] w-full rounded-md border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-brand transition-all",
       className
     )}>
       {tags.map((tag, index) => (

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { attachmentService } from '@/services/attachmentService';
 import { UploadCloud, Camera as CameraIcon, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
 import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 
@@ -147,14 +148,16 @@ export function CompanyAttachmentsSection({
                         companyName={companyName}
                       />
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={() => onRemove(idx)}
-                      className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      title="Remove Attachment"
-                    >
-                      <X size={14} strokeWidth={2.5} />
-                    </button>
+                    <ActionTip label="Remove Attachment">
+                      <button
+                        type="button"
+                        onClick={() => onRemove(idx)}
+                        aria-label="Remove Attachment"
+                        className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
+                        <X size={14} strokeWidth={2.5} />
+                      </button>
+                    </ActionTip>
                   </div>
                 </div>
               ))}

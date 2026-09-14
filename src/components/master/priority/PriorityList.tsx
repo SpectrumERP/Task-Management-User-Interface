@@ -110,7 +110,7 @@ export function PriorityList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-priorities/delete', {
       params: { operTaskPriorityNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchPriorities(); }).catch(err => { console.error('Failed to delete priority:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Priority deleted'); fetchPriorities(); }).catch(err => { console.error('Failed to delete priority:', err); toast.error('Failed to delete priority'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -132,6 +132,7 @@ export function PriorityList() {
         columns={[
           {
             header: 'Sequence',
+            plainText: false,
             render: (item) => (
               <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[var(--tm-muted)] px-1.5 text-[11px] font-semibold text-slate-200 tabular-nums">
                 {item.sequence || '—'}
@@ -140,6 +141,7 @@ export function PriorityList() {
           },
           {
             header: 'Priority Duration',
+            plainText: false,
             render: (item) => (
               <span className="inline-flex items-center rounded-[6px] border border-[#0EA5E9]/15 bg-[var(--tm-tint)] px-2 py-0.5 text-[11px] font-semibold text-[#0EA5E9]">
                 {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
@@ -148,6 +150,7 @@ export function PriorityList() {
           },
           {
             header: 'Reminder',
+            plainText: false,
             render: (item) => (
               <span
                 className={
@@ -177,6 +180,7 @@ export function PriorityList() {
           }
           return <span className="uppercase tracking-wide">{item.name}</span>;
         }}
+        nameAsRich
         onEdit={(item) => navigate(toMasterEditPath('priority', item.id))}
         onDelete={handleDeleteClick}
         canUpdate={isUpdate}
@@ -209,7 +213,8 @@ export function PriorityList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="priority"
+      />
     </div>
   );
 }

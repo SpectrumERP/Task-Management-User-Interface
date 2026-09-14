@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
@@ -8,6 +8,7 @@ import { UserCombobox } from '@/components/ui/UserCombobox';
 import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityCombobox';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FieldLabel } from '@/components/ui/form-field';
 import { SlidersHorizontal, RotateCcw, FileBarChart2 } from 'lucide-react';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -41,14 +42,6 @@ interface MeetingReportFilterProps {
 }
 
 const fieldClass = FIELD_CONTROL_CLASS;
-
-function FieldLabel({ children }: { children: ReactNode }) {
-  return (
-    <label className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300">
-      <span>{children}</span>
-    </label>
-  );
-}
 
 export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
   const [fillValues, setFillValues] = useState<any>(null);

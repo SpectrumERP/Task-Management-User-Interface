@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { apiService } from '@/services/apiService';
@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { cn } from '@/lib/utils';
 import {
   getOpenUserAvatarId,
@@ -30,6 +31,24 @@ import {
   userProfilePath,
   type UserDetails,
 } from '@/lib/userProfile';
+
+/** Prefer sides that keep the profile card fully on-screen (first-row / near-header). */
+function pickProfileCardSide(trigger: HTMLElement | null): 'top' | 'bottom' | 'right' {
+  if (!trigger || typeof window === 'undefined') return 'bottom';
+  const rect = trigger.getBoundingClientRect();
+  const gap = 12;
+  const chromeTop = 72; // app header / sticky table chrome
+  const spaceBelow = window.innerHeight - rect.bottom - gap;
+  const spaceAbove = rect.top - chromeTop - gap;
+  const spaceRight = window.innerWidth - rect.right - gap;
+  const minCard = 280;
+
+  if (spaceBelow >= minCard) return 'bottom';
+  if (spaceRight >= 360) return 'right';
+  if (spaceAbove >= minCard) return 'top';
+  // Not enough room anywhere — still open below and let collision shift/clamp
+  return spaceBelow >= spaceAbove ? 'bottom' : spaceRight >= 200 ? 'right' : 'bottom';
+}
 
 interface UserAvatarProps {
   loginNo?: number | null;
@@ -95,11 +114,13 @@ export function UserAvatar({
   nameClassName,
 }: UserAvatarProps) {
   const instanceId = useId();
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const openId = useSyncExternalStore(subscribeOpenUserAvatar, getOpenUserAvatarId, () => null);
   const isOpen = openId === instanceId;
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cardSide, setCardSide] = useState<'top' | 'bottom' | 'right'>('bottom');
 
   useEffect(() => {
     if (!isOpen || !loginNo || userDetails) return;
@@ -134,6 +155,7 @@ export function UserAvatar({
 
   const handleOpenChange = (open: boolean) => {
     if (open) {
+      setCardSide(pickProfileCardSide(triggerRef.current));
       setOpenUserAvatarId(instanceId);
       return;
     }
@@ -157,6 +179,7 @@ export function UserAvatar({
   const trigger = (
     <PopoverTrigger asChild>
       <button
+        ref={triggerRef}
         type="button"
         onClick={(e) => e.stopPropagation()}
         className={cn(
@@ -198,10 +221,14 @@ export function UserAvatar({
       {isOpen ? (
         <PopoverContent
           align="start"
-          sideOffset={10}
-          collisionPadding={12}
+          side={cardSide}
+          sideOffset={8}
+          collisionPadding={{ top: 80, right: 16, bottom: 24, left: 16 }}
+          avoidCollisions
+          sticky="partial"
           className={cn(
             'z-[9999] w-[320px] sm:w-[360px] p-0 overflow-hidden outline-none',
+            'max-h-[min(28rem,calc(100dvh-5.5rem))] flex flex-col',
             'rounded-[10px]',
             'border-2 border-[#0EA5E9]/45',
             'bg-[var(--tm-elevated)] text-slate-100',
@@ -228,13 +255,15 @@ export function UserAvatar({
               <BrandLoader size="sm" message="Loading profile" />
             </div>
           ) : error ? (
-            <div className="text-center py-6 px-4 pr-10 space-y-1">
-              <p className="text-xs font-semibold text-red-400">Couldn’t load profile</p>
-              <p className="text-[11px] font-medium text-slate-500 break-words">{error}</p>
-            </div>
+            <LoadErrorState
+              compact
+              className="pr-10"
+              title="Couldn’t load profile"
+              description={error}
+            />
           ) : userDetails ? (
-            <div>
-              <div className="flex items-start gap-3 px-4 py-3.5 pr-11 bg-gradient-to-r from-[#0EA5E9]/18 via-[var(--tm-elevated)] to-[var(--tm-surface)] border-b border-[#0EA5E9]/25">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex shrink-0 items-start gap-3 px-4 py-3.5 pr-11 bg-gradient-to-r from-[#0EA5E9]/18 via-[var(--tm-elevated)] to-[var(--tm-surface)] border-b border-[#0EA5E9]/25">
                 <Avatar className="h-12 w-12 shrink-0 ring-2 ring-[#0EA5E9]/35 shadow-md shadow-[#0EA5E9]/20">
                   <AvatarFallback className="bg-gradient-to-br from-[#0EA5E9] to-[#00b4d8] text-white font-semibold text-sm uppercase tracking-wide flex items-center justify-center">
                     {getUserInitials(profile.name || displayName)}
@@ -252,7 +281,7 @@ export function UserAvatar({
                 </div>
               </div>
 
-              <div className="px-4 py-3 space-y-2.5 max-h-[min(360px,60vh)] overflow-y-auto bg-[var(--tm-surface)]">
+              <div className="px-4 py-3 space-y-2.5 min-h-0 flex-1 overflow-y-auto bg-[var(--tm-surface)]">
                 <ProfileRow icon={Mail} label="Email" value={profile.email || 'No email registered'} />
                 <ProfileRow icon={Phone} label="Phone" value={profile.phone || 'No phone number'} />
                 <ProfileRow icon={BadgeCheck} label="Roles" value={profile.roles} accent="sky" />
@@ -272,7 +301,7 @@ export function UserAvatar({
               </div>
 
               {loginNo ? (
-                <div className="border-t border-[#0EA5E9]/20 px-3 py-2.5 bg-[var(--tm-elevated)]">
+                <div className="shrink-0 border-t border-[#0EA5E9]/20 px-3 py-2.5 bg-[var(--tm-elevated)]">
                   <Link
                     to={userProfilePath(loginNo)}
                     onClick={() => setOpenUserAvatarId(null)}

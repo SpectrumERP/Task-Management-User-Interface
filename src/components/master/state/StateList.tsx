@@ -82,7 +82,7 @@ export function StateList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/states/delete', {
       params: { stateNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchStates(); }).catch(err => { console.error('Failed to delete state:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('State deleted'); fetchStates(); }).catch(err => { console.error('Failed to delete state:', err); toast.error('Failed to delete state'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -135,7 +135,8 @@ export function StateList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="state"
+      />
     </div>
   );
 }

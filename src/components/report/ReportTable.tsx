@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Eye, FileDown } from 'lucide-react';
+import { Eye, FileDown, ClipboardList } from 'lucide-react';
 import { exportReportToExcel } from '@/utils/exportToExcel';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -13,8 +13,10 @@ import { useSettings } from '@/hooks/useSettings';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
+import { cn } from '@/lib/utils';
 
 interface ReportTableProps {
   data: any[];
@@ -201,7 +203,60 @@ export function ReportTable({ data }: ReportTableProps) {
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto">
-        <table className="tm-data-table w-full text-sm text-left relative" style={{ tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto' }}>
+        {totalItems === 0 ? (
+          <EmptyState
+            icon={ClipboardList}
+            title="No results match your filters"
+            description="Adjust filters and generate the report again."
+            compact
+          />
+        ) : (
+          <>
+            <div className="md:hidden flex flex-col gap-2 p-2">
+              {pageRows.map((task, index) => {
+                const statusName = String(task.status?.statusName || task.status || '-');
+                const companyName =
+                  task.taskCompany?.taskCompanyAlias || task.taskCompany?.companyName || '-';
+                const ownerName = task.assignedTo?.displayName || '-';
+                const priorityName = task.priority?.priorityName || '-';
+                return (
+                  <div
+                    key={task.taskNo || task.operTaskNo || `${startIndex + index}`}
+                    className="rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 px-3 py-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                        #{startIndex + index + 1}
+                      </span>
+                      <TruncatedText
+                        text={statusName}
+                        className={cn('text-[10px] font-semibold shrink-0', getStatusTextClass(statusName))}
+                      />
+                    </div>
+                    <TruncatedText
+                      text={task.title || '-'}
+                      className="mt-1 text-sm font-semibold text-slate-100"
+                    />
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400">
+                      <span className="min-w-0 truncate">
+                        <span className="text-slate-500">Company: </span>
+                        {companyName}
+                      </span>
+                      <span className="min-w-0 truncate">
+                        <span className="text-slate-500">Owner: </span>
+                        {ownerName}
+                      </span>
+                      <span className="min-w-0 truncate">
+                        <span className="text-slate-500">Priority: </span>
+                        {priorityName}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <table className="tm-data-table hidden md:table w-full text-sm text-left relative" style={{ tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto' }}>
           <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide sticky top-0 z-10">
             <tr>
               {DEFAULT_COLUMNS.map((col) => {
@@ -232,15 +287,7 @@ export function ReportTable({ data }: ReportTableProps) {
             </tr>
           </thead>
           <tbody>
-            {totalItems === 0 ? (
-              <tr>
-                <td colSpan={visibleColumns.length} className="px-4 py-16 text-center">
-                  <p className="text-xs font-medium text-slate-500">No tasks found matching criteria.</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Adjust filters and generate the report again.</p>
-                </td>
-              </tr>
-            ) : (
-              pageRows.map((task, index) => (
+            {pageRows.map((task, index) => (
                 <tr key={task.taskNo || task.operTaskNo || `${startIndex + index}`} className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50">
                   {visibleColumns.includes('srNo') && (
                     <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate" style={colWidths['srNo'] ? { maxWidth: colWidths['srNo'] } : {}}>{startIndex + index + 1}</td>
@@ -360,10 +407,11 @@ export function ReportTable({ data }: ReportTableProps) {
                     </td>
                   )}
                 </tr>
-              ))
-            )}
+              ))}
           </tbody>
         </table>
+          </>
+        )}
       </div>
 
       {totalItems > 0 && (

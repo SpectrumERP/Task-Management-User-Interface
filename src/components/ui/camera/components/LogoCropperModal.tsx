@@ -115,8 +115,8 @@ export function LogoCropperModal({ open, onOpenChange, imageUrl, onSave }: LogoC
           </ReactCrop>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!completedCrop?.width || !completedCrop?.height}>Save Logo</Button>
+          <Button variant="outline" className="h-9 rounded-[8px]" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button className="h-9 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground" onClick={handleSave} disabled={!completedCrop?.width || !completedCrop?.height}>Save Logo</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

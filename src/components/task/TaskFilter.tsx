@@ -658,10 +658,10 @@ export function TaskFilter({
     <div className={cn("relative w-full z-40", className)}>
       <form id="task-filter-form" onSubmit={handleSubmit(onSubmit)}>
         {/* Dynamic unified top search & trigger row inside a beautiful Card */}
-        <Card className="theme-filter-bar border border-[var(--tm-border)]/70 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] bg-[var(--tm-surface)] rounded-[16px] p-3 mb-2">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
+        <Card className="theme-filter-bar border border-[var(--tm-border)]/70 shadow-[0_6px_20px_-12px_rgba(15,23,42,0.08)] bg-[var(--tm-surface)] rounded-xl px-2.5 py-2 mb-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 w-full">
             <div className="relative flex-1 min-w-0" data-page-tour="task-search">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400/90 pointer-events-none z-[1]" size={15} strokeWidth={1.75} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400/90 pointer-events-none z-[1]" size={15} strokeWidth={1.75} />
               <Controller
                 name="title"
                 control={control}
@@ -670,8 +670,8 @@ export function TaskFilter({
                     {...field}
                     placeholder="Search title, code, person…"
                     className={cn(
-                      "pl-10 h-11 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200 placeholder:text-slate-400 w-full shadow-none hover:border-[#3D4F66]/80 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/12 focus-visible:border-[#0EA5E9]/35 transition-all duration-200",
-                      (watchedTitle || '').trim() && "pr-10"
+                      "pl-9 h-9 rounded-lg border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200 placeholder:text-slate-400 text-xs w-full shadow-none hover:border-[#3D4F66]/80 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/12 focus-visible:border-[#0EA5E9]/35 transition-all duration-200",
+                      (watchedTitle || '').trim() && "pr-9"
                     )}
                     onChange={(e) => {
                       field.onChange(e);
@@ -682,7 +682,7 @@ export function TaskFilter({
                 )}
               />
               {(watchedTitle || '').trim() && (
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 z-[1]">
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 z-[1]">
                   <ActionTip label="Clear search">
                     <button
                       type="button"
@@ -693,9 +693,9 @@ export function TaskFilter({
                         setAppliedFilters((prev) => ({ ...prev, title: '' }));
                         scrollTaskTableToTop();
                       }}
-                      className="h-7 w-7 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-slate-200 hover:bg-[var(--tm-muted)] transition-colors"
+                      className="h-6 w-6 inline-flex items-center justify-center rounded-md text-slate-400 hover:text-slate-200 hover:bg-[var(--tm-muted)] transition-colors"
                     >
-                      <X size={14} strokeWidth={2.25} />
+                      <X size={13} strokeWidth={2.25} />
                     </button>
                   </ActionTip>
                 </span>
@@ -703,7 +703,7 @@ export function TaskFilter({
             </div>
 
             {/* Action buttons toolbar: distributed evenly on mobile, aligned on desktop */}
-            <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
               {!isHideFolder && (
                 <Controller
                   name="isAllFolder"
@@ -711,13 +711,13 @@ export function TaskFilter({
                   render={({ field }) => (
                     <ActionTip label="Include tasks from every folder, not only the sidebar folder">
                       <label
-                        className="flex items-center gap-1.5 cursor-pointer px-2.5 h-11 rounded-[14px] hover:bg-[var(--tm-elevated)] border border-transparent hover:border-[var(--tm-border)]/70 transition-colors shrink-0"
+                        className="flex items-center gap-1.5 cursor-pointer px-2 h-9 rounded-lg hover:bg-[var(--tm-elevated)] border border-transparent hover:border-[var(--tm-border)]/70 transition-colors shrink-0"
                       >
                         <Checkbox checked={field.value} onCheckedChange={(val) => {
                           field.onChange(val);
                           setTimeout(() => handleSubmit(onSubmit)(), 0);
-                        }} className="h-4 w-4 rounded-[4px] data-[state=checked]:bg-[#0EA5E9] data-[state=checked]:border-[#0EA5E9]" />
-                        <span className="text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">All folders</span>
+                        }} className="h-3.5 w-3.5 rounded-[4px] data-[state=checked]:bg-[#0EA5E9] data-[state=checked]:border-[#0EA5E9]" />
+                        <span className="text-[11px] text-slate-300 font-medium whitespace-nowrap">All folders</span>
                       </label>
                     </ActionTip>
                   )}
@@ -725,7 +725,7 @@ export function TaskFilter({
               )}
 
               <div
-                className="flex items-center gap-1.5 rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)]/80 p-1 shrink-0 flex-1 sm:flex-initial"
+                className="flex items-center gap-0.5 rounded-lg border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)]/80 p-0.5 shrink-0 flex-1 sm:flex-initial"
               >
                 <ActionTip label="Filters">
                   <Button
@@ -734,7 +734,7 @@ export function TaskFilter({
                     data-page-tour="task-filters"
                     onClick={() => toggleFilters()}
                     className={cn(
-                      "h-9 px-3 rounded-xl border-0 bg-transparent text-slate-300 font-medium text-xs normal-case transition-all duration-200 gap-1.5 shadow-none shrink-0 flex-1 sm:flex-initial justify-center hover:bg-[var(--tm-surface)] hover:text-slate-100 hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)]",
+                      "h-8 px-2.5 rounded-md border-0 bg-transparent text-slate-300 font-medium text-[11px] normal-case transition-all duration-200 gap-1.5 shadow-none shrink-0 flex-1 sm:flex-initial justify-center hover:bg-[var(--tm-surface)] hover:text-slate-100 hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)]",
                       isFiltersOpen && "bg-[var(--tm-surface)] text-[#0EA5E9] shadow-[0_1px_3px_rgba(15,23,42,0.08)] ring-1 ring-[#0EA5E9]/15 hover:bg-[var(--tm-surface)] hover:text-[#0EA5E9]",
                       drawerFilterCount > 0 && !isFiltersOpen && "text-[#0EA5E9]"
                     )}
@@ -742,7 +742,7 @@ export function TaskFilter({
                     <SlidersHorizontal size={14} strokeWidth={1.75} className={cn("transition-colors duration-200", (isFiltersOpen || drawerFilterCount > 0) && "text-[#0EA5E9]")} />
                     <span className="hidden sm:inline">Filters</span>
                     {drawerFilterCount > 0 && (
-                      <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0EA5E9] px-1 text-[9px] font-bold text-white">
+                      <span className="inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[#0EA5E9] px-1 text-[9px] font-bold text-white">
                         {drawerFilterCount}
                       </span>
                     )}
@@ -756,7 +756,7 @@ export function TaskFilter({
                       variant="ghost"
                       aria-label="Reset all filters"
                       onClick={handleReset}
-                      className="h-9 px-3 rounded-xl border-0 text-slate-400 hover:text-slate-200 bg-transparent hover:bg-[var(--tm-surface)] hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)] shadow-none transition-all gap-1.5 shrink-0 flex items-center justify-center font-medium text-xs normal-case"
+                      className="h-8 px-2.5 rounded-md border-0 text-slate-400 hover:text-slate-200 bg-transparent hover:bg-[var(--tm-surface)] hover:shadow-[0_1px_3px_rgba(15,23,42,0.06)] shadow-none transition-all gap-1.5 shrink-0 flex items-center justify-center font-medium text-[11px] normal-case"
                     >
                       <RotateCcw size={14} strokeWidth={1.75} />
                       <span className="hidden sm:inline">Reset</span>
@@ -775,7 +775,7 @@ export function TaskFilter({
                         variant="outline"
                         data-page-tour="task-view-mode"
                         aria-label="Change view"
-                        className="h-11 px-3 rounded-[14px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] hover:bg-[var(--tm-elevated)] hover:border-[#3D4F66]/80 font-medium text-slate-300 shadow-none gap-1.5 transition-all duration-200 flex items-center justify-between text-xs shrink-0 flex-1 sm:flex-initial"
+                        className="h-9 px-2.5 rounded-lg border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] hover:bg-[var(--tm-elevated)] hover:border-[#3D4F66]/80 font-medium text-slate-300 shadow-none gap-1 transition-all duration-200 flex items-center justify-between text-[11px] shrink-0 flex-1 sm:flex-initial"
                       >
                         <span className="flex items-center gap-1.5">
                           {currentViewMode === 'list' ? (
@@ -836,7 +836,7 @@ export function TaskFilter({
                     onClick={onCreateTask}
                     data-page-tour="task-create"
                     aria-label="Create task"
-                    className="h-11 px-4 sm:px-5 rounded-[14px] bg-[#0EA5E9] hover:bg-[#0284C7] font-semibold text-xs normal-case text-white shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] hover:shadow-[0_10px_24px_-6px_rgba(14,165,233,0.5)] transition-all duration-200 gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center"
+                    className="h-9 px-3 sm:px-3.5 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] font-semibold text-[11px] normal-case text-white shadow-[0_6px_16px_-6px_rgba(14,165,233,0.45)] hover:shadow-[0_8px_18px_-6px_rgba(14,165,233,0.5)] transition-all duration-200 gap-1 shrink-0 flex-1 sm:flex-initial justify-center"
                   >
                     <Plus size={15} strokeWidth={2.4} />
                     <span className="hidden sm:inline">Create</span>
@@ -850,9 +850,9 @@ export function TaskFilter({
                   variant="outline"
                   onClick={() => forceStartPageGuide('tasks')}
                   aria-label="Start page guide"
-                  className="h-11 w-11 p-0 rounded-[14px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 text-[#0EA5E9] hover:bg-[#0EA5E9]/20 shadow-none shrink-0"
+                  className="h-9 w-9 p-0 rounded-lg border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 text-[#0EA5E9] hover:bg-[#0EA5E9]/20 shadow-none shrink-0"
                 >
-                  <CircleHelp size={16} />
+                  <CircleHelp size={15} />
                 </Button>
               </ActionTip>
             </div>
@@ -962,7 +962,15 @@ export function TaskFilter({
           )}
         </div>
 
-        {/* Right slide-over drawer — page content shifts via parent padding */}
+        {/* Right slide-over drawer — desktop pushes content; <lg overlays only */}
+        {isFiltersOpen ? (
+          <button
+            type="button"
+            aria-label="Close filters"
+            className="fixed inset-0 top-14 z-[115] bg-slate-950/40 lg:hidden"
+            onClick={() => toggleFilters()}
+          />
+        ) : null}
         <div
           className={cn(
             "fixed top-14 right-0 bottom-0 z-[120] w-[min(100vw,18rem)] transition-transform duration-300 ease-out will-change-transform",

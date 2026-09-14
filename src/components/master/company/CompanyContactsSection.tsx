@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { User, Plus, Edit, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
 import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 
@@ -62,22 +63,26 @@ export function CompanyContactsSection({
                     email: c.email,
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() => onEdit(idx)}
-                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
-                  title="Edit Contact"
-                >
-                  <Edit size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemove(idx)}
-                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  title="Remove Contact"
-                >
-                  <Trash2 size={13} />
-                </button>
+                <ActionTip label="Edit Contact">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(idx)}
+                    aria-label="Edit Contact"
+                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
+                  >
+                    <Edit size={13} />
+                  </button>
+                </ActionTip>
+                <ActionTip label="Remove Contact">
+                  <button
+                    type="button"
+                    onClick={() => onRemove(idx)}
+                    aria-label="Remove Contact"
+                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </ActionTip>
               </div>
 
               <div className="flex items-start gap-3">

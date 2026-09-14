@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Task } from '@/types/task';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ClipboardList, Settings2, Edit2, Eye, Search, Plus, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
@@ -291,39 +292,40 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
   if (tasks.length === 0) {
     return (
-      <div className="h-full min-h-0 flex flex-col items-center justify-center px-6 py-10">
-        <div className="h-14 w-14 rounded-2xl bg-[var(--tm-tint)] flex items-center justify-center mb-3 ring-1 ring-[#0EA5E9]/15">
-          <ClipboardList className="text-[#0EA5E9]" size={26} strokeWidth={1.75} />
-        </div>
-        <h3 className="text-base font-semibold text-slate-100 tracking-tight">No tasks found</h3>
-        <p className="text-slate-500 text-sm font-medium mt-1 max-w-sm text-center">
-          {onClearFilters
+      <EmptyState
+        className="h-full"
+        icon={ClipboardList}
+        title="No tasks found"
+        description={
+          onClearFilters
             ? 'Try clearing filters, or create a new task to get started.'
-            : 'Create a new task to get started.'}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          {onClearFilters ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClearFilters}
-              className="h-9 px-4 rounded-lg border-[var(--tm-border)] text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[var(--tm-muted)] gap-1.5"
-            >
-              Clear filters
-            </Button>
-          ) : null}
-          {onCreateTask ? (
-            <Button
-              type="button"
-              onClick={onCreateTask}
-              className="h-9 px-4 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold gap-1.5"
-            >
-              <Plus size={14} strokeWidth={2.5} />
-              Create task
-            </Button>
-          ) : null}
-        </div>
-      </div>
+            : 'Create a new task to get started.'
+        }
+        actions={
+          <>
+            {onClearFilters ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClearFilters}
+                className="h-9 px-4 rounded-lg border-[var(--tm-border)] text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[var(--tm-muted)] gap-1.5"
+              >
+                Clear filters
+              </Button>
+            ) : null}
+            {onCreateTask ? (
+              <Button
+                type="button"
+                onClick={onCreateTask}
+                className="h-9 px-4 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold gap-1.5"
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                Create task
+              </Button>
+            ) : null}
+          </>
+        }
+      />
     );
   }
 
@@ -441,7 +443,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td
           className={cn(
             cellOverflowClass,
-            'text-left sticky left-0 z-20 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]',
+            'tm-col-sticky-code text-left sticky left-0 z-20 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]',
             isSubtask && 'pl-8'
           )}
           style={{ textAlign: 'left' }}
@@ -684,7 +686,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {/* Actions */}
       {visibleColumns.has('actions') && (
         <td
-          className="px-1 py-1 align-middle text-center sticky right-0 z-10 tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
+          className="px-1 py-1 align-middle text-center sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
           style={{ width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }}
         >
           <div className="inline-flex items-center justify-center gap-0.5">
@@ -753,8 +755,8 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                   key={col.key}
                   className={cn(
                     'px-1.5 py-1 relative group/th text-left whitespace-nowrap overflow-hidden',
-                    col.key === 'code' && 'sticky left-0 z-[45] bg-[var(--tm-elevated)] border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]',
-                    col.key === 'actions' && 'px-1 !text-center sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]'
+                    col.key === 'code' && 'tm-col-sticky-code sticky left-0 z-[45] bg-[var(--tm-elevated)] border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]',
+                    col.key === 'actions' && 'tm-col-actions px-1 !text-center sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]'
                   )}
                   style={
                     col.key === 'actions'

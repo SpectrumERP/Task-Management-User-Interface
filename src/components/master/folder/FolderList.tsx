@@ -107,7 +107,7 @@ export function FolderList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-folders/delete', {
       params: { taskFolderNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchFolders(); }).catch(err => { console.error('Failed to delete folder:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Folder deleted'); fetchFolders(); }).catch(err => { console.error('Failed to delete folder:', err); toast.error('Failed to delete folder'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -169,7 +169,8 @@ export function FolderList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="folder"
+      />
     </div>
   );
 }

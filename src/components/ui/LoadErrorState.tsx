@@ -35,7 +35,7 @@ export function LoadErrorState({
         <Button
           type="button"
           onClick={onRetry}
-          className="mt-4 h-9 px-4 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold gap-1.5"
+          className="mt-4 h-9 px-4 rounded-lg bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold gap-1.5"
         >
           <RefreshCw size={14} strokeWidth={2.25} />
           Retry

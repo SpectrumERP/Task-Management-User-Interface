@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { MapPin, Building, Plus, Edit, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
 
 interface CompanyLocationsSectionProps {
@@ -57,22 +58,26 @@ export function CompanyLocationsSection({
               className="bg-[var(--tm-elevated)] border border-[var(--tm-border)]/70 rounded-[8px] p-3.5 relative group hover:border-[#0EA5E9]/35 transition-colors"
             >
               <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                <button
-                  type="button"
-                  onClick={() => onEdit(idx)}
-                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
-                  title="Edit Location"
-                >
-                  <Edit size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemove(idx)}
-                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  title="Remove Location"
-                >
-                  <Trash2 size={13} />
-                </button>
+                <ActionTip label="Edit Location">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(idx)}
+                    aria-label="Edit Location"
+                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
+                  >
+                    <Edit size={13} />
+                  </button>
+                </ActionTip>
+                <ActionTip label="Remove Location">
+                  <button
+                    type="button"
+                    onClick={() => onRemove(idx)}
+                    aria-label="Remove Location"
+                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </ActionTip>
               </div>
 
               <div className="flex items-start gap-3">

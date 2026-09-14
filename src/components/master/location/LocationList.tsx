@@ -94,7 +94,7 @@ export function LocationList() {
         locationNo: deleteTargetId,
         id: deleteTargetId,
       },
-    }).then(() => { toast.success('Record deleted'); fetchLocations(); }).catch(err => { console.error('Failed to delete location:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Location deleted'); fetchLocations(); }).catch(err => { console.error('Failed to delete location:', err); toast.error('Failed to delete location'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -174,7 +174,8 @@ export function LocationList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="location"
+      />
     </div>
   );
 }

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
@@ -18,6 +17,10 @@ import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
 import { MasterListHeader } from '../shared/MasterListHeader';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
+import { ActionTip, TruncatedText } from '../shared/TruncatedCellTip';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 
@@ -83,164 +86,6 @@ function getCompanySearchPriority(item: any, query: string): number {
   return 5;
 }
 
-/** Themed floating hover tip (portal) used by truncated cells + action icons. */
-function HoverTipBubble({
-  text,
-  top,
-  left,
-}: {
-  text: string;
-  top: number;
-  left: number;
-}) {
-  return createPortal(
-    <div
-      role="tooltip"
-      className={cn(
-        'pointer-events-none fixed z-[300] max-w-[min(22rem,calc(100vw-1.5rem))]',
-        '-translate-x-1/2 -translate-y-full',
-        'animate-in fade-in-0 zoom-in-95 duration-150'
-      )}
-      style={{ top, left }}
-    >
-      <div className="relative filter drop-shadow-[0_10px_24px_rgba(15,23,42,0.28)]">
-        <div
-          className={cn(
-            'rounded-xl border border-[#7dd3fc]/55',
-            'bg-[var(--tm-surface)] text-slate-100',
-            'px-3 py-2'
-          )}
-        >
-          <p className="text-[11px] font-medium leading-relaxed whitespace-nowrap text-center">
-            {text}
-          </p>
-        </div>
-        {/* CSS triangle arrow — border layer + fill layer (no diamond cut line) */}
-        <span
-          aria-hidden
-          className="absolute left-1/2 top-full -translate-x-1/2 -mt-px flex flex-col items-center leading-none"
-        >
-          <span
-            className="relative block h-0 w-0 border-x-[7px] border-t-[7px] border-x-transparent border-t-[#7dd3fc]/55"
-          />
-          <span
-            className="absolute left-1/2 top-0 -translate-x-1/2 -mt-[1px] block h-0 w-0 border-x-[6px] border-t-[6px] border-x-transparent border-t-[var(--tm-surface)]"
-          />
-        </span>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-function useHoverTipPosition() {
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
-
-  const showAt = (el: HTMLElement | null, enabled = true) => {
-    if (!el || !enabled) {
-      setOpen(false);
-      return;
-    }
-    const rect = el.getBoundingClientRect();
-    setCoords({
-      top: rect.top - 10,
-      left: Math.min(Math.max(rect.left + rect.width / 2, 80), window.innerWidth - 80),
-    });
-    setOpen(true);
-  };
-
-  const hide = () => setOpen(false);
-
-  return { ref, open, coords, showAt, hide, setOpen };
-}
-
-/** Icon/button wrapper — always shows label tip on hover. */
-function ActionTip({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  const { ref, open, coords, showAt, hide } = useHoverTipPosition();
-
-  return (
-    <>
-      <span
-        ref={ref}
-        className="inline-flex"
-        onMouseEnter={() => showAt(ref.current, Boolean(label))}
-        onMouseLeave={hide}
-        onFocus={() => showAt(ref.current, Boolean(label))}
-        onBlur={hide}
-      >
-        {children}
-      </span>
-      {open && label ? <HoverTipBubble text={label} top={coords.top} left={coords.left} /> : null}
-    </>
-  );
-}
-
-/** Truncated cell text with a themed hover tooltip (only when content overflows). */
-function TruncatedText({
-  text,
-  className,
-}: {
-  text: string;
-  className?: string;
-}) {
-  const { ref, open, coords, showAt, hide, setOpen } = useHoverTipPosition();
-
-  const placeTip = () => {
-    const el = ref.current;
-    if (!el || !text || text === '-') {
-      hide();
-      return;
-    }
-    if (el.scrollWidth > el.clientWidth + 0.5) {
-      showAt(el, true);
-      return;
-    }
-    // table-fixed cells can report equal scroll/client widths even with CSS ellipsis
-    const style = window.getComputedStyle(el);
-    const font = [style.fontStyle, style.fontVariant, style.fontWeight, style.fontSize, style.fontFamily]
-      .filter(Boolean)
-      .join(' ');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.font = font;
-      if (ctx.measureText(text).width > el.clientWidth + 1) {
-        showAt(el, true);
-        return;
-      }
-    }
-    hide();
-  };
-
-  useLayoutEffect(() => {
-    setOpen(false);
-  }, [text, setOpen]);
-
-  return (
-    <>
-      <span
-        ref={ref}
-        className={cn('block w-full min-w-0 max-w-full truncate whitespace-nowrap', className)}
-        onMouseEnter={placeTip}
-        onMouseLeave={hide}
-        onFocus={placeTip}
-        onBlur={hide}
-      >
-        {text}
-      </span>
-      {open && text ? <HoverTipBubble text={text} top={coords.top} left={coords.left} /> : null}
-    </>
-  );
-}
-
 export function CompanyList() {
   const navigate = useNavigate();
   const { isSave, isUpdate, isDelete } = useFormRights(FORM_NO);
@@ -255,6 +100,8 @@ export function CompanyList() {
   const [currentStartsWith, setCurrentStartsWith] = useState('');
   const [companyViewMode, setCompanyViewMode] = useState<CompanyViewMode>('list');
   const [isLoadingMoreCompanies, setIsLoadingMoreCompanies] = useState(false);
+  const [isListLoading, setIsListLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [pageSize] = useState(20);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -295,12 +142,15 @@ export function CompanyList() {
     pageSize?: number;
     appendMode?: 'append' | 'prepend' | 'replace';
   } = {}) => {
+    const appendMode = params.appendMode || 'replace';
+    if (appendMode === 'replace') {
+      setLoadError(false);
+    }
     try {
       const pSize = params.pageSize || pageSize;
       const targetStartsWith = Object.prototype.hasOwnProperty.call(params, 'startsWith')
         ? params.startsWith
         : currentStartsWith;
-      const appendMode = params.appendMode || 'replace';
 
       const queryParams: Record<string, string> = {
         PageSize: pSize.toString()
@@ -517,6 +367,7 @@ export function CompanyList() {
       console.error('Failed to fetch API companies:', error);
       if (params.appendMode !== 'append' && params.appendMode !== 'prepend') {
         setApiCompanies([]);
+        setLoadError(true);
       }
     }
   };
@@ -556,6 +407,7 @@ export function CompanyList() {
         await fetchCompanies({ startsWith: '', cursorRowNo: lastRowNo, direction: 'Next', appendMode: 'append' });
       } catch (err) {
         console.error('Failed to load next page:', err);
+        toast.error('Failed to load more business entities');
       } finally {
         isLoadingRef.current = false;
         setIsLoadingMoreCompanies(false);
@@ -570,6 +422,7 @@ export function CompanyList() {
         await fetchCompanies({ startsWith: '', cursorRowNo: firstRowNo, direction: 'Prev', appendMode: 'prepend' });
       } catch (err) {
         console.error('Failed to load previous page:', err);
+        toast.error('Failed to load previous business entities');
       } finally {
         isLoadingRef.current = false;
         setIsLoadingMoreCompanies(false);
@@ -605,7 +458,11 @@ export function CompanyList() {
     setFirstRowNo(null);
     setLastRowNo(null);
     setApiCompanies([]);
-    void fetchCompanies({ appendMode: 'replace', startsWith: '' });
+    setIsListLoading(true);
+    setLoadError(false);
+    void fetchCompanies({ appendMode: 'replace', startsWith: '' }).finally(() => {
+      setIsListLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyViewMode, companyNo]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -711,11 +568,11 @@ export function CompanyList() {
     apiService.delete('/api/master/business-entities/delete', {
       params: { businessEntityNo: deleteTargetId }
     }).then(() => {
-      toast.success('Record deleted');
+      toast.success('Business entity deleted');
       fetchCompanies();
     }).catch(err => {
       console.error('Failed to delete company via API:', err);
-      toast.error('Failed to delete record');
+      toast.error('Failed to delete business entity');
       fetchCompanies();
     });
     setDeleteConfirmOpen(false);
@@ -781,17 +638,49 @@ export function CompanyList() {
       </MasterListHeader>
 
       <div className="flex-1 min-h-0 flex flex-col select-none">
-        {filteredList.length === 0 ? (
+        {isListLoading && apiCompanies.length === 0 ? (
           <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
-            <div className="flex flex-col items-center justify-center p-10 text-center min-h-[200px]">
-              <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--tm-tint)] text-[#0EA5E9]/70">
-                <Layers size={22} strokeWidth={1.75} />
-              </span>
-              <h3 className="text-sm font-semibold text-slate-100 tracking-tight">No Companies Found</h3>
-              <p className="mt-1 max-w-sm text-[11px] font-medium text-slate-400 leading-relaxed">
-                No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.
-              </p>
+            <div className="flex items-center justify-center p-10 min-h-[200px]">
+              <BrandLoader size="sm" message="Loading business entities" />
             </div>
+          </div>
+        ) : loadError && apiCompanies.length === 0 ? (
+          <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+            <LoadErrorState
+              title="Failed to load business entities"
+              description="Could not load this list. Retry runs the same search again."
+              onRetry={() => {
+                setIsListLoading(true);
+                setLoadError(false);
+                void fetchCompanies({ appendMode: 'replace', startsWith: currentStartsWith || '' }).finally(() => {
+                  setIsListLoading(false);
+                });
+              }}
+            />
+          </div>
+        ) : filteredList.length === 0 ? (
+          <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+            <EmptyState
+              icon={Layers}
+              title={searchQuery.trim() ? 'No results match your search' : 'No Companies Found'}
+              description={
+                searchQuery.trim()
+                  ? 'Try a different search term or clear the search to see all business entities.'
+                  : 'No companies match your criteria. Try adjusting filters or click the Add button above to create a new one.'
+              }
+              actions={
+                searchQuery.trim() ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 rounded-[8px] text-xs font-semibold border-[var(--tm-border)]"
+                    onClick={() => handleSearchChange('')}
+                  >
+                    Clear search
+                  </Button>
+                ) : null
+              }
+            />
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden relative">
@@ -830,40 +719,126 @@ export function CompanyList() {
                 }}
               >
                 {companyViewMode === 'list' ? (
-                  <table className="tm-data-table w-full min-w-[1100px] table-fixed border-collapse text-left">
-                    <thead className="sticky top-0 z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
+                  <>
+                    <div className="md:hidden flex flex-col gap-2 p-2">
+                      {paginatedList.map((company: any) => {
+                        const locStr = [company.city, company.state, company.country].filter(Boolean).join(', ') || '—';
+                        const typeStr = company.type || '';
+                        return (
+                          <div
+                            key={company.id}
+                            className="rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 px-3 py-2.5"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <button
+                                type="button"
+                                className={cn(
+                                  'min-w-0 flex-1 text-left',
+                                  isUpdate && 'cursor-pointer'
+                                )}
+                                onClick={() => isUpdate && handleEditClick(company)}
+                              >
+                                <TruncatedText
+                                  text={company.code || ''}
+                                  className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums"
+                                />
+                                <TruncatedText
+                                  text={company.name || ''}
+                                  className="mt-0.5 text-sm font-semibold text-slate-100"
+                                />
+                                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-400">
+                                  {typeStr ? (
+                                    <span
+                                      className={cn(
+                                        'inline-flex px-1.5 py-0.5 rounded-[5px] text-[9px] font-semibold border',
+                                        typeStr === 'Buy'
+                                          ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+                                          : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                      )}
+                                    >
+                                      {typeStr}
+                                    </span>
+                                  ) : null}
+                                  {company.aliasName ? (
+                                    <span className="min-w-0 truncate">Alias: {company.aliasName}</span>
+                                  ) : null}
+                                  <span className="min-w-0 truncate">{locStr}</span>
+                                </div>
+                              </button>
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                {isUpdate ? (
+                                  <ActionTip label="Edit">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Edit"
+                                      onClick={() => handleEditClick(company)}
+                                      className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
+                                    >
+                                      <Edit size={14} />
+                                    </Button>
+                                  </ActionTip>
+                                ) : null}
+                                {isDelete ? (
+                                  <ActionTip label="Delete">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Delete"
+                                      onClick={() =>
+                                        handleDeleteClick(
+                                          company.id,
+                                          company.name || company.businessEntityName || company.code
+                                        )
+                                      }
+                                      className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  </ActionTip>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <table className="tm-data-table hidden md:table w-full min-w-[1100px] table-fixed border-collapse text-left">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
                       <tr>
-                        <th className="w-[7%] px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[7%] px-2 py-2 pl-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
                           <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[14%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[14%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Business Entity Name" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[10%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[10%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Alias" sortKey="alias" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Type" sortKey="type" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[14%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[14%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Primary Address" sortKey="address" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="City" sortKey="city" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="State" sortKey="state" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Country" sortKey="country" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[8%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[8%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="VAT/GST No." sortKey="vatGst" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Credit Limit" sortKey="creditLimit" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[100px] px-2 py-2 pr-4 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Actions</th>
+                        <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -878,7 +853,7 @@ export function CompanyList() {
                         const nameStr = company.name || '';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
-                            <td className="px-3 py-2 pl-4 align-middle">
+                            <td className="tm-col-sticky-code sticky left-0 z-20 px-2 py-2 pl-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
                               <TruncatedText
                                 text={company.code || ''}
                                 className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
@@ -897,15 +872,21 @@ export function CompanyList() {
                               <TruncatedText text={company.aliasName || '—'} className="text-xs font-medium text-slate-300" />
                             </td>
                             <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
-                              <TruncatedText
-                                text={typeStr}
-                                className={cn(
-                                  'inline-block w-full px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border leading-none',
-                                  typeStr === 'Buy'
-                                    ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
-                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                                )}
-                              />
+                              {typeStr ? (
+                                <span
+                                  className={cn(
+                                    'inline-flex max-w-full truncate px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border leading-none',
+                                    typeStr === 'Buy'
+                                      ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+                                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                  )}
+                                  title={typeStr}
+                                >
+                                  {typeStr}
+                                </span>
+                              ) : (
+                                <span className="text-slate-500">—</span>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
                               <TruncatedText text={locStr} className="text-xs font-medium text-slate-300" />
@@ -925,7 +906,7 @@ export function CompanyList() {
                             <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
                               <TruncatedText text={creditStr} className="text-xs font-medium text-slate-300" />
                             </td>
-                            <td className="px-2 py-2 pr-4 text-center align-middle whitespace-nowrap">
+                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                               <div className="inline-flex items-center justify-center gap-0.5">
                                 {isUpdate ? (
                                   <ActionTip label="Edit">
@@ -962,6 +943,7 @@ export function CompanyList() {
                       })}
                     </tbody>
                   </table>
+                  </>
                 ) : companyViewMode === 'album' ? (
                   <div className="space-y-5 p-3">
                     {groupedCompanies.map((group) => (
@@ -1054,30 +1036,30 @@ export function CompanyList() {
                   </div>
                 ) : companyViewMode === 'contact-list' ? (
                   <table className="tm-data-table w-full min-w-[960px] table-fixed border-collapse text-left">
-                    <thead className="sticky top-0 z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
                       <tr>
-                        <th className="w-[14%] px-3 py-2.5 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[14%] px-3 py-2.5 pl-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
                           <SortableHeader label="Contact Name" sortKey="contactName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[18%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[18%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Designation" sortKey="designation" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Department" sortKey="department" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Phone" sortKey="phone" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[16%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[16%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Email" sortKey="email" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[8%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[8%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Status" sortKey="status" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[100px] px-2 py-2.5 pr-4 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Actions</th>
+                        <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1091,7 +1073,7 @@ export function CompanyList() {
                         const statusStr = contact.status || company.status || 'Active';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors">
-                            <td className="px-3 py-2.5 pl-4 align-middle min-w-0">
+                            <td className="tm-col-sticky-code sticky left-0 z-20 px-3 py-2.5 pl-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
                               <TruncatedText text={contactName} className="text-xs font-semibold text-slate-100" />
                             </td>
                             <td
@@ -1123,7 +1105,7 @@ export function CompanyList() {
                                 {statusStr}
                               </span>
                             </td>
-                            <td className="px-2 py-2.5 pr-4 text-center align-middle whitespace-nowrap">
+                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                               <div className="inline-flex items-center justify-center gap-0.5">
                                 <BusinessEntityShareMenu
                                   mode="contact"
@@ -1238,24 +1220,24 @@ export function CompanyList() {
                   </div>
                 ) : (
                   <table className="tm-data-table w-full min-w-[900px] table-fixed border-collapse text-left">
-                    <thead className="sticky top-0 z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
                       <tr>
-                        <th className="w-[28%] px-3 py-2.5 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[28%] px-3 py-2.5 pl-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
                           <SortableHeader label="File Name" sortKey="fileName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[22%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[22%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[10%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[10%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Type" sortKey="fileType" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
                           <SortableHeader label="Size" sortKey="fileSize" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[160px] px-2 py-2.5 pr-4 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">Actions</th>
+                        <th className="tm-col-actions sticky right-0 z-40 w-[160px] px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1266,7 +1248,7 @@ export function CompanyList() {
                         const sizeStr = att.fileSize ? `${(Number(att.fileSize) / 1024).toFixed(1)} KB` : '—';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
-                            <td className="px-3 py-2.5 pl-4 align-middle min-w-0">
+                            <td className="tm-col-sticky-code sticky left-0 z-20 px-3 py-2.5 pl-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
                               <div className="flex items-center gap-2 min-w-0">
                                 <FileText size={14} className="shrink-0 text-slate-400" />
                                 <TruncatedText
@@ -1293,7 +1275,7 @@ export function CompanyList() {
                             <td className="px-3 py-2.5 align-middle min-w-0">
                               <TruncatedText text={sizeStr} className="text-xs font-medium text-slate-300 font-mono" />
                             </td>
-                            <td className="px-2 py-2.5 pr-4 text-center align-middle whitespace-nowrap">
+                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                               <div className="inline-flex items-center justify-center gap-1">
                                 {att.id ? (
                                   <BusinessEntityShareMenu
@@ -1361,6 +1343,7 @@ export function CompanyList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
+        entityLabel="business entity"
       />
     </div>
   );

@@ -57,10 +57,29 @@ export function MasterPaginationBar({
 
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 bg-[var(--tm-elevated)] border-t border-[var(--tm-border)] select-none shrink-0"
+      className={cn(
+        'w-full min-w-0 shrink-0 select-none',
+        'bg-[var(--tm-elevated)] border-t border-[var(--tm-border)]',
+        'px-3 sm:px-4 py-2.5',
+        // Mobile: vertical stack (count → pages → per page)
+        'flex flex-col items-center gap-2.5',
+        // Tablet: controlled wrap, no horizontal overflow
+        'sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2',
+        // Desktop: preserve original 3-column horizontal layout
+        'lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-3'
+      )}
       data-page-tour="master-pagination"
     >
-      <div className="text-[11px] text-slate-500 font-medium justify-self-center sm:justify-self-start min-w-0 truncate order-1 sm:order-none tabular-nums">
+      {/* Record count — left on desktop */}
+      <div
+        className={cn(
+          'text-[11px] text-slate-500 font-medium tabular-nums leading-snug',
+          'min-w-0 max-w-full w-full sm:w-auto',
+          'text-center sm:text-left',
+          'break-words lg:truncate',
+          'lg:justify-self-start'
+        )}
+      >
         Showing{' '}
         <span className="text-slate-100 font-semibold">
           {totalItems === 0 ? 0 : startIndex + 1}
@@ -69,18 +88,26 @@ export function MasterPaginationBar({
         <span className="text-slate-100 font-semibold">{totalItems}</span> records
       </div>
 
-      <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
+      {/* Per page — center on desktop; row 3 on mobile */}
+      <div
+        className={cn(
+          'flex items-center justify-center gap-2 shrink-0',
+          'order-3 w-full sm:w-auto',
+          'sm:order-2 lg:order-none lg:justify-self-center'
+        )}
+      >
         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">
           Per Page:
         </span>
-        <div className="flex items-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)]">
+        <div className="flex flex-wrap items-center justify-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)]">
           {sizes.map((size) => (
             <button
               key={size}
               type="button"
               onClick={() => onItemsPerPageChange(size)}
               className={cn(
-                'h-6 w-9 rounded-md text-[10px] font-semibold tabular-nums tracking-wide transition-all',
+                // Desktop/tablet: original h-6 w-9; mobile: slightly larger tap target
+                'h-7 w-10 sm:h-6 sm:w-9 rounded-md text-[10px] font-semibold tabular-nums tracking-wide transition-all',
                 itemsPerPage === size
                   ? 'bg-[#0EA5E9] text-white shadow-sm'
                   : 'text-slate-500 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]'
@@ -92,19 +119,28 @@ export function MasterPaginationBar({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
+      {/* Page controls — right on desktop; row 2 on mobile */}
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-center gap-1 min-w-0 max-w-full',
+          'order-2 w-full sm:w-auto',
+          'sm:order-3 sm:ml-auto sm:justify-end',
+          'lg:order-none lg:ml-0 lg:justify-self-end'
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
           size="icon"
           disabled={safeCurrentPage === 1}
           onClick={() => onPageChange(Math.max(1, safeCurrentPage - 1))}
-          className="h-7 w-7 shrink-0 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
+          aria-label="Previous page"
+          className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
         >
           <ChevronLeft size={14} strokeWidth={2.5} />
         </Button>
 
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1 max-w-full">
           {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1)
             .filter((page) => {
               return (
@@ -127,8 +163,10 @@ export function MasterPaginationBar({
                   <button
                     type="button"
                     onClick={() => onPageChange(page)}
+                    aria-label={`Page ${page}`}
+                    aria-current={isPageActive ? 'page' : undefined}
                     className={cn(
-                      'h-7 w-7 shrink-0 rounded-lg text-[10px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
+                      'h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-lg text-[10px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
                       isPageActive
                         ? 'bg-[#0EA5E9] border-[#0EA5E9] text-white shadow-sm'
                         : 'bg-[var(--tm-surface)] border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)]'
@@ -147,7 +185,8 @@ export function MasterPaginationBar({
           size="icon"
           disabled={safeCurrentPage >= totalPages}
           onClick={() => onPageChange(Math.min(totalPages, safeCurrentPage + 1))}
-          className="h-7 w-7 shrink-0 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
+          aria-label="Next page"
+          className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
         >
           <ChevronRight size={14} strokeWidth={2.5} />
         </Button>

@@ -103,11 +103,11 @@ export function looksLikeDateValue(value: unknown): boolean {
   );
 }
 
-/** Format instant using UTC components: "Sep 14, 2026 09:30 UTC" */
+/** Format instant using UTC components: "Sep 14, 2026 09:30" */
 export function formatUtcDateTime(value: DateInput, empty = '—'): string {
   const d = asDate(value);
   if (!d) return empty;
-  return `${MONTHS[d.getUTCMonth()]} ${pad2(d.getUTCDate())}, ${d.getUTCFullYear()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())} UTC`;
+  return `${MONTHS[d.getUTCMonth()]} ${pad2(d.getUTCDate())}, ${d.getUTCFullYear()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
 }
 
 /** Format instant UTC date only: "Sep 14, 2026" */
@@ -137,13 +137,13 @@ export function formatDateOnly(value: DateInput, empty = '—'): string {
   return `${MONTHS[d.getMonth()]} ${pad2(d.getDate())}, ${d.getFullYear()}`;
 }
 
-/** Split schedule line for tables: UTC date + UTC time. */
+/** Split schedule line for tables: date + time (UTC components, no suffix). */
 export function formatUtcScheduleLine(value: DateInput): { date: string; time: string } {
   const d = asDate(value);
   if (!d) return { date: '—', time: '' };
   return {
     date: `${MONTHS[d.getUTCMonth()]} ${pad2(d.getUTCDate())}, ${d.getUTCFullYear()}`,
-    time: `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())} UTC`,
+    time: `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`,
   };
 }
 

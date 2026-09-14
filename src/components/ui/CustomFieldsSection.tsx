@@ -9,6 +9,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Plus, Trash2, Loader2, Check, ChevronsUpDown, X, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sortByLabel } from '@/lib/sortOptions';
+import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
+import { useConfirmDelete } from '@/components/master/shared/useConfirmDelete';
 
 // -------------------------------------------------------------
 // Helper AutoComplete Async Selector Component (fieldTypeNo: 8)
@@ -317,6 +319,7 @@ export function CustomFieldsSection({
   hideLabel = false
 }: CustomFieldsSectionProps) {
   const [internalFillValues, setInternalFillValues] = useState<any>(null);
+  const deleteConfirm = useConfirmDelete('custom field');
 
   // Parent owns data when prop is passed (even null while loading) — do not double-fetch.
   // Self-fetch only when the prop is omitted (e.g. TaskForm).
@@ -351,6 +354,25 @@ export function CustomFieldsSection({
 
   const removeField = (index: number) => {
     onChange(customFields.filter((_, i) => i !== index));
+  };
+
+  const requestRemoveField = (index: number) => {
+    const cf = customFields[index];
+    const defs = (fillValues?.customFields || fillValues?.data?.customFields || []) as any[];
+    const def = defs.find(
+      (d: any) => String(d.customFieldNo ?? d.id ?? '') === String(cf?.customFieldNo ?? '')
+    );
+    const label =
+      def?.customFieldName ||
+      def?.fieldName ||
+      def?.name ||
+      cf?.fieldValue ||
+      'Custom field';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'custom field',
+      recordName: String(label),
+      onConfirm: () => removeField(index),
+    });
   };
 
   const updateField = (index: number, key: string, val: string) => {
@@ -530,7 +552,7 @@ export function CustomFieldsSection({
                     {!hideAddButton ? (
                       <button
                         type="button"
-                        onClick={() => removeField(index)}
+                        onClick={() => requestRemoveField(index)}
                         className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-colors p-1 rounded-[6px] z-10 hover:bg-red-500/10"
                       >
                         <Trash2 size={12} />
@@ -583,7 +605,7 @@ export function CustomFieldsSection({
                     type="button"
                     variant="outline"
                     size="icon"
-                    onClick={() => removeField(index)}
+                    onClick={() => requestRemoveField(index)}
                     className="h-9 w-9 rounded-[8px] border-[var(--tm-border)] text-slate-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 shrink-0"
                     title="Remove field"
                   >
@@ -608,6 +630,15 @@ export function CustomFieldsSection({
           </div>
         )}
       </div>
+
+      <MasterDeleteDialog
+        open={deleteConfirm.open}
+        onOpenChange={deleteConfirm.onOpenChange}
+        onConfirm={deleteConfirm.handleConfirm}
+        recordName={deleteConfirm.recordName}
+        entityLabel={deleteConfirm.entityLabel}
+        confirming={deleteConfirm.confirming}
+      />
     </section>
   );
 }

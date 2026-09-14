@@ -116,7 +116,7 @@ export default function DealMonitorPage() {
     <main
       className={cn(
         "page-shell",
-        showFilters && "[--tm-filters-drawer-width:min(100vw,18rem)]"
+        showFilters && "lg:[--tm-filters-drawer-width:min(100vw,18rem)]"
       )}
     >
       {dealMonitorCategoryNo === null ? (

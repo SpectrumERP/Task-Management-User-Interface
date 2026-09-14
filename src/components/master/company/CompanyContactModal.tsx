@@ -5,6 +5,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
@@ -96,7 +97,8 @@ export function CompanyContactModal({
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 scrollbar-thin">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
-              <label className="text-[11px] font-medium text-slate-300">Contact Person Name</label>
+              <FieldLabel>Contact Person Name</FieldLabel>
+              <FieldControl error={contactErrors.name}>
               <Input
                 placeholder="Enter contact person name"
                 value={contactName}
@@ -106,13 +108,12 @@ export function CompanyContactModal({
                 }}
                 className={cn(fieldClass, contactErrors.name && 'border-red-400')}
               />
-              {contactErrors.name ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.name}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">Designation</label>
+              <FieldLabel>Designation</FieldLabel>
+              <FieldControl error={contactErrors.designation}>
               <Input
                 placeholder="Enter designation"
                 value={contactDesignation}
@@ -124,13 +125,12 @@ export function CompanyContactModal({
                 }}
                 className={cn(fieldClass, contactErrors.designation && 'border-red-400')}
               />
-              {contactErrors.designation ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.designation}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">Department</label>
+              <FieldLabel>Department</FieldLabel>
+              <FieldControl error={contactErrors.department}>
               <Input
                 placeholder="Enter department"
                 value={contactDepartment}
@@ -142,13 +142,12 @@ export function CompanyContactModal({
                 }}
                 className={cn(fieldClass, contactErrors.department && 'border-red-400')}
               />
-              {contactErrors.department ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.department}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">Phone</label>
+              <FieldLabel>Phone</FieldLabel>
+              <FieldControl error={contactErrors.phone}>
               <Input
                 placeholder="Enter phone"
                 value={contactPhone}
@@ -159,13 +158,12 @@ export function CompanyContactModal({
                 }}
                 className={cn(fieldClass, contactErrors.phone && 'border-red-400')}
               />
-              {contactErrors.phone ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.phone}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">Email</label>
+              <FieldLabel>Email</FieldLabel>
+              <FieldControl error={contactErrors.email}>
               <Input
                 placeholder="Enter email"
                 value={contactEmail}
@@ -176,13 +174,11 @@ export function CompanyContactModal({
                 }}
                 className={cn(fieldClass, contactErrors.email && 'border-red-400')}
               />
-              {contactErrors.email ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.email}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
-              <label className="text-[11px] font-medium text-slate-300">Address</label>
+              <FieldLabel>Address</FieldLabel>
               <Input
                 placeholder="Enter address"
                 value={contactAddress}
@@ -192,7 +188,8 @@ export function CompanyContactModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">Country</label>
+              <FieldLabel>Country</FieldLabel>
+              <FieldControl error={contactErrors.country}>
               <Combobox
                 options={countries.map((c: any) => ({
                   label: c.countryName,
@@ -203,13 +200,12 @@ export function CompanyContactModal({
                 placeholder="Select country"
                 className={cn(fieldClass, 'px-3', contactErrors.country && 'border-red-400')}
               />
-              {contactErrors.country ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.country}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">State</label>
+              <FieldLabel>State</FieldLabel>
+              <FieldControl error={contactErrors.state}>
               <Combobox
                 options={statesList.map((s: any) => ({
                   label: s.stateName,
@@ -220,13 +216,12 @@ export function CompanyContactModal({
                 placeholder="Select state"
                 className={cn(fieldClass, 'px-3', contactErrors.state && 'border-red-400')}
               />
-              {contactErrors.state ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.state}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">City</label>
+              <FieldLabel>City</FieldLabel>
+              <FieldControl error={contactErrors.city}>
               <Combobox
                 options={citiesList.map((ci: any) => ({
                   label: ci.cityName,
@@ -240,13 +235,12 @@ export function CompanyContactModal({
                 placeholder="Select city"
                 className={cn(fieldClass, 'px-3', contactErrors.city && 'border-red-400')}
               />
-              {contactErrors.city ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.city}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">PIN/Zip Code</label>
+              <FieldLabel>PIN/Zip Code</FieldLabel>
+              <FieldControl error={contactErrors.pinCode}>
               <Input
                 placeholder="Enter PIN/Zip Code"
                 value={contactPinCode}
@@ -259,13 +253,11 @@ export function CompanyContactModal({
                 }}
                 className={cn(fieldClass, contactErrors.pinCode && 'border-red-400')}
               />
-              {contactErrors.pinCode ? (
-                <p className="text-[10px] text-red-500 font-medium">{contactErrors.pinCode}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0 sm:col-span-2 sm:max-w-xs">
-              <label className="text-[11px] font-medium text-slate-300">Status</label>
+              <FieldLabel>Status</FieldLabel>
               <Combobox
                 options={[
                   { label: 'Active', value: 'Active' },

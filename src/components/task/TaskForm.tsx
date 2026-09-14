@@ -16,6 +16,9 @@ import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { useTaskStore } from '@/store/useTaskStore';
+import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
+import { useConfirmDelete } from '@/components/master/shared/useConfirmDelete';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
 import { useEffect, useState, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { FieldInfoControl } from '@/components/ui/info-tooltip';
@@ -335,35 +338,6 @@ const splitExecutionChallenges = (challenges?: any[] | null) => {
   return { execution_logs, road_block_remarks };
 };
 
-function FieldErrorTip({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <span
-      role="alert"
-      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-    >
-      {message}
-    </span>
-  );
-}
-
-function FieldControl({ children, error, className }: { children: React.ReactNode; error?: string; className?: string }) {
-  return (
-    <div className={cn('relative min-w-0', className)}>
-      {children}
-      <FieldErrorTip message={error} />
-    </div>
-  );
-}
-
-function FieldLabel({ children, required, className, htmlFor }: { children: React.ReactNode; required?: boolean; className?: string; htmlFor?: string }) {
-  return (
-    <label htmlFor={htmlFor} className={cn('inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300', className)}>
-      <span>{children}</span>
-      {required ? <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>*</span> : null}
-    </label>
-  );
-}
 
 function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: LucideIcon, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
   return (
@@ -528,10 +502,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   }
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
-  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSaveData, setPendingSaveData] = useState<any>(null);
   const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: number; name: string } | null>(null);
+  const rowDeleteConfirm = useConfirmDelete('item');
   const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<Array<{
     tempId: string;
@@ -1797,7 +1771,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       }
       clearDraft();
       form.reset(data); // Reset form state to clear isDirty flag
-      setShowSuccessAlert(true);
+      toast.success('Data saved successfully.');
+      if (onComplete) onComplete();
     } catch (error: any) {
       console.error('Failed to save task:', error);
 
@@ -2509,7 +2484,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     <td className="px-1 py-2 text-center align-top pt-3">
                                       <button
                                         type="button"
-                                        onClick={() => removeCollab(index)}
+                                        onClick={() => {
+                                          const row = form.getValues(`collaborators.${index}`);
+                                          rowDeleteConfirm.requestConfirm({
+                                            entityLabel: 'collaborator',
+                                            recordName: row?.displayName || row?.email || 'Collaborator',
+                                            onConfirm: () => removeCollab(index),
+                                          });
+                                        }}
                                         className="inline-flex h-6 w-6 items-center justify-center text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-[6px] transition-colors"
                                         title="Remove collaborator"
                                       >
@@ -2734,7 +2716,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     <td className="px-1 py-2 text-center align-top pt-3">
                                       <button
                                         type="button"
-                                        onClick={() => removeInform(index)}
+                                        onClick={() => {
+                                          const row = form.getValues(`informed_to.${index}`);
+                                          rowDeleteConfirm.requestConfirm({
+                                            entityLabel: 'report-to user',
+                                            recordName: row?.displayName || row?.email || 'User',
+                                            onConfirm: () => removeInform(index),
+                                          });
+                                        }}
                                         className="inline-flex h-6 w-6 items-center justify-center text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-[6px] transition-colors"
                                         title="Remove report-to user"
                                       >
@@ -3358,7 +3347,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
                                 <button
                                   type="button"
-                                  onClick={() => removeChecklist(index)}
+                                  onClick={() => {
+                                    const row = form.getValues(`check_list.${index}`);
+                                    rowDeleteConfirm.requestConfirm({
+                                      entityLabel: 'checklist item',
+                                      recordName: row?.description || 'Checklist item',
+                                      onConfirm: () => removeChecklist(index),
+                                    });
+                                  }}
                                   className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                                   title="Remove checklist item"
                                 >
@@ -3515,7 +3511,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => removeRoadBlock(index)}
+                                  onClick={() => {
+                                    const remark = form.getValues(`road_block_remarks.${index}.remark`);
+                                    rowDeleteConfirm.requestConfirm({
+                                      entityLabel: 'challenge',
+                                      recordName: (remark || '').trim() || 'Challenge',
+                                      onConfirm: () => removeRoadBlock(index),
+                                    });
+                                  }}
                                   className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
                                   title="Remove challenge"
                                 >
@@ -3698,85 +3701,26 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       )}
 
       {/* Deletion Confirmation Dialog */}
-      <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
-        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-100 tracking-tight flex items-center gap-0.5">
-              Remove Attachment
-            </DialogTitle>
-            <DialogDescription className="text-sm text-slate-500 mt-2">
-              Do you want to delete?
-              {/* Are you sure <span className="font-medium text-slate-200">"{attachmentToDelete?.name}"</span>? */}
-            </DialogDescription>
-          </DialogHeader>
+      <MasterDeleteDialog
+        open={rowDeleteConfirm.open}
+        onOpenChange={rowDeleteConfirm.onOpenChange}
+        onConfirm={rowDeleteConfirm.handleConfirm}
+        recordName={rowDeleteConfirm.recordName}
+        entityLabel={rowDeleteConfirm.entityLabel}
+        confirming={rowDeleteConfirm.confirming}
+      />
+      <MasterDeleteDialog
+        open={!!attachmentToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingAttachment) setAttachmentToDelete(null);
+        }}
+        onConfirm={confirmRemoveAttachment}
+        recordName={attachmentToDelete?.name}
+        entityLabel="attachment"
+        confirming={isDeletingAttachment}
+      />
 
-          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isDeletingAttachment}
-              onClick={() => setAttachmentToDelete(null)}
-              className="h-10 px-4 rounded-xl text-xs font-medium text-slate-300 hover:bg-[var(--tm-muted)] border-transparent shadow-none"
-            >
-              No
-            </Button>
-            <Button
-              disabled={isDeletingAttachment}
-              onClick={confirmRemoveAttachment}
-              autoFocus
-              className="h-10 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/10 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95 flex items-center justify-center min-w-[70px]"
-            >
-              {isDeletingAttachment ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                  <span>Deleting...</span>
-                </>
-              ) : (
-                "Yes"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Success Alert Dialog */}
-      <Dialog open={showSuccessAlert} onOpenChange={(open) => {
-        if (!open) {
-          setShowSuccessAlert(false);
-          if (onComplete) onComplete();
-        }
-      }}>
-        <DialogContent className="rounded-3xl max-w-xs p-0 border-none shadow-2xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
-          <div className="p-6 flex flex-col items-center text-center">
-            <div className="w-14 h-14 bg-emerald-500/15 rounded-full border border-emerald-500/30 flex items-center justify-center mb-4 shadow-sm relative">
-              {/* Inner glowing pulse ring */}
-              <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping"></div>
-              <CheckCircle className="w-7 h-7 text-emerald-400 relative z-10" />
-            </div>
-
-            <h3 className="text-lg font-medium text-slate-100 tracking-tight mb-1">
-              Success
-            </h3>
-
-            <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed">
-              Data save sucessfully.
-            </p>
-          </div>
-
-          <div className="p-4 bg-[var(--tm-muted)]/80 border-t border-[var(--tm-border)]/50 flex justify-center">
-            <Button
-              type="button"
-              onClick={() => {
-                setShowSuccessAlert(false);
-                if (onComplete) onComplete();
-              }}
-              className="w-full h-10 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-medium text-xs shadow-md shadow-[#0EA5E9]/10 transition-all hover:scale-[1.01] active:scale-95"
-            >
-              OK
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Success feedback is toast + onComplete (see save handler) */}
 
       {/* Criteria Warning Dialog */}
       <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
@@ -3845,42 +3789,15 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       </Dialog>
 
       {/* Subtask Deletion Confirmation Dialog */}
-      <Dialog open={!!subtaskToDelete} onOpenChange={(open) => !open && !isDeletingSubtask && setSubtaskToDelete(null)}>
-        <DialogContent className="rounded-3xl max-w-sm p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden">
-          <DialogHeader className="p-6 pb-4">
-            <DialogTitle className="text-base font-medium text-slate-100 tracking-tight flex items-center gap-0.5">
-              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-                <Trash2 size={16} className="text-red-400" />
-              </div>
-              Do you want to delete?
-            </DialogTitle>
-            {/* <DialogDescription className="text-sm text-slate-500 mt-2">
-              Are you sure you want to delete this sub-task? This action cannot be undone.
-            </DialogDescription> */}
-          </DialogHeader>
-          <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/50 flex justify-end gap-0.5 rounded-b-3xl">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setSubtaskToDelete(null)}
-              disabled={isDeletingSubtask}
-              autoFocus
-              className="rounded-xl text-xs font-medium h-9 px-4 text-slate-300 hover:bg-slate-200/50 transition-colors"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleDeleteSubtask}
-              disabled={isDeletingSubtask}
-              className="rounded-xl text-xs font-medium h-9 px-5 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 gap-0.5 transition-all"
-            >
-              {isDeletingSubtask ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MasterDeleteDialog
+        open={subtaskToDelete != null}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingSubtask) setSubtaskToDelete(null);
+        }}
+        onConfirm={handleDeleteSubtask}
+        entityLabel="sub-task"
+        confirming={isDeletingSubtask}
+      />
 
 
 
@@ -4310,7 +4227,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0EA5E9]/15 text-[#0EA5E9] ring-1 ring-[#0EA5E9]/25">
                 <AlertCircle size={16} strokeWidth={2.5} />
               </div>
-              Confirmation Save
+              Confirm Save
             </DialogTitle>
             <DialogDescription className="pt-2 text-sm font-medium leading-relaxed text-slate-400">
               Are you sure you want to save this task?
@@ -4320,18 +4237,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <Button
               type="button"
               variant="outline"
-              className="rounded-xl font-semibold border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)] hover:text-slate-100 h-10 px-5"
+              className="h-9 px-4 rounded-[8px] text-xs font-semibold border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)] hover:text-slate-100 shadow-none"
               onClick={() => {
                 setShowConfirmDialog(false);
                 setPendingSaveData(null);
               }}
             >
-              No, Cancel
+              Cancel
             </Button>
             <Button
               type="button"
               autoFocus
-              className="rounded-xl font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 transition-all hover:shadow-[#0EA5E9]/40 h-10 px-5"
+              className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20"
               onClick={async () => {
                 if (pendingSaveData) {
                   setShowConfirmDialog(false);
@@ -4340,7 +4257,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 }
               }}
             >
-              Yes, Save
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

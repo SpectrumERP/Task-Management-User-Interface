@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { getPriorityBadgeClass } from '@/lib/priorityStyles';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import {
   ChevronLeft,
   ChevronRight,
@@ -39,6 +40,8 @@ import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCe
 interface TaskCalendarViewProps {
   tasks: Task[];
   isLoading?: boolean;
+  loadError?: boolean;
+  onRetryLoad?: () => void;
   onTaskClick: (taskId: number) => void;
   onAddTask?: (date?: Date) => void;
   showFilters?: boolean;
@@ -80,7 +83,9 @@ function getContrastColor(hexColor: string): string {
 
 export function TaskCalendarView({ 
   tasks, 
-  isLoading, 
+  isLoading,
+  loadError,
+  onRetryLoad,
   onTaskClick, 
   onAddTask,
   showFilters,
@@ -270,9 +275,12 @@ export function TaskCalendarView({
             const isCurrentMonth = date.getMonth() === month;
             const isToday = new Date().toDateString() === date.toDateString();
             const dayTasks = sortTasks(tasks.filter(t => isTaskOnDate(t, date)));
-            const maxVisible = 2;
-            const visibleTasks = dayTasks.slice(0, maxVisible);
-            const overflowCount = dayTasks.length - visibleTasks.length;
+            // Cell fits ~2 task pills OR 1 pill + "+N more". Showing 2 pills + more clips the last pill.
+            const maxTaskSlots = 2;
+            const hasOverflow = dayTasks.length > maxTaskSlots;
+            const visibleCount = hasOverflow ? maxTaskSlots - 1 : Math.min(dayTasks.length, maxTaskSlots);
+            const visibleTasks = dayTasks.slice(0, visibleCount);
+            const overflowCount = dayTasks.length - visibleCount;
 
             return (
               <div
@@ -309,7 +317,7 @@ export function TaskCalendarView({
                 </div>
 
                 <div className="flex flex-col flex-1 min-h-0 gap-0.5">
-                  <div className="space-y-0.5 min-h-0 overflow-hidden">
+                  <div className="flex flex-col gap-0.5 min-h-0 overflow-hidden">
                     {visibleTasks.map(task => {
                       const customColor = task.calendarColor && task.calendarColor !== 'none' ? task.calendarColor : null;
                       const isHovered = hoveredTaskNo === task.taskNo;
@@ -336,7 +344,7 @@ export function TaskCalendarView({
                             zIndex: isHovered ? 9999 : undefined
                           }}
                           className={cn(
-                            "px-1.5 py-0.5 rounded-[6px] text-[10px] font-medium cursor-pointer transition-all hover:brightness-[0.98] flex items-center justify-between border shrink-0 overflow-hidden",
+                            "px-1.5 py-0.5 rounded-[6px] text-[10px] font-medium cursor-pointer transition-all hover:brightness-[0.98] flex items-center justify-between border shrink-0 min-h-[22px]",
                             task.isAllDay ? "" : "hover:bg-[var(--tm-muted)]"
                           )}
                         >
@@ -1028,6 +1036,12 @@ export function TaskCalendarView({
           <div className="flex flex-col items-center justify-center py-28">
             <BrandLoader size="sm" message="Loading schedule" />
           </div>
+        ) : loadError && tasks.length === 0 ? (
+          <LoadErrorState
+            title="Failed to load schedule"
+            description="Could not load calendar tasks. Retry uses the same filters."
+            onRetry={onRetryLoad}
+          />
         ) : (
           <>
             {viewMode === 'month' && renderMonthView()}

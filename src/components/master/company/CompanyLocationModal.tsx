@@ -5,6 +5,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
@@ -87,9 +88,8 @@ export function CompanyLocationModal({
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-5 py-3.5 space-y-3.5 scrollbar-thin">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-slate-300">
-              Location Type <span className="text-red-500">*</span>
-            </label>
+            <FieldLabel required>Location Type</FieldLabel>
+            <FieldControl error={locErrors.type}>
             <Combobox
               options={locationTypes.map((lt: any) => ({
                 label: lt.locationTypeName,
@@ -103,15 +103,12 @@ export function CompanyLocationModal({
               placeholder="Select Location Type"
               className={cn(fieldClass, 'px-3', locErrors.type && 'border-red-400')}
             />
-            {locErrors.type ? (
-              <p className="text-[10px] text-red-500 font-medium">{locErrors.type}</p>
-            ) : null}
+            </FieldControl>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-slate-300">
-              Address <span className="text-red-500">*</span>
-            </label>
+            <FieldLabel required>Address</FieldLabel>
+            <FieldControl error={locErrors.address}>
             <textarea
               rows={2}
               placeholder="Enter address"
@@ -126,14 +123,13 @@ export function CompanyLocationModal({
                 locErrors.address && 'border-red-400 focus:ring-red-500/10 focus:border-red-400'
               )}
             />
-            {locErrors.address ? (
-              <p className="text-[10px] text-red-500 font-medium">{locErrors.address}</p>
-            ) : null}
+            </FieldControl>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">Country</label>
+              <FieldLabel>Country</FieldLabel>
+              <FieldControl error={locErrors.country}>
               <Combobox
                 options={countries.map((c: any) => ({
                   label: c.countryName,
@@ -144,13 +140,12 @@ export function CompanyLocationModal({
                 placeholder="Select country"
                 className={cn(fieldClass, 'px-3', locErrors.country && 'border-red-400')}
               />
-              {locErrors.country ? (
-                <p className="text-[10px] text-red-500 font-medium">{locErrors.country}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">State</label>
+              <FieldLabel>State</FieldLabel>
+              <FieldControl error={locErrors.state}>
               <Combobox
                 options={statesList.map((s: any) => ({
                   label: s.stateName,
@@ -161,13 +156,12 @@ export function CompanyLocationModal({
                 placeholder="Select state"
                 className={cn(fieldClass, 'px-3', locErrors.state && 'border-red-400')}
               />
-              {locErrors.state ? (
-                <p className="text-[10px] text-red-500 font-medium">{locErrors.state}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">City</label>
+              <FieldLabel>City</FieldLabel>
+              <FieldControl error={locErrors.city}>
               <Combobox
                 options={citiesList.map((ci: any) => ({
                   label: ci.cityName,
@@ -181,13 +175,12 @@ export function CompanyLocationModal({
                 placeholder="Select city"
                 className={cn(fieldClass, 'px-3', locErrors.city && 'border-red-400')}
               />
-              {locErrors.city ? (
-                <p className="text-[10px] text-red-500 font-medium">{locErrors.city}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">PIN / ZIP Code</label>
+              <FieldLabel>PIN / ZIP Code</FieldLabel>
+              <FieldControl error={locErrors.pin}>
               <Input
                 placeholder="Enter PIN / ZIP Code"
                 value={locPin}
@@ -198,13 +191,11 @@ export function CompanyLocationModal({
                 }}
                 className={cn(fieldClass, locErrors.pin && 'border-red-400')}
               />
-              {locErrors.pin ? (
-                <p className="text-[10px] text-red-500 font-medium">{locErrors.pin}</p>
-              ) : null}
+              </FieldControl>
             </div>
 
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
-              <label className="text-[11px] font-medium text-slate-300">Map URL</label>
+              <FieldLabel>Map URL</FieldLabel>
               <Input
                 placeholder="Enter Map URL"
                 value={locMapUrl}
@@ -215,7 +206,7 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">Latitude</label>
+              <FieldLabel>Latitude</FieldLabel>
               <Input
                 placeholder="Enter Latitude"
                 value={locLatitude}
@@ -226,7 +217,7 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <label className="text-[11px] font-medium text-slate-300">Longitude</label>
+              <FieldLabel>Longitude</FieldLabel>
               <Input
                 placeholder="Enter Longitude"
                 value={locLongitude}

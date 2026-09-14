@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Design system architecture (Phase 1)
+  ------------------------------------
+  1) App chrome / surfaces:  --tm-*  → Tailwind `tm.*` (page, surface, border, overlay, shadows…)
+  2) shadcn primitives:      HSL --background/--foreground/--primary/… → Tailwind semantic colors
+  3) Brand:                  --brand / --brand-hover / --brand-soft via brandConfig.applyBrandToDocument
+  Keep both (1) and (2): do not delete shadcn vars — components still depend on them.
+  Prefer tokens over hardcoded #0EA5E9 in shared UI; feature screens migrate gradually.
+*/
+
 @layer base {
   :root {
     /* Light — full light shell (header + sidebar + workspace) */
@@ -32,15 +42,47 @@
     --warning: 38 92% 46%;
     --warning-foreground: 0 0% 100%;
 
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+
+    --info: 199 89% 42%;
+    --info-foreground: 0 0% 100%;
+
     --border: 214 18% 88%;
     --input: 214 18% 88%;
     --ring: 199 89% 42%;
 
-    --radius: 8px;
+    /* Radius scale: sm=6, md=8 (controls), lg=10 (cards), xl=12, 2xl=16 */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+    --radius: var(--radius-md);
     --page-pad: 16px;
     --page-gap: 16px;
     --card-pad: 12px;
-    --card-radius: 10px;
+    --card-radius: var(--radius-lg);
+
+    /* Control heights — prefer Tailwind h-9 / h-10 in className (twMerge-safe);
+       h-control-* available when needed and registered in cn(). */
+    --control-h-sm: 2.25rem; /* 36px ≈ h-9 */
+    --control-h-md: 2.5rem;  /* 40px ≈ h-10 */
+
+    /* Icon size tokens (optional utilities; do not force-resize existing icons) */
+    --icon-sm: 14px;
+    --icon-md: 16px;
+    --icon-lg: 20px;
+
+    /* Brand — defaults; --brand / --accent-warm overridden at boot by applyBrandToDocument */
+    --brand: #0EA5E9;
+    --brand-hover: #0284C7;
+    --brand-foreground: #FFFFFF;
+    --brand-soft: color-mix(in srgb, var(--brand) 14%, transparent);
+    --brand-muted: color-mix(in srgb, var(--brand) 22%, transparent);
+    --focus-ring: var(--brand);
+    --accent-warm: #F59E0B;
+    --accent-warm-foreground: #0B1220;
 
     --tm-page: #F5F7F9;
     --tm-surface: #FFFFFF;
@@ -50,6 +92,8 @@
     --tm-tint: #E5F6FD;
     --tm-input: #FFFFFF;
     --tm-input-fg: #2C3E50;
+    --tm-placeholder: #64748B;
+    --tm-overlay: rgba(15, 23, 42, 0.45);
     --tm-chrome: #FFFFFF;
     --tm-chrome-end: #F5F7F9;
     --tm-chrome-border: #E2E8F0;
@@ -58,11 +102,16 @@
     --tm-sidebar-end: #F8FAFC;
     --tm-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 12px rgba(16, 24, 40, 0.04);
     --tm-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-    --tm-glow: rgba(14, 165, 233, 0.14);
+    --tm-shadow-lg: 0 20px 50px -24px rgba(15, 23, 42, 0.35);
+    --tm-glow: color-mix(in srgb, var(--brand) 14%, transparent);
     /* Table zebra — clear but soft contrast */
     --tm-row-odd: #FFFFFF;
     --tm-row-even: #EEF2F6;
     --tm-row-hover: #E5F6FD;
+    /* Shared hover/flyout tip chrome (ActionTip + sidebar) */
+    --tm-tip-bg: #FFFFFF;
+    --tm-tip-fg: #2C3E50;
+    --tm-tip-border: rgba(14, 165, 233, 0.4);
   }
 
   .dark {
@@ -84,9 +133,19 @@
     --destructive-foreground: 210 40% 98%;
     --warning: 38 92% 50%;
     --warning-foreground: 222 47% 8%;
+    --success: 160 72% 42%;
+    --success-foreground: 210 40% 98%;
+    --info: 199 89% 48%;
+    --info-foreground: 210 40% 98%;
     --border: 215 25% 22%;
     --input: 215 25% 22%;
     --ring: 199 89% 48%;
+
+    --brand-hover: #38BDF8;
+    --brand-foreground: #F8FAFC;
+    --brand-soft: color-mix(in srgb, var(--brand) 18%, transparent);
+    --brand-muted: color-mix(in srgb, var(--brand) 28%, transparent);
+    --accent-warm-foreground: #0B1220;
 
     --tm-page: #0B1220;
     --tm-surface: #121A2B;
@@ -96,6 +155,8 @@
     --tm-tint: #0C3D56;
     --tm-input: #121A2B;
     --tm-input-fg: #E2E8F0;
+    --tm-placeholder: #94A3B8;
+    --tm-overlay: rgba(0, 0, 0, 0.65);
     --tm-chrome: #121A2B;
     --tm-chrome-end: #0B1220;
     --tm-chrome-border: #2A3548;
@@ -104,19 +165,25 @@
     --tm-sidebar-end: #0B1220;
     --tm-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.45);
     --tm-shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.35);
-    --tm-glow: rgba(14, 165, 233, 0.12);
+    --tm-shadow-lg: 0 24px 60px -20px rgba(0, 0, 0, 0.65);
+    --tm-glow: color-mix(in srgb, var(--brand) 12%, transparent);
     /* Table zebra — lighter rows on dark theme */
     --tm-row-odd: #182234;
     --tm-row-even: #222E44;
     --tm-row-hover: #2A3A54;
+    /* Shared hover/flyout tip chrome (ActionTip + sidebar) */
+    --tm-tip-bg: #121A2B;
+    --tm-tip-fg: #E2E8F0;
+    --tm-tip-border: rgba(14, 165, 233, 0.4);
   }
 }
+
 
 @layer base {
   * {
     @apply border-border;
     scrollbar-width: thin;
-    scrollbar-color: rgba(14, 165, 233, 0.35) transparent;
+    scrollbar-color: color-mix(in srgb, var(--brand) 35%, transparent) transparent;
   }
 
   *::-webkit-scrollbar {
@@ -129,12 +196,12 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: rgba(14, 165, 233, 0.35);
+    background: color-mix(in srgb, var(--brand) 35%, transparent);
     border-radius: 999px;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: rgba(14, 165, 233, 0.55);
+    background: color-mix(in srgb, var(--brand) 55%, transparent);
   }
 
   *::-webkit-scrollbar-button {
@@ -172,7 +239,7 @@
   textarea,
   select {
     border-color: var(--tm-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background-color: var(--tm-input);
     color: var(--tm-input-fg);
   }
@@ -181,16 +248,16 @@
   [data-radix-select-trigger],
   button[role='combobox'] {
     border-color: var(--tm-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background-color: var(--tm-input);
     color: var(--tm-input-fg);
   }
 }
 
 .glass-morphism {
-  background: rgba(18, 26, 43, 0.72);
+  background: color-mix(in srgb, var(--tm-surface) 72%, transparent);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(56, 189, 248, 0.12);
+  border: 1px solid color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 @layer utilities {
@@ -272,21 +339,29 @@
     }
   }
 
+  /* Filters drawer overlays on tablet/phone — do not squeeze page content */
+  @media (max-width: 1023px) {
+    .page-shell,
+    .page-shell-scroll {
+      padding-right: var(--page-pad);
+    }
+  }
+
   .surface-card {
     border-radius: var(--card-radius);
   }
 
   .page-eyebrow {
-    font-size: 10px;
+    font-size: 0.6875rem; /* caption */
     font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #38BDF8;
+    color: var(--brand);
     line-height: 1;
   }
 
   .page-title {
-    font-size: 16px;
+    font-size: 1rem; /* title */
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--tm-input-fg);
@@ -295,17 +370,17 @@
 
   /* Warm amber accent — high priority / attention */
   .accent-warm {
-    color: #F59E0B;
+    color: var(--accent-warm);
   }
 
   .accent-warm-bg {
-    background-color: rgba(245, 158, 11, 0.15);
-    color: #F59E0B;
+    background-color: color-mix(in srgb, var(--accent-warm) 15%, transparent);
+    color: var(--accent-warm);
   }
 
   .accent-warm-solid {
-    background-color: #F59E0B;
-    color: #0B1220;
+    background-color: var(--accent-warm);
+    color: var(--accent-warm-foreground);
   }
 
   input::-webkit-outer-spin-button,
@@ -324,7 +399,7 @@ textarea {
   resize: none !important;
 }
 
-/* Centralized form-field border + radius + dark fill (skip login fields — they use theme-matched styles) */
+/* Centralized form-field border + radius + fill (skip login fields — they use theme-matched styles) */
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='color']):not([type='submit']):not([type='button']):not(.login-field),
 textarea,
 select,
@@ -333,19 +408,19 @@ select,
 [data-radix-select-trigger],
 button[role='combobox'] {
   border-color: var(--tm-border) !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-md) !important;
   background-color: var(--tm-input) !important;
   color: var(--tm-input-fg) !important;
 }
 
 input:not(.login-field)::placeholder,
 textarea::placeholder {
-  color: #64748B !important;
+  color: var(--tm-placeholder) !important;
 }
 
 html.dark input:not(.login-field)::placeholder,
 html.dark textarea::placeholder {
-  color: #94A3B8 !important;
+  color: var(--tm-placeholder) !important;
 }
 
 /* Login — beat global input chrome so fields read like light-mode wells */
@@ -362,7 +437,7 @@ html:not(.dark) .login-page input.login-field:hover {
 
 html:not(.dark) .login-page input.login-field:focus,
 html:not(.dark) .login-page input.login-field:focus-visible {
-  border-color: #0EA5E9 !important;
+  border-color: var(--brand) !important;
 }
 
 /* Dark login: teal wells matching panel (#0C4A6E) — not near-black --tm-input */
@@ -427,19 +502,19 @@ button[role='combobox'][class*='border-red'] {
 }
 
 .brand-loader-msg {
-  color: #94a3b8;
+  color: var(--tm-placeholder);
 }
 
 html:not(.dark) .brand-loader-msg {
-  color: #64748b;
+  color: var(--tm-placeholder);
 }
 
 .brand-loader-glow {
-  background: radial-gradient(ellipse at 50% 45%, rgba(14, 165, 233, 0.16), transparent 52%);
+  background: radial-gradient(ellipse at 50% 45%, var(--tm-glow), transparent 52%);
 }
 
 html:not(.dark) .brand-loader-glow {
-  background: radial-gradient(ellipse at 50% 45%, rgba(14, 165, 233, 0.1), transparent 55%);
+  background: radial-gradient(ellipse at 50% 45%, var(--tm-glow), transparent 55%);
 }
 
 html:not(.dark) .brand-loader-mark {
@@ -504,7 +579,7 @@ html:not(.dark) .border-\[\#7dd3fc\]\/55 {
 }
 
 html:not(.dark) .page-eyebrow {
-  color: #0284c7;
+  color: var(--brand);
 }
 
 /* Light: give cards/columns depth vs soft page */
@@ -659,7 +734,14 @@ html:not(.dark) .theme-sidebar-edge-toggle:hover {
   color: #0ea5e9 !important;
 }
 
-/* Collapsed sidebar flyout tip — readable in light + dark (avoid aside surface remaps) */
+/* Shared tip chrome — ActionTip portal + sidebar flyouts */
+.tm-tip-surface {
+  background: var(--tm-tip-bg);
+  color: var(--tm-tip-fg);
+  border-color: var(--tm-tip-border);
+}
+
+/* Collapsed sidebar flyout tip — same colors as ActionTip */
 .tm-sidebar-tip {
   position: relative;
   border-radius: 10px;
@@ -668,27 +750,21 @@ html:not(.dark) .theme-sidebar-edge-toggle:hover {
   font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
-  border: 1px solid color-mix(in srgb, #0ea5e9 35%, var(--tm-border));
-  background: var(--tm-elevated);
-  color: #0284c7;
+  border: 1px solid var(--tm-tip-border);
+  background: var(--tm-tip-bg);
+  color: var(--tm-tip-fg);
   box-shadow:
     0 0 0 1px color-mix(in srgb, #0ea5e9 12%, transparent),
     0 10px 28px -10px rgba(15, 23, 42, 0.35);
 }
 
 html.dark .tm-sidebar-tip {
-  background: #243044;
-  color: #7dd3fc;
-  border-color: rgba(14, 165, 233, 0.4);
   box-shadow:
     0 0 0 1px rgba(14, 165, 233, 0.18),
     0 12px 32px -10px rgba(0, 0, 0, 0.55);
 }
 
 html:not(.dark) .tm-sidebar-tip {
-  background: #ffffff !important;
-  color: #0284c7 !important;
-  border-color: rgba(14, 165, 233, 0.35);
   box-shadow:
     0 0 0 1px rgba(14, 165, 233, 0.1),
     0 10px 28px -10px rgba(15, 23, 42, 0.22);
@@ -701,19 +777,9 @@ html:not(.dark) .tm-sidebar-tip {
   width: 10px;
   height: 10px;
   transform: translate(-45%, -50%) rotate(45deg);
-  border-left: 1px solid color-mix(in srgb, #0ea5e9 35%, var(--tm-border));
-  border-bottom: 1px solid color-mix(in srgb, #0ea5e9 35%, var(--tm-border));
-  background: var(--tm-elevated);
-}
-
-html.dark .tm-sidebar-tip-arrow {
-  background: #243044;
-  border-color: rgba(14, 165, 233, 0.4);
-}
-
-html:not(.dark) .tm-sidebar-tip-arrow {
-  background: #ffffff !important;
-  border-color: rgba(14, 165, 233, 0.35);
+  border-left: 1px solid var(--tm-tip-border);
+  border-bottom: 1px solid var(--tm-tip-border);
+  background: var(--tm-tip-bg);
 }
 
 /* Zebra striping — paint on TD (tr bg is unreliable with table layout) */
@@ -729,7 +795,8 @@ html:not(.dark) .tm-sidebar-tip-arrow {
 }
 
 /* Icon-only actions — never show "..." clipping */
-.tm-data-table > tbody > tr > td.tm-col-actions {
+.tm-data-table > tbody > tr > td.tm-col-actions,
+.tm-data-table > tbody > tr > td.tm-sticky-cell {
   overflow: visible;
   text-overflow: clip;
   white-space: nowrap;
@@ -737,22 +804,26 @@ html:not(.dark) .tm-sidebar-tip-arrow {
 
 /* Sticky Code (left) + Actions (right) — keep opaque row bg while scrolling */
 .tm-data-table > thead > tr > th.tm-col-sticky-code,
-.tm-data-table > thead > tr > th.tm-col-actions {
+.tm-data-table > thead > tr > th.tm-col-actions,
+.tm-data-table > thead > tr > th.tm-sticky-cell {
   background-color: var(--tm-elevated);
 }
 
 .tm-data-table > tbody > tr:nth-child(odd) > td.tm-col-sticky-code,
-.tm-data-table > tbody > tr:nth-child(odd) > td.tm-col-actions {
+.tm-data-table > tbody > tr:nth-child(odd) > td.tm-col-actions,
+.tm-data-table > tbody > tr:nth-child(odd) > td.tm-sticky-cell {
   background-color: var(--tm-row-odd);
 }
 
 .tm-data-table > tbody > tr:nth-child(even) > td.tm-col-sticky-code,
-.tm-data-table > tbody > tr:nth-child(even) > td.tm-col-actions {
+.tm-data-table > tbody > tr:nth-child(even) > td.tm-col-actions,
+.tm-data-table > tbody > tr:nth-child(even) > td.tm-sticky-cell {
   background-color: var(--tm-row-even);
 }
 
 .tm-data-table > tbody > tr:hover > td.tm-col-sticky-code,
-.tm-data-table > tbody > tr:hover > td.tm-col-actions {
+.tm-data-table > tbody > tr:hover > td.tm-col-actions,
+.tm-data-table > tbody > tr:hover > td.tm-sticky-cell {
   background-color: var(--tm-row-hover);
 }
 

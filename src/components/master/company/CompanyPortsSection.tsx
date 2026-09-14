@@ -3,6 +3,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Globe, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
 
 interface CompanyPortsSectionProps {
@@ -58,14 +59,16 @@ export function CompanyPortsSection({
               className="bg-[var(--tm-tint)] border border-[#0EA5E9]/15 text-[#0EA5E9] text-xs font-semibold rounded-[6px] px-2.5 py-1 flex items-center gap-1.5"
             >
               <span>{port.portName}</span>
-              <button
-                type="button"
-                onClick={() => onRemove(idx)}
-                className="p-0.5 rounded-[4px] hover:bg-[var(--tm-surface)]/80 text-[#0EA5E9]/70 hover:text-[#0EA5E9] transition-colors"
-                title="Unassign Port"
-              >
-                <X size={10} strokeWidth={2.5} />
-              </button>
+              <ActionTip label="Unassign Port">
+                <button
+                  type="button"
+                  onClick={() => onRemove(idx)}
+                  aria-label="Unassign Port"
+                  className="p-0.5 rounded-[4px] hover:bg-[var(--tm-surface)]/80 text-[#0EA5E9]/70 hover:text-[#0EA5E9] transition-colors"
+                >
+                  <X size={10} strokeWidth={2.5} />
+                </button>
+              </ActionTip>
             </div>
           ))}
         </div>

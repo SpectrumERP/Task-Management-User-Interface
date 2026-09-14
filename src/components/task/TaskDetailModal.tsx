@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { useAuthStore } from '@/store/useAuthStore';
 import { canUserEditTask } from '@/lib/taskAccess';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
@@ -913,9 +914,12 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
               </div>
             </div>
           ) : (
-            <div className="h-full min-h-[280px] flex flex-col items-center justify-center py-20">
-              <p className="text-slate-400 font-medium text-sm">Failed to load task details</p>
-            </div>
+            <LoadErrorState
+              className="h-full min-h-[280px]"
+              title="Failed to load task details"
+              description="Could not load this task. Retry uses the same request."
+              onRetry={fetchTaskDetails}
+            />
           )}
         </div>
       </DialogContent>

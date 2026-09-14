@@ -5,6 +5,7 @@ import { Column } from './Column';
 import { TaskStatus, Task } from '@/types/task';
 import { useState, useEffect } from 'react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 
 interface BoardProps {
   onAddTask: (status?: string) => void;
@@ -43,14 +44,18 @@ export function Board({ onAddTask, onTaskClick, filterParams }: BoardProps) {
     boardStatusesFromFill(fillValues?.status)
   );
   const [isStatusesLoading, setIsStatusesLoading] = useState(() => boardStatusesFromFill(fillValues?.status).length === 0);
+  const [loadError, setLoadError] = useState(false);
+  const [loadRetryKey, setLoadRetryKey] = useState(0);
 
   useEffect(() => {
     const initBoard = async () => {
+      setLoadError(false);
       try {
         // 1. Fetch Statuses via deduplicated fetchFillValues helper (cached → instant)
         const statusResponse = await fetchFillValues(companyNo.toString());
         if (!statusResponse) {
           setIsStatusesLoading(false);
+          setLoadError(true);
           return;
         }
 
@@ -66,10 +71,11 @@ export function Board({ onAddTask, onTaskClick, filterParams }: BoardProps) {
       } catch (error) {
         console.error('Failed to initialize board:', error);
         setIsStatusesLoading(false);
+        setLoadError(true);
       }
     };
     initBoard();
-  }, [fetchTasks, fetchFillValues, companyNo, filterParams]);
+  }, [fetchTasks, fetchFillValues, companyNo, filterParams, loadRetryKey]);
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -84,10 +90,25 @@ export function Board({ onAddTask, onTaskClick, filterParams }: BoardProps) {
   };
 
   // Loader only on first paint when columns aren't ready yet — not on every view switch / task refresh
-  if (isStatusesLoading && statuses.length === 0) {
+  if (isStatusesLoading && statuses.length === 0 && !loadError) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3">
         <BrandLoader size="sm" message="Loading board" />
+      </div>
+    );
+  }
+
+  if (loadError && statuses.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <LoadErrorState
+          title="Failed to load board"
+          description="Could not load board columns or tasks. Retry uses the same filters."
+          onRetry={() => {
+            setIsStatusesLoading(true);
+            setLoadRetryKey((k) => k + 1);
+          }}
+        />
       </div>
     );
   }

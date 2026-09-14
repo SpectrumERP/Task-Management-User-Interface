@@ -16,13 +16,15 @@ export interface FollowUpNote {
 interface CompanyNotesSectionProps {
   notes: FollowUpNote[];
   onChange: (value: FollowUpNote[]) => void;
+  /** When provided, trash uses this (e.g. confirm dialog) instead of immediate remove. */
+  onRemove?: (index: number) => void;
 }
 
 const toIso = (d: Date) => toDateOnlyLocal(d) ?? '';
 
 const formatDate = (iso: string) => formatDateOnly(iso, '');
 
-export function CompanyNotesSection({ notes, onChange }: CompanyNotesSectionProps) {
+export function CompanyNotesSection({ notes, onChange, onRemove }: CompanyNotesSectionProps) {
   const [draftDate, setDraftDate] = useState<Date | undefined>(undefined);
   const [draftNote, setDraftNote] = useState('');
 
@@ -34,6 +36,10 @@ export function CompanyNotesSection({ notes, onChange }: CompanyNotesSectionProp
   };
 
   const removeNote = (index: number) => {
+    if (onRemove) {
+      onRemove(index);
+      return;
+    }
     onChange(notes.filter((_, i) => i !== index));
   };
 

@@ -151,11 +151,11 @@ export function TaskCompanyList() {
     apiService.delete('/api/crm/task-companies/delete', {
       params: { operTaskCompanyNo: deleteTargetId }
     }).then(() => {
-      toast.success('Record deleted');
+      toast.success('Task company deleted');
       fetchTaskCompanies();
     }).catch(err => {
       console.error('Failed to delete task company:', err);
-      toast.error('Failed to delete record');
+      toast.error('Failed to delete task company');
     });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
@@ -217,6 +217,7 @@ export function TaskCompanyList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
+        entityLabel="task company"
       />
     </div>
   );

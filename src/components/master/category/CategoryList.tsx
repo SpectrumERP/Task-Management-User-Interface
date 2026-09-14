@@ -84,7 +84,7 @@ export function CategoryList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-categories/delete', {
       params: { operTaskCategoryNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchCategories(); }).catch(err => { console.error('Failed to delete category:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Category deleted'); fetchCategories(); }).catch(err => { console.error('Failed to delete category:', err); toast.error('Failed to delete category'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -106,6 +106,7 @@ export function CategoryList() {
         columns={[
           {
             header: 'Features',
+            plainText: false,
             render: (item) => {
               const chips = [
                 item.isApprovalApplicable && (
@@ -136,6 +137,7 @@ export function CategoryList() {
             <span className="break-words">{item.name}</span>
           </>
         )}
+        nameAsRich
         onEdit={(item) => navigate(toMasterEditPath('category', item.id))}
         onDelete={handleDeleteClick}
         canUpdate={isUpdate}
@@ -168,7 +170,8 @@ export function CategoryList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="category"
+      />
     </div>
   );
 }

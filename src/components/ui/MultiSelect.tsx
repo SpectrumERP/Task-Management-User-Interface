@@ -122,7 +122,7 @@ export function MultiSelect({
             className,
             FIELD_TEXT_STYLE,
             value.length === 0 && "text-slate-400",
-            "rounded-[8px] border-[var(--tm-border)]",
+            "rounded-md border-tm-border",
             !(typeof className === "string" && /border-red/.test(className)) && "!border-[var(--tm-border)]"
           )}
         >
@@ -198,7 +198,7 @@ export function MultiSelect({
                     {option.label}
                     <Check
                       className={cn(
-                        "ml-auto h-4 w-4 text-[#0EA5E9]",
+                        "ml-auto h-4 w-4 text-brand",
                         isSelected ? "opacity-100" : "opacity-0"
                       )}
                     />
