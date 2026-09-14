@@ -390,8 +390,8 @@ export function CustomFieldsSection({
 
   const renderValueField = (cf: any, index: number) => {
     const baseClasses = viewMode === 'grid'
-      ? "h-10 rounded-[8px] border border-[var(--tm-border)] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:border-[#0EA5E9] text-xs bg-[var(--tm-surface)] shadow-none px-3 w-full transition-all text-slate-100 font-medium"
-      : "h-9 rounded-[8px] border border-[var(--tm-border)] group-hover:border-[#0EA5E9]/25 focus-visible:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 text-xs bg-[var(--tm-surface)] shadow-none px-2.5 w-full transition-colors";
+      ? "h-10 rounded-[8px] border border-[var(--tm-border)] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 focus-visible:border-[#0EA5E9] text-xs bg-[var(--tm-surface)] shadow-tm-control px-3 w-full transition-all text-slate-100 font-medium"
+      : "h-9 rounded-[8px] border border-[var(--tm-border)] group-hover:border-[#0EA5E9]/25 focus-visible:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 text-xs bg-[var(--tm-surface)] shadow-tm-control px-2.5 w-full transition-colors";
 
     if (!cf.customFieldNo) {
       return (
@@ -570,7 +570,7 @@ export function CustomFieldsSection({
                         value={cf.customFieldNo}
                         onChange={(val) => updateField(index, 'customFieldNo', val)}
                         placeholder="Select custom field..."
-                        className="h-9 mb-1 rounded-[8px] border border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none w-full"
+                        className="h-9 mb-1 rounded-[8px] border border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-tm-control w-full"
                       />
                     )}
                     {renderValueField(cf, index)}
@@ -594,7 +594,7 @@ export function CustomFieldsSection({
                       value={cf.customFieldNo}
                       onChange={(val) => updateField(index, 'customFieldNo', val)}
                       placeholder="Select custom field..."
-                      className="h-9 rounded-[8px] border border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none w-full"
+                      className="h-9 rounded-[8px] border border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-tm-control w-full"
                     />
                   </div>
                   <div className="space-y-1 min-w-0">

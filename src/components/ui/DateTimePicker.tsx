@@ -341,7 +341,7 @@ export function DateTimePicker({
         aria-expanded={isOpen}
         onClick={() => !disabled && setIsOpen((open) => !open)}
         className={cn(
-          "w-full h-10 justify-start text-left font-medium bg-[var(--tm-surface)] text-xs transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-brand/35 focus-visible:ring-2 focus-visible:ring-brand/15 border shadow-none",
+          "w-full h-10 justify-start text-left font-medium bg-[var(--tm-surface)] text-xs transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-brand/35 focus-visible:ring-2 focus-visible:ring-brand/15 border shadow-tm-control",
           !date && "text-slate-400",
           isOpen && "border-brand/40 ring-2 ring-brand/10",
           className,

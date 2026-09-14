@@ -37,6 +37,10 @@ function HoverTipBubble({
     placed: side === 'right' ? ('right' as TipSide) : side,
   });
 
+  // Short action labels can stay one line; long cell text always wraps within a capped width.
+  const wrapText = !singleLine || text.trim().length > 42;
+  const tipMaxWidth = 'min(20rem, calc(100vw - 1.5rem))';
+
   useLayoutEffect(() => {
     const el = tipRef.current;
     if (!el) return;
@@ -88,7 +92,7 @@ function HoverTipBubble({
         : Math.max(margin + height, Math.min(top, window.innerHeight - margin));
 
     setBox({ left, top: tipTop, arrowLeft, arrowTop: 0, placed });
-  }, [anchorLeft, anchorTop, top, belowTop, text, singleLine, align, side]);
+  }, [anchorLeft, anchorTop, top, belowTop, text, singleLine, align, side, wrapText]);
 
   const placed = box.placed;
 
@@ -97,19 +101,20 @@ function HoverTipBubble({
       ref={tipRef}
       role="tooltip"
       className={cn(
-        'pointer-events-none fixed z-[300]',
-        singleLine ? 'w-max max-w-[calc(100vw-1.5rem)]' : 'max-w-[min(22rem,calc(100vw-1.5rem))]',
+        'pointer-events-none fixed z-[300] w-fit',
         placed === 'top' && '-translate-y-full',
         'animate-in fade-in-0 zoom-in-95 duration-150'
       )}
-      style={{ top: box.top, left: box.left }}
+      style={{ top: box.top, left: box.left, maxWidth: tipMaxWidth }}
     >
       <div className="relative filter drop-shadow-[0_10px_24px_rgba(15,23,42,0.28)]">
-        <div className="tm-tip-surface rounded-xl border px-3 py-2">
+        <div className="tm-tip-surface rounded-xl border px-3 py-2 max-w-full">
           <p
             className={cn(
-              'text-[11px] font-medium leading-relaxed',
-              singleLine ? 'whitespace-nowrap text-center' : 'whitespace-pre-line break-words text-left'
+              'text-[11px] font-medium leading-relaxed max-w-full',
+              wrapText
+                ? 'whitespace-normal break-words text-left [overflow-wrap:anywhere]'
+                : 'whitespace-nowrap text-center'
             )}
           >
             {text}
@@ -301,7 +306,7 @@ export function TruncatedText({
           top={coords.top}
           belowTop={coords.belowTop}
           anchorLeft={coords.left}
-          singleLine
+          singleLine={false}
         />
       ) : null}
     </>

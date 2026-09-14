@@ -25,7 +25,7 @@ import { FieldInfoControl } from '@/components/ui/info-tooltip';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
 import { SortableHeader } from '@/components/shared/useTableSort';
-import { getStatusTextClass } from '@/lib/taskStatusGroups';
+import { getStatusTextClass, getStatusChipClass, getStatusDotClass } from '@/lib/taskStatusGroups';
 import { sortByLabel } from '@/lib/sortOptions';
 import { formatDateOnly, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import {
@@ -1972,23 +1972,48 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     </div>
                   )}
                 />
-                <div className="relative flex items-center gap-0.5 sm:gap-3 bg-[var(--tm-muted)]/80 px-3 sm:px-4 py-1 sm:py-1.5 rounded-[8px] border border-[var(--tm-border)]/60 shadow-sm">
-                  <FieldLabel required className="text-[10px] text-slate-200">Status</FieldLabel>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 shrink-0">
+                    Status
+                    <span className="text-red-400 ml-0.5" aria-hidden>
+                      *
+                    </span>
+                  </span>
                   <FieldControl error={form.formState.errors.status?.message}>
                     <Controller
                       name="status"
                       control={form.control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="rounded-[8px] h-8 border-transparent bg-transparent text-slate-50 shadow-none hover:bg-[var(--tm-muted)] w-[120px] sm:w-[160px]">
+                          <SelectTrigger
+                            aria-required
+                            className={cn(
+                              'h-8 w-auto min-w-[128px] max-w-[168px] gap-2 rounded-full border px-3 text-xs font-semibold shadow-tm-control focus:ring-2 focus:ring-brand/20 focus:ring-offset-0 [&>span]:truncate',
+                              getStatusChipClass(field.value)
+                            )}
+                          >
+                            <span
+                              className={cn('size-1.5 shrink-0 rounded-full', getStatusDotClass(field.value))}
+                              aria-hidden
+                            />
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-[8px]">
-                            {filteredStatuses.map(s => (
-                              <SelectItem key={s.StatusNo} value={s.Status}>{s.Status}</SelectItem>
+                          <SelectContent className="rounded-[10px] min-w-[160px]">
+                            {filteredStatuses.map((s) => (
+                              <SelectItem key={s.StatusNo} value={s.Status} className="text-xs">
+                                <span className="inline-flex items-center gap-2">
+                                  <span
+                                    className={cn('size-1.5 rounded-full', getStatusDotClass(s.Status))}
+                                    aria-hidden
+                                  />
+                                  <span className={getStatusTextClass(s.Status)}>{s.Status}</span>
+                                </span>
+                              </SelectItem>
                             ))}
                             {filteredStatuses.length === 0 && (
-                              <SelectItem value={currentStatus} disabled>{currentStatus}</SelectItem>
+                              <SelectItem value={currentStatus} disabled>
+                                {currentStatus}
+                              </SelectItem>
                             )}
                           </SelectContent>
                         </Select>

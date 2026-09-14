@@ -923,7 +923,7 @@ export function TaskFilter({
                       ? "border-[#F59E0B] bg-[#F59E0B] text-[#0B1220] shadow-[0_4px_12px_-4px_rgba(245,158,11,0.45)]"
                       : "border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10"
                     : // Assigned (+ any other) — solid fill like the rest when active
-                      isActive
+                    isActive
                       ? "border-[#0EA5E9] bg-[#0EA5E9] text-white shadow-[0_4px_12px_-4px_rgba(14,165,233,0.45)]"
                       : "border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[#0EA5E9]/10";
 

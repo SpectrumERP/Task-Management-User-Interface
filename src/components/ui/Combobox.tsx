@@ -97,7 +97,7 @@ export function Combobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-medium text-sm h-10 shadow-tm-sm transition-all border border-tm-border relative pr-8",
+            "w-full justify-between font-medium text-sm h-10 shadow-tm-control transition-all border border-tm-border relative pr-8",
             "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-tm-elevated disabled:hover:bg-tm-elevated",
             className,
             FIELD_TEXT_STYLE,
@@ -139,86 +139,86 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverPrimitive.Portal container={container || document.body}>
-      <PopoverPrimitive.Content 
+        <PopoverPrimitive.Content
           className={cn(
             "z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
             contentClassName
           )}
           align="start"
         >
-        <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={shouldFilter}>
-          <CommandInput 
-            value={search} 
-            onValueChange={(val) => {
-              setSearch(val)
-              onSearchChange?.(val)
-            }} 
-            placeholder={searchPlaceholder} 
-            className="h-9 border-none focus:ring-0" 
-          />
-          <CommandList className="max-h-60 overflow-y-auto">
-            <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
-            <CommandGroup>
-              {sortedOptions.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    onChange(option.value === value ? "" : option.value)
-                    setOpen(false)
-                  }}
-                  className="text-xs font-medium py-2 px-3 flex items-center justify-between cursor-pointer"
-                >
-                  <div className="flex flex-col min-w-0 pr-4">
-                    <div className="flex items-center">
-                      {option.colorCoding && option.colorCoding !== 'none' ? (
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
-                          style={{ backgroundColor: option.colorCoding, color: getContrastColor(option.colorCoding) }}
-                        >
-                          {option.label}
+          <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={shouldFilter}>
+            <CommandInput
+              value={search}
+              onValueChange={(val) => {
+                setSearch(val)
+                onSearchChange?.(val)
+              }}
+              placeholder={searchPlaceholder}
+              className="h-9 border-none focus:ring-0"
+            />
+            <CommandList className="max-h-60 overflow-y-auto">
+              <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
+              <CommandGroup>
+                {sortedOptions.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => {
+                      onChange(option.value === value ? "" : option.value)
+                      setOpen(false)
+                    }}
+                    className="text-xs font-medium py-2 px-3 flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex flex-col min-w-0 pr-4">
+                      <div className="flex items-center">
+                        {option.colorCoding && option.colorCoding !== 'none' ? (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+                            style={{ backgroundColor: option.colorCoding, color: getContrastColor(option.colorCoding) }}
+                          >
+                            {option.label}
+                          </span>
+                        ) : (
+                          <span className="truncate">{option.label}</span>
+                        )}
+                      </div>
+                      {option.description && (
+                        <span className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
+                          {option.description}
                         </span>
-                      ) : (
-                        <span className="truncate">{option.label}</span>
                       )}
                     </div>
-                    {option.description && (
-                      <span className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
-                        {option.description}
-                      </span>
-                    )}
-                  </div>
-                  <Check
-                    className={cn(
-                      "ml-auto h-4 w-4 text-brand",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-          {onAddNew && (
-            <div className="p-1 border-t border-tm-border bg-tm-muted/50">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpen(false);
-                  setTimeout(() => {
-                    if (onAddNew) onAddNew();
-                  }, 0);
-                }}
-                className="w-full justify-start text-brand hover:text-brand hover:bg-tm-muted/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-md transition-all active:scale-[0.98] select-none"
-              >
-                <Plus className="h-3.5 w-3.5 stroke-[3]" />
-                {addNewLabel}
-              </Button>
-            </div>
-          )}
-        </Command>
-      </PopoverPrimitive.Content>
+                    <Check
+                      className={cn(
+                        "ml-auto h-4 w-4 text-brand",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+            {onAddNew && (
+              <div className="p-1 border-t border-tm-border bg-tm-muted/50">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    setTimeout(() => {
+                      if (onAddNew) onAddNew();
+                    }, 0);
+                  }}
+                  className="w-full justify-start text-brand hover:text-brand hover:bg-tm-muted/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-md transition-all active:scale-[0.98] select-none"
+                >
+                  <Plus className="h-3.5 w-3.5 stroke-[3]" />
+                  {addNewLabel}
+                </Button>
+              </div>
+            )}
+          </Command>
+        </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </Popover>
   )

@@ -86,7 +86,7 @@ export default function MeetingReportPage() {
       <div className="shrink-0">
         <MeetingReportFilter onApply={handleApplyFilters} />
       </div>
-      <div className="relative flex min-h-[280px] flex-1 basis-0 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
         {loadError && !isLoading ? (
           <LoadErrorState
             title="Failed to load meeting report"

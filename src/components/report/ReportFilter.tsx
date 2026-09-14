@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
@@ -7,7 +7,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { MultiUserCombobox } from '@/components/ui/MultiUserCombobox';
 import { Checkbox } from '@/components/ui/checkbox';
-import { SlidersHorizontal, RotateCcw, FileBarChart2 } from 'lucide-react';
+import { SlidersHorizontal, RotateCcw, FileBarChart2, ChevronDown, ChevronUp, PencilLine } from 'lucide-react';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -36,8 +36,27 @@ interface ReportFilterProps {
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
+function buildAppliedSummary(data: ReportFilterValues | null): string {
+  if (!data) return 'No filters generated yet';
+  const parts: string[] = [];
+  if (data.dateRange?.from || data.dateRange?.to) parts.push('Date range');
+  if (data.operTaskStatusNo) parts.push('Status');
+  if (data.operTaskPriorityNo) parts.push('Priority');
+  if (data.companyNo) parts.push('Company');
+  if (data.operTaskCategoryNo) parts.push('Category');
+  if (data.operTaskLocationNo) parts.push('Location');
+  if (data.originatorNo) parts.push('Originator');
+  if (data.userIds?.length && !data.userIds.includes('All')) parts.push('Users');
+  if (data.showSubTasks) parts.push('Sub-tasks');
+  if (!parts.length) return 'All default filters';
+  if (parts.length <= 3) return parts.join(' · ');
+  return `${parts.slice(0, 3).join(' · ')} +${parts.length - 3} more`;
+}
+
 export function ReportFilter({ onApply }: ReportFilterProps) {
   const [fillValues, setFillValues] = useState<TaskFillValues | null>(null);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [lastApplied, setLastApplied] = useState<ReportFilterValues | null>(null);
   const { fetchFillValues } = useTaskStore();
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1).toString();
@@ -74,29 +93,67 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
   const { isHideType } = useSettings();
   const { errors } = formState;
 
+  const appliedSummary = useMemo(() => buildAppliedSummary(lastApplied), [lastApplied]);
+
   const onSubmit = (data: ReportFilterValues) => {
+    setLastApplied(data);
     onApply(data);
+    // Free vertical space so Report Results is visible without scrolling
+    setFiltersCollapsed(true);
   };
 
   return (
     <section data-page-tour="report-filters" className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3 px-4 py-2.5 bg-[var(--tm-elevated)] border-[var(--tm-border)]',
+          filtersCollapsed ? 'rounded-[8px] border-0' : 'border-b rounded-t-[8px]'
+        )}
+      >
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <SlidersHorizontal size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-slate-100 tracking-tight">Report Filters</h2>
-            <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
-              Refine criteria and generate the task overview
-            </p>
+            {filtersCollapsed ? (
+              <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">{appliedSummary}</p>
+            ) : (
+              <p className="text-[10px] font-medium text-slate-400 mt-0.5 truncate">
+                Refine criteria and generate the task overview
+              </p>
+            )}
           </div>
         </div>
-        <PageGuideButton guideKey="task-report" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <PageGuideButton guideKey="task-report" />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setFiltersCollapsed((v) => !v)}
+            className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none"
+            aria-expanded={!filtersCollapsed}
+          >
+            {filtersCollapsed ? (
+              <>
+                <PencilLine className="h-3.5 w-3.5" />
+                Edit filters
+                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+              </>
+            ) : (
+              <>
+                Collapse
+                <ChevronUp className="h-3.5 w-3.5 opacity-70" />
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-3 gap-y-3.5">
+      {!filtersCollapsed && (
+      <form onSubmit={handleSubmit(onSubmit)} className="p-3 sm:p-4 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-3 gap-y-3">
           <div className="space-y-1.5 min-w-0">
             <FieldLabel>Date Filter On</FieldLabel>
             <Controller
@@ -307,7 +364,7 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[var(--tm-border)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-[var(--tm-border)]">
           <Controller
             name="showSubTasks"
             control={control}
@@ -349,6 +406,7 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
           </div>
         </div>
       </form>
+      )}
     </section>
   );
 }

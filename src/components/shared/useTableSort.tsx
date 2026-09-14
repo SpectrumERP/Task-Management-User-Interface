@@ -127,7 +127,7 @@ export function SortableHeader({
       aria-label={`Sort by ${label}`}
       aria-sort={isActive ? (sortDesc ? 'descending' : 'ascending') : 'none'}
     >
-      <span className="whitespace-nowrap truncate">{label}</span>
+      <span className="whitespace-nowrap">{label}</span>
       <span
         className={cn(
           'flex flex-col shrink-0 text-current transition-opacity',

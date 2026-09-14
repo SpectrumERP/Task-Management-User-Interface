@@ -97,6 +97,39 @@ export function getStatusTextClass(status?: string | null): string {
   return 'text-slate-300 font-medium';
 }
 
+/** Soft tinted surface for status chip / select trigger. */
+export function getStatusChipClass(status?: string | null): string {
+  const s = (status || '').trim();
+  if (statusMatchesPill(s, 'Completed') || statusMatchesPill(s, 'Close')) {
+    return '!border-emerald-500/35 !bg-emerald-500/10 !text-emerald-400 hover:!bg-emerald-500/15';
+  }
+  if (statusMatchesPill(s, 'In-Progress')) {
+    return '!border-blue-500/35 !bg-blue-500/10 !text-blue-400 hover:!bg-blue-500/15';
+  }
+  if (statusMatchesPill(s, 'Hold') || statusMatchesPill(s, 'Pending')) {
+    return '!border-amber-500/35 !bg-amber-500/10 !text-amber-400 hover:!bg-amber-500/15';
+  }
+  if (statusMatchesPill(s, 'Assigned')) {
+    return '!border-sky-500/40 !bg-sky-500/10 !text-sky-400 hover:!bg-sky-500/15';
+  }
+  const lower = s.toLowerCase();
+  if (lower === 'in review' || lower === 'in-review') {
+    return '!border-violet-500/35 !bg-violet-500/10 !text-violet-400 hover:!bg-violet-500/15';
+  }
+  return 'border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200 hover:bg-[var(--tm-muted)]';
+}
+
+export function getStatusDotClass(status?: string | null): string {
+  const s = (status || '').trim();
+  if (statusMatchesPill(s, 'Completed') || statusMatchesPill(s, 'Close')) return 'bg-emerald-400';
+  if (statusMatchesPill(s, 'In-Progress')) return 'bg-blue-400';
+  if (statusMatchesPill(s, 'Hold') || statusMatchesPill(s, 'Pending')) return 'bg-amber-400';
+  if (statusMatchesPill(s, 'Assigned')) return 'bg-sky-400';
+  const lower = s.toLowerCase();
+  if (lower === 'in review' || lower === 'in-review') return 'bg-violet-400';
+  return 'bg-slate-400';
+}
+
 /** Sum counts for every alias of a pill (case-insensitive keys). */
 export function sumStatusPillCounts(
   statusCounts: Record<string, number>,
