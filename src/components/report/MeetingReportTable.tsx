@@ -9,11 +9,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
-import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { TruncatedText, ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import { formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
+import { cn } from '@/lib/utils';
 
 interface MeetingReportTableProps {
   data: any[];
@@ -41,15 +42,14 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
   );
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [data]);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const getMeetingReportSortValue = useCallback((row: any, key: string) => {
     switch (key) {
-      case 'srNo': return row.meetingNotesNo ?? '';
+      case 'srNo': {
+        const n = Number(row._sr ?? NaN);
+        return Number.isFinite(n) ? n : 0;
+      }
       case 'meetingTitle': return row.meetingTitle || row.title || '';
       case 'category': return row.meetingCategoryName || row.category?.categoryName || '';
       case 'type': return row.meetingTypeName || row.type?.typeName || '';
@@ -89,21 +89,31 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
     }
   }, []);
 
-  const { sortCol, sortDesc, handleSort, sortedRows } = useTableSort(
-    data,
-    getMeetingReportSortValue,
-    { defaultKey: 'startDateTime', defaultDesc: true }
+  const numberedData = useMemo(
+    () => data.map((row, index) => ({ ...row, _sr: index + 1 })),
+    [data]
   );
 
-  const totalItems = sortedRows.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const pageRows = useMemo(
-    () => sortedRows.slice(startIndex, endIndex),
-    [sortedRows, startIndex, endIndex]
-  );
+  const {
+    sortCol,
+    sortDesc,
+    handleSort,
+    pageRows,
+    totalItems,
+    totalPages,
+    safePage,
+    startIndex,
+    endIndex,
+  } = usePagedTableSort(numberedData, getMeetingReportSortValue, {
+    defaultKey: 'srNo',
+    defaultDesc: false,
+    page: currentPage,
+    pageSize: itemsPerPage,
+  });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
 
   const handleItemsPerPageChange = (size: number) => {
     setItemsPerPage(size);
@@ -149,26 +159,30 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
     <section data-page-tour="mreport-table" className="flex h-full min-h-0 flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
       <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center justify-between px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-slate-100 tracking-tight">
+          <h3 className="text-sm font-semibold text-slate-100 tracking-tight inline-flex items-center">
             Report Results
-            <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
-              {data.length}
-            </span>
+            <ActionTip label={`${data.length} matching record${data.length === 1 ? '' : 's'}`}>
+              <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                {data.length}
+              </span>
+            </ActionTip>
           </h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] shadow-none"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Columns
-              </Button>
-            </DropdownMenuTrigger>
+            <ActionTip label="Show or hide columns">
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] shadow-none"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+            </ActionTip>
             <DropdownMenuContent align="end" className="w-56">
               {DEFAULT_COLUMNS.map((col) => (
                 <DropdownMenuCheckboxItem
@@ -183,16 +197,18 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            onClick={handleExport}
-            size="sm"
-            data-page-tour="mreport-export"
-            className="h-8 gap-1.5 rounded-[8px] text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-            disabled={data.length === 0}
-          >
-            <FileDown className="h-3.5 w-3.5" />
-            Export Excel
-          </Button>
+          <ActionTip label={data.length === 0 ? 'Generate a report to export' : 'Download results as Excel'}>
+            <Button
+              onClick={handleExport}
+              size="sm"
+              data-page-tour="mreport-export"
+              className="h-8 gap-1.5 rounded-[8px] text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+              disabled={data.length === 0}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              Export Excel
+            </Button>
+          </ActionTip>
         </div>
       </div>
 
@@ -225,7 +241,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
-                        #{startIndex + index + 1}
+                        #{meeting._sr ?? startIndex + index + 1}
                       </span>
                       <span className={`text-[10px] font-semibold ${getStatusTextClass(statusName)}`}>
                         {statusName}
@@ -266,8 +282,16 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                 return (
                   <th
                     key={col.id}
-                    className="px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 whitespace-nowrap relative group select-none"
-                    style={widthStyle}
+                    className={cn(
+                      'px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 whitespace-nowrap relative group select-none cursor-pointer',
+                      col.id === 'srNo' && 'tm-col-sr tm-col-id'
+                    )}
+                    style={
+                      col.id === 'srNo' && !colWidths[col.id]
+                        ? { width: 'var(--tm-col-id-width)', minWidth: 'var(--tm-col-id-width)', maxWidth: 'var(--tm-col-id-width)' }
+                        : widthStyle
+                    }
+                    {...sortHeaderCellProps(col.id, handleSort)}
                   >
                     <SortableHeader
                       label={col.label}
@@ -275,11 +299,16 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                       sortCol={sortCol}
                       sortDesc={sortDesc}
                       onSort={handleSort}
-                      className="pr-2"
+                      className="w-full justify-start pr-3"
                     />
                     <div
-                      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors z-20"
-                      onMouseDown={(e) => handleResizeStart(e, col.id)}
+                      data-col-resize
+                      className="absolute right-0 top-0 z-[2] h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleResizeStart(e, col.id);
+                      }}
                     />
                   </th>
                 );
@@ -294,15 +323,19 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                 >
                   {visibleColumns.includes('srNo') && (
                     <td
-                      className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
-                      style={colWidths['srNo'] ? { maxWidth: colWidths['srNo'] } : {}}
+                      className="tm-col-sr tm-col-id px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
+                      style={
+                        colWidths['srNo']
+                          ? { maxWidth: colWidths['srNo'] }
+                          : { width: 'var(--tm-col-id-width)', minWidth: 'var(--tm-col-id-width)', maxWidth: 'var(--tm-col-id-width)' }
+                      }
                     >
-                      {startIndex + index + 1}
+                      {meeting._sr ?? startIndex + index + 1}
                     </td>
                   )}
                   {visibleColumns.includes('meetingTitle') && (
                     <td
-                      className="px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-top min-w-0 overflow-hidden"
+                      className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-top min-w-0 overflow-hidden"
                       style={
                         colWidths['meetingTitle'] ? { maxWidth: colWidths['meetingTitle'] } : {}
                       }

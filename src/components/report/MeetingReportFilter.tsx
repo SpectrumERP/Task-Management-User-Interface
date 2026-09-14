@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FieldLabel } from '@/components/ui/form-field';
 import { SlidersHorizontal, RotateCcw, FileBarChart2, ChevronDown, ChevronUp, PencilLine } from 'lucide-react';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
 import { useTaskStore } from '@/store/useTaskStore';
@@ -68,7 +69,7 @@ function buildMeetingAppliedSummary(data: MeetingReportFilterValues | null): str
 
 export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
   const [fillValues, setFillValues] = useState<any>(null);
-  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(true);
   const [lastApplied, setLastApplied] = useState<MeetingReportFilterValues | null>(null);
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1).toString();
@@ -146,28 +147,36 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <PageGuideButton guideKey="meeting-report" />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setFiltersCollapsed((v) => !v)}
-            className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none"
-            aria-expanded={!filtersCollapsed}
+          <PageGuideButton guideKey="meeting-report" title="Open page guide" />
+          <ActionTip
+            label={
+              filtersCollapsed
+                ? 'Expand filters to change criteria'
+                : 'Collapse filters to focus on results'
+            }
           >
-            {filtersCollapsed ? (
-              <>
-                <PencilLine className="h-3.5 w-3.5" />
-                Edit filters
-                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-              </>
-            ) : (
-              <>
-                Collapse
-                <ChevronUp className="h-3.5 w-3.5 opacity-70" />
-              </>
-            )}
-          </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setFiltersCollapsed((v) => !v)}
+              className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none"
+              aria-expanded={!filtersCollapsed}
+            >
+              {filtersCollapsed ? (
+                <>
+                  <PencilLine className="h-3.5 w-3.5" />
+                  Edit filters
+                  <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                </>
+              ) : (
+                <>
+                  Collapse
+                  <ChevronUp className="h-3.5 w-3.5 opacity-70" />
+                </>
+              )}
+            </Button>
+          </ActionTip>
         </div>
       </div>
 

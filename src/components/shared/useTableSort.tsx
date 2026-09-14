@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { looksLikeDateValue, toUtcIso, toUtcMs } from '@/lib/dateTime';
@@ -94,6 +94,46 @@ export function useTableSort<T>(
   return { sortCol, sortDesc, handleSort, sortedRows };
 }
 
+/** Paginate first (stable source order), then sort only the current page's rows. */
+export function usePagedTableSort<T>(
+  rows: T[],
+  getValue: (row: T, key: string) => unknown,
+  options: {
+    defaultKey?: string | null;
+    defaultDesc?: boolean;
+    page: number;
+    pageSize: number;
+  }
+) {
+  const totalItems = rows.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / options.pageSize) || 1);
+  const safePage = Math.min(Math.max(1, options.page), totalPages);
+  const startIndex = totalItems === 0 ? 0 : (safePage - 1) * options.pageSize;
+  const endIndex = Math.min(startIndex + options.pageSize, totalItems);
+
+  const pageSlice = useMemo(
+    () => rows.slice(startIndex, endIndex),
+    [rows, startIndex, endIndex]
+  );
+
+  const { sortCol, sortDesc, handleSort, sortedRows } = useTableSort(pageSlice, getValue, {
+    defaultKey: options.defaultKey,
+    defaultDesc: options.defaultDesc,
+  });
+
+  return {
+    sortCol,
+    sortDesc,
+    handleSort,
+    pageRows: sortedRows,
+    totalItems,
+    totalPages,
+    safePage,
+    startIndex,
+    endIndex,
+  };
+}
+
 export function SortableHeader({
   label,
   sortKey,
@@ -114,15 +154,21 @@ export function SortableHeader({
     <button
       type="button"
       className={cn(
-        'inline-flex max-w-full items-center gap-1 cursor-pointer select-none text-inherit',
+        'inline-flex min-h-[1.75rem] w-full max-w-full items-center gap-1 cursor-pointer select-none text-inherit',
         'hover:text-[#0EA5E9] transition-colors group/header bg-transparent border-0 p-0 font-inherit',
         'focus-visible:outline-none focus-visible:text-[#0EA5E9]',
+        // Above zebra cells; below resize handle (z-[2]) so drag still works on the edge.
+        'relative z-[1] pointer-events-auto',
         className
       )}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onSort(sortKey);
+      }}
+      onMouseDown={(e) => {
+        // Keep header clicks from starting accidental column-resize drags.
+        e.stopPropagation();
       }}
       aria-label={`Sort by ${label}`}
       aria-sort={isActive ? (sortDesc ? 'descending' : 'ascending') : 'none'}
@@ -131,7 +177,7 @@ export function SortableHeader({
       <span
         className={cn(
           'flex flex-col shrink-0 text-current transition-opacity',
-          isActive ? 'opacity-100' : 'opacity-40 group-hover/header:opacity-100'
+          isActive ? 'opacity-100 text-[#0EA5E9]' : 'opacity-40 group-hover/header:opacity-100'
         )}
       >
         <ChevronUp
@@ -145,4 +191,18 @@ export function SortableHeader({
       </span>
     </button>
   );
+}
+
+/** Use on `<th>` so padding clicks sort too; skips resize handle. Button already stopPropagates. */
+export function sortHeaderCellProps(
+  sortKey: string,
+  onSort: (k: string) => void
+): { onClick: (e: MouseEvent) => void } {
+  return {
+    onClick: (e) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('[data-col-resize]')) return;
+      onSort(sortKey);
+    },
+  };
 }

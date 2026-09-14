@@ -26,7 +26,7 @@ import {
 import { useTaskStore } from '@/store/useTaskStore';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 
 interface TaskListViewProps {
@@ -68,7 +68,7 @@ const COLUMNS: ColumnDef[] = [
 
 /** Default widths sized so header labels (e.g. Priority, Completion Date) fit fully. */
 const DEFAULT_COL_WIDTH: Partial<Record<ColumnKey, string>> = {
-  code: '8rem',
+  code: 'var(--tm-col-id-width)',
   status: '5.5rem',
   title: '14rem',
   category: '9rem',
@@ -88,7 +88,7 @@ const DEFAULT_COL_WIDTH: Partial<Record<ColumnKey, string>> = {
 /** Actions: only enough for View + Edit icon buttons. */
 const ACTIONS_COL_PX = 72;
 
-const cellOverflowClass = 'px-1.5 py-1 align-middle overflow-hidden max-w-0';
+const cellOverflowClass = 'px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle overflow-hidden max-w-0';
 
 function parseCssWidthPx(value: string | number | undefined, fallback = 120): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -227,7 +227,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   const { sortCol, sortDesc, handleSort, sortedRows: sortedTasks } = useTableSort(
     tasks,
     getTaskSortValue,
-    { defaultKey: 'dueDate', defaultDesc: false }
+    { defaultKey: 'code', defaultDesc: false }
   );
 
   const handleResizeStart = (e: React.MouseEvent, colKey: string) => {
@@ -443,7 +443,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td
           className={cn(
             cellOverflowClass,
-            'tm-col-sticky-code text-left sticky left-0 z-20 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]',
+            'tm-col-id tm-col-sticky-code text-left sticky left-0 z-20 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]',
             isSubtask && 'pl-8'
           )}
           style={{ textAlign: 'left' }}
@@ -480,10 +480,10 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
       {/* Subject */}
       {visibleColumns.has('title') && (
-        <td className={cellOverflowClass}>
+        <td className={cn(cellOverflowClass, 'tm-col-primary')}>
           <TruncatedText
             text={task.title || ''}
-            className="font-medium text-slate-100 group-hover:text-[#0EA5E9] transition-colors select-all"
+            className="font-medium text-slate-50 group-hover:text-[#0EA5E9] transition-colors select-all"
           />
         </td>
       )}
@@ -686,7 +686,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {/* Actions */}
       {visibleColumns.has('actions') && (
         <td
-          className="px-1 py-1 align-middle text-center sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
+          className="px-1 py-2.5 align-middle text-center sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
           style={{ width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }}
         >
           <div className="inline-flex items-center justify-center gap-0.5">
@@ -748,25 +748,28 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           className="tm-data-table table-fixed text-sm text-left"
           style={{ width: '100%', minWidth: tableMinWidthPx }}
         >
-          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold text-xs tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
+          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
             <tr>
               {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
                 <th
                   key={col.key}
                   className={cn(
-                    'px-1.5 py-1 relative group/th text-left whitespace-nowrap overflow-hidden',
-                    col.key === 'code' && 'tm-col-sticky-code sticky left-0 z-[45] bg-[var(--tm-elevated)] border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]',
-                    col.key === 'actions' && 'tm-col-actions px-1 !text-center sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]'
+                    'px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 relative group/th text-left whitespace-nowrap overflow-hidden',
+                    col.key === 'code' && 'tm-col-id tm-col-sticky-code sticky left-0 z-[45] bg-[var(--tm-elevated)] border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]',
+                    col.key === 'actions' && 'tm-col-actions px-1 !text-center last:border-r-0 sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]'
                   )}
                   style={
                     col.key === 'actions'
                       ? { width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }
+                      : col.key === 'code' && !colWidths[col.key]
+                        ? { width: 'var(--tm-col-id-width)', minWidth: 'var(--tm-col-id-width)', maxWidth: 'var(--tm-col-id-width)' }
                       : colWidths[col.key]
                         ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] }
                         : DEFAULT_COL_WIDTH[col.key]
-                          ? { width: DEFAULT_COL_WIDTH[col.key], minWidth: DEFAULT_COL_WIDTH[col.key] }
+                          ? { width: DEFAULT_COL_WIDTH[col.key], minWidth: DEFAULT_COL_WIDTH[col.key], maxWidth: DEFAULT_COL_WIDTH[col.key] }
                           : { width: '14rem', minWidth: '14rem' }
                   }
+                  {...(col.key !== 'actions' ? sortHeaderCellProps(col.key, handleSort) : {})}
                 >
                   {col.key === 'actions' ? (
                     <div className="flex justify-center">
@@ -865,8 +868,13 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                         className="min-w-0 w-full justify-start"
                       />
                       <div
-                        className="w-1.5 h-full absolute right-0 top-0 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500 opacity-0 group-hover/th:opacity-100 transition-opacity z-10"
-                        onMouseDown={(e) => handleResizeStart(e, col.key)}
+                        data-col-resize
+                        className="w-1.5 h-full absolute right-0 top-0 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500 opacity-0 group-hover/th:opacity-100 transition-opacity z-[2]"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleResizeStart(e, col.key);
+                        }}
                       />
                     </div>
                   )}

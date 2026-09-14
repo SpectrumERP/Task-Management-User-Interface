@@ -27,9 +27,10 @@ import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { exportMeetingReportToExcel } from '@/utils/exportToExcel';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
-import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
 import { formatUtcScheduleLine, formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
+import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 import { cn } from '@/lib/utils';
 import {
   canDeleteMeetingNote,
@@ -84,6 +85,8 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { isSave, isUpdate, isDelete } = useFormRights(1559);
 
@@ -147,8 +150,17 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
     [meetings, filterTitle, filterStatus, dateRange]
   );
 
+  const numberedMeetings = useMemo(
+    () => filteredMeetings.map((m, index) => ({ ...m, _sr: index + 1 })),
+    [filteredMeetings]
+  );
+
   const getMeetingSortValue = useCallback((row: any, key: string) => {
     switch (key) {
+      case 'srNo': {
+        const n = Number(row._sr ?? NaN);
+        return Number.isFinite(n) ? n : 0;
+      }
       case 'meetingTitle':
         return row.meetingTitle ?? '';
       case 'meetingTypeName':
@@ -172,11 +184,31 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
     }
   }, []);
 
-  const { sortCol, sortDesc, handleSort, sortedRows: sortedMeetings } = useTableSort(
-    filteredMeetings,
-    getMeetingSortValue,
-    { defaultKey: 'meetingStartDateTime', defaultDesc: true }
-  );
+  const {
+    sortCol,
+    sortDesc,
+    handleSort,
+    pageRows: sortedMeetings,
+    totalItems,
+    totalPages,
+    safePage,
+    startIndex,
+    endIndex,
+  } = usePagedTableSort(numberedMeetings, getMeetingSortValue, {
+    defaultKey: 'srNo',
+    defaultDesc: false,
+    page: currentPage,
+    pageSize: itemsPerPage,
+  });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredMeetings]);
+
+  const handleItemsPerPageChange = (size: number) => {
+    setItemsPerPage(size);
+    setCurrentPage(1);
+  };
 
   const hasActiveFilters = Boolean(filterTitle || filterStatus !== 'all' || dateRange);
 
@@ -386,16 +418,16 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           <div className="flex items-center justify-between gap-2 px-1 shrink-0">
             <p className="text-[11px] font-semibold text-slate-500">
               Showing{' '}
-              <span className="text-slate-300 tabular-nums">{sortedMeetings.length}</span>
+              <span className="text-slate-300 tabular-nums">{totalItems}</span>
               {hasActiveFilters ? (
                 <span className="text-slate-500"> of {meetings.length}</span>
               ) : null}{' '}
-              meeting{sortedMeetings.length === 1 ? '' : 's'}
+              meeting{totalItems === 1 ? '' : 's'}
             </p>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportMeetingReportToExcel(sortedMeetings, 'MeetingNotes.csv')}
+              onClick={() => exportMeetingReportToExcel(numberedMeetings, 'MeetingNotes.csv')}
               className="h-8 px-3 text-[11px] font-semibold gap-1.5 rounded-[8px] border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
             >
               <Download size={13} />
@@ -512,10 +544,22 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           >
             <div className="flex-1 min-h-0 overflow-auto">
               <table className="tm-data-table w-full text-sm text-left table-fixed">
-                <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold text-[10px] uppercase tracking-wide">
+                <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                   <tr>
-                    <th className="w-12 px-3 py-2.5 pl-4">#</th>
-                    <th className="w-[24%] px-3 py-2.5 overflow-visible">
+                    <th
+                      className="tm-col-sr tm-col-id px-2 py-2.5 border-r border-[var(--tm-border)] cursor-pointer"
+                      {...sortHeaderCellProps('srNo', handleSort)}
+                    >
+                      <SortableHeader
+                        label="Sr. No."
+                        sortKey="srNo"
+                        sortCol={sortCol}
+                        sortDesc={sortDesc}
+                        onSort={handleSort}
+                        className="pr-1"
+                      />
+                    </th>
+                    <th className="w-[24%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTitle', handleSort)}>
                       <SortableHeader
                         label="Title"
                         sortKey="meetingTitle"
@@ -524,7 +568,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[16%] px-3 py-2.5 overflow-visible">
+                    <th className="w-[16%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTypeName', handleSort)}>
                       <SortableHeader
                         label="Type"
                         sortKey="meetingTypeName"
@@ -533,7 +577,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[12%] px-3 py-2.5 overflow-visible">
+                    <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingCategoryName', handleSort)}>
                       <SortableHeader
                         label="Category"
                         sortKey="meetingCategoryName"
@@ -542,7 +586,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[10%] px-3 py-2.5 overflow-visible">
+                    <th className="w-[10%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('companyName', handleSort)}>
                       <SortableHeader
                         label="Company"
                         sortKey="companyName"
@@ -551,7 +595,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[14%] px-3 py-2.5 overflow-visible">
+                    <th className="w-[14%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingStartDateTime', handleSort)}>
                       <SortableHeader
                         label="Schedule"
                         sortKey="meetingStartDateTime"
@@ -560,7 +604,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[11%] px-3 py-2.5 overflow-visible">
+                    <th className="w-[11%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('docStatusName', handleSort)}>
                       <SortableHeader
                         label="Status"
                         sortKey="docStatusName"
@@ -569,13 +613,13 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[84px] px-1.5 py-2.5 pr-2.5 text-right sticky right-0 z-40 bg-[var(--tm-elevated)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.12)]">
+                    <th className="tm-col-actions w-[84px] px-1.5 py-2.5 pr-2.5 text-right sticky right-0 z-40 bg-[var(--tm-elevated)] border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.12)]">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--tm-border)]/80">
-                  {sortedMeetings.map((meeting, index) => {
+                <tbody>
+                  {sortedMeetings.map((meeting) => {
                     const status = meeting.docStatusName || meeting.statusName || '—';
                     const start = formatScheduleLine(meeting.meetingStartDateTime);
                     const end = formatScheduleLine(meeting.meetingEndDateTime);
@@ -588,17 +632,17 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                       <tr
                         key={id}
                         onClick={() => openMeeting(meeting)}
-                        className="group hover:bg-[var(--tm-muted)]/60 transition-colors cursor-pointer"
+                        className="border-b border-[var(--tm-border)] group hover:bg-[var(--tm-muted)]/60 transition-colors cursor-pointer"
                       >
-                        <td className="px-3 py-3 pl-4 align-middle">
-                          <span className="text-[11px] font-semibold text-slate-500 tabular-nums">
-                            {index + 1}
+                        <td className="tm-col-sr tm-col-id px-2 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle">
+                          <span className="tabular-nums">
+                            {meeting._sr}
                           </span>
                         </td>
-                        <td className="px-3 py-3 align-middle min-w-0">
+                        <td className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0">
                           <TruncatedText
                             text={meeting.meetingTitle || '—'}
-                            className="text-xs font-semibold text-slate-100"
+                            className="font-medium text-slate-50"
                           />
                           {lastSent ? (
                             <p className="text-[10px] text-slate-500 mt-0.5 truncate">
@@ -606,34 +650,34 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                             </p>
                           ) : null}
                         </td>
-                        <td className="px-3 py-3 align-middle min-w-0">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                           <TruncatedText
                             text={meeting.meetingTypeName || '—'}
-                            className="text-xs font-medium text-slate-300"
+                            className="text-slate-300"
                           />
                         </td>
-                        <td className="px-3 py-3 align-middle min-w-0">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                           <TruncatedText
                             text={meeting.meetingCategoryName || '—'}
-                            className="text-xs font-medium text-slate-300"
+                            className="text-slate-300"
                           />
                         </td>
-                        <td className="px-3 py-3 align-middle min-w-0">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                           <TruncatedText
                             text={meeting.companyName || '—'}
-                            className="text-xs font-medium text-slate-300"
+                            className="text-slate-300"
                           />
                         </td>
-                        <td className="px-3 py-3 align-middle min-w-0">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                           <div className="text-[11px] leading-snug">
-                            <p className="font-semibold text-slate-200">{start.date}</p>
+                            <p className="font-medium text-slate-50">{start.date}</p>
                             <p className="text-slate-500">
                               {start.time}
                               {end.time ? ` – ${end.time}` : ''}
                             </p>
                           </div>
                         </td>
-                        <td className="px-3 py-3 align-middle">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle">
                           <span
                             className={cn(
                               'inline-flex max-w-full items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold truncate',
@@ -645,7 +689,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                           </span>
                         </td>
                         <td
-                          className="px-1.5 py-3 pr-2.5 align-middle text-right sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)]/70 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
+                          className="px-1.5 py-2.5 pr-2.5 align-middle text-right sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="inline-flex items-center justify-end gap-0">
@@ -703,6 +747,19 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
               </table>
             </div>
           </Card>
+
+          {totalItems > 0 && (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              currentPage={safePage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </>
       )}
 

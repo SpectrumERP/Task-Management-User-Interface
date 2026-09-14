@@ -11,10 +11,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSettings } from '@/hooks/useSettings';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
-import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +24,7 @@ interface ReportTableProps {
 
 const DEFAULT_COLUMNS = [
   // minWidth guides auto layout — columns size to content within these bounds
-  { id: 'srNo', label: 'Sr.', defaultVisible: true, width: 52 },
+  { id: 'srNo', label: 'Sr. No.', defaultVisible: true, width: 88 },
   { id: 'title', label: 'Task', defaultVisible: true, width: 180, maxWidth: 260 },
   { id: 'status', label: 'Status', defaultVisible: true, width: 110 },
   { id: 'priority', label: 'Priority', defaultVisible: true, width: 96 },
@@ -63,15 +63,15 @@ export function ReportTable({ data }: ReportTableProps) {
   const [exportGrouped, setExportGrouped] = useState(true);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [data]);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const getReportSortValue = useCallback((row: any, key: string) => {
     switch (key) {
-      case 'srNo': return row.taskNo ?? row.operTaskNo ?? '';
+      case 'srNo': {
+        // Original row index (1-based). Display uses the same value so sort is visible.
+        const n = Number(row._sr ?? NaN);
+        return Number.isFinite(n) ? n : 0;
+      }
       case 'title': return row.title ?? '';
       case 'description': return row.description ?? '';
       case 'isPending': return row.isPending ? 'Yes' : 'No';
@@ -94,21 +94,31 @@ export function ReportTable({ data }: ReportTableProps) {
     }
   }, []);
 
-  const { sortCol, sortDesc, handleSort, sortedRows } = useTableSort(
-    data,
-    getReportSortValue,
-    { defaultKey: 'title', defaultDesc: false }
+  const numberedData = useMemo(
+    () => data.map((row, index) => ({ ...row, _sr: index + 1 })),
+    [data]
   );
 
-  const totalItems = sortedRows.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-  const safePage = Math.min(currentPage, totalPages);
-  const startIndex = (safePage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const pageRows = useMemo(
-    () => sortedRows.slice(startIndex, endIndex),
-    [sortedRows, startIndex, endIndex]
-  );
+  const {
+    sortCol,
+    sortDesc,
+    handleSort,
+    pageRows,
+    totalItems,
+    totalPages,
+    safePage,
+    startIndex,
+    endIndex,
+  } = usePagedTableSort(numberedData, getReportSortValue, {
+    defaultKey: 'srNo',
+    defaultDesc: false,
+    page: currentPage,
+    pageSize: itemsPerPage,
+  });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
 
   const handleItemsPerPageChange = (size: number) => {
     setItemsPerPage(size);
@@ -143,6 +153,13 @@ export function ReportTable({ data }: ReportTableProps) {
     const resized = colWidths[colId];
     if (resized) {
       return { width: resized, minWidth: resized, maxWidth: resized };
+    }
+    if (colId === 'srNo') {
+      return {
+        width: 'var(--tm-col-id-width)',
+        minWidth: 'var(--tm-col-id-width)',
+        maxWidth: 'var(--tm-col-id-width)',
+      };
     }
     // Capped columns: hug header when empty, grow with content up to maxWidth.
     if (meta?.maxWidth) {
@@ -181,19 +198,19 @@ export function ReportTable({ data }: ReportTableProps) {
 
   const renderCell = (colId: string, task: any, rowIndex: number) => {
     const tdClass =
-      'px-2.5 py-2 border-r border-[var(--tm-border)] text-slate-300 whitespace-nowrap';
+      'px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 whitespace-nowrap';
     const widthStyle = getColStyle(colId);
 
     switch (colId) {
       case 'srNo':
         return (
-          <td key={colId} className={cn(tdClass, 'truncate tabular-nums text-center')} style={widthStyle}>
-            {startIndex + rowIndex + 1}
+          <td key={colId} className={cn(tdClass, 'tm-col-sr tm-col-id truncate px-2')} style={widthStyle}>
+            {task._sr ?? startIndex + rowIndex + 1}
           </td>
         );
       case 'title':
         return (
-          <td key={colId} className={cn(tdClass, 'font-medium text-slate-50 max-w-[280px] overflow-hidden')} style={widthStyle}>
+          <td key={colId} className={cn(tdClass, 'tm-col-primary font-medium text-slate-50 max-w-[280px] overflow-hidden')} style={widthStyle}>
             <TruncatedText text={task.title || '-'} className="font-medium text-slate-50" />
           </td>
         );
@@ -360,41 +377,50 @@ export function ReportTable({ data }: ReportTableProps) {
     <section data-page-tour="report-table" className="flex h-full min-h-0 flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
       <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center justify-between px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-slate-100 tracking-tight">
+          <h3 className="text-sm font-semibold text-slate-100 tracking-tight inline-flex items-center">
             Report Results
-            <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
-              {data.length}
-            </span>
+            <ActionTip label={`${data.length} matching record${data.length === 1 ? '' : 's'}`}>
+              <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                {data.length}
+              </span>
+            </ActionTip>
           </h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <label
-            htmlFor="export-grouped"
-            className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] px-2.5 py-1.5 cursor-pointer"
+          <ActionTip
+            label="When enabled, Excel groups tasks under each owner"
+            multiline
           >
-            <Checkbox
-              id="export-grouped"
-              checked={exportGrouped}
-              onCheckedChange={(c) => setExportGrouped(!!c)}
-              className="data-[state=checked]:bg-[#0EA5E9] data-[state=checked]:border-[#0EA5E9]"
-            />
-            <span className="text-[11px] font-medium text-slate-300">
-              Group by User for Export
-            </span>
-          </label>
+            <label
+              htmlFor="export-grouped"
+              className="inline-flex items-center gap-2 rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] px-2.5 py-1.5 cursor-pointer"
+            >
+              <Checkbox
+                id="export-grouped"
+                checked={exportGrouped}
+                onCheckedChange={(c) => setExportGrouped(!!c)}
+                className="data-[state=checked]:bg-[#0EA5E9] data-[state=checked]:border-[#0EA5E9]"
+              />
+              <span className="text-[11px] font-medium text-slate-300">
+                Group by User for Export
+              </span>
+            </label>
+          </ActionTip>
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] shadow-none"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Columns
-              </Button>
-            </DropdownMenuTrigger>
+            <ActionTip label="Show or hide columns">
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] shadow-none"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+            </ActionTip>
             <DropdownMenuContent align="end" className="w-56">
               {DEFAULT_COLUMNS.filter((col) => isColumnAllowed(col.id)).map((col) => (
                 <DropdownMenuCheckboxItem
@@ -409,16 +435,18 @@ export function ReportTable({ data }: ReportTableProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            onClick={handleExport}
-            size="sm"
-            data-page-tour="report-export"
-            className="h-8 gap-1.5 rounded-[8px] text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-            disabled={data.length === 0}
-          >
-            <FileDown className="h-3.5 w-3.5" />
-            Export Excel
-          </Button>
+          <ActionTip label={data.length === 0 ? 'Generate a report to export' : 'Download results as Excel'}>
+            <Button
+              onClick={handleExport}
+              size="sm"
+              data-page-tour="report-export"
+              className="h-8 gap-1.5 rounded-[8px] text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+              disabled={data.length === 0}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              Export Excel
+            </Button>
+          </ActionTip>
         </div>
       </div>
 
@@ -446,7 +474,7 @@ export function ReportTable({ data }: ReportTableProps) {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
-                        #{startIndex + index + 1}
+                        #{task._sr ?? startIndex + index + 1}
                       </span>
                       <TruncatedText
                         text={statusName}
@@ -490,8 +518,12 @@ export function ReportTable({ data }: ReportTableProps) {
               {activeColumns.map((col) => (
                   <th
                     key={col.id}
-                    className="px-2.5 py-2 border-r border-[var(--tm-border)] last:border-r-0 relative group select-none whitespace-nowrap"
+                    className={cn(
+                      'px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 relative group select-none whitespace-nowrap cursor-pointer',
+                      col.id === 'srNo' && 'tm-col-sr tm-col-id'
+                    )}
                     style={getColStyle(col.id)}
+                    {...sortHeaderCellProps(col.id, handleSort)}
                   >
                     <SortableHeader
                       label={col.label}
@@ -499,11 +531,16 @@ export function ReportTable({ data }: ReportTableProps) {
                       sortCol={sortCol}
                       sortDesc={sortDesc}
                       onSort={handleSort}
-                      className="pr-2"
+                      className="w-full justify-start pr-3"
                     />
                     <div
-                      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors z-20"
-                      onMouseDown={(e) => handleResizeStart(e, col.id)}
+                      data-col-resize
+                      className="absolute right-0 top-0 z-[2] h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleResizeStart(e, col.id);
+                      }}
                     />
                   </th>
               ))}

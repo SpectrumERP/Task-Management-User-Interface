@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatUtcDateTime } from '@/lib/dateTime';
-import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
 import { MasterListHeader } from '../shared/MasterListHeader';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
@@ -517,20 +517,25 @@ export function CompanyList() {
     }
   }, []);
 
-  const { sortCol, sortDesc, handleSort, sortedRows: sortedList } = useTableSort(
-    filteredList,
-    getCompanySortValue,
-    { defaultKey: 'name', defaultDesc: false }
-  );
-
-  const totalItems = sortedList.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const paginatedList = sortedList.slice(startIndex, endIndex);
+  const {
+    sortCol,
+    sortDesc,
+    handleSort,
+    pageRows: paginatedList,
+    totalItems,
+    totalPages,
+    safePage: safeCurrentPage,
+    startIndex,
+    endIndex,
+  } = usePagedTableSort(filteredList, getCompanySortValue, {
+    defaultKey: 'code',
+    defaultDesc: false,
+    page: currentPage,
+    pageSize: itemsPerPage,
+  });
 
   const groupedCompanies = useMemo(() => {
+    // Album view: letter-group the current page rows (name order for grouping only).
     const sorted = [...paginatedList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const groups: { letter: string; items: any[] }[] = [];
@@ -806,39 +811,42 @@ export function CompanyList() {
                       })}
                     </div>
                     <table className="tm-data-table hidden md:table w-full min-w-[1100px] table-fixed border-collapse text-left">
-                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
+                    <colgroup>
+                      <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
+                    </colgroup>
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                       <tr>
-                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[7%] px-2 py-2 pl-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
-                          <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        <th className="tm-col-id tm-col-sticky-code sticky left-0 z-[45] px-2 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('code', handleSort)}>
+                          <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} className="pr-1" />
                         </th>
-                        <th className="w-[14%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="min-w-[140px] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
                           <SortableHeader label="Business Entity Name" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[10%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[10%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('alias', handleSort)}>
                           <SortableHeader label="Alias" sortKey="alias" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('type', handleSort)}>
                           <SortableHeader label="Type" sortKey="type" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[14%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('address', handleSort)}>
                           <SortableHeader label="Primary Address" sortKey="address" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[7%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('city', handleSort)}>
                           <SortableHeader label="City" sortKey="city" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[7%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('state', handleSort)}>
                           <SortableHeader label="State" sortKey="state" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[7%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('country', handleSort)}>
                           <SortableHeader label="Country" sortKey="country" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[8%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[8%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('vatGst', handleSort)}>
                           <SortableHeader label="VAT/GST No." sortKey="vatGst" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[7%] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[7%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('creditLimit', handleSort)}>
                           <SortableHeader label="Credit Limit" sortKey="creditLimit" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
+                        <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -853,7 +861,7 @@ export function CompanyList() {
                         const nameStr = company.name || '';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
-                            <td className="tm-col-sticky-code sticky left-0 z-20 px-2 py-2 pl-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                            <td className="tm-col-id tm-col-sticky-code sticky left-0 z-20 px-2 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
                               <TruncatedText
                                 text={company.code || ''}
                                 className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
@@ -861,17 +869,17 @@ export function CompanyList() {
                             </td>
                             <td
                               className={cn(
-                                'px-3 py-2 text-xs font-semibold text-slate-100 align-middle min-w-0',
+                                'tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-middle min-w-0',
                                 isUpdate && 'hover:text-[#0EA5E9] cursor-pointer'
                               )}
                               onClick={() => isUpdate && handleEditClick(company)}
                             >
-                              <TruncatedText text={nameStr} className="text-xs font-semibold text-slate-100" />
+                              <TruncatedText text={nameStr} className="font-medium text-slate-50" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={company.aliasName || '—'} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={company.aliasName || '—'} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                               {typeStr ? (
                                 <span
                                   className={cn(
@@ -888,25 +896,25 @@ export function CompanyList() {
                                 <span className="text-slate-500">—</span>
                               )}
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={locStr} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={locStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={cityStr} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={cityStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={stateStr} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={stateStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={countryStr} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={countryStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 font-mono align-middle min-w-0">
-                              <TruncatedText text={vatStr} className="text-xs font-medium text-slate-300 font-mono" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 font-mono align-middle min-w-0">
+                              <TruncatedText text={vatStr} className="text-slate-300 font-mono" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={creditStr} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={creditStr} className="text-slate-300" />
                             </td>
-                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                               <div className="inline-flex items-center justify-center gap-0.5">
                                 {isUpdate ? (
                                   <ActionTip label="Edit">
@@ -1036,27 +1044,27 @@ export function CompanyList() {
                   </div>
                 ) : companyViewMode === 'contact-list' ? (
                   <table className="tm-data-table w-full min-w-[960px] table-fixed border-collapse text-left">
-                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                       <tr>
-                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[14%] px-3 py-2.5 pl-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('contactName', handleSort)}>
                           <SortableHeader label="Contact Name" sortKey="contactName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[18%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[18%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
                           <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('designation', handleSort)}>
                           <SortableHeader label="Designation" sortKey="designation" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('department', handleSort)}>
                           <SortableHeader label="Department" sortKey="department" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('phone', handleSort)}>
                           <SortableHeader label="Phone" sortKey="phone" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[16%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[16%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('email', handleSort)}>
                           <SortableHeader label="Email" sortKey="email" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[8%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[8%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('status', handleSort)}>
                           <SortableHeader label="Status" sortKey="status" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
                         <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
@@ -1073,31 +1081,31 @@ export function CompanyList() {
                         const statusStr = contact.status || company.status || 'Active';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors">
-                            <td className="tm-col-sticky-code sticky left-0 z-20 px-3 py-2.5 pl-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
-                              <TruncatedText text={contactName} className="text-xs font-semibold text-slate-100" />
+                            <td className="tm-col-sticky-code tm-col-primary sticky left-0 z-20 px-3 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                              <TruncatedText text={contactName} className="font-medium text-slate-50" />
                             </td>
                             <td
-                              className={cn('px-3 py-2.5 align-middle min-w-0', isUpdate && 'cursor-pointer')}
+                              className={cn('px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0', isUpdate && 'cursor-pointer')}
                               onClick={() => isUpdate && handleEditClick(company)}
                             >
                               <TruncatedText
                                 text={company.name || ''}
-                                className={cn('text-xs font-medium text-slate-200', isUpdate && 'hover:text-[#0EA5E9]')}
+                                className={cn('text-slate-300', isUpdate && 'hover:text-[#0EA5E9]')}
                               />
                             </td>
-                            <td className="px-3 py-2.5 align-middle min-w-0">
-                              <TruncatedText text={designationStr} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={designationStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2.5 align-middle min-w-0">
-                              <TruncatedText text={departmentStr} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={departmentStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2.5 align-middle min-w-0">
-                              <TruncatedText text={phoneStr} className="text-xs font-medium text-slate-300 font-mono" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={phoneStr} className="text-slate-300 font-mono" />
                             </td>
-                            <td className="px-3 py-2.5 align-middle min-w-0">
-                              <TruncatedText text={emailStr} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={emailStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2.5 align-middle whitespace-nowrap">
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle whitespace-nowrap">
                               <span className={cn(
                                 'inline-flex px-2 py-0.5 rounded-[6px] text-[8px] font-semibold',
                                 statusStr === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[var(--tm-muted)] text-slate-500 border border-[var(--tm-border)]'
@@ -1220,21 +1228,21 @@ export function CompanyList() {
                   </div>
                 ) : (
                   <table className="tm-data-table w-full min-w-[900px] table-fixed border-collapse text-left">
-                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                       <tr>
-                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[28%] px-3 py-2.5 pl-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[28%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('fileName', handleSort)}>
                           <SortableHeader label="File Name" sortKey="fileName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[22%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[22%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
                           <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[10%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="tm-col-code px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('code', handleSort)}>
                           <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('fileType', handleSort)}>
                           <SortableHeader label="Type" sortKey="fileType" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('fileSize', handleSort)}>
                           <SortableHeader label="Size" sortKey="fileSize" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
                         <th className="tm-col-actions sticky right-0 z-40 w-[160px] px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
@@ -1248,32 +1256,32 @@ export function CompanyList() {
                         const sizeStr = att.fileSize ? `${(Number(att.fileSize) / 1024).toFixed(1)} KB` : '—';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
-                            <td className="tm-col-sticky-code sticky left-0 z-20 px-3 py-2.5 pl-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                            <td className="tm-col-sticky-code tm-col-primary sticky left-0 z-20 px-3 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
                               <div className="flex items-center gap-2 min-w-0">
                                 <FileText size={14} className="shrink-0 text-slate-400" />
                                 <TruncatedText
                                   text={fileName}
-                                  className="text-xs font-semibold text-slate-200 group-hover:text-[#0EA5E9] transition-colors"
+                                  className="font-medium text-slate-50 group-hover:text-[#0EA5E9] transition-colors"
                                 />
                               </div>
                             </td>
                             <td
-                              className={cn('px-3 py-2.5 align-middle min-w-0', isUpdate && 'cursor-pointer')}
+                              className={cn('px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0', isUpdate && 'cursor-pointer')}
                               onClick={() => isUpdate && handleEditClick(company)}
                             >
                               <TruncatedText
                                 text={company.name || ''}
-                                className={cn('text-xs font-medium text-slate-200', isUpdate && 'hover:text-[#0EA5E9]')}
+                                className={cn('text-slate-300', isUpdate && 'hover:text-[#0EA5E9]')}
                               />
                             </td>
-                            <td className="px-3 py-2.5 align-middle min-w-0">
+                            <td className="tm-col-code px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                               <TruncatedText text={company.code || ''} className="text-[11px] font-medium text-[#0EA5E9] tabular-nums" />
                             </td>
-                            <td className="px-3 py-2.5 align-middle min-w-0">
-                              <TruncatedText text={fileType} className="text-xs font-medium text-slate-300" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={fileType} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2.5 align-middle min-w-0">
-                              <TruncatedText text={sizeStr} className="text-xs font-medium text-slate-300 font-mono" />
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={sizeStr} className="text-slate-300 font-mono" />
                             </td>
                             <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                               <div className="inline-flex items-center justify-center gap-1">

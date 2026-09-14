@@ -333,8 +333,8 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
             <div className="overflow-x-auto">
               <table className="tm-data-table w-full text-left text-[11px] border-collapse table-fixed">
                 <thead>
-                  <tr className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
-                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
+                  <tr className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                    <th className="px-3 py-2.5 border-r border-[var(--tm-border)] w-[28%]">
                       <SortableHeader
                         label="User Name"
                         sortKey="userName"
@@ -343,7 +343,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                         onSort={handleMemberSort}
                       />
                     </th>
-                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
+                    <th className="px-3 py-2.5 border-r border-[var(--tm-border)] w-[28%]">
                       <SortableHeader
                         label="Display Name"
                         sortKey="displayName"
@@ -352,7 +352,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                         onSort={handleMemberSort}
                       />
                     </th>
-                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[36%]">
+                    <th className="px-3 py-2.5 border-r border-[var(--tm-border)] w-[36%]">
                       <SortableHeader
                         label="Email"
                         sortKey="email"
@@ -361,10 +361,10 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                         onSort={handleMemberSort}
                       />
                     </th>
-                    <th className="px-2 py-2.5 w-10" />
+                    <th className="px-1 py-2.5 w-10" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--tm-border)]">
+                <tbody>
                   {selectedUsers.map((field, index) => {
                     const isDuplicate = !!field.loginNo && duplicateLoginNos.has(field.loginNo);
                     return (
@@ -372,11 +372,11 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                         key={index}
                         data-row-alert={isDuplicate ? true : undefined}
                         className={cn(
-                          'group transition-colors',
+                          'group border-b border-[var(--tm-border)] transition-colors',
                           isDuplicate ? 'hover:bg-red-500/10' : 'hover:bg-[var(--tm-elevated)]/80'
                         )}
                       >
-                        <td className="px-2 py-1.5">
+                        <td className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)]">
                           <UserCombobox
                             value={field.userName}
                             onChange={(user) => updateGridUser(index, user)}
@@ -386,7 +386,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             error={isDuplicate}
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300">
                           <Input
                             disabled
                             value={field.displayName}
@@ -394,7 +394,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-200"
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300">
                           <Input
                             disabled
                             value={field.email}
@@ -402,7 +402,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-200"
                           />
                         </td>
-                        <td className="px-1 py-1.5 text-center">
+                        <td className="px-1 py-2.5 text-center">
                           <button
                             type="button"
                             onClick={() => requestRemoveGridUser(index)}

@@ -17,7 +17,8 @@ import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FieldLabel } from '@/components/ui/form-field';
-import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
+import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 
 export function DealSearchPage() {
   const navigate = useNavigate();
@@ -32,7 +33,8 @@ export function DealSearchPage() {
     companyNo: defaultCompanyNo,
     divisionNo: '',
     documentNoYearly: '',
-    pageSize: 10,
+    // Fetch a large page so client pagination + page-local sort can run.
+    pageSize: 1000,
     pageNo: 1,
   });
   const [deals, setDeals] = useState<DealRecord[]>([]);
@@ -42,6 +44,8 @@ export function DealSearchPage() {
   const [deleteTarget, setDeleteTarget] = useState<DealRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchDeals = async (nextFilters = filters) => {
     setIsLoading(true);
@@ -101,6 +105,7 @@ export function DealSearchPage() {
   const applyFilters = () => {
     const nextFilters = { ...filters, pageNo: 1 };
     setFilters(nextFilters);
+    setCurrentPage(1);
     fetchDeals(nextFilters);
   };
 
@@ -111,10 +116,11 @@ export function DealSearchPage() {
       documentNoYearly: '',
       fromDocumentDate: undefined,
       toDocumentDate: undefined,
-      pageSize: filters.pageSize,
+      pageSize: 1000,
       pageNo: 1,
     };
     setFilters(nextFilters);
+    setCurrentPage(1);
     if (defaultCompanyNo) fetchDeals(nextFilters);
   };
 
@@ -158,11 +164,27 @@ export function DealSearchPage() {
     }
   }, []);
 
-  const { sortCol, sortDesc, handleSort, sortedRows: sortedDeals } = useTableSort(
-    deals,
-    getDealSortValue,
-    { defaultKey: 'documentNoYearly', defaultDesc: false }
-  );
+  const {
+    sortCol,
+    sortDesc,
+    handleSort,
+    pageRows: sortedDeals,
+    totalItems,
+    totalPages,
+    safePage,
+    startIndex,
+    endIndex,
+  } = usePagedTableSort(deals, getDealSortValue, {
+    defaultKey: 'companyName',
+    defaultDesc: false,
+    page: currentPage,
+    pageSize: itemsPerPage,
+  });
+
+  const handleItemsPerPageChange = (size: number) => {
+    setItemsPerPage(size);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="page-shell">
@@ -332,51 +354,51 @@ export function DealSearchPage() {
 
               <div className="hidden md:block overflow-x-auto">
                 <table className="tm-data-table w-full min-w-[760px] text-left">
-                  <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
+                  <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                     <tr>
-                      <th className="tm-col-sticky-code sticky left-0 z-[45] px-4 py-3 text-[11px] font-semibold text-slate-300 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
+                      <th className="tm-col-sticky-code sticky left-0 z-[45] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('companyName', handleSort)}>
                         <SortableHeader label="Company" sortKey="companyName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                      <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('divisionName', handleSort)}>
                         <SortableHeader label="Division" sortKey="divisionName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                      <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('documentNoYearly', handleSort)}>
                         <SortableHeader label="Document No Yearly" sortKey="documentNoYearly" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                      <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('documentDate', handleSort)}>
                         <SortableHeader label="Document Date" sortKey="documentDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="px-4 py-3 text-[11px] font-semibold text-slate-300">
+                      <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('description', handleSort)}>
                         <SortableHeader label="Description" sortKey="description" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="tm-col-actions sticky right-0 z-40 px-4 py-3 text-[11px] font-semibold text-slate-300 text-right border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
+                      <th className="tm-col-actions sticky right-0 z-40 px-1 py-2.5 pr-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 text-right border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)]">
+                  <tbody>
                     {sortedDeals.map((deal) => (
-                      <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="hover:bg-[var(--tm-muted)]/70 transition-colors">
-                        <td className="tm-col-sticky-code sticky left-0 z-20 px-4 py-3 text-xs font-medium text-slate-200 max-w-[10rem] min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
-                          <TruncatedText text={String(deal.companyName || deal.companyNo || '-')} className="text-xs font-medium text-slate-200" />
+                      <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50 transition-colors">
+                        <td className="tm-col-sticky-code tm-col-primary sticky left-0 z-20 px-3 py-2.5 font-medium text-slate-50 max-w-[10rem] min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                          <TruncatedText text={String(deal.companyName || deal.companyNo || '-')} className="font-medium text-slate-50" />
                         </td>
-                        <td className="px-4 py-3 text-xs font-medium text-slate-200 max-w-[9rem] min-w-0 overflow-hidden">
-                          <TruncatedText text={String(deal.divisionName || deal.divisionNo || 'N/A')} className="text-xs font-medium text-slate-200" />
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 max-w-[9rem] min-w-0 overflow-hidden">
+                          <TruncatedText text={String(deal.divisionName || deal.divisionNo || 'N/A')} className="text-slate-300" />
                         </td>
-                        <td className="px-4 py-3 text-xs font-medium text-slate-100 max-w-[9rem] min-w-0 overflow-hidden">
-                          <TruncatedText text={String(deal.documentNoYearly || '-')} className="text-xs font-medium text-slate-100" />
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 max-w-[9rem] min-w-0 overflow-hidden">
+                          <TruncatedText text={String(deal.documentNoYearly || '-')} className="text-slate-300" />
                         </td>
-                        <td className="px-4 py-3 text-xs font-semibold text-slate-300 max-w-[8rem] min-w-0 overflow-hidden">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 max-w-[8rem] min-w-0 overflow-hidden">
                           <TruncatedText
                             text={deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
-                            className="text-xs font-semibold text-slate-300"
+                            className="text-slate-300"
                           />
                         </td>
-                        <td className="px-4 py-3 text-xs font-semibold text-slate-500 max-w-[320px] min-w-0 overflow-hidden">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 max-w-[320px] min-w-0 overflow-hidden">
                           <TruncatedText
                             text={deal.description || '-'}
-                            className="text-xs font-semibold text-slate-500"
+                            className="text-slate-300"
                           />
                         </td>
-                        <td className="tm-col-actions sticky right-0 z-10 px-4 py-3 text-right border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                        <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-right border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                           <div className="flex items-center justify-end gap-1">
                             <ActionTip label="Edit">
                               <Button
@@ -413,6 +435,19 @@ export function DealSearchPage() {
             </>
           )}
         </Card>
+
+        {totalItems > 0 && (
+          <MasterPaginationBar
+            totalItems={totalItems}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={handleItemsPerPageChange}
+            currentPage={safePage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       <MasterDeleteDialog

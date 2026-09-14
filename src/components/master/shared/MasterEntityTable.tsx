@@ -7,7 +7,7 @@ import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ActionTip, TruncatedText, nodeToPlainText } from './TruncatedCellTip';
-import { SortableHeader, useTableSort } from '@/components/shared/useTableSort';
+import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
 
 /** Sticky column policy (wide desktop tables): Code left, Actions right. */
 
@@ -80,7 +80,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
   getDeleteLabel,
   embedded = false,
   footer,
-  defaultSortKey = 'name',
+  defaultSortKey = 'code',
   nameAsRich = false,
 }: MasterEntityTableProps<T>) {
   const shellClass = embedded
@@ -285,12 +285,32 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
         </div>
 
         <table className="tm-data-table hidden md:table w-full min-w-[1100px] table-fixed border-collapse text-left">
-          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] backdrop-blur-sm border-b border-[var(--tm-border)]">
+          <colgroup>
+            <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
+            <col />
+            {columns.map((_, idx) => (
+              <col
+                key={idx}
+                style={{
+                  width: /description/i.test(columns[idx].header) || columns[idx].sortKey === 'description'
+                    ? '22%'
+                    : '12%',
+                }}
+              />
+            ))}
+            <col style={{ width: '9.5rem' }} />
+            <col style={{ width: '10.5rem' }} />
+            <col style={{ width: '4.5rem' }} />
+          </colgroup>
+          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
             <tr>
-              <th className="tm-col-sticky-code sticky left-0 z-[45] w-[72px] px-2 py-2 pl-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]">
-                <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+              <th
+                className="tm-col-id tm-col-sticky-code sticky left-0 z-[45] px-2 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer"
+                {...sortHeaderCellProps('code', handleSort)}
+              >
+                <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} className="pr-1" />
               </th>
-              <th className="w-[18%] min-w-[140px] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+              <th className="min-w-[140px] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
                 <SortableHeader label={nameHeader} sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
               {columns.map((col, idx) => {
@@ -300,10 +320,11 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                   <th
                     key={idx}
                     className={cn(
-                      'px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap',
-                      isDescription ? 'w-[22%] min-w-[160px]' : 'w-[12%] min-w-[110px]',
+                      'px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer',
+                      isDescription ? 'min-w-[160px]' : 'min-w-[110px]',
                       col.headerClassName || col.className
                     )}
+                    {...sortHeaderCellProps(key, handleSort)}
                   >
                     <SortableHeader
                       label={col.header}
@@ -315,13 +336,13 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                   </th>
                 );
               })}
-              <th className="w-[150px] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+              <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('createdBy', handleSort)}>
                 <SortableHeader label="Created By" sortKey="createdBy" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              <th className="w-[170px] px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap">
+              <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('createdDate', handleSort)}>
                 <SortableHeader label="Created Date" sortKey="createdDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
               </th>
-              <th className="tm-col-actions sticky right-0 z-40 w-[72px] px-1 py-2 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">
+              <th className="tm-col-actions sticky right-0 z-40 px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">
                 Actions
               </th>
             </tr>
@@ -339,17 +360,17 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                 key={item.id}
                 className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group"
               >
-                <td className="tm-col-sticky-code sticky left-0 z-20 px-2 py-2 pl-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                <td className="tm-col-id tm-col-sticky-code sticky left-0 z-20 px-2 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
                   <TruncatedText
                     text={codeText}
                     className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
                   />
                 </td>
-                <td className="px-2.5 py-2 align-middle min-w-0 overflow-hidden">
+                <td className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0 overflow-hidden">
                   {nameAsRich ? (
-                    <div className="flex items-center gap-1.5 min-w-0 text-xs font-semibold text-slate-100">{getName(item)}</div>
+                    <div className="flex items-center gap-1.5 min-w-0 font-medium text-slate-50">{getName(item)}</div>
                   ) : (
-                    <TruncatedText text={nameText} className="text-xs font-semibold text-slate-100" />
+                    <TruncatedText text={nameText} className="font-medium text-slate-50" />
                   )}
                 </td>
                 {columns.map((col, idx) => {
@@ -359,7 +380,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                     return (
                       <td
                         key={idx}
-                        className={cn('px-2.5 py-2 text-xs font-medium text-slate-300 align-middle min-w-0', col.className)}
+                        className={cn('px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0', col.className)}
                       >
                         {cellNode}
                       </td>
@@ -369,19 +390,19 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                   return (
                     <td
                       key={idx}
-                      className={cn('px-2.5 py-2 text-xs font-medium text-slate-300 align-middle min-w-0 overflow-hidden', col.className)}
+                      className={cn('px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0 overflow-hidden', col.className)}
                     >
-                      <TruncatedText text={cellText || '-'} className="text-xs font-medium text-slate-300" />
+                      <TruncatedText text={cellText || '-'} className="text-slate-300" />
                     </td>
                   );
                 })}
-                <td className="px-2.5 py-2 align-middle min-w-0 overflow-hidden">
-                  <TruncatedText text={createdByText} className="text-xs font-medium text-slate-300" />
+                <td className="px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0 overflow-hidden">
+                  <TruncatedText text={createdByText} className="text-slate-300" />
                 </td>
-                <td className="px-2.5 py-2 align-middle min-w-0 overflow-hidden">
-                  <TruncatedText text={createdDateText} className="text-xs font-medium text-slate-300 tabular-nums" />
+                <td className="px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0 overflow-hidden">
+                  <TruncatedText text={createdDateText} className="text-slate-300 tabular-nums" />
                 </td>
-                <td className="tm-col-actions sticky right-0 z-10 px-1 py-2 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                   <div className="inline-flex items-center justify-center gap-0">
                     {canUpdate ? (
                       <ActionTip label="Edit">
