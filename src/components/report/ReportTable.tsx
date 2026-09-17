@@ -22,6 +22,13 @@ interface ReportTableProps {
   data: any[];
 }
 
+const getExecutionLogRemarks = (task: any) => {
+  if (Array.isArray(task.executionLog) && task.executionLog.length > 0) {
+    return task.executionLog.map((log: any) => log.remarks || '').filter(Boolean).join(', ');
+  }
+  return task.taskProgressReview || '';
+};
+
 const DEFAULT_COLUMNS = [
   // minWidth guides auto layout — columns size to content within these bounds
   { id: 'srNo', label: 'Sr. No.', defaultVisible: true, width: 88 },
@@ -193,7 +200,7 @@ export function ReportTable({ data }: ReportTableProps) {
   };
 
   const handleExport = () => {
-    exportReportToExcel(data, exportGrouped);
+    exportReportToExcel(data, exportGrouped, 'MIS_Task_Report.xlsx', visibleColumns);
   };
 
   const renderCell = (colId: string, task: any, rowIndex: number) => {
@@ -513,50 +520,50 @@ export function ReportTable({ data }: ReportTableProps) {
                   <col key={col.id} style={getColStyle(col.id)} />
                 ))}
               </colgroup>
-          <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide sticky top-0 z-10">
-            <tr>
-              {activeColumns.map((col) => (
-                  <th
-                    key={col.id}
-                    className={cn(
-                      'px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 relative group select-none whitespace-nowrap cursor-pointer',
-                      col.id === 'srNo' && 'tm-col-sr tm-col-id'
-                    )}
-                    style={getColStyle(col.id)}
-                    {...sortHeaderCellProps(col.id, handleSort)}
+              <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide sticky top-0 z-10">
+                <tr>
+                  {activeColumns.map((col) => (
+                    <th
+                      key={col.id}
+                      className={cn(
+                        'px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 relative group select-none whitespace-nowrap cursor-pointer',
+                        col.id === 'srNo' && 'tm-col-sr tm-col-id'
+                      )}
+                      style={getColStyle(col.id)}
+                      {...sortHeaderCellProps(col.id, handleSort)}
+                    >
+                      <SortableHeader
+                        label={col.label}
+                        sortKey={col.id}
+                        sortCol={sortCol}
+                        sortDesc={sortDesc}
+                        onSort={handleSort}
+                        className="w-full justify-start pr-3"
+                      />
+                      <div
+                        data-col-resize
+                        className="absolute right-0 top-0 z-[2] h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleResizeStart(e, col.id);
+                        }}
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map((task, index) => (
+                  <tr
+                    key={task.taskNo || task.operTaskNo || `${startIndex + index}`}
+                    className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50"
                   >
-                    <SortableHeader
-                      label={col.label}
-                      sortKey={col.id}
-                      sortCol={sortCol}
-                      sortDesc={sortDesc}
-                      onSort={handleSort}
-                      className="w-full justify-start pr-3"
-                    />
-                    <div
-                      data-col-resize
-                      className="absolute right-0 top-0 z-[2] h-full w-1.5 cursor-col-resize hover:bg-[#0EA5E9]/40 group-hover:bg-slate-300 transition-colors"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleResizeStart(e, col.id);
-                      }}
-                    />
-                  </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.map((task, index) => (
-              <tr
-                key={task.taskNo || task.operTaskNo || `${startIndex + index}`}
-                className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50"
-              >
-                {activeColumns.map((col) => renderCell(col.id, task, index))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    {activeColumns.map((col) => renderCell(col.id, task, index))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </>
         )}
       </div>

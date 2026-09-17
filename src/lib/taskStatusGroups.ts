@@ -30,7 +30,7 @@ export const STATUS_PILL_ORDER = [
   'Assigned',
   'In-Progress',
   'Hold',
-  'Completed',
+  'Complete',
   'Close',
 ] as const;
 

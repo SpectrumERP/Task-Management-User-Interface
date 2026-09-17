@@ -744,7 +744,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.companyNo?.message}>
                         <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.companyNo && "border-red-400")}
-                          options={taskFillValues?.taskCompany?.map(c => ({ value: c.CompanyNo?.toString() || c.companyNo?.toString() || c.OperTaskCompanyNo?.toString() || '', label: c.AliasName || c.companyName || c.name || c.AliasName || c.Code || 'Unknown Company' })) || []}
+                          options={taskFillValues?.taskCompany?.map(c => ({ value: c.CompanyNo?.toString() || c.companyNo?.toString() || c.OperTaskCompanyNo?.toString() || '', label: c.TaskCompanyName || c.CompanyName || c.companyName || c.name || c.AliasName || c.Code || 'Unknown Company' })) || []}
                           value={field.value}
                           onChange={field.onChange}
                           placeholder="Select Company"
@@ -891,7 +891,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       {participantFields.map((field, index) => {
                         const participantType = form.watch(`participants.${index}.participantType`);
                         const participantName = form.watch(`participants.${index}.participantName`);
-                        
+
                         return (
                           <tr key={field.id} className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
                             <td className="px-3 py-2 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
@@ -914,7 +914,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   </Select>
                                 )}
                               />
-                            </td>
+                            </td >
                             <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top space-y-1">
                               {participantType === 1 && (
                                 <Controller
@@ -1022,248 +1022,249 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                 <Trash2 size={14} />
                               </button>
                             </td>
-                          </tr>
+                          </tr >
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
+                    </tbody >
+                  </table >
+                </div >
               )}
-            </FormSection>
+            </FormSection >
 
             {/* SECTION 4: Discussions & Action Items */}
-            <FormSection
+            < FormSection
               title="Discussions & Outcomes"
               icon={MessageSquare}
               tourId="meeting-form-discussions"
               headerAction={
-                <Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                < Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]" >
                   <Plus size={14} className="mr-1" /> Add Discussion Point
-                </Button>
+                </Button >
               }
             >
-              {discussionFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
-                  <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                  <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[1000px]">
-                    <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
-                      <tr>
-                        <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
-                        <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Topic / Agenda</th>
-                        <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Discussion Summary</th>
-                        <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Decision Remarks</th>
-                        <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Action Required</th>
-                        <th className="px-1 py-2.5 w-10 text-center"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--tm-border)]">
-                      {discussionFields.map((field, index) => {
-                        const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
-                        const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
-                        return (
-                          <tr key={field.id} className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
-                            <td className="px-3 py-3 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
-                              {index + 1}
-                            </td>
-                            <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top space-y-1">
-                              <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
-                                <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-9 rounded-[8px] text-xs font-medium bg-transparent", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
-                              </FieldControl>
-                            </td>
-                            <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                              <Controller
-                                control={form.control}
-                                name={`discussions.${index}.discussionSummary`}
-                                render={({ field }) => (
-                                  <Textarea
-                                    value={field.value || ''}
-                                    onChange={field.onChange}
-                                    placeholder="Details..."
-                                    maxLength={700}
-                                    className="min-h-[70px] rounded-[8px] text-xs bg-transparent resize-none focus-visible:ring-[#0EA5E9]/30"
-                                  />
-                                )}
-                              />
-                            </td>
-                            <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                              <Controller
-                                control={form.control}
-                                name={`discussions.${index}.decisionRemarks`}
-                                render={({ field }) => (
-                                  <Textarea
-                                    value={field.value || ''}
-                                    onChange={field.onChange}
-                                    placeholder="Final decision..."
-                                    maxLength={300}
-                                    className="min-h-[70px] rounded-[8px] text-xs bg-transparent resize-none focus-visible:ring-[#0EA5E9]/30"
-                                  />
-                                )}
-                              />
-                            </td>
-                            <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                              <Controller
-                                control={form.control}
-                                name={`discussions.${index}.isActionRequired`}
-                                render={({ field }) => (
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <button
-                                      type="button"
-                                      role="switch"
-                                      aria-checked={!!field.value}
-                                      onClick={() => field.onChange(!field.value)}
-                                      className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
-                                    >
-                                      <span className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200', field.value ? 'bg-[#0EA5E9]' : 'bg-slate-600')}>
-                                        <span className={cn('absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200', field.value ? 'translate-x-[18px]' : 'translate-x-[2px]')} />
-                                      </span>
-                                      <span className={cn('text-[10px] font-semibold tracking-wide', field.value ? 'text-[#0EA5E9]' : 'text-slate-400')}>
-                                        {field.value ? 'ON' : 'OFF'}
-                                      </span>
-                                    </button>
-                                  </div>
-                                )}
-                              />
-                              {isActionRequired && (
-                                <div className="mt-2 space-y-2 p-2.5 rounded-[8px] bg-[var(--tm-elevated)] border border-[var(--tm-border)]/80">
-                                  <p className="text-[10px] font-semibold text-[#0EA5E9] uppercase tracking-wide mb-2">Task Details</p>
-                                  
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.operTaskCategoryNo`}
-                                      render={({ field }) => (
-                                        <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
-                                          options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: cleanMasterLabel(c.Category) })) || []}
-                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                          onChange={(val) => field.onChange(toOptionalInt(val))}
-                                          placeholder="Category"
-                                        />
-                                      )}
+              {
+                discussionFields.length === 0 ? (
+                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                    <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
+                    <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[1000px]">
+                      <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                        <tr>
+                          <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
+                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Topic / Agenda</th>
+                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Discussion Summary</th>
+                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Decision Remarks</th>
+                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Action Required</th>
+                          <th className="px-1 py-2.5 w-10 text-center"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--tm-border)]">
+                        {discussionFields.map((field, index) => {
+                          const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
+                          const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
+                          return (
+                            <tr key={field.id} className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
+                                {index + 1}
+                              </td>
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top space-y-1">
+                                <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
+                                  <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-9 rounded-[8px] text-xs font-medium bg-transparent", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
+                                </FieldControl>
+                              </td>
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                <Controller
+                                  control={form.control}
+                                  name={`discussions.${index}.discussionSummary`}
+                                  render={({ field }) => (
+                                    <Textarea
+                                      value={field.value || ''}
+                                      onChange={field.onChange}
+                                      placeholder="Details..."
+                                      maxLength={700}
+                                      className="min-h-[70px] rounded-[8px] text-xs bg-transparent resize-none focus-visible:ring-[#0EA5E9]/30"
                                     />
-                                  </FieldControl>
+                                  )}
+                                />
+                              </td>
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                <Controller
+                                  control={form.control}
+                                  name={`discussions.${index}.decisionRemarks`}
+                                  render={({ field }) => (
+                                    <Textarea
+                                      value={field.value || ''}
+                                      onChange={field.onChange}
+                                      placeholder="Final decision..."
+                                      maxLength={300}
+                                      className="min-h-[70px] rounded-[8px] text-xs bg-transparent resize-none focus-visible:ring-[#0EA5E9]/30"
+                                    />
+                                  )}
+                                />
+                              </td>
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                <Controller
+                                  control={form.control}
+                                  name={`discussions.${index}.isActionRequired`}
+                                  render={({ field }) => (
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={!!field.value}
+                                        onClick={() => field.onChange(!field.value)}
+                                        className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
+                                      >
+                                        <span className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200', field.value ? 'bg-[#0EA5E9]' : 'bg-slate-600')}>
+                                          <span className={cn('absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200', field.value ? 'translate-x-[18px]' : 'translate-x-[2px]')} />
+                                        </span>
+                                        <span className={cn('text-[10px] font-semibold tracking-wide', field.value ? 'text-[#0EA5E9]' : 'text-slate-400')}>
+                                          {field.value ? 'ON' : 'OFF'}
+                                        </span>
+                                      </button>
+                                    </div>
+                                  )}
+                                />
+                                {isActionRequired && (
+                                  <div className="mt-2 space-y-2 p-2.5 rounded-[8px] bg-[var(--tm-elevated)] border border-[var(--tm-border)]/80">
+                                    <p className="text-[10px] font-semibold text-[#0EA5E9] uppercase tracking-wide mb-2">Task Details</p>
 
-                                  {!isHideType && (
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
                                       <Controller
                                         control={form.control}
-                                        name={`discussions.${index}.operTaskTypeNo`}
+                                        name={`discussions.${index}.operTaskCategoryNo`}
                                         render={({ field }) => (
-                                          <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
-                                            options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: cleanMasterLabel(c["Task Type"]) })) || []}
+                                          <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
+                                            options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: cleanMasterLabel(c.Category) })) || []}
                                             value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
                                             onChange={(val) => field.onChange(toOptionalInt(val))}
-                                            placeholder="Task Type"
+                                            placeholder="Category"
                                           />
                                         )}
                                       />
                                     </FieldControl>
-                                  )}
 
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.operTaskPriorityNo`}
-                                      render={({ field }) => (
-                                        <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
-                                          options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
-                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                          onChange={(val) => field.onChange(toOptionalInt(val))}
-                                          sortAlphabetically={false}
-                                          placeholder="Priority"
+                                    {!isHideType && (
+                                      <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
+                                        <Controller
+                                          control={form.control}
+                                          name={`discussions.${index}.operTaskTypeNo`}
+                                          render={({ field }) => (
+                                            <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
+                                              options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: cleanMasterLabel(c["Task Type"]) })) || []}
+                                              value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                              onChange={(val) => field.onChange(toOptionalInt(val))}
+                                              placeholder="Task Type"
+                                            />
+                                          )}
                                         />
-                                      )}
-                                    />
-                                  </FieldControl>
+                                      </FieldControl>
+                                    )}
 
-                                  {!isHideFolder && (
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.taskFolderNo`}
-                                      render={({ field }) => (
-                                        <Combobox className="rounded-[8px] h-8 text-xs"
-                                          options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
-                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                          onChange={(val) => field.onChange(toOptionalInt(val))}
-                                          placeholder="Folder"
-                                        />
-                                      )}
-                                    />
-                                  )}
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.operTaskPriorityNo`}
+                                        render={({ field }) => (
+                                          <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
+                                            options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
+                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                            onChange={(val) => field.onChange(toOptionalInt(val))}
+                                            sortAlphabetically={false}
+                                            placeholder="Priority"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
 
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionTaskOriginatorNo`}
-                                      render={({ field }) => (
-                                        <UserCombobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                          placeholder="Assign By"
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
+                                    {!isHideFolder && (
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.operTaskCategoryNo`}
+                                        render={({ field }) => (
+                                          <Combobox className="rounded-[8px] h-8 text-xs"
+                                            options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
+                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                            onChange={(val) => field.onChange(toOptionalInt(val))}
+                                            placeholder="Folder"
+                                          />
+                                        )}
+                                      />
+                                    )}
 
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionTaskOwnerNo`}
-                                      render={({ field }) => (
-                                        <UserCombobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                          placeholder="Assign To"
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionTaskOriginatorNo`}
+                                        render={({ field }) => (
+                                          <UserCombobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
+                                            value={field.value?.toString() || ''}
+                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                            placeholder="Assign By"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
 
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionDueDate`}
-                                      render={({ field }) => (
-                                        <DateTimePicker
-                                          className={cn("w-full rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400")}
-                                          date={field.value ? new Date(field.value) : undefined}
-                                          onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
-                                          placeholder="Due Date & Time"
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionTaskOwnerNo`}
+                                        render={({ field }) => (
+                                          <UserCombobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
+                                            value={field.value?.toString() || ''}
+                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                            placeholder="Assign To"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
 
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-2 py-3 text-center align-top">
-                              <button
-                                type="button"
-                                onClick={() => requestRemoveItem('discussion', index, topicValue || `Discussion ${index + 1}`)}
-                                className="h-8 w-8 inline-flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-[8px] transition-colors mt-0.5"
-                                title="Remove discussion"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </FormSection>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionDueDate`}
+                                        render={({ field }) => (
+                                          <DateTimePicker
+                                            className={cn("w-full rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400")}
+                                            date={field.value ? new Date(field.value) : undefined}
+                                            onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
+                                            placeholder="Due Date & Time"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-2 py-3 text-center align-top">
+                                <button
+                                  type="button"
+                                  onClick={() => requestRemoveItem('discussion', index, topicValue || `Discussion ${index + 1}`)}
+                                  className="h-8 w-8 inline-flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-[8px] transition-colors mt-0.5"
+                                  title="Remove discussion"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div >
+                )}
+            </FormSection >
 
             {/* SECTION 3: Document Details */}
-            <FormSection
+            < FormSection
               title="Document Details"
               icon={FileText}
               headerAction={
-                <Button
+                < Button
                   type="button"
                   variant="outline"
                   size="sm"
@@ -1272,90 +1273,105 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                 >
                   <Plus size={14} className="mr-1.5" />
                   Add Document
-                </Button>
+                </Button >
               }
             >
-              {documentFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
-                  <p className="text-xs text-slate-500 font-medium">No documents added yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {documentFields.map((field, index) => {
-                    const docType = form.watch(`documents.${index}.documentType`);
-                    const selectedDocTypeObj =
-                      docType && Number(docType) > 0
-                        ? meetingDocumentTypes.find((d) => d.documentTypeNo === docType)
-                        : undefined;
-                    const docNoYearly = form.watch(`documents.${index}.documentNoYearly`);
-                    const typeName = selectedDocTypeObj?.documentName || '';
-                    const summaryLabel = (docNoYearly || '').trim() || typeName;
+              {
+                documentFields.length === 0 ? (
+                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                    <p className="text-xs text-slate-500 font-medium">No documents added yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {documentFields.map((field, index) => {
+                      const docType = form.watch(`documents.${index}.documentType`);
+                      const selectedDocTypeObj =
+                        docType && Number(docType) > 0
+                          ? meetingDocumentTypes.find((d) => d.documentTypeNo === docType)
+                          : undefined;
+                      const docNoYearly = form.watch(`documents.${index}.documentNoYearly`);
+                      const typeName = selectedDocTypeObj?.documentName || '';
+                      const summaryLabel = (docNoYearly || '').trim() || typeName;
 
-                    return (
-                      <div
-                        key={field.id}
-                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                      >
-                        <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)] rounded-t-[8px]">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                            {index + 1}
-                          </span>
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
-                            <FileText size={14} strokeWidth={1.75} />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            {summaryLabel ? (
-                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
-                                {summaryLabel}
-                              </p>
-                            ) : (
-                              <p className="text-[13px] font-medium text-slate-400 truncate leading-tight">
-                                Document {index + 1}
-                              </p>
-                            )}
-                            {typeName && docNoYearly ? (
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{typeName}</p>
-                            ) : null}
+                      return (
+                        <div
+                          key={field.id}
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                        >
+                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                              {index + 1}
+                            </span>
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
+                              <FileText size={14} strokeWidth={1.75} />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              {summaryLabel ? (
+                                <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
+                                  {summaryLabel}
+                                </p>
+                              ) : (
+                                <p className="text-[13px] font-medium text-slate-400 truncate leading-tight">
+                                  Document {index + 1}
+                                </p>
+                              )}
+                              {typeName && docNoYearly ? (
+                                <p className="text-[11px] text-slate-400 truncate mt-0.5">{typeName}</p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                requestRemoveItem(
+                                  'document',
+                                  index,
+                                  summaryLabel || `Document ${index + 1}`
+                                )
+                              }
+                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                              title="Remove document"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              requestRemoveItem(
-                                'document',
-                                index,
-                                summaryLabel || `Document ${index + 1}`
-                              )
-                            }
-                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                            title="Remove document"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
 
-                        <div className="p-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <FieldLabel required>Document Name</FieldLabel>
-                              <FieldControl
-                                error={
-                                  form.formState.errors.documents?.[index]?.documentType?.message
-                                }
-                              >
-                                <Controller
-                                  control={form.control}
-                                  name={`documents.${index}.documentType`}
-                                  render={({ field: typeField }) => {
-                                    const selectedType =
-                                      typeField.value && Number(typeField.value) > 0
-                                        ? String(typeField.value)
-                                        : '__none__';
-                                    return (
-                                      <Select
-                                        value={selectedType}
-                                        onValueChange={(val) => {
-                                          if (val === '__none__') {
-                                            typeField.onChange(0);
+                          <div className="p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <FieldLabel required>Document Name</FieldLabel>
+                                <FieldControl
+                                  error={
+                                    form.formState.errors.documents?.[index]?.documentType?.message
+                                  }
+                                >
+                                  <Controller
+                                    control={form.control}
+                                    name={`documents.${index}.documentType`}
+                                    render={({ field: typeField }) => {
+                                      const selectedType =
+                                        typeField.value && Number(typeField.value) > 0
+                                          ? String(typeField.value)
+                                          : '__none__';
+                                      return (
+                                        <Select
+                                          value={selectedType}
+                                          onValueChange={(val) => {
+                                            if (val === '__none__') {
+                                              typeField.onChange(0);
+                                              form.setValue(`documents.${index}.documentNo`, 0);
+                                              form.setValue(
+                                                `documents.${index}.documentNoYearly`,
+                                                ''
+                                              );
+                                              void form.trigger(
+                                                `documents.${index}.documentType`
+                                              );
+                                              void form.trigger(
+                                                `documents.${index}.documentNo`
+                                              );
+                                              return;
+                                            }
+                                            typeField.onChange(parseInt(val, 10));
                                             form.setValue(`documents.${index}.documentNo`, 0);
                                             form.setValue(
                                               `documents.${index}.documentNoYearly`,
@@ -1364,141 +1380,129 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                             void form.trigger(
                                               `documents.${index}.documentType`
                                             );
+                                          }}
+                                        >
+                                          <SelectTrigger
+                                            className={cn(
+                                              'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
+                                              selectedType === '__none__' && 'text-slate-400',
+                                              form.formState.errors.documents?.[index]
+                                                ?.documentType && 'border-red-400'
+                                            )}
+                                          >
+                                            <SelectValue placeholder="Select document name" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem
+                                              value="__none__"
+                                              className="text-slate-400"
+                                            >
+                                              Select document name
+                                            </SelectItem>
+                                            {
+                                              sortByLabel(meetingDocumentTypes, {
+                                                getLabel: (d) => d.documentName || '',
+                                                getValue: (d) => String(d.documentTypeNo),
+                                              }).map((d) => (
+                                                <SelectItem
+                                                  key={d.documentTypeNo}
+                                                  value={d.documentTypeNo.toString()}
+                                                >
+                                                  {d.documentName}
+                                                </SelectItem>
+                                              ))
+                                            }
+                                          </SelectContent >
+                                        </Select >
+                                      );
+                                    }}
+                                  />
+                                </FieldControl >
+                              </div >
+
+                              <div className="space-y-1">
+                                <FieldLabel required>Document No</FieldLabel>
+                                <FieldControl
+                                  error={
+                                    form.formState.errors.documents?.[index]?.documentNo?.message
+                                  }
+                                >
+                                  <Controller
+                                    control={form.control}
+                                    name={`documents.${index}.documentNo`}
+                                    render={({ field: noField }) => (
+                                      <DocumentCombobox
+                                        formNo={selectedDocTypeObj?.formNo}
+                                        contextStr={selectedDocTypeObj?.context}
+                                        displayColumnsStr={selectedDocTypeObj?.displayColumns}
+                                        value={
+                                          Number(noField.value) > 0
+                                            ? String(noField.value)
+                                            : ''
+                                        }
+                                        initialLabel={
+                                          form.watch(`documents.${index}.documentNoYearly`) ||
+                                          undefined
+                                        }
+                                        onChange={(doc: any) => {
+                                          if (!doc) {
+                                            noField.onChange(0);
+                                            form.setValue(
+                                              `documents.${index}.documentNoYearly`,
+                                              ''
+                                            );
                                             void form.trigger(
                                               `documents.${index}.documentNo`
                                             );
-                                            return;
+                                          } else {
+                                            const no =
+                                              doc.id ||
+                                              doc.documentNo ||
+                                              doc.DocumentNo ||
+                                              doc.Value ||
+                                              0;
+                                            noField.onChange(parseInt(no.toString()) || 0);
+                                            form.setValue(
+                                              `documents.${index}.documentNoYearly`,
+                                              doc.documentNoYearly ||
+                                              doc.DocumentNoYearly ||
+                                              doc.Text ||
+                                              doc.name ||
+                                              ''
+                                            );
+                                            void form.trigger(
+                                              `documents.${index}.documentNo`
+                                            );
                                           }
-                                          typeField.onChange(parseInt(val, 10));
-                                          form.setValue(`documents.${index}.documentNo`, 0);
-                                          form.setValue(
-                                            `documents.${index}.documentNoYearly`,
-                                            ''
-                                          );
-                                          void form.trigger(
-                                            `documents.${index}.documentType`
-                                          );
                                         }}
-                                      >
-                                        <SelectTrigger
-                                          className={cn(
-                                            'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
-                                            selectedType === '__none__' && 'text-slate-400',
-                                            form.formState.errors.documents?.[index]
-                                              ?.documentType && 'border-red-400'
-                                          )}
-                                        >
-                                          <SelectValue placeholder="Select document name" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem
-                                            value="__none__"
-                                            className="text-slate-400"
-                                          >
-                                            Select document name
-                                          </SelectItem>
-                                          {sortByLabel(meetingDocumentTypes, {
-                                            getLabel: (d) => d.documentName || '',
-                                            getValue: (d) => String(d.documentTypeNo),
-                                          }).map((d) => (
-                                            <SelectItem
-                                              key={d.documentTypeNo}
-                                              value={d.documentTypeNo.toString()}
-                                            >
-                                              {d.documentName}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    );
-                                  }}
-                                />
-                              </FieldControl>
-                            </div>
-
-                            <div className="space-y-1">
-                              <FieldLabel required>Document No</FieldLabel>
-                              <FieldControl
-                                error={
-                                  form.formState.errors.documents?.[index]?.documentNo?.message
-                                }
-                              >
-                                <Controller
-                                  control={form.control}
-                                  name={`documents.${index}.documentNo`}
-                                  render={({ field: noField }) => (
-                                    <DocumentCombobox
-                                      formNo={selectedDocTypeObj?.formNo}
-                                      contextStr={selectedDocTypeObj?.context}
-                                      displayColumnsStr={selectedDocTypeObj?.displayColumns}
-                                      value={
-                                        Number(noField.value) > 0
-                                          ? String(noField.value)
-                                          : ''
-                                      }
-                                      initialLabel={
-                                        form.watch(`documents.${index}.documentNoYearly`) ||
-                                        undefined
-                                      }
-                                      onChange={(doc: any) => {
-                                        if (!doc) {
-                                          noField.onChange(0);
-                                          form.setValue(
-                                            `documents.${index}.documentNoYearly`,
-                                            ''
-                                          );
-                                          void form.trigger(
-                                            `documents.${index}.documentNo`
-                                          );
-                                        } else {
-                                          const no =
-                                            doc.id ||
-                                            doc.documentNo ||
-                                            doc.DocumentNo ||
-                                            doc.Value ||
-                                            0;
-                                          noField.onChange(parseInt(no.toString()) || 0);
-                                          form.setValue(
-                                            `documents.${index}.documentNoYearly`,
-                                            doc.documentNoYearly ||
-                                            doc.DocumentNoYearly ||
-                                            doc.Text ||
-                                            doc.name ||
-                                            ''
-                                          );
-                                          void form.trigger(
-                                            `documents.${index}.documentNo`
-                                          );
+                                        placeholder={
+                                          Number(docType) > 0
+                                            ? 'Search document...'
+                                            : 'Select Document Name first'
                                         }
-                                      }}
-                                      placeholder={
-                                        Number(docType) > 0
-                                          ? 'Search document...'
-                                          : 'Select Document Name first'
-                                      }
-                                      disabled={!(Number(docType) > 0)}
-                                      className={cn(
-                                        'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
-                                        form.formState.errors.documents?.[index]?.documentNo &&
-                                        'border-red-400',
-                                        !(Number(docType) > 0) && 'bg-[var(--tm-muted)]/80 text-slate-400'
-                                      )}
-                                    />
-                                  )}
-                                />
-                              </FieldControl>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </FormSection>
+                                        disabled={!(Number(docType) > 0)}
+                                        className={cn(
+                                          'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
+                                          form.formState.errors.documents?.[index]?.documentNo &&
+                                          'border-red-400',
+                                          !(Number(docType) > 0) && 'bg-[var(--tm-muted)]/80 text-slate-400'
+                                        )}
+                                      />
+                                    )}
+                                  />
+                                </FieldControl>
+                              </div>
+                            </div >
+                          </div >
+                        </div >
+                      );
+                    })}
+                  </div >
+                )}
+            </FormSection >
 
             {/* SECTION 5: Attachments */}
-            <FormSection title="Attachments" icon={Paperclip} tourId="meeting-form-attachments">
+            < FormSection title="Attachments" icon={Paperclip} tourId="meeting-form-attachments" >
               <div className="space-y-3">
                 <div
                   onClick={() => fileInputRef.current?.click()}
@@ -1691,11 +1695,11 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   );
                 })()}
               </div>
-            </FormSection>
+            </FormSection >
 
-          </form>
-        </div>
-      </div>
+          </form >
+        </div >
+      </div >
 
       <MasterDeleteDialog
         open={!!itemToDelete}
@@ -1866,21 +1870,23 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         </DialogContent>
       </Dialog>
 
-      {resolvedMeetingNo ? (
-        <SendMinutesDialog
-          open={sendMinutesOpen}
-          onOpenChange={setSendMinutesOpen}
-          meetingNotesNo={Number(resolvedMeetingNo)}
-          companyNo={Number(form.watch('operTaskCompanyNo') || companyNoStr) || Number(companyNoStr)}
-          meetingTitle={watchedTitle}
-          startDateTime={startDateTime}
-          endDateTime={endDateTime}
-          statusName={currentStatusName}
-          statusAllowed={canSendMinutesStatus}
-          recipients={minutesRecipients}
-          onSent={() => setLastMinutesSentAt(toUtcIso(new Date()) || new Date().toISOString())}
-        />
-      ) : null}
+      {
+        resolvedMeetingNo ? (
+          <SendMinutesDialog
+            open={sendMinutesOpen}
+            onOpenChange={setSendMinutesOpen}
+            meetingNotesNo={Number(resolvedMeetingNo)}
+            companyNo={Number(form.watch('operTaskCompanyNo') || companyNoStr) || Number(companyNoStr)}
+            meetingTitle={watchedTitle}
+            startDateTime={startDateTime}
+            endDateTime={endDateTime}
+            statusName={currentStatusName}
+            statusAllowed={canSendMinutesStatus}
+            recipients={minutesRecipients}
+            onSent={() => setLastMinutesSentAt(toUtcIso(new Date()) || new Date().toISOString())}
+          />
+        ) : null
+      }
       {/* Save Confirmation Dialog */}
       <Dialog open={showConfirm} onOpenChange={(open) => { if (!open) setShowConfirm(false); }}>
         <DialogContent className="rounded-[12px] max-w-sm p-0 border border-[var(--tm-border)]/80 shadow-xl">
@@ -1914,6 +1920,6 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

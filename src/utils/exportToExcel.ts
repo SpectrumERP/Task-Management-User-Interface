@@ -220,16 +220,16 @@ export const exportMeetingReportToExcel = (
       meeting.meetingTypeName || meeting.type?.typeName || '',
       meeting.meetingCategoryName || meeting.category?.categoryName || '',
       meeting.companyName ||
-        meeting.taskCompany?.companyName ||
-        meeting.company?.companyName ||
-        '',
+      meeting.taskCompany?.companyName ||
+      meeting.company?.companyName ||
+      '',
       formatDateTime(meeting.meetingStartDateTime || meeting.startDateTime || meeting.startDate),
       formatDateTime(meeting.meetingEndDateTime || meeting.endDateTime || meeting.endDate),
       meeting.docStatusName ||
-        meeting.statusName ||
-        meeting.status?.statusName ||
-        meeting.status ||
-        '',
+      meeting.statusName ||
+      meeting.status?.statusName ||
+      meeting.status ||
+      '',
     ];
 
     const rows: any[][] = [];

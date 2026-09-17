@@ -17,6 +17,7 @@ export interface FilterParams {
   ownerLoginNo?: number;
   fromDueDate?: string;
   toDueDate?: string;
+  operTaskCompanyNo?: number;
   companyNo?: number;
   folderNo?: number;
   isAllFolder?: boolean;
@@ -379,9 +380,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const typeNoRawForApi = searchParamsCamel.operTaskTypeNo;
       const typeNoParsed =
         !isHideType &&
-        typeNoRawForApi !== undefined &&
-        typeNoRawForApi !== null &&
-        typeNoRawForApi !== ''
+          typeNoRawForApi !== undefined &&
+          typeNoRawForApi !== null &&
+          typeNoRawForApi !== ''
           ? Number(typeNoRawForApi)
           : NaN;
       const typeRow = fillValues?.type?.find(
@@ -463,8 +464,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         owner_user_No: item.assignedTo?.id || null,
         location_No: item.location?.operTaskLocationNo || null,
         locationName: item.location?.locationName || undefined,
-        company: item.taskCompany?.taskCompanyNo || item.company || undefined,
-        companyName: item.taskCompany?.taskCompanyAlias || item.taskCompany?.taskCompanyName || item.company || undefined,
+        company: item.taskCompany?.taskCompanyNo || item.taskCompanyNo || item.company || undefined,
+        companyName: item.taskCompany?.taskCompanyAlias || item.taskCompany?.taskCompanyName || item.taskCompanyName || item.company || undefined,
         status_No: item.status?.operTaskStatusNo || null,
         status: item.status?.statusName || 'Todo',
         priority: item.priority?.priorityName || 'Low',
@@ -474,10 +475,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         parent_task_No: item.parentTask?.operTaskNo || item.parentTaskNo || item.parent_task_No || null,
         parentTask: item.parentTask
           ? {
-              operTaskNo: item.parentTask.operTaskNo,
-              title: item.parentTask.title,
-              code: item.parentTask.code,
-            }
+            operTaskNo: item.parentTask.operTaskNo,
+            title: item.parentTask.title,
+            code: item.parentTask.code,
+          }
           : undefined,
         start_date: item.startDate,
         end_date: item.endDate,
@@ -501,7 +502,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       // Client-side safety net: API may return rows outside selected drawer filters
       const categoryNo =
         !Number.isNaN(categoryNoParsed) &&
-        !(categoryRow && isAllFilterSentinel(categoryRow.Category))
+          !(categoryRow && isAllFilterSentinel(categoryRow.Category))
           ? categoryNoParsed
           : NaN;
       const typeNo =
@@ -510,7 +511,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           : NaN;
       const locationNo =
         !Number.isNaN(locationNoParsed) &&
-        !(locationRow && isAllFilterSentinel(locationRow.Location))
+          !(locationRow && isAllFilterSentinel(locationRow.Location))
           ? locationNoParsed
           : NaN;
       const priorityNoForClient =

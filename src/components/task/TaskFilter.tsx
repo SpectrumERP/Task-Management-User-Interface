@@ -104,6 +104,7 @@ interface FilterFormValues {
   operTaskStatusNo?: string;
   operTaskLocationNo?: string;
   operTaskTypeNo?: string;
+  operTaskCompanyNo?: string;
   ownerLoginNo?: string;
   fromDueDate?: Date;
   toDueDate?: Date;
@@ -307,6 +308,17 @@ export function TaskFilter({
       chips.push({
         id: 'location',
         label: `Location: ${loc?.Location || applied.operTaskLocationNo}`,
+      });
+    }
+
+    if (applied.operTaskCompanyNo) {
+      const tc = fillValues?.taskCompany?.find(
+        (c) => String(c.OperTaskCompanyNo) === String(applied.operTaskCompanyNo)
+      );
+      const tcLabel = tc ? ((tc.TaskCompanyAlias && tc.TaskCompanyName) ? `${tc.TaskCompanyAlias} - ${tc.TaskCompanyName}` : (tc.AliasName && tc.CompanyName ? `${tc.AliasName} - ${tc.CompanyName}` : (tc.AliasName || tc.CompanyName || tc.TaskCompanyAlias || tc.TaskCompanyName || 'Unknown'))) : applied.operTaskCompanyNo;
+      chips.push({
+        id: 'taskCompany',
+        label: `Task Company: ${tcLabel}`,
       });
     }
 
@@ -527,6 +539,7 @@ export function TaskFilter({
       operTaskStatusNo: '',
       operTaskLocationNo: '',
       operTaskTypeNo: '',
+      operTaskCompanyNo: '',
       ownerLoginNo: '',
       fromDueDate: undefined,
       toDueDate: undefined,
@@ -637,6 +650,7 @@ export function TaskFilter({
       priority: 'operTaskPriorityNo',
       type: 'operTaskTypeNo',
       location: 'operTaskLocationNo',
+      taskCompany: 'operTaskCompanyNo',
       owner: 'ownerLoginNo',
       loginNo: 'loginNo',
       filterType: 'filterType',
@@ -910,15 +924,15 @@ export function TaskFilter({
 
             const baseClass = "theme-status-pill rounded-full h-7 px-3 text-[11px] font-semibold transition-all duration-200 border bg-[var(--tm-surface)] hover:shadow-md";
             const colorClass =
-              statusName === 'Completed' || statusName === 'Complete' || statusName === 'Close'
+              statusName === 'Complete' || statusName === 'Close'
                 ? isActive
                   ? "border-green-500 bg-green-500 text-white shadow-[0_4px_12px_-4px_rgba(34,197,94,0.45)]"
                   : "border-green-500/30 text-green-400 hover:bg-green-500/10"
-                : statusName === 'In-Progress' || statusName === 'In-Review'
+                : statusName === 'In-Progress'
                   ? isActive
                     ? "border-blue-500 bg-blue-500 text-white shadow-[0_4px_12px_-4px_rgba(59,130,246,0.45)]"
                     : "border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-                  : statusName === 'Pending' || statusName === 'Open' || statusName === 'Draft' || statusName === 'Reopen' || statusName === 'Hold'
+                  : statusName === 'Pending' || statusName === 'Hold'
                     ? isActive
                       ? "border-[#F59E0B] bg-[#F59E0B] text-[#0B1220] shadow-[0_4px_12px_-4px_rgba(245,158,11,0.45)]"
                       : "border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10"
