@@ -263,7 +263,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
             <MessageSquare size={16} />
           </div>
           <div>
-            <h4 className="text-xs font-semibold text-slate-100">Comments</h4>
+            <h4 className="text-xs font-semibold text-slate-100">Management Comments</h4>
             <p className="text-[10px] font-medium text-slate-400">
               {comments.length} comment{comments.length === 1 ? '' : 's'}
             </p>

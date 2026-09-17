@@ -179,6 +179,12 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
       }
       case 'docStatusName':
         return row.docStatusName || row.statusName || '';
+      case 'createdBy':
+        return row.createdBy?.printingName || row.createdBy?.displayName || row.createdByName || '';
+      case 'createdDate': {
+        const t = toUtcMs(row.createdDate || row.createdOn);
+        return t ?? row.createdDate ?? row.createdOn ?? '';
+      }
       default:
         return (row as Record<string, unknown>)[key] ?? '';
     }
@@ -559,7 +565,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         className="pr-1"
                       />
                     </th>
-                    <th className="w-[24%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTitle', handleSort)}>
+                    <th className="w-[20%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTitle', handleSort)}>
                       <SortableHeader
                         label="Title"
                         sortKey="meetingTitle"
@@ -568,7 +574,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[16%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTypeName', handleSort)}>
+                    <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTypeName', handleSort)}>
                       <SortableHeader
                         label="Type"
                         sortKey="meetingTypeName"
@@ -595,7 +601,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[14%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingStartDateTime', handleSort)}>
+                    <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingStartDateTime', handleSort)}>
                       <SortableHeader
                         label="Schedule"
                         sortKey="meetingStartDateTime"
@@ -604,7 +610,25 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[11%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('docStatusName', handleSort)}>
+                    <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('createdBy', handleSort)}>
+                      <SortableHeader
+                        label="Created By"
+                        sortKey="createdBy"
+                        sortCol={sortCol}
+                        sortDesc={sortDesc}
+                        onSort={handleSort}
+                      />
+                    </th>
+                    <th className="w-[11%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('createdDate', handleSort)}>
+                      <SortableHeader
+                        label="Created Date"
+                        sortKey="createdDate"
+                        sortCol={sortCol}
+                        sortDesc={sortDesc}
+                        onSort={handleSort}
+                      />
+                    </th>
+                    <th className="w-[9%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('docStatusName', handleSort)}>
                       <SortableHeader
                         label="Status"
                         sortKey="docStatusName"
@@ -676,6 +700,18 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                               {end.time ? ` – ${end.time}` : ''}
                             </p>
                           </div>
+                        </td>
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                          <TruncatedText
+                            text={meeting.createdBy?.printingName || meeting.createdBy?.displayName || meeting.createdByName || '—'}
+                            className="text-slate-300"
+                          />
+                        </td>
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                          <TruncatedText
+                            text={meeting.createdDate || meeting.createdOn ? formatUtcDateTime(meeting.createdDate || meeting.createdOn) : '—'}
+                            className="text-slate-300"
+                          />
                         </td>
                         <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle">
                           <span
