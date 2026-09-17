@@ -7,14 +7,11 @@ export interface OCRResult {
   googleText: string | null;
 }
 
-/** Off by default — no client Gemini/Google key required. Set VITE_USE_GEMINI_OCR=true to re-enable. */
-const useGeminiOcr = import.meta.env.VITE_USE_GEMINI_OCR === 'true';
-
 export function useOCR() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const ocrServiceRef = useRef(new OCRService());
-  const googleVisionRef = useRef(useGeminiOcr ? new GoogleVisionService() : null);
+  const googleVisionRef = useRef(new GoogleVisionService());
 
   const processImage = useCallback(async (imageBlob: Blob): Promise<OCRResult> => {
     setIsProcessing(true);
@@ -23,17 +20,19 @@ export function useOCR() {
     try {
       const result: OCRResult = { tesseractText: '', googleText: null };
 
-      // Optional Gemini path (disabled unless VITE_USE_GEMINI_OCR=true)
-      if (useGeminiOcr && googleVisionRef.current) {
-        try {
-          setProgress(0.2);
-          const text = await googleVisionRef.current.extractText(imageBlob);
-          if (text && text.trim()) {
-            result.googleText = text;
-            return result;
-          }
-        } catch (err) {
-          console.warn('Gemini OCR failed, using local Tesseract:', err);
+      // Always try Google Vision path first
+      try {
+        setProgress(0.2);
+        const text = await googleVisionRef.current.extractText(imageBlob);
+        if (text && text.trim()) {
+          result.googleText = text;
+          return result;
+        }
+      } catch (err: any) {
+        console.warn('Google Vision OCR failed:', err);
+        // If the API explicitly returns an error (like model overloaded), throw it to the UI
+        if (err instanceof Error || err?.message) {
+          throw err;
         }
       }
 

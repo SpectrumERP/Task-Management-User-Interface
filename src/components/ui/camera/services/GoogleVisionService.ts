@@ -85,6 +85,11 @@ export class GoogleVisionService {
 
     try {
       const data = await apiService.post<any>('/api/utility/google-vision/images/annotate', payload);
+      
+      if (data?.error) {
+        throw new Error(data.error.message || 'Google Vision API Error');
+      }
+      
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
       return text ? text.trim() : '';

@@ -12,6 +12,8 @@ interface BoardProps {
   onTaskClick?: (taskId: number) => void;
   /** Keep board data aligned with list/calendar filters. */
   filterParams?: FilterParams | Record<string, unknown> | null;
+  /** Pass in explicitly filtered tasks, fallback to store if undefined. */
+  tasks?: Task[];
 }
 
 function sortBoardStatuses(statuses: { StatusNo: number; Status: string }[]) {
@@ -36,8 +38,9 @@ function boardStatusesFromFill(status: { StatusNo: number; Status: string }[] | 
   return sortBoardStatuses(filtered);
 }
 
-export function Board({ onAddTask, onTaskClick, filterParams }: BoardProps) {
-  const { tasks, moveTask, fetchTasks, isLoading: isTasksLoading, fetchFillValues, fillValues } = useTaskStore();
+export function Board({ onAddTask, onTaskClick, filterParams, tasks: propTasks }: BoardProps) {
+  const { tasks: storeTasks, moveTask, fetchTasks, isLoading: isTasksLoading, fetchFillValues, fillValues } = useTaskStore();
+  const tasks = propTasks ?? storeTasks;
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
   const [statuses, setStatuses] = useState<{ StatusNo: number; Status: string }[]>(() =>

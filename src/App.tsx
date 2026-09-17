@@ -123,7 +123,11 @@ function Dashboard() {
     }
   }, [currentFilters, fetchTasks]);
 
-  const totalItems = tasks.length;
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(t => t.categoryName?.toLowerCase() !== 'deal monitor');
+  }, [tasks]);
+
+  const totalItems = filteredTasks.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize) || 1);
   const safePageNo = Math.min(pageNo, totalPages);
 
@@ -133,9 +137,10 @@ function Dashboard() {
 
   const startIndex = totalItems === 0 ? 0 : (safePageNo - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalItems);
+  
   const pagedTasks = useMemo(
-    () => tasks.slice(startIndex, endIndex),
-    [tasks, startIndex, endIndex]
+    () => filteredTasks.slice(startIndex, endIndex),
+    [filteredTasks, startIndex, endIndex]
   );
 
   const handleCreateTask = useCallback(() => {
@@ -233,7 +238,7 @@ function Dashboard() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => exportReportToExcel(tasks, false, 'Tasks.csv')}
+                  onClick={() => exportReportToExcel(filteredTasks, false, 'Tasks.csv')}
                   className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
                 >
                   <Download size={12} />
@@ -294,10 +299,11 @@ function Dashboard() {
                 onAddTask={(status) => navigate(`/task/new?status=${status}`)}
                 onTaskClick={handleTaskClick}
                 filterParams={currentFilters}
+                tasks={filteredTasks}
               />
             ) : (
               <TaskCalendarView
-                tasks={tasks}
+                tasks={filteredTasks}
                 isLoading={isLoading}
                 loadError={Boolean(fetchError)}
                 onRetryLoad={() => {

@@ -88,7 +88,7 @@ const DEFAULT_COL_WIDTH: Partial<Record<ColumnKey, string>> = {
 /** Actions: only enough for View + Edit icon buttons. */
 const ACTIONS_COL_PX = 72;
 
-const cellOverflowClass = 'px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle overflow-hidden max-w-0';
+const cellOverflowClass = 'px-3 py-1.5 border-r border-[var(--tm-border)] text-slate-300 align-middle overflow-hidden max-w-0';
 
 function parseCssWidthPx(value: string | number | undefined, fallback = 120): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -348,7 +348,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       }}
       className={cn(
         "w-full text-left rounded-xl border shadow-sm active:bg-[var(--tm-muted)] transition-colors cursor-pointer",
-        isSubtask ? "border-[#0EA5E9]/20 bg-[var(--tm-elevated)]/40 px-2 py-2" : "border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/60 px-3 py-2.5"
+        isSubtask ? "border-[#0EA5E9]/20 bg-[var(--tm-elevated)]/40 px-2 py-2" : "border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/60 px-3 py-1.5"
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -754,7 +754,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                 <th
                   key={col.key}
                   className={cn(
-                    'px-3 py-2.5 border-r border-[var(--tm-border)] last:border-r-0 relative group/th text-left whitespace-nowrap overflow-hidden',
+                    'px-3 py-1.5 border-r border-[var(--tm-border)] last:border-r-0 relative group/th text-left whitespace-nowrap overflow-hidden',
                     col.key === 'code' && 'tm-col-id tm-col-sticky-code sticky left-0 z-[45] bg-[var(--tm-elevated)] border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]',
                     col.key === 'actions' && 'tm-col-actions px-1 !text-center last:border-r-0 sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]'
                   )}
@@ -763,11 +763,11 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                       ? { width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }
                       : col.key === 'code' && !colWidths[col.key]
                         ? { width: 'var(--tm-col-id-width)', minWidth: 'var(--tm-col-id-width)', maxWidth: 'var(--tm-col-id-width)' }
-                      : colWidths[col.key]
-                        ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] }
-                        : DEFAULT_COL_WIDTH[col.key]
-                          ? { width: DEFAULT_COL_WIDTH[col.key], minWidth: DEFAULT_COL_WIDTH[col.key], maxWidth: DEFAULT_COL_WIDTH[col.key] }
-                          : { width: '14rem', minWidth: '14rem' }
+                        : colWidths[col.key]
+                          ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] }
+                          : DEFAULT_COL_WIDTH[col.key]
+                            ? { width: DEFAULT_COL_WIDTH[col.key], minWidth: DEFAULT_COL_WIDTH[col.key], maxWidth: DEFAULT_COL_WIDTH[col.key] }
+                            : { width: '14rem', minWidth: '14rem' }
                   }
                   {...(col.key !== 'actions' ? sortHeaderCellProps(col.key, handleSort) : {})}
                 >

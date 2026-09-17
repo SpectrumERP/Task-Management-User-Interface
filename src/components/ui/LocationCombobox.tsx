@@ -194,12 +194,13 @@ export function LocationCombobox({
         <PopoverPrimitive.Content
           className={cn(
             "z-[100] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none",
-            "w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-1.5rem)]",
+            "max-w-[calc(100vw-1.5rem)]",
             "overflow-hidden pointer-events-auto",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
+          style={{ width: "max(var(--radix-popover-trigger-width), 650px)" }}
           align="start"
           sideOffset={4}
           collisionPadding={16}
@@ -212,6 +213,15 @@ export function LocationCombobox({
                 className="h-10 border-none focus:ring-0 bg-transparent"
                 onValueChange={setSearch}
               />
+            </div>
+
+            <div className="grid grid-cols-[minmax(140px,2fr)_minmax(140px,2fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(90px,1fr)_20px] gap-3 px-3 py-2 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] font-semibold text-slate-400 uppercase tracking-wider items-center shrink-0">
+              <div>Location Name</div>
+              <div>Address</div>
+              <div>City</div>
+              <div>State</div>
+              <div>Country</div>
+              <div></div>
             </div>
 
             <CommandList className="max-h-64 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
@@ -233,10 +243,6 @@ export function LocationCombobox({
                     getValue: (loc) => String(loc.operLocationNo),
                   }).map((location) => {
                     const isSelected = value === location.operLocationNo.toString()
-                    const cityState = [location.cityName, location.stateName]
-                      .filter(Boolean)
-                      .join(", ")
-                    const placeLine = [cityState, location.countryName].filter(Boolean).join(" · ")
 
                     return (
                       <CommandItem
@@ -248,28 +254,32 @@ export function LocationCombobox({
                           setOpen(false)
                         }}
                         className={cn(
-                          "items-start gap-2 rounded-[8px] px-2.5 py-2 cursor-pointer",
+                          "rounded-[8px] px-3 py-2 cursor-pointer w-full",
                           "aria-selected:bg-[var(--tm-tint)] data-[selected=true]:bg-[var(--tm-tint)]"
                         )}
                       >
-                        <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="truncate text-[12px] font-semibold text-slate-50 leading-snug">
+                        <div className="grid grid-cols-[minmax(140px,2fr)_minmax(140px,2fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(90px,1fr)_20px] gap-3 w-full items-center">
+                          <div className="truncate text-[12px] font-semibold text-slate-50" title={location.operLocationName || "—"}>
                             {location.operLocationName || "—"}
-                          </p>
-                          {placeLine ? (
-                            <p className="truncate text-[11px] font-semibold text-[#0EA5E9] leading-snug">
-                              {placeLine}
-                            </p>
-                          ) : null}
-                          {location.address ? (
-                            <p className="truncate text-[11px] font-medium text-slate-300 leading-snug">
-                              {location.address}
-                            </p>
-                          ) : null}
+                          </div>
+                          <div className="truncate text-[11px] text-slate-300" title={location.address || "—"}>
+                            {location.address || "—"}
+                          </div>
+                          <div className="truncate text-[11px] text-slate-300" title={location.cityName || "—"}>
+                            {location.cityName || "—"}
+                          </div>
+                          <div className="truncate text-[11px] text-slate-300" title={location.stateName || "—"}>
+                            {location.stateName || "—"}
+                          </div>
+                          <div className="truncate text-[11px] text-slate-300" title={location.countryName || "—"}>
+                            {location.countryName || "—"}
+                          </div>
+                          <div className="flex justify-end">
+                            {isSelected ? (
+                              <Check className="h-3.5 w-3.5 shrink-0 text-[#0EA5E9]" />
+                            ) : <span className="w-3.5" />}
+                          </div>
                         </div>
-                        {isSelected ? (
-                          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#0EA5E9]" />
-                        ) : null}
                       </CommandItem>
                     )
                   })}

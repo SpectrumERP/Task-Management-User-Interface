@@ -832,7 +832,7 @@ html:not(.dark) .tm-sidebar-tip {
 }
 
 .tm-data-table>tbody>tr>td {
-  padding: 0.625rem 0.75rem;
+  padding: 0.425rem 0.75rem;
   border-right: 1px solid var(--tm-border);
   color: var(--tm-placeholder);
   vertical-align: middle;

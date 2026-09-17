@@ -35,30 +35,14 @@ interface UserComboboxProps {
 export function UserOptionLine({ user }: { user: UserResponse }) {
   const primary = user.printingName?.trim() || user.loginId?.trim() || "—"
   const loginId =
-    user.loginId?.trim() && user.loginId.trim() !== primary ? user.loginId.trim() : null
-  const email = user.email?.trim() || null
+    user.loginId?.trim() && user.loginId.trim() !== primary ? user.loginId.trim() : "—"
+  const email = user.email?.trim() || "—"
 
   return (
-    <div className="min-w-0 flex-1 overflow-hidden">
-      <div className="flex min-w-0 items-center gap-1.5 truncate">
-        <span className="truncate font-semibold text-slate-100">{primary}</span>
-        {loginId ? (
-          <>
-            <span className="shrink-0 text-slate-600" aria-hidden>
-              ·
-            </span>
-            <span className="truncate text-slate-400">{loginId}</span>
-          </>
-        ) : null}
-        {email ? (
-          <>
-            <span className="shrink-0 text-slate-600" aria-hidden>
-              ·
-            </span>
-            <span className="truncate text-slate-500">{email}</span>
-          </>
-        ) : null}
-      </div>
+    <div className="grid grid-cols-[2fr_1.5fr_2fr] gap-3 min-w-0 flex-1">
+      <div className="truncate font-semibold text-slate-100" title={primary}>{primary}</div>
+      <div className="truncate text-slate-400" title={loginId}>{loginId}</div>
+      <div className="truncate text-slate-500" title={email}>{email}</div>
     </div>
   )
 }
@@ -256,7 +240,7 @@ export function UserCombobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal container={container || document.body}>
         <PopoverPrimitive.Content
-          className="z-[100] w-[min(92vw,380px)] p-0 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] text-popover-foreground shadow-[0_16px_40px_-12px_rgba(15,23,42,0.45)] outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className="z-[100] w-[min(92vw,500px)] p-0 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] text-popover-foreground shadow-[0_16px_40px_-12px_rgba(15,23,42,0.45)] outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           align="start"
           sideOffset={6}
           onOpenAutoFocus={(event) => {
@@ -273,6 +257,14 @@ export function UserCombobox({
                 className="h-10 border-none focus:ring-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500"
                 onValueChange={setSearch}
               />
+            </div>
+
+            <div className="flex px-3 py-2 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 pr-9">
+              <div className="grid grid-cols-[2fr_1.5fr_2fr] gap-3 w-full">
+                <div>User Name</div>
+                <div>Login ID</div>
+                <div>Email</div>
+              </div>
             </div>
 
             <CommandList className="max-h-72 overflow-y-auto p-1.5 scrollbar-hide">

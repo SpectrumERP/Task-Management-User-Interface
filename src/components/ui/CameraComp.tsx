@@ -40,7 +40,7 @@ type CameraAction =
   | { type: 'PERMISSION_GRANTED' }
   | { type: 'PERMISSION_DENIED'; error: string }
   | { type: 'START_CAPTURE' }
-  | { type: 'PREVIEW'; file: File; url: string; isBusinessCard: boolean }
+  | { type: 'PREVIEW'; file: File; url: string; isBusinessCard: boolean; error?: string }
   | { type: 'START_PROCESSING' }
   | { type: 'PARSED'; data: BusinessCardData; file: File; url: string; logoFile: File | null }
   | { type: 'UPDATE_DATA'; data: BusinessCardData; logoFile?: File | null }
@@ -74,7 +74,8 @@ function cameraReducer(state: CameraState, action: CameraAction): CameraState {
         status: 'preview',
         capturedFile: action.file,
         capturedUrl: action.url,
-        isBusinessCard: action.isBusinessCard
+        isBusinessCard: action.isBusinessCard,
+        errorMessage: action.error || ''
       };
     case 'START_PROCESSING':
       return { ...state, status: 'processing', errorMessage: '' };
@@ -218,53 +219,43 @@ export function CameraComp({
     }
   }, [stopCamera]);
 
+  const getCroppedBlob = async (targetFile: File, targetUrl: string): Promise<Blob> => {
+    let finalBlob: Blob = targetFile;
+    if (previewCompletedCrop && previewCompletedCrop.width > 0 && previewCompletedCrop.height > 0) {
+      const image = new Image();
+      image.src = targetUrl;
+      await new Promise((resolve) => { image.onload = resolve; });
+
+      const canvas = document.createElement('canvas');
+      const sx = (previewCompletedCrop.x / 100) * image.naturalWidth;
+      const sy = (previewCompletedCrop.y / 100) * image.naturalHeight;
+      const sWidth = (previewCompletedCrop.width / 100) * image.naturalWidth;
+      const sHeight = (previewCompletedCrop.height / 100) * image.naturalHeight;
+
+      canvas.width = sWidth;
+      canvas.height = sHeight;
+      const ctx = canvas.getContext('2d');
+
+      if (ctx) {
+        ctx.drawImage(image, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+        finalBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas to blob failed'));
+          }, 'image/jpeg', 0.95);
+        });
+      }
+    }
+    return finalBlob;
+  };
+
   const analyzeImage = useCallback(async (fileToProcess?: File, urlToProcess?: string) => {
     const targetFile = fileToProcess || capturedFile;
     const targetUrl = urlToProcess || capturedUrl;
     if (!targetFile || !targetUrl) return;
     dispatch({ type: 'START_PROCESSING' });
     try {
-      let finalBlob: Blob = targetFile;
-
-      // Apply manual crop if provided
-      if (previewCompletedCrop && previewCompletedCrop.width > 0 && previewCompletedCrop.height > 0) {
-        const image = new Image();
-        image.src = targetUrl;
-        await new Promise((resolve) => { image.onload = resolve; });
-
-        const canvas = document.createElement('canvas');
-
-        // Use percentages against natural image size to avoid DOM scaling mismatches
-        const sx = (previewCompletedCrop.x / 100) * image.naturalWidth;
-        const sy = (previewCompletedCrop.y / 100) * image.naturalHeight;
-        const sWidth = (previewCompletedCrop.width / 100) * image.naturalWidth;
-        const sHeight = (previewCompletedCrop.height / 100) * image.naturalHeight;
-
-        canvas.width = sWidth;
-        canvas.height = sHeight;
-        const ctx = canvas.getContext('2d');
-
-        if (ctx) {
-          ctx.drawImage(
-            image,
-            sx,
-            sy,
-            sWidth,
-            sHeight,
-            0,
-            0,
-            canvas.width,
-            canvas.height
-          );
-
-          finalBlob = await new Promise<Blob>((resolve, reject) => {
-            canvas.toBlob((blob) => {
-              if (blob) resolve(blob);
-              else reject(new Error('Canvas to blob failed'));
-            }, 'image/jpeg', 0.95);
-          });
-        }
-      }
+      const finalBlob = await getCroppedBlob(targetFile, targetUrl);
 
       const cacheKey = `${finalBlob.size}_${finalBlob.type}`;
       let result;
@@ -283,13 +274,26 @@ export function CameraComp({
         formattedText
       });
 
+      const extractedLogoBlob = await logoService.current.detect(finalBlob);
+      let extractedLogoFile = null;
+      if (extractedLogoBlob) {
+        extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
+      }
+
       const finalFile = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
       const finalUrl = URL.createObjectURL(finalFile);
 
-      dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: null });
-    } catch (e) {
+      dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
+    } catch (e: any) {
       console.error(e);
-      dispatch({ type: 'ERROR', error: 'Analysis failed. Please try again.' });
+      toast.error(e.message || 'Analysis failed. Please try again.');
+      dispatch({ 
+        type: 'PREVIEW', 
+        file: targetFile, 
+        url: targetUrl, 
+        isBusinessCard: false,
+        error: e.message || 'Analysis failed. Please try again.'
+      });
     }
   }, [capturedFile, capturedUrl, processImage, previewCompletedCrop, fileNamePrefix, parseOcrResult]);
 
@@ -330,36 +334,16 @@ export function CameraComp({
       stopCamera();
 
       if (result?.detected) {
-        dispatch({ type: 'START_PROCESSING' });
-        try {
-          const croppedBlob = await cropperService.current.crop(video, result.rectangle, result.corners);
-          if (!croppedBlob) throw new Error('Failed to crop image');
+        const pctX = Math.max(0, Math.min(100, (result.rectangle.x / video.videoWidth) * 100));
+        const pctY = Math.max(0, Math.min(100, (result.rectangle.y / video.videoHeight) * 100));
+        const pctWidth = Math.max(0, Math.min(100 - pctX, (result.rectangle.width / video.videoWidth) * 100));
+        const pctHeight = Math.max(0, Math.min(100 - pctY, (result.rectangle.height / video.videoHeight) * 100));
 
-          const extractedLogoBlob = await logoService.current.detect(croppedBlob);
-          let extractedLogoFile = null;
-          if (extractedLogoBlob) {
-            extractedLogoFile = new File([extractedLogoBlob], buildCameraFileName('logo'), { type: 'image/png' });
-          }
-
-          const ocrResult = await processImage(croppedBlob);
-
-          const { data, formattedText } = parseOcrResult(ocrResult);
-
-          // Auto-store in clipboard
-          useClipboardStore.getState().addEntry({
-            source: 'BusinessCard',
-            data,
-            formattedText
-          });
-
-          const finalFile = new File([croppedBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
-          const finalUrl = URL.createObjectURL(finalFile);
-
-          dispatch({ type: 'PARSED', data, file: finalFile, url: finalUrl, logoFile: extractedLogoFile });
-        } catch (err: any) {
-          console.error(err);
-          dispatch({ type: 'ERROR', error: 'Processing failed. Please try again.' });
-        }
+        const crop: PercentCrop = { unit: '%', x: pctX, y: pctY, width: pctWidth, height: pctHeight };
+        
+        setPreviewCrop(crop);
+        setPreviewCompletedCrop(crop);
+        dispatch({ type: 'PREVIEW', file, url, isBusinessCard: true });
       } else {
         // Initialize a centered crop box
         setPreviewCrop({ unit: '%', x: 10, y: 20, width: 80, height: 60 });
@@ -382,7 +366,7 @@ export function CameraComp({
   }, [requestCameraPermission]);
 
   const uploadCapture = useCallback(async () => {
-    if (!capturedFile) return;
+    if (!capturedFile || !capturedUrl) return;
 
     try {
       dispatch({ type: 'START_UPLOAD' });
@@ -391,8 +375,11 @@ export function CameraComp({
 
       // Upload Card only if it's a newly captured image
       if (!initialAnalyzeFile) {
-        const entry = await attachmentService.createEntry(capturedFile.name, companyNo, formNo);
-        await attachmentService.uploadFile(entry.id, capturedFile);
+        const finalBlob = status === 'preview' ? await getCroppedBlob(capturedFile, capturedUrl) : capturedFile;
+        const finalFileToUpload = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+
+        const entry = await attachmentService.createEntry(finalFileToUpload.name, companyNo, formNo);
+        await attachmentService.uploadFile(entry.id, finalFileToUpload);
 
         const isVerified = await attachmentService.checkStatus(entry.id);
         if (!isVerified) throw new Error('Card upload status could not be verified by the backend.');
@@ -441,7 +428,7 @@ export function CameraComp({
       dispatch({ type: 'ERROR', error: message });
       toast.error(message);
     }
-  }, [capturedFile, logoFile, companyNo, formNo, onUploaded, onCardScanned, parsedData]);
+  }, [capturedFile, capturedUrl, status, logoFile, companyNo, formNo, onUploaded, onCardScanned, parsedData, previewCompletedCrop, fileNamePrefix, initialAnalyzeFile]);
 
   const cancel = useCallback(() => {
     stopCamera();

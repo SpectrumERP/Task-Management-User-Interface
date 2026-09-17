@@ -65,7 +65,7 @@ export const meetingParticipantSchema = z.object({
   }
 });
 
-export const meetingDiscussionSchema = z.object({
+export const getMeetingDiscussionSchema = (isHideType: boolean = false) => z.object({
   mnDiscussionDetailNo: z.number().optional(),
   topic: z.string().min(1, 'Topic is required').max(200, 'Topic cannot exceed 200 characters'),
   discussionSummary: z.string().max(700, 'Summary cannot exceed 700 characters').optional().nullable(),
@@ -93,7 +93,7 @@ export const meetingDiscussionSchema = z.object({
     if (data.operTaskCategoryNo == null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Category is required', path: ['operTaskCategoryNo'] });
     }
-    if (data.operTaskTypeNo == null) {
+    if (!isHideType && data.operTaskTypeNo == null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Type is required', path: ['operTaskTypeNo'] });
     }
     if (data.operTaskPriorityNo == null) {
@@ -118,7 +118,7 @@ export const meetingDocumentSchema = z.object({
   documentNoYearly: z.string().optional().nullable(),
 });
 
-export const getMeetingSchema = () => z.object({
+export const getMeetingSchema = (isHideType: boolean = false) => z.object({
   meetingNotesNo: z.number().optional(),
   meetingTitle: z.string().min(1, 'Meeting Title is required').max(200, 'Title cannot exceed 200 characters'),
   meetingTypeNo: z.string().min(1, 'Meeting Type is required'),
@@ -137,7 +137,7 @@ export const getMeetingSchema = () => z.object({
   documentStatusNo: z.number().default(1),
 
   participants: z.array(meetingParticipantSchema).min(1, 'At least one participant is required').default([]),
-  discussions: z.array(meetingDiscussionSchema).default([]),
+  discussions: z.array(getMeetingDiscussionSchema(isHideType)).default([]),
   documents: z.array(meetingDocumentSchema).default([]),
   attachments: z.array(z.any()).default([]),
 }).superRefine((data, ctx) => {
@@ -153,6 +153,6 @@ export const getMeetingSchema = () => z.object({
 });
 
 export type MeetingNotesParticipant = z.infer<typeof meetingParticipantSchema>;
-export type MeetingNotesDiscussion = z.infer<typeof meetingDiscussionSchema>;
+export type MeetingNotesDiscussion = z.infer<ReturnType<typeof getMeetingDiscussionSchema>>;
 export type MeetingNotesDocument = z.infer<typeof meetingDocumentSchema>;
 export type MeetingNotesFormData = z.infer<ReturnType<typeof getMeetingSchema>>;

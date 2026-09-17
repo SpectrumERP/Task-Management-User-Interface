@@ -150,7 +150,7 @@ export function MultiUserCombobox({
       </PopoverTrigger>
       <PopoverPrimitive.Portal container={container || document.body}>
         <PopoverPrimitive.Content
-          className="z-[100] w-[min(92vw,380px)] p-0 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] text-popover-foreground shadow-[0_16px_40px_-12px_rgba(15,23,42,0.45)] outline-none pointer-events-auto"
+          className="z-[100] w-[min(92vw,500px)] p-0 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] text-popover-foreground shadow-[0_16px_40px_-12px_rgba(15,23,42,0.45)] outline-none pointer-events-auto"
           align="start"
           sideOffset={6}
           onOpenAutoFocus={(event) => {
@@ -167,6 +167,14 @@ export function MultiUserCombobox({
                 className="h-10 border-none focus:ring-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500"
                 onValueChange={setSearch}
               />
+            </div>
+
+            <div className="flex px-3 py-2 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 pr-9">
+              <div className="grid grid-cols-[2fr_1.5fr_2fr] gap-3 w-full">
+                <div>User Name</div>
+                <div>Login ID</div>
+                <div>Email</div>
+              </div>
             </div>
 
             <CommandList className="max-h-72 overflow-y-auto p-1.5 scrollbar-hide">
