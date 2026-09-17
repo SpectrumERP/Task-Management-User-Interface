@@ -81,7 +81,7 @@ export function CityList() {
     if (!deleteTargetId) return;
     apiService.delete(`/api/master/cities/${deleteTargetId}`, {
       params: { companyNo }
-    }).then(() => { toast.success('Record deleted'); fetchCities(); }).catch(err => { console.error('Failed to delete city:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('City deleted'); fetchCities(); }).catch(err => { console.error('Failed to delete city:', err); toast.error('Failed to delete city'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -134,7 +134,8 @@ export function CityList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="city"
+      />
     </div>
   );
 }

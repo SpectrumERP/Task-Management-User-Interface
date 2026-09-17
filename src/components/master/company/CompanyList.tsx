@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
@@ -12,17 +12,79 @@ import {
   Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText, Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatUtcDateTime } from '@/lib/dateTime';
+import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
 import { MasterListHeader } from '../shared/MasterListHeader';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
+import { ActionTip, TruncatedText } from '../shared/TruncatedCellTip';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
+import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 
 /* API list payloads are loosely shaped; keep runtime mapping unchanged. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const FORM_NO = 1550;
-const TITLE = 'Business Entity Master';
+const TITLE = 'Business Entity';
 type CompanyViewMode = 'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment';
+
+/** Trim + lowercase. Empty / whitespace-only → no active search. */
+function normalizeSearchQuery(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
+function fieldIncludes(value: unknown, query: string): boolean {
+  if (value === null || value === undefined) return false;
+  return String(value).toLowerCase().includes(query);
+}
+
+/** Multi-field match: name, alias, code, geo, contacts, attachments. */
+function companyMatchesSearch(item: any, query: string): boolean {
+  if (
+    fieldIncludes(item.name, query)
+    || fieldIncludes(item.aliasName, query)
+    || fieldIncludes(item.code, query)
+    || fieldIncludes(item.country, query)
+    || fieldIncludes(item.state, query)
+    || fieldIncludes(item.city, query)
+  ) {
+    return true;
+  }
+  if (item.contacts?.some((c: any) =>
+    fieldIncludes(c.contactPersonName || c.contactName || c.name, query)
+    || fieldIncludes(c.email, query)
+    || fieldIncludes(c.phoneNo || c.phone, query)
+    || fieldIncludes(c.designation, query)
+    || fieldIncludes(c.department, query)
+  )) {
+    return true;
+  }
+  if (item.attachments?.some((a: any) =>
+    fieldIncludes(a.fileName || a.name, query)
+    || fieldIncludes(a.fileType, query)
+  )) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Name-primary search priority (lower = better).
+ * 1 exact name · 2 partial name · 3 exact alias · 4 partial alias · 5 other
+ */
+function getCompanySearchPriority(item: any, query: string): number {
+  const name = (item.name ?? '').toString().toLowerCase();
+  const alias = (item.aliasName ?? '').toString().toLowerCase();
+
+  if (name === query) return 1;
+  if (name.includes(query)) return 2;
+  if (alias === query) return 3;
+  if (alias.includes(query)) return 4;
+  return 5;
+}
 
 export function CompanyList() {
   const navigate = useNavigate();
@@ -38,6 +100,8 @@ export function CompanyList() {
   const [currentStartsWith, setCurrentStartsWith] = useState('');
   const [companyViewMode, setCompanyViewMode] = useState<CompanyViewMode>('list');
   const [isLoadingMoreCompanies, setIsLoadingMoreCompanies] = useState(false);
+  const [isListLoading, setIsListLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [pageSize] = useState(20);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,12 +142,15 @@ export function CompanyList() {
     pageSize?: number;
     appendMode?: 'append' | 'prepend' | 'replace';
   } = {}) => {
+    const appendMode = params.appendMode || 'replace';
+    if (appendMode === 'replace') {
+      setLoadError(false);
+    }
     try {
       const pSize = params.pageSize || pageSize;
       const targetStartsWith = Object.prototype.hasOwnProperty.call(params, 'startsWith')
         ? params.startsWith
         : currentStartsWith;
-      const appendMode = params.appendMode || 'replace';
 
       const queryParams: Record<string, string> = {
         PageSize: pSize.toString()
@@ -172,6 +239,7 @@ export function CompanyList() {
             id: detailNo.toString(),
             code: code.trim(),
             name: beName.trim(),
+            aliasName: (c.aliasName || c.businessEntityAlias || c.AliasName || '').toString().trim(),
             crmBusinessEntityTypeNo: 0,
             type: c.businessEntityTypeName || 'Operation',
             address: '', city: '', state: '', country: '', pinCode: '',
@@ -201,6 +269,7 @@ export function CompanyList() {
             id: detailNo.toString(),
             code: code.trim(),
             name: beName.trim(),
+            aliasName: (c.aliasName || c.businessEntityAlias || c.AliasName || '').toString().trim(),
             crmBusinessEntityTypeNo: 0,
             type: c.businessEntityTypeName || 'Operation',
             address: '', city: cityName, state: stateName, country: countryName, pinCode: '',
@@ -259,6 +328,7 @@ export function CompanyList() {
           id: beNo.toString(),
           code: code.trim(),
           name: name.trim(),
+          aliasName: (c.aliasName || c.businessEntityAlias || c.AliasName || '').toString().trim(),
           crmBusinessEntityTypeNo: typeNo ? parseInt(typeNo) : 0,
           type: typeName,
           address: addr, city: cityName, state: stateName, country: countryName, pinCode: pin,
@@ -297,6 +367,7 @@ export function CompanyList() {
       console.error('Failed to fetch API companies:', error);
       if (params.appendMode !== 'append' && params.appendMode !== 'prepend') {
         setApiCompanies([]);
+        setLoadError(true);
       }
     }
   };
@@ -336,6 +407,7 @@ export function CompanyList() {
         await fetchCompanies({ startsWith: '', cursorRowNo: lastRowNo, direction: 'Next', appendMode: 'append' });
       } catch (err) {
         console.error('Failed to load next page:', err);
+        toast.error('Failed to load more business entities');
       } finally {
         isLoadingRef.current = false;
         setIsLoadingMoreCompanies(false);
@@ -350,6 +422,7 @@ export function CompanyList() {
         await fetchCompanies({ startsWith: '', cursorRowNo: firstRowNo, direction: 'Prev', appendMode: 'prepend' });
       } catch (err) {
         console.error('Failed to load previous page:', err);
+        toast.error('Failed to load previous business entities');
       } finally {
         isLoadingRef.current = false;
         setIsLoadingMoreCompanies(false);
@@ -385,7 +458,11 @@ export function CompanyList() {
     setFirstRowNo(null);
     setLastRowNo(null);
     setApiCompanies([]);
-    void fetchCompanies({ appendMode: 'replace', startsWith: '' });
+    setIsListLoading(true);
+    setLoadError(false);
+    void fetchCompanies({ appendMode: 'replace', startsWith: '' }).finally(() => {
+      setIsListLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyViewMode, companyNo]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -395,30 +472,70 @@ export function CompanyList() {
     setCurrentPage(1);
   };
 
-  const filteredList = apiCompanies.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    const matchesName = item.name?.toLowerCase().includes(query);
-    const matchesCode = item.code?.toLowerCase().includes(query);
-    const matchesCountry = item.country?.toString().toLowerCase().includes(query);
-    const matchesState = item.state?.toString().toLowerCase().includes(query);
-    const matchesCity = item.city?.toString().toLowerCase().includes(query);
-    const matchesContactName = item.contacts?.some((c: any) =>
-      (c.contactPersonName || c.contactName || c.name)?.toLowerCase().includes(query)
-    );
-    const matchesAttachmentName = item.attachments?.some((a: any) =>
-      (a.fileName || a.name)?.toLowerCase().includes(query)
-    );
-    return matchesName || matchesCode || matchesCountry || matchesState || matchesCity || matchesContactName || matchesAttachmentName;
+  // Normalize → Filter → Rank → stable secondary order (original API index)
+  const filteredList = useMemo(() => {
+    const query = normalizeSearchQuery(searchQuery);
+    if (!query) return apiCompanies;
+
+    const matched: { item: any; priority: number; index: number }[] = [];
+    for (let index = 0; index < apiCompanies.length; index++) {
+      const item = apiCompanies[index];
+      if (!companyMatchesSearch(item, query)) continue;
+      matched.push({
+        item,
+        priority: getCompanySearchPriority(item, query),
+        index,
+      });
+    }
+
+    matched.sort((a, b) => a.priority - b.priority || a.index - b.index);
+    return matched.map((entry) => entry.item);
+  }, [apiCompanies, searchQuery]);
+
+  const getCompanySortValue = useCallback((row: any, key: string) => {
+    switch (key) {
+      case 'code': return row.code ?? '';
+      case 'name': return row.name ?? '';
+      case 'alias': return row.aliasName ?? '';
+      case 'type': return row.type ?? '';
+      case 'address': return row.address ?? '';
+      case 'city': return row.city ?? '';
+      case 'state': return row.state ?? '';
+      case 'country': return row.country ?? '';
+      case 'vatGst': return row.vatGst ?? '';
+      case 'creditLimit': return typeof row.creditLimit === 'number' ? row.creditLimit : Number(row.creditLimit) || 0;
+      case 'contactName': return row.contacts?.[0]?.contactPersonName || row.contacts?.[0]?.contactName || row.contacts?.[0]?.name || '';
+      case 'designation': return row.contacts?.[0]?.designation || '';
+      case 'department': return row.contacts?.[0]?.department || '';
+      case 'phone': return row.contacts?.[0]?.phoneNo || row.contacts?.[0]?.phone || '';
+      case 'email': return row.contacts?.[0]?.email || '';
+      case 'status': return row.contacts?.[0]?.status || row.status || '';
+      case 'fileName': return row.attachments?.[0]?.fileName || row.attachments?.[0]?.name || '';
+      case 'fileSize': return Number(row.attachments?.[0]?.fileSize) || 0;
+      case 'fileType': return row.attachments?.[0]?.fileType || '';
+      default: return (row as Record<string, unknown>)[key] ?? '';
+    }
+  }, []);
+
+  const {
+    sortCol,
+    sortDesc,
+    handleSort,
+    pageRows: paginatedList,
+    totalItems,
+    totalPages,
+    safePage: safeCurrentPage,
+    startIndex,
+    endIndex,
+  } = usePagedTableSort(filteredList, getCompanySortValue, {
+    defaultKey: 'code',
+    defaultDesc: false,
+    page: currentPage,
+    pageSize: itemsPerPage,
   });
 
-  const totalItems = filteredList.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const paginatedList = filteredList.slice(startIndex, endIndex);
-
   const groupedCompanies = useMemo(() => {
+    // Album view: letter-group the current page rows (name order for grouping only).
     const sorted = [...paginatedList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const groups: { letter: string; items: any[] }[] = [];
@@ -456,11 +573,11 @@ export function CompanyList() {
     apiService.delete('/api/master/business-entities/delete', {
       params: { businessEntityNo: deleteTargetId }
     }).then(() => {
-      toast.success('Record deleted');
+      toast.success('Business entity deleted');
       fetchCompanies();
     }).catch(err => {
       console.error('Failed to delete company via API:', err);
-      toast.error('Failed to delete record');
+      toast.error('Failed to delete business entity');
       fetchCompanies();
     });
     setDeleteConfirmOpen(false);
@@ -526,25 +643,57 @@ export function CompanyList() {
       </MasterListHeader>
 
       <div className="flex-1 min-h-0 flex flex-col select-none">
-        {filteredList.length === 0 ? (
+        {isListLoading && apiCompanies.length === 0 ? (
           <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
-            <div className="flex flex-col items-center justify-center p-10 text-center min-h-[200px]">
-              <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--tm-tint)] text-[#0EA5E9]/70">
-                <Layers size={22} strokeWidth={1.75} />
-              </span>
-              <h3 className="text-sm font-semibold text-slate-100 tracking-tight">No Companies Found</h3>
-              <p className="mt-1 max-w-sm text-[11px] font-medium text-slate-400 leading-relaxed">
-                No companies match your search criteria. Try adjusting filters or click the Add button above to create a new one.
-              </p>
+            <div className="flex items-center justify-center p-10 min-h-[200px]">
+              <BrandLoader size="sm" message="Loading business entities" />
             </div>
+          </div>
+        ) : loadError && apiCompanies.length === 0 ? (
+          <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+            <LoadErrorState
+              title="Failed to load business entities"
+              description="Could not load this list. Retry runs the same search again."
+              onRetry={() => {
+                setIsListLoading(true);
+                setLoadError(false);
+                void fetchCompanies({ appendMode: 'replace', startsWith: currentStartsWith || '' }).finally(() => {
+                  setIsListLoading(false);
+                });
+              }}
+            />
+          </div>
+        ) : filteredList.length === 0 ? (
+          <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+            <EmptyState
+              icon={Layers}
+              title={searchQuery.trim() ? 'No results match your search' : 'No Companies Found'}
+              description={
+                searchQuery.trim()
+                  ? 'Try a different search term or clear the search to see all business entities.'
+                  : 'No companies match your criteria. Try adjusting filters or click the Add button above to create a new one.'
+              }
+              actions={
+                searchQuery.trim() ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 rounded-[8px] text-xs font-semibold border-[var(--tm-border)]"
+                    onClick={() => handleSearchChange('')}
+                  >
+                    Clear search
+                  </Button>
+                ) : null
+              }
+            />
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden relative">
             <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
               <span className="text-[11px] font-semibold text-slate-400">Total {totalItems} Records</span>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => exportBusinessEntityReportToExcel(filteredList, companyViewMode, 'Business_Entity_Report.csv')}
                 className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
               >
@@ -552,9 +701,9 @@ export function CompanyList() {
                 Export CSV
               </Button>
             </div>
-            <div className="flex-1 min-h-0 flex relative">
+            <div className="flex-1 min-h-0 flex overflow-hidden">
               <div
-                className="flex-1 overflow-y-auto overflow-x-auto pr-10 scrollbar-thin min-h-0"
+                className="flex-1 overflow-y-auto overflow-x-auto scrollbar-thin min-h-0 min-w-0 relative z-0"
                 id="company-scroll-container"
                 onScroll={(e) => {
                   const target = e.currentTarget;
@@ -575,93 +724,225 @@ export function CompanyList() {
                 }}
               >
                 {companyViewMode === 'list' ? (
-                  <table className="tm-data-table w-full border-collapse text-left">
-                    <thead className="sticky top-0 z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
+                  <>
+                    <div className="md:hidden flex flex-col gap-2 p-2">
+                      {paginatedList.map((company: any) => {
+                        const locStr = [company.city, company.state, company.country].filter(Boolean).join(', ') || '—';
+                        const typeStr = company.type || '';
+                        return (
+                          <div
+                            key={company.id}
+                            className="rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 px-3 py-2.5"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <button
+                                type="button"
+                                className={cn(
+                                  'min-w-0 flex-1 text-left',
+                                  isUpdate && 'cursor-pointer'
+                                )}
+                                onClick={() => isUpdate && handleEditClick(company)}
+                              >
+                                <TruncatedText
+                                  text={company.code || ''}
+                                  className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums"
+                                />
+                                <TruncatedText
+                                  text={company.name || ''}
+                                  className="mt-0.5 text-sm font-semibold text-slate-100"
+                                />
+                                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-400">
+                                  {typeStr ? (
+                                    <span
+                                      className={cn(
+                                        'inline-flex px-1.5 py-0.5 rounded-[5px] text-[9px] font-semibold border',
+                                        typeStr === 'Buy'
+                                          ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+                                          : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                      )}
+                                    >
+                                      {typeStr}
+                                    </span>
+                                  ) : null}
+                                  {company.aliasName ? (
+                                    <span className="min-w-0 truncate">Alias: {company.aliasName}</span>
+                                  ) : null}
+                                  <span className="min-w-0 truncate">{locStr}</span>
+                                </div>
+                              </button>
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                {isUpdate ? (
+                                  <ActionTip label="Edit">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Edit"
+                                      onClick={() => handleEditClick(company)}
+                                      className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
+                                    >
+                                      <Edit size={14} />
+                                    </Button>
+                                  </ActionTip>
+                                ) : null}
+                                {isDelete ? (
+                                  <ActionTip label="Delete">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Delete"
+                                      onClick={() =>
+                                        handleDeleteClick(
+                                          company.id,
+                                          company.name || company.businessEntityName || company.code
+                                        )
+                                      }
+                                      className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  </ActionTip>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <table className="tm-data-table hidden md:table w-full min-w-[1100px] table-fixed border-collapse text-left">
+                    <colgroup>
+                      <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
+                    </colgroup>
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                       <tr>
-                        <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Code</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business Entity Name</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Type</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Primary Address</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">City</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">State</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Country</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">VAT/GST No.</th>
-                        <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Credit Limit</th>
-                        <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                        <th className="tm-col-id tm-col-sticky-code sticky left-0 z-[45] px-2 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('code', handleSort)}>
+                          <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} className="pr-1" />
+                        </th>
+                        <th className="min-w-[140px] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
+                          <SortableHeader label="Business Entity Name" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[10%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('alias', handleSort)}>
+                          <SortableHeader label="Alias" sortKey="alias" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('type', handleSort)}>
+                          <SortableHeader label="Type" sortKey="type" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('address', handleSort)}>
+                          <SortableHeader label="Primary Address" sortKey="address" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[7%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('city', handleSort)}>
+                          <SortableHeader label="City" sortKey="city" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[7%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('state', handleSort)}>
+                          <SortableHeader label="State" sortKey="state" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[7%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('country', handleSort)}>
+                          <SortableHeader label="Country" sortKey="country" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[8%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('vatGst', handleSort)}>
+                          <SortableHeader label="VAT/GST No." sortKey="vatGst" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[7%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('creditLimit', handleSort)}>
+                          <SortableHeader label="Credit Limit" sortKey="creditLimit" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {paginatedList.map((company: any) => {
                         const locStr = [company.address, company.city, company.state, company.country].filter(Boolean).join(', ') || 'N/A';
+                        const creditStr = company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit';
+                        const cityStr = company.city || 'N/A';
+                        const stateStr = company.state || 'N/A';
+                        const countryStr = company.country || 'N/A';
+                        const vatStr = company.vatGst || 'N/A';
+                        const typeStr = company.type || '';
+                        const nameStr = company.name || '';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
-                            <td className="px-3 py-2 pl-4">
-                              <span className="text-[11px] font-medium text-[#0EA5E9] whitespace-nowrap tabular-nums">
-                                {company.code}
-                              </span>
+                            <td className="tm-col-id tm-col-sticky-code sticky left-0 z-20 px-2 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                              <TruncatedText
+                                text={company.code || ''}
+                                className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
+                              />
                             </td>
                             <td
                               className={cn(
-                                'px-3 py-2 text-xs font-semibold text-slate-100 min-w-0',
+                                'tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-middle min-w-0',
                                 isUpdate && 'hover:text-[#0EA5E9] cursor-pointer'
                               )}
                               onClick={() => isUpdate && handleEditClick(company)}
                             >
-                              <div className="min-w-0 truncate">{company.name}</div>
+                              <TruncatedText text={nameStr} className="font-medium text-slate-50" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              <span
-                                className={cn(
-                                  'px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border',
-                                  company.type === 'Buy'
-                                    ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
-                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                                )}
-                              >
-                                {company.type}
-                              </span>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={company.aliasName || '—'} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 max-w-[200px] truncate" title={locStr}>
-                              {locStr}
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              {typeStr ? (
+                                <span
+                                  className={cn(
+                                    'inline-flex max-w-full truncate px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border leading-none',
+                                    typeStr === 'Buy'
+                                      ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+                                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                  )}
+                                  title={typeStr}
+                                >
+                                  {typeStr}
+                                </span>
+                              ) : (
+                                <span className="text-slate-500">—</span>
+                              )}
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              {company.city || 'N/A'}
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={locStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              {company.state || 'N/A'}
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={cityStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              {company.country || 'N/A'}
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={stateStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300 font-mono">
-                              {company.vatGst || 'N/A'}
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={countryStr} className="text-slate-300" />
                             </td>
-                            <td className="px-3 py-2 text-xs font-medium text-slate-300">
-                              {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 font-mono align-middle min-w-0">
+                              <TruncatedText text={vatStr} className="text-slate-300 font-mono" />
                             </td>
-                            <td className="px-3 py-2 pr-4 text-right">
-                              <div className="flex items-center justify-end gap-0.5">
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={creditStr} className="text-slate-300" />
+                            </td>
+                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                              <div className="inline-flex items-center justify-center gap-0.5">
                                 {isUpdate ? (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleEditClick(company)}
-                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
-                                  >
-                                    <Edit size={13} />
-                                  </Button>
+                                  <ActionTip label="Edit">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Edit"
+                                      onClick={() => handleEditClick(company)}
+                                      className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
+                                    >
+                                      <Edit size={13} />
+                                    </Button>
+                                  </ActionTip>
                                 ) : null}
                                 {isDelete ? (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)}
-                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                                  >
-                                    <Trash2 size={13} />
-                                  </Button>
+                                  <ActionTip label="Delete">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Delete"
+                                      onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)}
+                                      className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                                    >
+                                      <Trash2 size={13} />
+                                    </Button>
+                                  </ActionTip>
                                 ) : null}
                               </div>
                             </td>
@@ -670,6 +951,7 @@ export function CompanyList() {
                       })}
                     </tbody>
                   </table>
+                  </>
                 ) : companyViewMode === 'album' ? (
                   <div className="space-y-5 p-3">
                     {groupedCompanies.map((group) => (
@@ -687,63 +969,71 @@ export function CompanyList() {
                                     {company.name ? company.name.substring(0, 2) : 'BE'}
                                   </div>
                                   <div className="min-w-0">
-                                    <h4 className="text-[11px] font-semibold text-slate-50 leading-tight group-hover:text-[#0EA5E9] transition-colors truncate" title={company.name}>{company.name}</h4>
-                                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                    <TruncatedText text={company.name || ''} className="text-[11px] font-semibold text-slate-50 leading-tight group-hover:text-[#0EA5E9] transition-colors" />
+                                    <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0">
                                       <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-elevated)] text-slate-300 border border-[var(--tm-border)]/80">{company.code}</span>
-                                      <span className={cn("text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] border",
-                                        company.type === 'Buy' ? "bg-sky-500/15 text-sky-400 border-sky-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30")}>
-                                        {company.type}
-                                      </span>
+                                      <div className={cn(
+                                        "min-w-0 max-w-full text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] border leading-snug",
+                                        company.type === 'Buy' ? "bg-sky-500/15 text-sky-400 border-sky-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                      )}>
+                                        <TruncatedText text={company.type || ''} />
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-0.5 shrink-0">
                                   {isUpdate && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
-                                      <Edit size={11} />
-                                    </Button>
+                                    <ActionTip label="Edit">
+                                      <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                                        <Edit size={11} />
+                                      </Button>
+                                    </ActionTip>
                                   )}
                                   {isDelete && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
-                                      <Trash2 size={11} />
-                                    </Button>
+                                    <ActionTip label="Delete">
+                                      <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
+                                        <Trash2 size={11} />
+                                      </Button>
+                                    </ActionTip>
                                   )}
                                 </div>
                               </div>
 
                               <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 py-1.5 border-t border-b border-[var(--tm-border)] text-[10px] font-medium text-slate-500">
-                                <div className="col-span-2">
+                                <div className="col-span-2 min-w-0">
                                   <span className="text-[8px] font-semibold text-[#0EA5E9] block mb-0.5">Primary Location</span>
-                                  <span className="text-slate-100 font-medium block truncate leading-snug" title={company.address || 'N/A'}>{company.address || 'N/A'}</span>
+                                  <TruncatedText text={company.address || 'N/A'} className="text-slate-100 font-medium leading-snug" />
                                 </div>
                                 <div className="min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">City & PIN Code</span>
-                                  <span className="text-slate-200 font-medium block truncate" title={[company.city, company.pinCode].filter(Boolean).join(' - ')}>
-                                    {[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'}
-                                  </span>
+                                  <TruncatedText text={[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'} className="text-slate-200 font-medium" />
                                 </div>
                                 <div className="min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">State & Country</span>
-                                  <span className="text-slate-200 font-medium block truncate" title={[company.state, company.country].filter(Boolean).join(', ')}>
-                                    {[company.state, company.country].filter(Boolean).join(', ') || 'N/A'}
-                                  </span>
+                                  <TruncatedText text={[company.state, company.country].filter(Boolean).join(', ') || 'N/A'} className="text-slate-200 font-medium" />
                                 </div>
                                 <div className="col-span-2 min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">Credit limit & GST</span>
-                                  <span className="text-slate-200 font-medium block truncate" title={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}>
-                                    {company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}
-                                    {company.vatGst ? ` | GST: ${company.vatGst}` : ''}
-                                  </span>
+                                  <TruncatedText
+                                    text={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}
+                                    className="text-slate-200 font-medium"
+                                  />
                                 </div>
                               </div>
 
                               <div className="flex items-center justify-between text-[9px] font-medium text-slate-400 pt-0.5 mt-auto">
                                 <span className="flex items-center gap-1 min-w-0">
                                   <User size={10} className="text-slate-400 shrink-0" />
-                                  Created By: <strong className="text-slate-300 truncate max-w-[100px]">{company.createdBy || company.displayName || company.userName || 'System'}</strong>
+                                  <span className="shrink-0">Created By:</span>
+                                  <div className="min-w-0 flex-1 overflow-hidden">
+                                    <TruncatedText
+                                      text={company.createdBy || company.displayName || company.userName || 'System'}
+                                      className="text-slate-300 font-semibold"
+                                    />
+                                  </div>
                                 </span>
                                 <span className="text-[8px] text-slate-400 font-semibold shrink-0">
-                                  {company.createdDate ? new Date(company.createdDate).toLocaleDateString() : ''}
+                                  {company.createdDate ? formatUtcDateTime(company.createdDate) : ''}
                                 </span>
                               </div>
                             </Card>
@@ -753,74 +1043,104 @@ export function CompanyList() {
                     ))}
                   </div>
                 ) : companyViewMode === 'contact-list' ? (
-                  <div className="space-y-5 p-3">
-                    {groupedCompanies.map((group) => {
-                      const hasContacts = group.items.some(c => c.contacts && c.contacts.length > 0);
-                      if (!hasContacts) return null;
-
-                      return (
-                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
-                            <span>Alphabet {group.letter}</span>
-                            <span className="text-[10px] font-medium opacity-70">Contacts</span>
-                          </div>
-
-                          <div className="rounded-[8px] border border-[var(--tm-border)]/70 overflow-hidden bg-[var(--tm-surface)]">
-                            <table className="tm-data-table w-full border-collapse text-left">
-                              <thead className="sticky top-[28px] z-10 bg-[var(--tm-muted)]/95 backdrop-blur-sm border-b border-[var(--tm-border)]">
-                                <tr>
-                                  <th className="px-3 py-2 pl-4 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Contact Name</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Business Entity</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Designation</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Department</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Phone</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Email</th>
-                                  <th className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Status</th>
-                                  <th className="px-3 py-2 pr-4 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-500">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {group.items.map((company: any) =>
-                                  (company.contacts || []).map((contact: any, cIdx: number) => (
-                                    <tr key={`${company.id}-${cIdx}`} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors">
-                                      <td className="px-3 py-2 pl-4 text-xs font-semibold text-slate-100">
-                                        {contact.contactPersonName || contact.contactName || contact.name}
-                                      </td>
-                                      <td
-                                        className={cn('px-3 py-2 text-xs font-medium text-slate-200', isUpdate && 'hover:text-[#0EA5E9] cursor-pointer')}
-                                        onClick={() => isUpdate && handleEditClick(company)}
-                                      >
-                                        {company.name}
-                                      </td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.designation || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.department || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-300 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs font-medium text-slate-300">{contact.email || 'N/A'}</td>
-                                      <td className="px-3 py-2 text-xs">
-                                        <span className={cn(
-                                          'px-2 py-0.5 rounded-[6px] text-[8px] font-semibold',
-                                          (contact.status || 'Active') === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[var(--tm-muted)] text-slate-500 border border-[var(--tm-border)]'
-                                        )}>
-                                          {contact.status || 'Active'}
-                                        </span>
-                                      </td>
-                                      <td className="px-3 py-2 pr-4 text-right">
-                                        {isUpdate ? (
-                                          <Button type="button" variant="ghost" size="icon" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] ml-auto">
-                                            <Edit size={13} />
-                                          </Button>
-                                        ) : null}
-                                      </td>
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <table className="tm-data-table w-full min-w-[960px] table-fixed border-collapse text-left">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                      <tr>
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('contactName', handleSort)}>
+                          <SortableHeader label="Contact Name" sortKey="contactName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[18%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
+                          <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[14%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('designation', handleSort)}>
+                          <SortableHeader label="Designation" sortKey="designation" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('department', handleSort)}>
+                          <SortableHeader label="Department" sortKey="department" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('phone', handleSort)}>
+                          <SortableHeader label="Phone" sortKey="phone" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[16%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('email', handleSort)}>
+                          <SortableHeader label="Email" sortKey="email" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[8%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('status', handleSort)}>
+                          <SortableHeader label="Status" sortKey="status" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedList.map((company: any) => {
+                        const contact = company.contacts?.[0] || {};
+                        const contactName = contact.contactPersonName || contact.contactName || contact.name || '';
+                        const phoneStr = contact.phoneNo || contact.phone || 'N/A';
+                        const emailStr = contact.email || 'N/A';
+                        const designationStr = contact.designation || 'N/A';
+                        const departmentStr = contact.department || 'N/A';
+                        const statusStr = contact.status || company.status || 'Active';
+                        return (
+                          <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors">
+                            <td className="tm-col-sticky-code tm-col-primary sticky left-0 z-20 px-3 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                              <TruncatedText text={contactName} className="font-medium text-slate-50" />
+                            </td>
+                            <td
+                              className={cn('px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0', isUpdate && 'cursor-pointer')}
+                              onClick={() => isUpdate && handleEditClick(company)}
+                            >
+                              <TruncatedText
+                                text={company.name || ''}
+                                className={cn('text-slate-300', isUpdate && 'hover:text-[#0EA5E9]')}
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={designationStr} className="text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={departmentStr} className="text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={phoneStr} className="text-slate-300 font-mono" />
+                            </td>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={emailStr} className="text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle whitespace-nowrap">
+                              <span className={cn(
+                                'inline-flex px-2 py-0.5 rounded-[6px] text-[8px] font-semibold',
+                                statusStr === 'Active' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-[var(--tm-muted)] text-slate-500 border border-[var(--tm-border)]'
+                              )}>
+                                {statusStr}
+                              </span>
+                            </td>
+                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                              <div className="inline-flex items-center justify-center gap-0.5">
+                                <BusinessEntityShareMenu
+                                  mode="contact"
+                                  contact={{
+                                    companyName: company.name,
+                                    companyCode: company.code,
+                                    name: contactName,
+                                    designation: contact.designation,
+                                    department: contact.department,
+                                    phone: contact.phoneNo || contact.phone,
+                                    email: contact.email,
+                                  }}
+                                />
+                                {isUpdate ? (
+                                  <ActionTip label="Edit">
+                                    <Button type="button" variant="ghost" size="icon" aria-label="Edit" onClick={() => handleEditClick(company)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                                      <Edit size={13} />
+                                    </Button>
+                                  </ActionTip>
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 ) : companyViewMode === 'contact-album' ? (
                   <div className="space-y-5 p-3">
                     {groupedCompanies.map((group) => {
@@ -866,20 +1186,36 @@ export function CompanyList() {
                                         <span className="text-slate-400">Phone:</span>
                                         <span className="text-slate-200 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
                                       </div>
-                                      <div className="flex justify-between gap-2">
-                                        <span className="text-slate-400">Email:</span>
-                                        <span className="text-slate-200 truncate max-w-[150px]">{contact.email || 'N/A'}</span>
+                                      <div className="flex justify-between gap-2 min-w-0">
+                                        <span className="text-slate-400 shrink-0">Email:</span>
+                                        <div className="min-w-0 max-w-[150px] overflow-hidden">
+                                          <TruncatedText text={contact.email || 'N/A'} className="text-slate-200 text-right" />
+                                        </div>
                                       </div>
                                     </div>
 
                                     <div className="pt-2 mt-auto flex items-center justify-between border-t border-[var(--tm-border)]">
                                       <span className="text-[9px] text-slate-400 font-medium">Code: {company.code}</span>
-                                      {isUpdate && (
-                                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(company)} className="h-7 rounded-[6px] text-slate-500 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] text-[10px] font-semibold gap-1">
-                                          <Edit size={11} />
-                                          Edit
-                                        </Button>
-                                      )}
+                                      <div className="flex items-center gap-0.5">
+                                        <BusinessEntityShareMenu
+                                          mode="contact"
+                                          contact={{
+                                            companyName: company.name,
+                                            companyCode: company.code,
+                                            name: cName,
+                                            designation: contact.designation,
+                                            department: contact.department,
+                                            phone: contact.phoneNo || contact.phone,
+                                            email: contact.email,
+                                          }}
+                                        />
+                                        {isUpdate && (
+                                          <Button variant="ghost" size="sm" onClick={() => handleEditClick(company)} className="h-7 rounded-[6px] text-slate-500 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] text-[10px] font-semibold gap-1">
+                                            <Edit size={11} />
+                                            Edit
+                                          </Button>
+                                        )}
+                                      </div>
                                     </div>
                                   </Card>
                                 );
@@ -891,102 +1227,95 @@ export function CompanyList() {
                     })}
                   </div>
                 ) : (
-                  <div className="space-y-5 p-3">
-                    {groupedCompanies.map((group) => {
-                      const mergedMap = new Map<string, any>();
-                      group.items.forEach((c: any) => {
-                        const key = c.name || c.id;
-                        if (mergedMap.has(key)) {
-                          mergedMap.get(key).attachments.push(...(c.attachments || []));
-                        } else {
-                          mergedMap.set(key, { ...c, attachments: [...(c.attachments || [])] });
-                        }
-                      });
-
-                      const mergedItems = Array.from(mergedMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                      const hasAttachments = mergedItems.some(c => c.attachments && c.attachments.length > 0);
-                      if (!hasAttachments) return null;
-
-                      return (
-                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
-                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
-                            <span>Alphabet {group.letter}</span>
-                            <span className="text-[10px] font-medium opacity-70">{mergedItems.length} Entities</span>
-                          </div>
-                          <div className="space-y-3">
-                            {mergedItems.map((company: any) => {
-                              if (!company.attachments || company.attachments.length === 0) return null;
-                              return (
-                                <div key={company.id} className="bg-[var(--tm-elevated)] rounded-[8px] border border-[var(--tm-border)]/70 p-4">
-                                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--tm-border)]/60 mb-3">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-8 h-8 rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] flex items-center justify-center font-semibold text-sm uppercase">
-                                        {company.name ? company.name.substring(0, 2) : 'BE'}
-                                      </div>
-                                      <div>
-                                        <h4 className={cn('text-xs font-semibold text-slate-50', isUpdate && 'hover:text-[#0EA5E9] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</h4>
-                                        <p className="text-[9px] font-medium text-slate-400">{company.code} Ã¢ÂÂ¢ {company.type}</p>
-                                      </div>
-                                    </div>
-                                    <span className="text-[10px] text-slate-500 font-semibold bg-[var(--tm-surface)] px-2.5 py-1 rounded-[6px] border border-[var(--tm-border)]/80">
-                                      {company.attachments?.length || 0} Document(s)
-                                    </span>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                    {company.attachments.map((att: any, idx: number) => {
-                                      const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
-                                      const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
-                                      const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
-
-                                      return (
-                                        <Card key={idx} className="bg-[var(--tm-surface)] rounded-[8px] border border-[var(--tm-border)]/70 p-3.5 hover:shadow-md hover:border-[#0EA5E9]/30 transition-all flex flex-col justify-between gap-3 group">
-                                          <div className="flex items-start gap-3">
-                                            <div className={cn(
-                                              'p-2 rounded-[8px] shrink-0 flex items-center justify-center',
-                                              isPdf ? 'bg-red-500/10 text-red-500' : isSheet ? 'bg-emerald-500/15 text-emerald-500' : isDoc ? 'bg-blue-500/15 text-blue-500' : 'bg-[var(--tm-muted)] text-slate-500'
-                                            )}>
-                                              <FileText size={18} />
-                                            </div>
-                                            <div className="min-w-0">
-                                              <h5 className="text-xs font-semibold text-slate-200 truncate leading-snug group-hover:text-[#0EA5E9] transition-colors">{att.fileName || att.name}</h5>
-                                              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                                                <p className="text-[9px] text-slate-400 font-medium font-mono">
-                                                  {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
-                                                </p>
-                                                {att.fileType ? (
-                                                  <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-elevated)] text-slate-500 border border-[var(--tm-border)]/80">{att.fileType}</span>
-                                                ) : null}
-                                              </div>
-                                            </div>
-                                          </div>
-
-                                          <div className="flex items-center justify-end pt-2 border-t border-[var(--tm-border)] mt-auto">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
-                                              className="h-7 px-2.5 rounded-[6px] text-[9px] font-semibold text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30"
-                                            >
-                                              Download
-                                            </Button>
-                                          </div>
-                                        </Card>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <table className="tm-data-table w-full min-w-[900px] table-fixed border-collapse text-left">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                      <tr>
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[28%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('fileName', handleSort)}>
+                          <SortableHeader label="File Name" sortKey="fileName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[22%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
+                          <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="tm-col-code px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('code', handleSort)}>
+                          <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('fileType', handleSort)}>
+                          <SortableHeader label="Type" sortKey="fileType" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="w-[12%] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('fileSize', handleSort)}>
+                          <SortableHeader label="Size" sortKey="fileSize" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                        </th>
+                        <th className="tm-col-actions sticky right-0 z-40 w-[160px] px-1 py-2.5 pr-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedList.map((company: any) => {
+                        const att = company.attachments?.[0] || {};
+                        const fileName = att.fileName || att.name || '';
+                        const fileType = att.fileType || '—';
+                        const sizeStr = att.fileSize ? `${(Number(att.fileSize) / 1024).toFixed(1)} KB` : '—';
+                        return (
+                          <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
+                            <td className="tm-col-sticky-code tm-col-primary sticky left-0 z-20 px-3 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText size={14} className="shrink-0 text-slate-400" />
+                                <TruncatedText
+                                  text={fileName}
+                                  className="font-medium text-slate-50 group-hover:text-[#0EA5E9] transition-colors"
+                                />
+                              </div>
+                            </td>
+                            <td
+                              className={cn('px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0', isUpdate && 'cursor-pointer')}
+                              onClick={() => isUpdate && handleEditClick(company)}
+                            >
+                              <TruncatedText
+                                text={company.name || ''}
+                                className={cn('text-slate-300', isUpdate && 'hover:text-[#0EA5E9]')}
+                              />
+                            </td>
+                            <td className="tm-col-code px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={company.code || ''} className="text-[11px] font-medium text-[#0EA5E9] tabular-nums" />
+                            </td>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={fileType} className="text-slate-300" />
+                            </td>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                              <TruncatedText text={sizeStr} className="text-slate-300 font-mono" />
+                            </td>
+                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                              <div className="inline-flex items-center justify-center gap-1">
+                                {att.id ? (
+                                  <BusinessEntityShareMenu
+                                    mode="attachment"
+                                    attachmentId={att.id}
+                                    fileName={fileName || 'document'}
+                                    companyName={company.name}
+                                    iconOnly={false}
+                                  />
+                                ) : null}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
+                                  className="h-7 px-2.5 rounded-[6px] text-[9px] font-semibold text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30"
+                                >
+                                  Download
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 )}
               </div>
 
-              <div className="absolute right-1.5 top-2 bottom-2 w-9 bg-[var(--tm-surface)]/95 backdrop-blur-sm rounded-[8px] border border-[var(--tm-border)]/80 shadow-sm flex flex-col items-center justify-between py-2 z-20 select-none">
+              <aside
+                aria-label="Jump to letter"
+                className="shrink-0 w-10 self-stretch border-l border-[var(--tm-border)] bg-[var(--tm-elevated)] z-20 relative flex flex-col items-stretch justify-evenly py-2 px-0.5 select-none overflow-hidden shadow-[-6px_0_12px_-8px_rgba(0,0,0,0.35)]"
+              >
                 {'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((char) => {
                   const hasItems = apiAlphabets.includes(char) || apiAlphabets.includes(char.toLowerCase());
                   const isSelected = currentStartsWith === char;
@@ -996,8 +1325,9 @@ export function CompanyList() {
                       type="button"
                       disabled={!hasItems}
                       onClick={() => handleAlphabetClick(char)}
+                      title={hasItems ? `Jump to ${char}` : undefined}
                       className={cn(
-                        'h-5 w-5 text-[9px] font-semibold rounded-[5px] flex items-center justify-center transition-colors',
+                        'flex-1 min-h-0 w-full max-h-5 text-[8px] font-semibold rounded-[4px] flex items-center justify-center leading-none transition-colors',
                         isSelected
                           ? 'bg-[#0EA5E9] text-white'
                           : hasItems
@@ -1009,7 +1339,7 @@ export function CompanyList() {
                     </button>
                   );
                 })}
-              </div>
+              </aside>
             </div>
             {paginationBar}
           </div>
@@ -1021,6 +1351,7 @@ export function CompanyList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
+        entityLabel="business entity"
       />
     </div>
   );

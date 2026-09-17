@@ -79,7 +79,7 @@ export function VesselList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/vessels/delete', {
       params: { vesselNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchVessels(); }).catch(err => { console.error('Failed to delete vessel:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Vessel deleted'); fetchVessels(); }).catch(err => { console.error('Failed to delete vessel:', err); toast.error('Failed to delete vessel'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -129,7 +129,8 @@ export function VesselList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="vessel"
+      />
     </div>
   );
 }

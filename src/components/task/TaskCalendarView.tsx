@@ -3,7 +3,9 @@ import { Task, TaskStatus } from '@/types/task';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getPriorityBadgeClass } from '@/lib/priorityStyles';
+import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import { BrandLoader } from '@/components/ui/BrandLoader';
+import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import {
   ChevronLeft,
   ChevronRight,
@@ -33,10 +35,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
+import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 
 interface TaskCalendarViewProps {
   tasks: Task[];
   isLoading?: boolean;
+  loadError?: boolean;
+  onRetryLoad?: () => void;
   onTaskClick: (taskId: number) => void;
   onAddTask?: (date?: Date) => void;
   showFilters?: boolean;
@@ -78,7 +83,9 @@ function getContrastColor(hexColor: string): string {
 
 export function TaskCalendarView({ 
   tasks, 
-  isLoading, 
+  isLoading,
+  loadError,
+  onRetryLoad,
   onTaskClick, 
   onAddTask,
   showFilters,
@@ -199,14 +206,24 @@ export function TaskCalendarView({
   // Get Priority colors
   const getPriorityStyle = (priority: string) => getPriorityBadgeClass(priority, null, 'soft');
 
-  // Get Status styles
+  // Get Status styles — text color only (no badge background)
   const getStatusBadge = (status: TaskStatus) => {
-    switch (status) {
-      case 'Done': return <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full"><CheckCircle2 size={10} /> Done</span>;
-      case 'In Progress': return <span className="flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full"><Clock size={10} /> Progress</span>;
-      case 'In Review': return <span className="flex items-center gap-1 text-[10px] font-medium text-indigo-400 bg-indigo-500/15 px-2 py-0.5 rounded-full"><Layers size={10} /> Review</span>;
-      default: return <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-[var(--tm-muted)] px-2 py-0.5 rounded-full">Todo</span>;
-    }
+    const label =
+      status === 'In Progress' ? 'Progress' :
+      status === 'In Review' ? 'Review' :
+      status === 'Done' ? 'Done' :
+      status || 'Todo';
+    const Icon =
+      status === 'Done' ? CheckCircle2 :
+      status === 'In Progress' ? Clock :
+      status === 'In Review' ? Layers :
+      null;
+    return (
+      <span className={cn('flex items-center gap-1 text-[10px]', getStatusTextClass(status))}>
+        {Icon ? <Icon size={10} /> : null}
+        {label}
+      </span>
+    );
   };
 
   // --- RENDER MONTH VIEW ---
@@ -258,9 +275,12 @@ export function TaskCalendarView({
             const isCurrentMonth = date.getMonth() === month;
             const isToday = new Date().toDateString() === date.toDateString();
             const dayTasks = sortTasks(tasks.filter(t => isTaskOnDate(t, date)));
-            const maxVisible = 2;
-            const visibleTasks = dayTasks.slice(0, maxVisible);
-            const overflowCount = dayTasks.length - visibleTasks.length;
+            // Cell fits ~2 task pills OR 1 pill + "+N more". Showing 2 pills + more clips the last pill.
+            const maxTaskSlots = 2;
+            const hasOverflow = dayTasks.length > maxTaskSlots;
+            const visibleCount = hasOverflow ? maxTaskSlots - 1 : Math.min(dayTasks.length, maxTaskSlots);
+            const visibleTasks = dayTasks.slice(0, visibleCount);
+            const overflowCount = dayTasks.length - visibleCount;
 
             return (
               <div
@@ -297,7 +317,7 @@ export function TaskCalendarView({
                 </div>
 
                 <div className="flex flex-col flex-1 min-h-0 gap-0.5">
-                  <div className="space-y-0.5 min-h-0 overflow-hidden">
+                  <div className="flex flex-col gap-0.5 min-h-0 overflow-hidden">
                     {visibleTasks.map(task => {
                       const customColor = task.calendarColor && task.calendarColor !== 'none' ? task.calendarColor : null;
                       const isHovered = hoveredTaskNo === task.taskNo;
@@ -324,19 +344,20 @@ export function TaskCalendarView({
                             zIndex: isHovered ? 9999 : undefined
                           }}
                           className={cn(
-                            "px-1.5 py-0.5 rounded-[6px] text-[10px] font-medium truncate cursor-pointer transition-all hover:brightness-[0.98] flex items-center justify-between border shrink-0",
+                            "px-1.5 py-0.5 rounded-[6px] text-[10px] font-medium cursor-pointer transition-all hover:brightness-[0.98] flex items-center justify-between border shrink-0 min-h-[22px]",
                             task.isAllDay ? "" : "hover:bg-[var(--tm-muted)]"
                           )}
-                          title={task.title}
                         >
-                          <div className="flex items-center gap-1 truncate max-w-[85%]">
+                          <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden max-w-[85%]">
                             {customColor && !task.isAllDay && (
                               <span
                                 className="w-1.5 h-1.5 rounded-full shrink-0 border border-black/5"
                                 style={{ backgroundColor: customColor }}
                               />
                             )}
-                            <span className="truncate">{task.title}</span>
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <TruncatedText text={task.title} className="text-[10px] font-medium" />
+                            </div>
                           </div>
                           {!task.isAllDay && task.priority === 'Urgent' && (
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 ml-1" />
@@ -500,10 +521,9 @@ export function TaskCalendarView({
                         backgroundColor: hasColor ? t.calendarColor : '#94a3b8',
                         color: hasColor ? getContrastColor(t.calendarColor!) : '#ffffff'
                       }}
-                      className="px-2 py-0.5 rounded-md text-[9px] font-medium truncate cursor-pointer transition-all hover:scale-[1.02] shadow-sm"
-                      title={t.title}
+                      className="px-2 py-0.5 rounded-md text-[9px] font-medium cursor-pointer transition-all hover:scale-[1.02] shadow-sm overflow-hidden"
                     >
-                      {t.title}
+                      <TruncatedText text={t.title} className="text-[9px] font-medium" />
                     </div>
                   );
                 })}
@@ -577,8 +597,8 @@ export function TaskCalendarView({
                           width < 100 ? "rounded-lg border-[var(--tm-border)]" : "rounded-xl border-[var(--tm-border)]"
                         )}
                       >
-                        <div className="overflow-hidden">
-                          <h4 className="text-[10px] font-medium text-slate-100 leading-tight truncate">{task.title}</h4>
+                        <div className="overflow-hidden min-w-0">
+                          <TruncatedText text={task.title} className="text-[10px] font-medium text-slate-100 leading-tight" />
                           <span className="text-[8px] font-medium text-slate-400 block mt-0.5">
                             {task.start_date ? new Date(task.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                           </span>
@@ -700,8 +720,10 @@ export function TaskCalendarView({
                     )}
                   >
                     <div>
-                      <div className="flex items-center justify-between gap-0.5">
-                        <h4 className="text-xs font-medium text-slate-100 truncate">{task.title}</h4>
+                      <div className="flex items-center justify-between gap-0.5 min-w-0">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <TruncatedText text={task.title} className="text-xs font-medium text-slate-100" />
+                        </div>
                         {getStatusBadge(task.status)}
                       </div>
 
@@ -850,13 +872,17 @@ export function TaskCalendarView({
 
                         {/* Assignee Avatar */}
                         {task.assignedDisplayName && (
-                          <div className="flex items-center gap-1 bg-[#e1ecf7]/40 px-1.5 py-0.5 rounded-xl border border-[#0EA5E9]/10">
+                          <div className="flex items-center gap-1 bg-[#e1ecf7]/40 px-1.5 py-0.5 rounded-xl border border-[#0EA5E9]/10 max-w-full min-w-0" onClick={(e) => e.stopPropagation()}>
                             <UserAvatar
                               loginNo={task.owner_user_No}
                               displayName={task.assignedDisplayName}
-                              className="h-4.5 w-4.5 text-[8px]"
+                              size="sm"
+                              className="h-4.5 w-4.5 shrink-0"
                             />
-                            <span className="text-[9px] font-medium text-slate-200">{task.assignedDisplayName}</span>
+                            <TruncatedText
+                              text={task.assignedDisplayName}
+                              className="text-[9px] font-medium text-slate-200"
+                            />
                           </div>
                         )}
                       </div>
@@ -919,19 +945,21 @@ export function TaskCalendarView({
             </button>
 
             {onToggleFilters && (
-              <button
-                type="button"
-                onClick={onToggleFilters}
-                title="Filters"
-                className={cn(
-                  "h-8 w-8 inline-flex items-center justify-center rounded-[8px] border transition-colors",
-                  showFilters
-                    ? "border-[#0EA5E9]/35 bg-[var(--tm-tint)] text-[#0EA5E9]"
-                    : "border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-500 hover:text-[#0EA5E9] hover:border-[#0EA5E9]/25"
-                )}
-              >
-                <SlidersHorizontal size={14} className={cn(showFilters && "rotate-180 transition-transform")} />
-              </button>
+              <ActionTip label="Filters">
+                <button
+                  type="button"
+                  onClick={onToggleFilters}
+                  aria-label="Filters"
+                  className={cn(
+                    "h-8 w-8 inline-flex items-center justify-center rounded-[8px] border transition-colors",
+                    showFilters
+                      ? "border-[#0EA5E9]/35 bg-[var(--tm-tint)] text-[#0EA5E9]"
+                      : "border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-500 hover:text-[#0EA5E9] hover:border-[#0EA5E9]/25"
+                  )}
+                >
+                  <SlidersHorizontal size={14} className={cn(showFilters && "rotate-180 transition-transform")} />
+                </button>
+              </ActionTip>
             )}
 
             {onViewModeChange && (
@@ -1008,6 +1036,12 @@ export function TaskCalendarView({
           <div className="flex flex-col items-center justify-center py-28">
             <BrandLoader size="sm" message="Loading schedule" />
           </div>
+        ) : loadError && tasks.length === 0 ? (
+          <LoadErrorState
+            title="Failed to load schedule"
+            description="Could not load calendar tasks. Retry uses the same filters."
+            onRetry={onRetryLoad}
+          />
         ) : (
           <>
             {viewMode === 'month' && renderMonthView()}
@@ -1060,8 +1094,8 @@ export function TaskCalendarView({
                   style={{ borderLeft: `3px solid ${customColor}`, backgroundColor: `${customColor}0d` }}
                   className="p-3 rounded-[8px] border border-[var(--tm-border)]/70 cursor-pointer hover:border-[#0EA5E9]/25 hover:shadow-sm transition-all flex items-center justify-between gap-3"
                 >
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-semibold text-slate-100 leading-tight truncate">{task.title}</h4>
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <TruncatedText text={task.title} className="text-xs font-semibold text-slate-100 leading-tight" />
                     <span className="text-[10px] font-medium text-slate-500 block mt-1">
                       {task.isAllDay ? 'All Day Task' : (
                         <>

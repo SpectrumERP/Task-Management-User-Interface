@@ -3,7 +3,7 @@ import { ReportFilter } from '@/components/report/ReportFilter';
 import { ReportTable } from '@/components/report/ReportTable';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { format } from 'date-fns';
+import { toDateOnlyLocal } from '@/lib/dateTime';
 import { useSettings } from '@/hooks/useSettings';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
@@ -44,10 +44,10 @@ export default function ReportPage() {
       }
 
       if (filters.dateRange?.from) {
-        searchParamsPascal.StartDate = format(filters.dateRange.from, 'yyyy-MM-dd');
+        searchParamsPascal.StartDate = toDateOnlyLocal(filters.dateRange.from);
       }
       if (filters.dateRange?.to) {
-        searchParamsPascal.EndDate = format(filters.dateRange.to, 'yyyy-MM-dd');
+        searchParamsPascal.EndDate = toDateOnlyLocal(filters.dateRange.to);
       }
       if (filters.DateOnFilter) {
         searchParamsPascal.DateOnFilter = Number(filters.DateOnFilter);
@@ -85,7 +85,7 @@ export default function ReportPage() {
       <div className="shrink-0">
         <ReportFilter onApply={handleApplyFilters} />
       </div>
-      <div className="relative flex min-h-[280px] flex-1 basis-0 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
         {loadError && !isLoading ? (
           <LoadErrorState
             title="Failed to load report"

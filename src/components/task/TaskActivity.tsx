@@ -3,10 +3,11 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
-import { format } from 'date-fns';
+import { formatDateOnly, formatUtcDateTime, toDateOnlyLocal, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import {
   MessageSquare,
   Clock,
@@ -44,7 +45,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
   const [showEffortForm, setShowEffortForm] = useState(false);
   const [effortHours, setEffortHours] = useState('');
   const [effortDesc, setEffortDesc] = useState('');
-  const [effortDate, setEffortDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [effortDate, setEffortDate] = useState(toDateOnlyLocal(new Date()) || '');
   const [isSubmittingEffort, setIsSubmittingEffort] = useState(false);
 
   const handlePostComment = async (e?: React.FormEvent | React.MouseEvent) => {
@@ -92,7 +93,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
       setIsSubmittingEffort(true);
       const payload = {
         operTaskNo: taskNo,
-        effortDate: new Date(effortDate).toISOString(),
+        effortDate: toUtcIso(effortDate),
         effortHours: hours,
         effortDescription: effortDesc.trim(),
         loginNo: loginNo,
@@ -160,7 +161,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                 <div className="relative">
                   <DateTimePicker
                     date={effortDate ? new Date(effortDate) : undefined}
-                    onChange={(date) => setEffortDate(date ? date.toISOString() : '')}
+                    onChange={(date) => setEffortDate(toUtcIsoOrEmpty(date))}
                     hideTime={true}
                     className="h-8 text-[11px] font-medium rounded-lg border-[var(--tm-border)] text-slate-50 w-full"
                   />
@@ -246,7 +247,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                     {e.description}
                   </p>
                   <span className="text-[9px] font-medium text-slate-500 block mt-1">
-                    {e.date ? format(new Date(e.date), 'MMM dd, yyyy') : 'Recent'}
+                    {e.date ? formatDateOnly(e.date) : 'Recent'}
                   </span>
                 </div>
               </div>
@@ -262,7 +263,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
             <MessageSquare size={16} />
           </div>
           <div>
-            <h4 className="text-xs font-semibold text-slate-100">Comments</h4>
+            <h4 className="text-xs font-semibold text-slate-100">Management Comments</h4>
             <p className="text-[10px] font-medium text-slate-400">
               {comments.length} comment{comments.length === 1 ? '' : 's'}
             </p>
@@ -310,14 +311,16 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
                   loginNo={(c as any).loginNo}
                   displayName={c.author}
                   size="md"
+                  className="shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-[11px] font-semibold text-slate-100 truncate">
-                      {c.author}
-                    </span>
+                    <TruncatedText
+                      text={c.author || ''}
+                      className="text-[11px] font-semibold text-slate-100"
+                    />
                     <span className="text-[9px] font-medium text-slate-500 shrink-0">
-                      {c.timestamp ? format(new Date(c.timestamp), 'MMM dd · h:mm a') : 'Now'}
+                      {c.timestamp ? formatUtcDateTime(c.timestamp) : 'Now'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed font-medium whitespace-pre-line">

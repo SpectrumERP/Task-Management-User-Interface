@@ -11,11 +11,16 @@ import { Button } from '@/components/ui/button';
 import { Clipboard, Search, Trash2, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
+import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
+import { useConfirmDelete } from '@/components/master/shared/useConfirmDelete';
 
 export function ClipboardDrawer() {
   const { entries, clearEntries, removeEntry } = useClipboardStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const deleteConfirm = useConfirmDelete('clipboard entry');
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,18 +74,37 @@ export function ClipboardDrawer() {
               />
             </div>
             {entries.length > 0 && (
-              <Button variant="ghost" size="icon" onClick={clearEntries} title="Clear all history">
-                <Trash2 className="h-4 w-4 text-red-500" />
-              </Button>
+              <ActionTip label="Clear all history">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Clear all history"
+                  onClick={() =>
+                    deleteConfirm.requestConfirm({
+                      entityLabel: 'clipboard history',
+                      recordName: `${entries.length} entries`,
+                      onConfirm: clearEntries,
+                    })
+                  }
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </ActionTip>
             )}
           </div>
 
           <div className="space-y-4">
             {filteredEntries.length === 0 ? (
-              <div className="text-center py-10 text-slate-500">
-                <Clipboard className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                <p>No clipboard history found.</p>
-              </div>
+              <EmptyState
+                icon={Clipboard}
+                title={searchTerm.trim() ? 'No results match your search' : 'No clipboard history found'}
+                description={
+                  searchTerm.trim()
+                    ? 'Try a different search term, or clear the search to see all entries.'
+                    : 'Scanned business cards will appear here.'
+                }
+                compact
+              />
             ) : (
               filteredEntries.map(entry => (
                 <div key={entry.id} className="border rounded-lg p-4 bg-[var(--tm-muted)] relative group">
@@ -94,14 +118,23 @@ export function ClipboardDrawer() {
                         <Clock className="w-3 h-3 mr-1" />
                         {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
                       </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeEntry(entry.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-slate-400 hover:text-red-500" />
-                      </Button>
+                      <ActionTip label="Delete entry">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Delete entry"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          onClick={() =>
+                            deleteConfirm.requestConfirm({
+                              entityLabel: 'clipboard entry',
+                              recordName: entry.data.name || entry.data.company || 'Entry',
+                              onConfirm: () => removeEntry(entry.id),
+                            })
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-slate-400 hover:text-red-500" />
+                        </Button>
+                      </ActionTip>
                     </div>
                   </div>
                   <textarea
@@ -114,6 +147,15 @@ export function ClipboardDrawer() {
             )}
           </div>
         </div>
+
+        <MasterDeleteDialog
+          open={deleteConfirm.open}
+          onOpenChange={deleteConfirm.onOpenChange}
+          onConfirm={deleteConfirm.handleConfirm}
+          recordName={deleteConfirm.recordName}
+          entityLabel={deleteConfirm.entityLabel}
+          confirming={deleteConfirm.confirming}
+        />
       </SheetContent>
     </Sheet>
   );

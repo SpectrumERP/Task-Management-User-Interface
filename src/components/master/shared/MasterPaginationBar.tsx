@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { pageSizesForTotal } from '@/lib/pageSizes';
 
 interface MasterPaginationBarProps {
   totalItems: number;
@@ -12,10 +13,13 @@ interface MasterPaginationBarProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  /** Defaults to 10 / 25 / 50 / 100 (task list style). */
+  pageSizeOptions?: number[];
+  /** Hide bar when totalItems is at or below this (masters). Use 0 to always show. */
+  hideBelow?: number;
 }
 
-/** Hide pagination when there are 9 or fewer records. */
-export const PAGINATION_VISIBLE_AFTER = 9;
+const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export function MasterPaginationBar({
   totalItems,
@@ -26,42 +30,87 @@ export function MasterPaginationBar({
   currentPage,
   totalPages,
   onPageChange,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
+  hideBelow = 10,
 }: MasterPaginationBarProps) {
-  if (totalItems <= PAGINATION_VISIBLE_AFTER) {
-    return null;
-  }
+  const allSizes = pageSizeOptions.length > 0 ? pageSizeOptions : DEFAULT_PAGE_SIZE_OPTIONS;
+  // Only sizes useful for this total (e.g. 20 records → 10, 25 — not 50/100)
+  const sizes = useMemo(
+    () => pageSizesForTotal(allSizes, totalItems),
+    // allSizes identity: join is enough for stable compare of option lists
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [totalItems, allSizes.join(',')]
+  );
 
-  const safeCurrentPage = currentPage;
+  useEffect(() => {
+    if (totalItems === 0 || totalItems <= hideBelow) return;
+    if (sizes.length === 0) return;
+    if (!sizes.includes(itemsPerPage)) {
+      onItemsPerPageChange(sizes[0]!);
+    }
+  }, [totalItems, hideBelow, sizes, itemsPerPage, onItemsPerPageChange]);
+
+  if (totalItems === 0 || totalItems <= hideBelow) return null;
+  if (sizes.length === 0) return null;
+
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
 
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 bg-[var(--tm-elevated)] border-t border-[var(--tm-border)] select-none shrink-0"
+      className={cn(
+        'w-full min-w-0 shrink-0 select-none',
+        'bg-[var(--tm-elevated)] border-t border-[var(--tm-border)]',
+        'px-3 sm:px-4 py-2.5',
+        // Mobile: vertical stack (count → pages → per page)
+        'flex flex-col items-center gap-2.5',
+        // Tablet: controlled wrap, no horizontal overflow
+        'sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2',
+        // Desktop: preserve original 3-column horizontal layout
+        'lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-3'
+      )}
       data-page-tour="master-pagination"
     >
-      {/* Left — fixed column, won't move when right side changes */}
-      <div className="text-[11px] text-slate-500 font-medium justify-self-center sm:justify-self-start min-w-0 truncate order-1 sm:order-none">
+      {/* Record count — left on desktop */}
+      <div
+        className={cn(
+          'text-[11px] text-slate-500 font-medium tabular-nums leading-snug',
+          'min-w-0 max-w-full w-full sm:w-auto',
+          'text-center sm:text-left',
+          'break-words lg:truncate',
+          'lg:justify-self-start'
+        )}
+      >
         Showing{' '}
-        <span className="text-slate-100 font-semibold tabular-nums">
+        <span className="text-slate-100 font-semibold">
           {totalItems === 0 ? 0 : startIndex + 1}
         </span>{' '}
-        to <span className="text-slate-100 font-semibold tabular-nums">{endIndex}</span> of{' '}
-        <span className="text-slate-100 font-semibold tabular-nums">{totalItems}</span> records
+        to <span className="text-slate-100 font-semibold">{endIndex}</span> of{' '}
+        <span className="text-slate-100 font-semibold">{totalItems}</span> records
       </div>
 
-      {/* Center — stays centered in middle track */}
-      <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
-        <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">Per page</span>
-        <div className="flex items-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-[8px] border border-[var(--tm-border)]/80">
-          {[10, 25, 50].map((size) => (
+      {/* Per page — center on desktop; row 3 on mobile */}
+      <div
+        className={cn(
+          'flex items-center justify-center gap-2 shrink-0',
+          'order-3 w-full sm:w-auto',
+          'sm:order-2 lg:order-none lg:justify-self-center'
+        )}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">
+          Per Page:
+        </span>
+        <div className="flex flex-wrap items-center justify-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)]">
+          {sizes.map((size) => (
             <button
               key={size}
               type="button"
               onClick={() => onItemsPerPageChange(size)}
               className={cn(
-                'h-6 w-8 rounded-[6px] text-[10px] font-semibold tabular-nums transition-colors',
+                // Desktop/tablet: original h-6 w-9; mobile: slightly larger tap target
+                'h-7 w-10 sm:h-6 sm:w-9 rounded-md text-[10px] font-semibold tabular-nums tracking-wide transition-all',
                 itemsPerPage === size
-                  ? 'bg-[#0EA5E9] text-white'
-                  : 'text-slate-500 hover:text-slate-100 hover:bg-[var(--tm-muted)]'
+                  ? 'bg-[#0EA5E9] text-white shadow-sm'
+                  : 'text-slate-500 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]'
               )}
             >
               {size}
@@ -70,21 +119,29 @@ export function MasterPaginationBar({
         </div>
       </div>
 
-      {/* Right — pinned to end of third column */}
-      <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
+      {/* Page controls — right on desktop; row 2 on mobile */}
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-center gap-1 min-w-0 max-w-full',
+          'order-2 w-full sm:w-auto',
+          'sm:order-3 sm:ml-auto sm:justify-end',
+          'lg:order-none lg:ml-0 lg:justify-self-end'
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
           size="icon"
           disabled={safeCurrentPage === 1}
           onClick={() => onPageChange(Math.max(1, safeCurrentPage - 1))}
-          className="h-7 w-7 shrink-0 rounded-[6px] text-slate-500 hover:bg-[var(--tm-surface)] disabled:opacity-40 border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] shadow-none"
+          aria-label="Previous page"
+          className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
         >
           <ChevronLeft size={14} strokeWidth={2.5} />
         </Button>
 
-        <div className="flex items-center justify-end gap-1 min-w-[7.5rem]">
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1 max-w-full">
+          {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1)
             .filter((page) => {
               return (
                 page === 1 ||
@@ -94,7 +151,7 @@ export function MasterPaginationBar({
             })
             .map((page, idx, arr) => {
               const isPageActive = safeCurrentPage === page;
-              const hasGap = idx > 0 && page - arr[idx - 1] > 1;
+              const hasGap = idx > 0 && page - arr[idx - 1]! > 1;
 
               return (
                 <React.Fragment key={page}>
@@ -106,11 +163,13 @@ export function MasterPaginationBar({
                   <button
                     type="button"
                     onClick={() => onPageChange(page)}
+                    aria-label={`Page ${page}`}
+                    aria-current={isPageActive ? 'page' : undefined}
                     className={cn(
-                      'h-7 w-7 shrink-0 rounded-[6px] text-[10px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
+                      'h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-lg text-[10px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
                       isPageActive
-                        ? 'bg-[#0EA5E9] border-[#0EA5E9] text-white'
-                        : 'bg-[var(--tm-surface)] border-[var(--tm-border)]/80 text-slate-300 hover:bg-[var(--tm-muted)]'
+                        ? 'bg-[#0EA5E9] border-[#0EA5E9] text-white shadow-sm'
+                        : 'bg-[var(--tm-surface)] border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)]'
                     )}
                   >
                     {page}
@@ -124,9 +183,10 @@ export function MasterPaginationBar({
           type="button"
           variant="ghost"
           size="icon"
-          disabled={safeCurrentPage === totalPages}
+          disabled={safeCurrentPage >= totalPages}
           onClick={() => onPageChange(Math.min(totalPages, safeCurrentPage + 1))}
-          className="h-7 w-7 shrink-0 rounded-[6px] text-slate-500 hover:bg-[var(--tm-surface)] disabled:opacity-40 border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] shadow-none"
+          aria-label="Next page"
+          className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
         >
           <ChevronRight size={14} strokeWidth={2.5} />
         </Button>

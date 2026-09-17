@@ -1,14 +1,21 @@
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { ApiError } from '@/services/apiService';
+import { toErrorMessage } from '@/lib/toErrorMessage';
 
 const TOAST_ID = 'app-unhandled-error';
 
+/** Browser layout noise — not an app failure (common when filters/tables reflow). */
+function isBenignResizeObserverMessage(message: unknown): boolean {
+  if (typeof message !== 'string') return false;
+  return /ResizeObserver loop/i.test(message);
+}
+
 function messageFromReason(reason: unknown): string {
-  if (reason instanceof ApiError) return reason.message || 'Request failed';
-  if (reason instanceof Error) return reason.message || 'Unexpected error';
-  if (typeof reason === 'string' && reason.trim()) return reason;
-  return 'An unexpected error occurred';
+  return toErrorMessage(
+    reason instanceof ApiError || reason instanceof Error ? reason.message : reason,
+    'An unexpected error occurred'
+  );
 }
 
 /**
@@ -23,6 +30,11 @@ export function AppErrorListeners() {
       // apiService already surfaced HTTP/network errors to the user
       if (reason instanceof ApiError) return;
       if (reason?.name === 'AbortError') return;
+      const msg = reason instanceof Error ? reason.message : String(reason ?? '');
+      if (isBenignResizeObserverMessage(msg)) {
+        event.preventDefault();
+        return;
+      }
 
       console.error('Unhandled promise rejection:', reason);
       toast.error(messageFromReason(reason), {
@@ -37,6 +49,10 @@ export function AppErrorListeners() {
 
       const err = event.error;
       if (err instanceof ApiError) return;
+      if (isBenignResizeObserverMessage(event.message) || isBenignResizeObserverMessage(err?.message)) {
+        event.preventDefault();
+        return;
+      }
 
       console.error('Unhandled window error:', event.error || event.message);
       toast.error(event.message || 'An unexpected error occurred', {

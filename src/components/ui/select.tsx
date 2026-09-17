@@ -16,10 +16,10 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-[8px] border border-[var(--tm-border)] bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-100 disabled:bg-[var(--tm-elevated)] [&>span]:line-clamp-1",
+      "flex h-10 w-full items-center justify-between rounded-md border border-tm-border bg-tm-input px-3 py-2 text-sm shadow-tm-control ring-offset-background data-[placeholder]:text-tm-placeholder focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-100 disabled:bg-tm-elevated [&>span]:line-clamp-1",
       className,
-      "rounded-[8px]",
-      !(typeof className === "string" && /border-red/.test(className)) && "!border-[var(--tm-border)]"
+      "rounded-md",
+      !(typeof className === "string" && /border-red/.test(className)) && "!border-tm-border"
     )}
     {...props}
   >

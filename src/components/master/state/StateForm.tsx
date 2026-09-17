@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -12,63 +12,12 @@ import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterCreateDialog } from '../MasterCreateDialog';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
 const FORM_NO = 13;
 const TITLE = 'State Master';
 const fieldClass = FIELD_CONTROL_CLASS;
 
-function FieldErrorTip({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <span
-      role="alert"
-      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-    >
-      {message}
-    </span>
-  );
-}
-
-function FieldControl({
-  children,
-  error,
-  className,
-}: {
-  children: ReactNode;
-  error?: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn('relative min-w-0', className)}>
-      {children}
-      <FieldErrorTip message={error} />
-    </div>
-  );
-}
-
-function FieldLabel({
-  children,
-  required,
-  htmlFor,
-}: {
-  children: ReactNode;
-  required?: boolean;
-  htmlFor?: string;
-}) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
-    >
-      <span>{children}</span>
-      {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
-          *
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 interface StateFormProps {
   id?: string;

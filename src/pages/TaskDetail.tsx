@@ -10,6 +10,9 @@ import { useFormRights } from '@/hooks/useFormRights';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { useAuthStore } from '@/store/useAuthStore';
+import { canUserEditTask, isTaskViewOnlyForUser } from '@/lib/taskAccess';
+import { toUtcIso } from '@/lib/dateTime';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -20,11 +23,11 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 
 const reverseEffortFrequencyMap: Record<number, string> = {
   1: 'hours',
@@ -56,6 +59,12 @@ export default function TaskDetail() {
   const [notFoundMessage, setNotFoundMessage] = useState("Task not found.");
 
   const { isSave, isUpdate, isDelete } = useFormRights(1547);
+  const user = useAuthStore((s) => s.user);
+  const viewOnly = isEdit && isTaskViewOnlyForUser(user, task);
+  const canSave = isEdit
+    ? canUserEditTask(user, task, isUpdate)
+    : isSave;
+  const canDelete = isEdit && isDelete && canUserEditTask(user, task, true) && !viewOnly;
 
   // Get status from query params if new task
   const queryParams = new URLSearchParams(location.search);
@@ -146,7 +155,7 @@ export default function TaskDetail() {
           id: (c.operTaskCommentDetailNo || Math.floor(Math.random() * 10000)).toString(),
           author: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || 'Unknown',
           text: c.description || c.comment || '',
-          timestamp: c.createdDate || new Date().toISOString(),
+          timestamp: c.createdDate || toUtcIso(new Date()) || '',
           loginNo: c.createdBy?.id || c.loginNo || null
         }));
 
@@ -270,7 +279,7 @@ export default function TaskDetail() {
             </button>
             <ChevronRight size={14} className="text-slate-400 shrink-0" />
             <span className="text-slate-50 font-bold tracking-tight">
-              {isEdit ? 'Update Task' : 'Create Task'}
+              {!isEdit ? 'Create Task' : viewOnly ? 'View Task' : 'Update Task'}
             </span>
           </div>
 
@@ -284,10 +293,10 @@ export default function TaskDetail() {
               className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
             >
               <X size={14} />
-              <span className="hidden sm:inline">Cancel</span>
+              <span className="hidden sm:inline">{viewOnly ? 'Close' : 'Cancel'}</span>
             </Button>
 
-            {(isEdit ? isUpdate : isSave) && (
+            {canSave && !viewOnly && (
               <Button
                 type="submit"
                 form="task-form"
@@ -307,12 +316,13 @@ export default function TaskDetail() {
                 )}
               </Button>
             )}
-            {isEdit && isDelete && (
+            {canDelete && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     size="icon"
+                    aria-label="More actions"
                     className="h-9 w-9 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
                   >
                     <MoreVertical size={16} className="text-slate-300" />
@@ -347,51 +357,24 @@ export default function TaskDetail() {
                 onComplete={handleGoBack}
                 onSaveStateChange={setIsSaving}
                 onRefreshData={fetchTaskDetails}
+                readOnly={viewOnly}
               />
             )}
           </div>
         </div>
       </div>
 
-      {/* Premium Alert Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">
-          <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/30">
-              <Trash2 className="h-6 w-6 text-red-400" />
-            </div>
-            <DialogTitle className="text-center text-lg font-black text-slate-50 leading-tight">
-              Delete Task
-            </DialogTitle>
-            <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
-              Do you want to delete?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 sm:space-x-3 flex items-center justify-center">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              className="w-full sm:w-auto rounded-xl font-bold text-slate-300 hover:bg-[var(--tm-muted)] text-xs px-5 h-9"
-            >
-              No
-            </Button>
-            <Button
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="w-full sm:w-auto rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white shadow-lg shadow-red-600/20 text-xs px-6 h-9 gap-2 transition-all"
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin text-white" />
-              ) : (
-                <Trash2 size={14} />
-              )}
-              Yes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete confirmation */}
+      <MasterDeleteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setIsDeleteDialogOpen(open);
+        }}
+        onConfirm={handleDelete}
+        recordName={task?.title || task?.taskNo?.toString() || null}
+        entityLabel="task"
+        confirming={isDeleting}
+      />
       {/* Task Not Found Alert Dialog */}
       <Dialog open={isNotFoundDialogOpen} onOpenChange={() => { }}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">

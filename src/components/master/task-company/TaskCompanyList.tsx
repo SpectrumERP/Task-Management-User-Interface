@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -14,6 +14,46 @@ import { TaskCompanyMaster } from '@/store/useMasterStore';
 
 const FORM_NO = 1565;
 const TITLE = 'Task Company Master';
+
+/** Trim + lowercase. Empty / whitespace-only → no active search. */
+function normalizeSearchQuery(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
+function fieldIncludes(value: unknown, query: string): boolean {
+  if (value === null || value === undefined) return false;
+  return String(value).toLowerCase().includes(query);
+}
+
+/** Existing multi-field match (Name, Alias, code, address, geo, pin). */
+function taskCompanyMatchesSearch(item: TaskCompanyMaster, query: string): boolean {
+  return fieldIncludes(item.name, query)
+    || fieldIncludes(item.code, query)
+    || fieldIncludes(item.aliasName, query)
+    || fieldIncludes(item.address1, query)
+    || fieldIncludes(item.address2, query)
+    || fieldIncludes(item.address3, query)
+    || fieldIncludes(item.cityName, query)
+    || fieldIncludes(item.stateName, query)
+    || fieldIncludes(item.countryName, query)
+    || fieldIncludes(item.pinCode, query);
+}
+
+/**
+ * Name-primary search priority (lower = better).
+ * 1 exact name · 2 partial name · 3 exact alias · 4 partial alias · 5 other fields only
+ * When Name and Alias both match, the best (lowest) Name-capable tier wins.
+ */
+function getTaskCompanySearchPriority(item: TaskCompanyMaster, query: string): number {
+  const name = (item.name ?? '').toString().toLowerCase();
+  const alias = (item.aliasName ?? '').toString().toLowerCase();
+
+  if (name === query) return 1;
+  if (name.includes(query)) return 2;
+  if (alias === query) return 3;
+  if (alias.includes(query)) return 4;
+  return 5;
+}
 
 export function TaskCompanyList() {
   const navigate = useNavigate();
@@ -68,14 +108,25 @@ export function TaskCompanyList() {
 
   useEffect(() => { fetchTaskCompanies(); }, [companyNo]);
 
-  const filteredList = apiTaskCompanies.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return item.name?.toLowerCase().includes(query)
-      || item.code?.toLowerCase().includes(query)
-      || item.cityName?.toLowerCase().includes(query)
-      || item.stateName?.toLowerCase().includes(query)
-      || item.countryName?.toLowerCase().includes(query);
-  });
+  // Normalize → Filter → Rank → stable secondary order (original API index) → then paginate below
+  const filteredList = useMemo(() => {
+    const query = normalizeSearchQuery(searchQuery);
+    if (!query) return apiTaskCompanies;
+
+    const matched: { item: TaskCompanyMaster; priority: number; index: number }[] = [];
+    for (let index = 0; index < apiTaskCompanies.length; index++) {
+      const item = apiTaskCompanies[index];
+      if (!taskCompanyMatchesSearch(item, query)) continue;
+      matched.push({
+        item,
+        priority: getTaskCompanySearchPriority(item, query),
+        index,
+      });
+    }
+
+    matched.sort((a, b) => a.priority - b.priority || a.index - b.index);
+    return matched.map((entry) => entry.item);
+  }, [apiTaskCompanies, searchQuery]);
 
   const totalItems = filteredList.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
@@ -83,6 +134,11 @@ export function TaskCompanyList() {
   const startIndex = (safeCurrentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedList = filteredList.slice(startIndex, endIndex);
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
 
   const handleDeleteClick = (id: string, label?: string) => {
     setDeleteTargetId(id);
@@ -95,11 +151,11 @@ export function TaskCompanyList() {
     apiService.delete('/api/crm/task-companies/delete', {
       params: { operTaskCompanyNo: deleteTargetId }
     }).then(() => {
-      toast.success('Record deleted');
+      toast.success('Task company deleted');
       fetchTaskCompanies();
     }).catch(err => {
       console.error('Failed to delete task company:', err);
-      toast.error('Failed to delete record');
+      toast.error('Failed to delete task company');
     });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
@@ -111,21 +167,21 @@ export function TaskCompanyList() {
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
         onAddClick={() => navigate(toMasterNewPath('task-company'))}
         canAdd={isSave}
-        searchPlaceholder="Search task company master records by name, code, city, state, country..."
+        searchPlaceholder="Search by name, alias, code, address, city, state, country..."
       />
 
       <MasterEntityTable
         rows={paginatedList}
         nameHeader="Task Company Name"
         columns={[
-          { header: 'Alias', render: (item) => item.aliasName || '-' },
-          { header: 'Address 1', render: (item) => item.address1 || '-' },
-          { header: 'City', render: (item) => item.cityName || '-' },
-          { header: 'State', render: (item) => item.stateName || '-' },
-          { header: 'Country', render: (item) => item.countryName || '-' },
+          { header: 'Alias', sortKey: 'aliasName', render: (item) => item.aliasName || '-' },
+          { header: 'Address 1', sortKey: 'address1', render: (item) => item.address1 || '-' },
+          { header: 'City', sortKey: 'cityName', render: (item) => item.cityName || '-' },
+          { header: 'State', sortKey: 'stateName', render: (item) => item.stateName || '-' },
+          { header: 'Country', sortKey: 'countryName', render: (item) => item.countryName || '-' },
         ]}
         getCode={(item) => item.code || `SYS-${item.id}`}
         getName={(item) => <span>{item.name}</span>}
@@ -161,6 +217,7 @@ export function TaskCompanyList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
+        entityLabel="task company"
       />
     </div>
   );

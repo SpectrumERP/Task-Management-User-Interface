@@ -17,7 +17,10 @@ import {
 import { X, Loader2, Save, Sparkles, AlertCircle, Layers, Sliders, Folder, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@radix-ui/react-label';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 import { fetchStatesByCountry } from './shared/geo';
+import { MasterDeleteDialog } from './shared/MasterDeleteDialog';
+import { useConfirmDelete } from './shared/useConfirmDelete';
 
 interface MasterCreateDialogProps {
   open: boolean;
@@ -38,6 +41,7 @@ export function MasterCreateDialog({
 }: MasterCreateDialogProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [name, setName] = useState('');
+  const deleteConfirm = useConfirmDelete('item');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -442,17 +446,20 @@ export function MasterCreateDialog({
         <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-thin" data-page-tour="mcd-fields">
           {/* Name / Label */}
           <div className="space-y-0">
-            <Label  className="text-[10px] font-medium text-slate-200 ml-1">{`${getMasterTitle().replace(' Master', '')} Name`} <span className="text-red-500">*</span></Label>
-            <Input placeholder={`Enter new ${getMasterTitle().replace(' Master', '').toLowerCase()} name...`} value={name} onChange={(e) => {
-                setName(e.target.value);
-                if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
-              }}
-              className={cn(
-                "bg-[var(--tm-surface)] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 transition-colors h-10 rounded-[8px] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9]",
-                errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
-              )}
-            />
-            {errors.name && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.name}</p>}
+            <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">
+              {`${getMasterTitle().replace(' Master', '')} Name`}
+            </FieldLabel>
+            <FieldControl error={errors.name}>
+              <Input placeholder={`Enter new ${getMasterTitle().replace(' Master', '').toLowerCase()} name...`} value={name} onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                }}
+                className={cn(
+                  "bg-[var(--tm-surface)] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 transition-colors h-10 rounded-[8px] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9]",
+                  errors.name && "border-red-500 focus:ring-red-500/10 focus-visible:ring-red-500/10 focus-visible:border-red-500 focus:ring-red-500/10 focus:border-red-500"
+                )}
+              />
+            </FieldControl>
           </div>
 
           {/* Type specific sub-forms */}
@@ -556,7 +563,13 @@ export function MasterCreateDialog({
                         <span className="truncate">{item.description}</span>
                         <button
                           type="button"
-                          onClick={() => setChecklist(checklist.filter((_, i) => i !== index))}
+                          onClick={() =>
+                            deleteConfirm.requestConfirm({
+                              entityLabel: 'checklist item',
+                              recordName: item.description,
+                              onConfirm: () => setChecklist(checklist.filter((_, i) => i !== index)),
+                            })
+                          }
                           className="text-slate-400 hover:text-red-500"
                         >
                           <X size={12} />
@@ -610,7 +623,13 @@ export function MasterCreateDialog({
                         <span className="truncate">{item.description}</span>
                         <button
                           type="button"
-                          onClick={() => setSubtasks(subtasks.filter((_, i) => i !== index))}
+                          onClick={() =>
+                            deleteConfirm.requestConfirm({
+                              entityLabel: 'subtask template',
+                              recordName: item.description,
+                              onConfirm: () => setSubtasks(subtasks.filter((_, i) => i !== index)),
+                            })
+                          }
                           className="text-slate-400 hover:text-red-500"
                         >
                           <X size={12} />
@@ -651,15 +670,16 @@ export function MasterCreateDialog({
           {type === 'priority' && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Priority Duration Value</Label>
-                <Input type="number" min={1} value={priorityDuration ?? ''} onChange={(e) => {
-                    const val = e.target.value === '' ? null : Number(e.target.value);
-                    setPriorityDuration(val);
-                    if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
-                  }}
-                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                />
-                {errors.priorityDuration && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.priorityDuration}</p>}
+                <FieldLabel className="text-[10px] font-medium text-slate-200 ml-1">Priority Duration Value</FieldLabel>
+                <FieldControl error={errors.priorityDuration}>
+                  <Input type="number" min={1} value={priorityDuration ?? ''} onChange={(e) => {
+                      const val = e.target.value === '' ? null : Number(e.target.value);
+                      setPriorityDuration(val);
+                      if (errors.priorityDuration) setErrors(prev => ({ ...prev, priorityDuration: '' }));
+                    }}
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
+                  />
+                </FieldControl>
               </div>
 
               <div className="space-y-0">
@@ -671,20 +691,22 @@ export function MasterCreateDialog({
                   value={priorityFrequencyNo}
                   onChange={setPriorityFrequencyNo}
                   placeholder="Select frequency..."
+                  sortAlphabetically={false}
                   className="h-10 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
               </div>
 
               <div className="space-y-0 col-span-2">
-                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Sequence Number</Label>
-                <Input type="number" min={1} value={sequence ?? ''} onChange={(e) => {
-                    const val = e.target.value === '' ? null : Number(e.target.value);
-                    setSequence(val);
-                    if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
-                  }}
-                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                />
-                {errors.sequence && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.sequence}</p>}
+                <FieldLabel className="text-[10px] font-medium text-slate-200 ml-1">Sequence Number</FieldLabel>
+                <FieldControl error={errors.sequence}>
+                  <Input type="number" min={1} value={sequence ?? ''} onChange={(e) => {
+                      const val = e.target.value === '' ? null : Number(e.target.value);
+                      setSequence(val);
+                      if (errors.sequence) setErrors(prev => ({ ...prev, sequence: '' }));
+                    }}
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
+                  />
+                </FieldControl>
               </div>
             </div>
           )}
@@ -692,14 +714,15 @@ export function MasterCreateDialog({
           {type === 'folder' && (
             <div className="space-y-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Folder Description <span className="text-red-500">*</span></Label>
-                <Input placeholder="Enter short folder purpose..." value={description} onChange={(e) => {
-                    setDescription(e.target.value);
-                    if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
-                  }}
-                  className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                />
-                {errors.description && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.description}</p>}
+                <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">Folder Description</FieldLabel>
+                <FieldControl error={errors.description}>
+                  <Input placeholder="Enter short folder purpose..." value={description} onChange={(e) => {
+                      setDescription(e.target.value);
+                      if (errors.description) setErrors(prev => ({ ...prev, description: '' }));
+                    }}
+                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
+                  />
+                </FieldControl>
               </div>
 
               <div className="space-y-0">
@@ -736,17 +759,18 @@ export function MasterCreateDialog({
                 </div>
 
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">Incharge Lead <span className="text-red-500">*</span></Label>
-                  <UserCombobox value={inchargeNo} onChange={(user) => {
-                      setInchargeNo(user.loginNo.toString());
-                      setInchargeLabel(user.printingName);
-                      if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
-                    }}
-                    initialLabel={inchargeLabel}
-                    placeholder="Search Incharge..."
-                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                  />
-                  {errors.inchargeNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.inchargeNo}</p>}
+                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">Incharge Lead</FieldLabel>
+                  <FieldControl error={errors.inchargeNo}>
+                    <UserCombobox value={inchargeNo} onChange={(user) => {
+                        setInchargeNo(user.loginNo.toString());
+                        setInchargeLabel(user.printingName);
+                        if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
+                      }}
+                      initialLabel={inchargeLabel}
+                      placeholder="Search Incharge..."
+                      className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
+                    />
+                  </FieldControl>
                 </div>
               </div>
 
@@ -764,15 +788,16 @@ export function MasterCreateDialog({
               </div>
 
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-200 ml-1 block">Address <span className="text-red-500">*</span></Label>
+                <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1 block">Address</FieldLabel>
                 <div className="space-y-0">
-                  <Input placeholder="Address Line 1" value={address1} onChange={(e) => {
-                      setAddress1(e.target.value);
-                      if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
-                    }}
-                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                  />
-                  {errors.address1 && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.address1}</p>}
+                  <FieldControl error={errors.address1}>
+                    <Input placeholder="Address Line 1" value={address1} onChange={(e) => {
+                        setAddress1(e.target.value);
+                        if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
+                      }}
+                      className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
+                    />
+                  </FieldControl>
                   <Input placeholder="Address Line 2 (Optional)" value={address2} onChange={(e) => setAddress2(e.target.value)}
                     className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
                   />
@@ -784,77 +809,81 @@ export function MasterCreateDialog({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">Country <span className="text-red-500">*</span></Label>
-                  <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-                      label: c.countryName || '',
-                      value: (c.countryNo || '').toString()
-                    }))}
-                    value={countryNo}
-                    onChange={(val) => {
-                      setCountryNo(val);
-                      if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
-                    }}
-                    placeholder="Select Country"
-                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                    onAddNew={() => {
-                      setNestedMasterType('country');
-                      setIsNestedMasterOpen(true);
-                    }}
-                  />
-                  {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
+                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">Country</FieldLabel>
+                  <FieldControl error={errors.countryNo}>
+                    <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
+                        label: c.countryName || '',
+                        value: (c.countryNo || '').toString()
+                      }))}
+                      value={countryNo}
+                      onChange={(val) => {
+                        setCountryNo(val);
+                        if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
+                      }}
+                      placeholder="Select Country"
+                      className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
+                      onAddNew={() => {
+                        setNestedMasterType('country');
+                        setIsNestedMasterOpen(true);
+                      }}
+                    />
+                  </FieldControl>
                 </div>
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">State / Province <span className="text-red-500">*</span></Label>
-                  <Combobox options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
-                      label: s.stateName || '',
-                      value: (s.stateNo || '').toString()
-                    }))}
-                    value={stateNo}
-                    onChange={(val) => {
-                      setStateNo(val);
-                      if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
-                    }}
-                    placeholder="Select State"
-                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                    onAddNew={() => {
-                      setNestedMasterType('state');
-                      setIsNestedMasterOpen(true);
-                    }}
-                  />
-                  {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
+                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">State / Province</FieldLabel>
+                  <FieldControl error={errors.stateNo}>
+                    <Combobox options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
+                        label: s.stateName || '',
+                        value: (s.stateNo || '').toString()
+                      }))}
+                      value={stateNo}
+                      onChange={(val) => {
+                        setStateNo(val);
+                        if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
+                      }}
+                      placeholder="Select State"
+                      className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
+                      onAddNew={() => {
+                        setNestedMasterType('state');
+                        setIsNestedMasterOpen(true);
+                      }}
+                    />
+                  </FieldControl>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-0.5.5">
                 <div className="space-y-0 col-span-2">
-                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">City <span className="text-red-500">*</span></Label>
-                  <Combobox options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
-                      label: c.cityName || '',
-                      value: (c.cityNo || '').toString()
-                    }))}
-                    value={cityNo}
-                    onChange={(val) => {
-                      setCityNo(val);
-                      if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
-                    }}
-                    placeholder="Select City"
-                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                    onAddNew={() => {
-                      setNestedMasterType('city');
-                      setIsNestedMasterOpen(true);
-                    }}
-                  />
-                  {errors.cityNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.cityNo}</p>}
+                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">City</FieldLabel>
+                  <FieldControl error={errors.cityNo}>
+                    <Combobox options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
+                        label: c.cityName || '',
+                        value: (c.cityNo || '').toString()
+                      }))}
+                      value={cityNo}
+                      onChange={(val) => {
+                        setCityNo(val);
+                        if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
+                      }}
+                      placeholder="Select City"
+                      className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
+                      onAddNew={() => {
+                        setNestedMasterType('city');
+                        setIsNestedMasterOpen(true);
+                      }}
+                    />
+                  </FieldControl>
                 </div>
                 <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">PIN / ZIP Code <span className="text-red-500">*</span></Label>
-                  <Input placeholder="ZIP" value={pinCode} onChange={(e) => {
-                      setPinCode(e.target.value);
-                      if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
-                    }}
-                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                  />
-                  {errors.pinCode && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.pinCode}</p>}
+                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">PIN / ZIP Code</FieldLabel>
+                  <FieldControl error={errors.pinCode}>
+                    <Input placeholder="ZIP" value={pinCode} onChange={(e) => {
+                        setPinCode(e.target.value);
+                        if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
+                      }}
+                      className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
+                    />
+                  </FieldControl>
                 </div>
               </div>
             </div>
@@ -957,20 +986,21 @@ export function MasterCreateDialog({
           {type === 'state' && (
             <div className="space-y-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Country <span className="text-red-500">*</span></Label>
-                <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || fillValues?.data?.countries || fillValues?.countries || []).map((c: any) => ({
-                    label: c.countryName || '',
-                    value: (c.countryNo || '').toString()
-                  }))}
-                  value={countryNo}
-                  onChange={(val) => {
-                    setCountryNo(val);
-                    if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
-                  }}
-                  placeholder="Select Country"
-                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                />
-                {errors.countryNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.countryNo}</p>}
+                <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">Country</FieldLabel>
+                <FieldControl error={errors.countryNo}>
+                  <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || fillValues?.data?.countries || fillValues?.countries || []).map((c: any) => ({
+                      label: c.countryName || '',
+                      value: (c.countryNo || '').toString()
+                    }))}
+                    value={countryNo}
+                    onChange={(val) => {
+                      setCountryNo(val);
+                      if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
+                    }}
+                    placeholder="Select Country"
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
+                  />
+                </FieldControl>
               </div>
             </div>
           )}
@@ -978,7 +1008,7 @@ export function MasterCreateDialog({
           {type === 'city' && (
             <div className="space-y-3">
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Country <span className="text-red-500">*</span></Label>
+                <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">Country</FieldLabel>
                 <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || fillValues?.data?.countries || fillValues?.countries || []).map((c: any) => ({
                     label: c.countryName || '',
                     value: (c.countryNo || '').toString()
@@ -1000,21 +1030,22 @@ export function MasterCreateDialog({
                 />
               </div>
               <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-200 ml-1">State / Province <span className="text-red-500">*</span></Label>
-                <Combobox options={availableCityStates.map((s: any) => ({
-                    label: s.stateName || '',
-                    value: (s.stateNo || '').toString()
-                  }))}
-                  value={stateNo}
-                  onChange={(val) => {
-                    setStateNo(val);
-                    if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
-                  }}
-                  placeholder={countryNo ? "Select State" : "Select country first"}
-                  disabled={!countryNo}
-                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                />
-                {errors.stateNo && <p className="text-[10px] text-red-500 font-semibold ml-1">{errors.stateNo}</p>}
+                <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">State / Province</FieldLabel>
+                <FieldControl error={errors.stateNo}>
+                  <Combobox options={availableCityStates.map((s: any) => ({
+                      label: s.stateName || '',
+                      value: (s.stateNo || '').toString()
+                    }))}
+                    value={stateNo}
+                    onChange={(val) => {
+                      setStateNo(val);
+                      if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
+                    }}
+                    placeholder={countryNo ? "Select State" : "Select country first"}
+                    disabled={!countryNo}
+                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
+                  />
+                </FieldControl>
               </div>
             </div>
           )}
@@ -1031,7 +1062,7 @@ export function MasterCreateDialog({
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl h-10 font-medium text-slate-500 hover:bg-[var(--tm-muted)] text-xs"
+            className="rounded-[8px] h-9 font-medium text-slate-500 hover:bg-[var(--tm-muted)] text-xs"
           >
             Cancel
           </Button>
@@ -1039,7 +1070,7 @@ export function MasterCreateDialog({
             onClick={handleSave}
             disabled={isSaving}
             data-page-tour="mcd-save"
-            className="rounded-xl h-10 bg-[#0EA5E9] hover:bg-[#0284C7] font-medium text-white shadow-md text-xs gap-0.5 min-w-[90px] flex items-center justify-center"
+            className="rounded-[8px] h-9 bg-brand hover:bg-brand-hover font-medium text-brand-foreground shadow-sm text-xs gap-0.5 min-w-[90px] flex items-center justify-center"
           >
             {isSaving ? (
               <>
@@ -1079,6 +1110,15 @@ export function MasterCreateDialog({
           }}
         />
       )}
+
+      <MasterDeleteDialog
+        open={deleteConfirm.open}
+        onOpenChange={deleteConfirm.onOpenChange}
+        onConfirm={deleteConfirm.handleConfirm}
+        recordName={deleteConfirm.recordName}
+        entityLabel={deleteConfirm.entityLabel}
+        confirming={deleteConfirm.confirming}
+      />
     </Dialog>
   );
 }

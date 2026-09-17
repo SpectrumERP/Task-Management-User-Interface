@@ -89,7 +89,7 @@ export function PortList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/ports/delete', {
       params: { portNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchPorts(); }).catch(err => { console.error('Failed to delete port:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Port deleted'); fetchPorts(); }).catch(err => { console.error('Failed to delete port:', err); toast.error('Failed to delete port'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -165,7 +165,8 @@ export function PortList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="port"
+      />
     </div>
   );
 }

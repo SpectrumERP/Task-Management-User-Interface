@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Task } from '@/types/task';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
-import { ClipboardList, Settings2, Edit2, Search, Eye, Plus, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ClipboardList, Settings2, Edit2, Eye, Search, Plus, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { formatDateOnly, formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useSettings } from '@/hooks/useSettings';
 import { taskUrl } from '@/lib/dealMonitor';
+import { useAuthStore } from '@/store/useAuthStore';
+import { canUserEditTask } from '@/lib/taskAccess';
 
 import {
   DropdownMenu,
@@ -21,6 +24,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useTaskStore } from '@/store/useTaskStore';
+import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { UserAvatar } from '@/components/ui/UserAvatar';
+import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
+import { getStatusTextClass } from '@/lib/taskStatusGroups';
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -29,6 +36,7 @@ interface TaskListViewProps {
   onRetryLoad?: () => void;
   onTaskClick?: (taskId: number) => void;
   onCreateTask?: () => void;
+  onClearFilters?: () => void;
   hideCategoryColumn?: boolean;
 }
 type ColumnKey = 'code' | 'status' | 'title' | 'category' | 'type' | 'priority' | 'dueDate' | 'completionDate' | 'folder' | 'createdBy' | 'createdDate' | 'owner' | 'originator' | 'companyName' | 'location' | 'actions';
@@ -39,14 +47,14 @@ interface ColumnDef {
 }
 
 const COLUMNS: ColumnDef[] = [
-  { key: 'code', label: '# / Code', defaultVisible: true },
+  { key: 'code', label: 'Code', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'title', label: 'Task Title', defaultVisible: true },
   { key: 'category', label: 'Category', defaultVisible: true },
   { key: 'type', label: 'Type', defaultVisible: true },
   { key: 'priority', label: 'Priority', defaultVisible: true },
   { key: 'owner', label: 'Assign To', defaultVisible: true },
-  { key: 'dueDate', label: 'Due Date', defaultVisible: false },
+  { key: 'dueDate', label: 'Due Date', defaultVisible: true },
   { key: 'completionDate', label: 'Completion Date', defaultVisible: false },
   { key: 'folder', label: 'Folder', defaultVisible: false },
   { key: 'companyName', label: 'Company', defaultVisible: false },
@@ -58,11 +66,47 @@ const COLUMNS: ColumnDef[] = [
   { key: 'actions', label: '', defaultVisible: true }, // Actions shouldn't typically be hidden but we can allow it
 ];
 
-export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskClick, onCreateTask, hideCategoryColumn = false }: TaskListViewProps) {
+/** Default widths sized so header labels (e.g. Priority, Completion Date) fit fully. */
+const DEFAULT_COL_WIDTH: Partial<Record<ColumnKey, string>> = {
+  code: 'var(--tm-col-id-width)',
+  status: '5.5rem',
+  title: '14rem',
+  category: '9rem',
+  type: '6.5rem',
+  priority: '6.5rem',
+  owner: '7.5rem',
+  dueDate: '7rem',
+  completionDate: '9.5rem',
+  folder: '6.5rem',
+  companyName: '8rem',
+  location: '7rem',
+  originator: '7.5rem',
+  createdBy: '7.5rem',
+  createdDate: '11.5rem',
+};
+
+/** Actions: only enough for View + Edit icon buttons. */
+const ACTIONS_COL_PX = 72;
+
+const cellOverflowClass = 'px-3 py-1.5 border-r border-[var(--tm-border)] text-slate-300 align-middle overflow-hidden max-w-0';
+
+function parseCssWidthPx(value: string | number | undefined, fallback = 120): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (trimmed.endsWith('rem')) return (parseFloat(trimmed) || 0) * 16;
+  if (trimmed.endsWith('px')) return parseFloat(trimmed) || fallback;
+  const asNum = parseFloat(trimmed);
+  return Number.isFinite(asNum) ? asNum : fallback;
+}
+
+export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskClick, onCreateTask, onClearFilters, hideCategoryColumn = false }: TaskListViewProps) {
   const navigate = useNavigate();
   const { isUpdate } = useFormRights(1547);
+  const user = useAuthStore((s) => s.user);
   const { fillValues } = useTaskStore();
   const { isHideType, isHideFolder } = useSettings();
+  const canEditTask = (task: Task) => canUserEditTask(user, task, isUpdate);
   const isColumnAllowed = (key: ColumnKey) => !(
     (key === 'type' && isHideType) ||
     (key === 'folder' && isHideFolder) ||
@@ -72,14 +116,20 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   // Initialize visible columns from localStorage or defaults
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(() => {
     const saved = localStorage.getItem('taskListViewColumns');
+    let cols: Set<ColumnKey>;
     if (saved) {
       try {
-        return new Set(JSON.parse(saved) as ColumnKey[]);
-      } catch (e) {
-        // ignore
+        cols = new Set(JSON.parse(saved) as ColumnKey[]);
+      } catch {
+        cols = new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
       }
+    } else {
+      cols = new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
     }
-    return new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+    // Title + actions must always stay available
+    cols.add('title');
+    cols.add('actions');
+    return cols;
   });
 
   // Save to localStorage whenever it changes
@@ -129,6 +179,56 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   };
 
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
+
+  const tableMinWidthPx = useMemo(() => {
+    let sum = 0;
+    for (const col of COLUMNS) {
+      if (!visibleColumns.has(col.key) || !isColumnAllowed(col.key)) continue;
+      if (col.key === 'actions') {
+        sum += ACTIONS_COL_PX;
+        continue;
+      }
+      const resized = colWidths[col.key];
+      sum += resized
+        ? resized
+        : parseCssWidthPx(DEFAULT_COL_WIDTH[col.key], col.key === 'title' ? 224 : 120);
+    }
+    return Math.max(sum, 640);
+  }, [visibleColumns, colWidths, isHideType, isHideFolder, hideCategoryColumn]);
+
+  const toSortTime = (raw: unknown) => {
+    if (raw == null || raw === '') return '';
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    const t = toUtcMs(raw as string | number | Date);
+    return t ?? String(raw);
+  };
+
+  const getTaskSortValue = useCallback((task: Task, key: string) => {
+    switch (key) {
+      case 'code': return task.code || `CP-${100 + task.taskNo}`;
+      case 'status': return task.status || '';
+      case 'title': return task.title || '';
+      case 'category': return task.categoryName || '';
+      case 'type': return task.typeName || '';
+      case 'priority': return task.priority || '';
+      case 'owner': return task.assignedDisplayName || '';
+      case 'dueDate': return toSortTime(task.end_date);
+      case 'completionDate': return toSortTime(task.completionDate);
+      case 'folder': return task.folderName || task.project_No || '';
+      case 'companyName': return task.companyName || '';
+      case 'location': return task.locationName || '';
+      case 'originator': return task.originatorDisplayName || '';
+      case 'createdBy': return task.createdBy?.displayName || task.originatorDisplayName || '';
+      case 'createdDate': return toSortTime(task.createdDate || task.start_date);
+      default: return '';
+    }
+  }, []);
+
+  const { sortCol, sortDesc, handleSort, sortedRows: sortedTasks } = useTableSort(
+    tasks,
+    getTaskSortValue,
+    { defaultKey: 'code', defaultDesc: false }
+  );
 
   const handleResizeStart = (e: React.MouseEvent, colKey: string) => {
     e.preventDefault();
@@ -192,25 +292,40 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
   if (tasks.length === 0) {
     return (
-      <div className="h-full min-h-0 flex flex-col items-center justify-center px-6 py-10">
-        <div className="h-14 w-14 rounded-2xl bg-[var(--tm-tint)] flex items-center justify-center mb-3 ring-1 ring-[#0EA5E9]/15">
-          <ClipboardList className="text-[#0EA5E9]" size={26} strokeWidth={1.75} />
-        </div>
-        <h3 className="text-base font-semibold text-slate-100 tracking-tight">No tasks found</h3>
-        <p className="text-slate-500 text-sm font-medium mt-1 max-w-sm text-center">
-          Try clearing filters, or create a new task to get started.
-        </p>
-        {onCreateTask ? (
-          <Button
-            type="button"
-            onClick={onCreateTask}
-            className="mt-4 h-9 px-4 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold gap-1.5"
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            Create task
-          </Button>
-        ) : null}
-      </div>
+      <EmptyState
+        className="h-full"
+        icon={ClipboardList}
+        title="No tasks found"
+        description={
+          onClearFilters
+            ? 'Try clearing filters, or create a new task to get started.'
+            : 'Create a new task to get started.'
+        }
+        actions={
+          <>
+            {onClearFilters ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClearFilters}
+                className="h-9 px-4 rounded-lg border-[var(--tm-border)] text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[var(--tm-muted)] gap-1.5"
+              >
+                Clear filters
+              </Button>
+            ) : null}
+            {onCreateTask ? (
+              <Button
+                type="button"
+                onClick={onCreateTask}
+                className="h-9 px-4 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-semibold gap-1.5"
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                Create task
+              </Button>
+            ) : null}
+          </>
+        }
+      />
     );
   }
 
@@ -233,7 +348,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       }}
       className={cn(
         "w-full text-left rounded-xl border shadow-sm active:bg-[var(--tm-muted)] transition-colors cursor-pointer",
-        isSubtask ? "border-[#0EA5E9]/20 bg-[var(--tm-elevated)]/40 px-2 py-2" : "border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/60 px-3 py-2.5"
+        isSubtask ? "border-[#0EA5E9]/20 bg-[var(--tm-elevated)]/40 px-2 py-2" : "border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/60 px-3 py-1.5"
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -248,7 +363,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               {task.code || `CP-${100 + task.taskNo}`}
             </span>
             {task.status ? (
-              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-[var(--tm-muted)] text-slate-200">
+              <span className={cn('text-[9px]', getStatusTextClass(task.status))}>
                 {task.status}
               </span>
             ) : null}
@@ -275,19 +390,20 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               );
             })() : null}
           </div>
-          <p className="text-sm font-semibold text-slate-100 leading-snug line-clamp-2">{task.title}</p>
-          <p className="mt-1 text-[11px] text-slate-400 truncate">
-            {task.assignedDisplayName || 'Unassigned'}
-            {task.end_date
-              ? ` · Due ${format(new Date(task.end_date), 'MMM dd')}`
-              : ''}
-          </p>
+          <TruncatedText text={task.title || ''} className="text-sm font-semibold text-slate-100 leading-snug" />
+          <div className="mt-1 min-w-0">
+            <TruncatedText
+              text={`${task.assignedDisplayName || 'Unassigned'}${task.end_date ? ` · Due ${formatDateOnly(task.end_date, '')}` : ''}`}
+              className="text-[11px] text-slate-400"
+            />
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"
             title="View"
+            aria-label="View"
             onClick={(e) => {
               e.stopPropagation();
               openTask(task);
@@ -296,11 +412,12 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           >
             <Eye size={14} strokeWidth={2.25} />
           </Button>
-          {isUpdate ? (
+          {canEditTask(task) ? (
             <Button
               variant="ghost"
               size="icon"
               title="Edit"
+              aria-label="Edit"
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(taskUrl(task.taskNo, task.categoryName));
@@ -321,60 +438,59 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       onClick={() => openTask(task)}
       className={cn("group transition-colors cursor-pointer", isSubtask ? "bg-[var(--tm-surface)]/30" : "")}
     >
-      {/* Code */}
+      {/* Code — sticky left so it stays visible while scrolling horizontally */}
       {visibleColumns.has('code') && (
-        <td className={cn("px-1.5 py-1 align-middle", isSubtask && "pl-8")}>
-          <div className="flex items-center gap-1">
+        <td
+          className={cn(
+            cellOverflowClass,
+            'tm-col-id tm-col-sticky-code text-left sticky left-0 z-20 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]',
+            isSubtask && 'pl-8'
+          )}
+          style={{ textAlign: 'left' }}
+        >
+          <div className="flex items-center justify-start gap-1 min-w-0 w-full">
             {isSubtask ? (
-              <CornerDownRight size={14} className="text-slate-400 mr-1" />
-            ) : (
-              <>
-                {task.subTasks && task.subTasks.length > 0 ? (
-                  <button onClick={(e) => toggleExpand(e, task.taskNo)} className="p-0.5 -ml-1 text-slate-400 hover:text-slate-200">
-                    {expandedTasks.has(task.taskNo) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                  </button>
-                ) : (
-                  <span className="w-3.5" />
-                )}
-              </>
-            )}
-            <span className="text-[11px] font-medium text-[#0EA5E9] whitespace-nowrap">
-              {task.code || `CP-${100 + task.taskNo}`}
-            </span>
+              <CornerDownRight size={14} className="text-slate-400 shrink-0" />
+            ) : task.subTasks && task.subTasks.length > 0 ? (
+              <button type="button" onClick={(e) => toggleExpand(e, task.taskNo)} className="p-0.5 -ml-0.5 text-slate-400 hover:text-slate-200 shrink-0">
+                {expandedTasks.has(task.taskNo) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+            ) : null}
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <TruncatedText
+                text={task.code || `CP-${100 + task.taskNo}`}
+                className="text-left text-[11px] font-medium text-[#0EA5E9]"
+              />
+            </div>
           </div>
         </td>
       )}
 
-      {/* Status */}
+      {/* Status — colored text only (no badge background) */}
       {visibleColumns.has('status') && (
-        <td className="px-1.5 py-1 align-middle">
-          <div className={cn(
-            "px-1.5 py-0.5 rounded-md text-[10px] font-medium normal-case text-center inline-flex items-center justify-center whitespace-nowrap shadow-sm",
-            task.status === 'Done' ? "bg-green-100/80 text-green-800" :
-              task.status === 'In Progress' ? "bg-blue-100/80 text-blue-800" :
-                task.status === 'In Review' ? "bg-purple-100/80 text-purple-800" :
-                  "bg-[var(--tm-muted)]/80 text-slate-100"
-          )}>
-            {task.status}
+        <td className={cn(cellOverflowClass, 'text-left')} style={{ textAlign: 'left' }}>
+          <div className="flex w-full min-w-0 justify-start items-center">
+            <TruncatedText
+              text={task.status || '-'}
+              className={cn('!w-auto !max-w-full text-left text-[10px] normal-case', getStatusTextClass(task.status))}
+            />
           </div>
         </td>
       )}
 
       {/* Subject */}
       {visibleColumns.has('title') && (
-        <td className="px-1.5 py-1 align-middle w-full max-w-0">
-          <span
-            className="font-medium text-slate-100 group-hover:text-[#0EA5E9] transition-colors truncate block w-full select-all"
-            title={task.title}
-          >
-            {task.title}
-          </span>
+        <td className={cn(cellOverflowClass, 'tm-col-primary')}>
+          <TruncatedText
+            text={task.title || ''}
+            className="font-medium text-slate-50 group-hover:text-[#0EA5E9] transition-colors select-all"
+          />
         </td>
       )}
 
       {/* Category */}
       {visibleColumns.has('category') && isColumnAllowed('category') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+        <td className={cellOverflowClass}>
           {task.categoryName ? (() => {
             const catObj = fillValues?.category?.find(
               c => c.OperTaskCategoryNo === task.category_No || c.Category === task.categoryName
@@ -382,12 +498,12 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
             const bgColor = catObj?.ColorCoding || catObj?.colorCoding || (catObj as any)?.color || 'var(--tm-border)';
             const textColor = getContrastColor(bgColor);
             return (
-              <span
+              <div
                 style={{ backgroundColor: bgColor, color: textColor }}
-                className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+                className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
               >
-                {task.categoryName}
-              </span>
+                <TruncatedText text={task.categoryName} />
+              </div>
             );
           })() : <span className="text-slate-300">-</span>}
         </td>
@@ -395,11 +511,11 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
       {/* Type */}
       {visibleColumns.has('type') && !isHideType && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+        <td className={cellOverflowClass}>
           {task.typeName ? (
-            <span className="text-xs font-semibold text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-md border border-[var(--tm-border)]">
-              {task.typeName}
-            </span>
+            <div className="max-w-full min-w-0 text-xs font-semibold text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-md border border-[var(--tm-border)]">
+              <TruncatedText text={task.typeName} />
+            </div>
           ) : (
             <span className="text-slate-300">-</span>
           )}
@@ -408,27 +524,28 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
       {/* Priority */}
       {visibleColumns.has('priority') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
+        <td className={cellOverflowClass}>
           {(() => {
             const priorityObj = fillValues?.priority?.find(
               p => p.OperTaskPriorityNo === task.priority_No || p.Priority === task.priority
             );
             const colorCoding = priorityObj?.ColorCoding;
+            const label = task.priority || '-';
             if (colorCoding && colorCoding !== 'none') {
               const contrastText = getContrastColor(colorCoding);
               return (
-                <span
-                  className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+                <div
+                  className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
                   style={{ backgroundColor: colorCoding, color: contrastText }}
                 >
-                  {task.priority}
-                </span>
+                  <TruncatedText text={label} />
+                </div>
               );
             }
             return (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium text-slate-300 bg-[var(--tm-muted)]">
-                {task.priority}
-              </span>
+              <div className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] text-[10px] font-medium text-slate-300 bg-[var(--tm-muted)]">
+                <TruncatedText text={label} />
+              </div>
             );
           })()}
         </td>
@@ -436,111 +553,173 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
       {/* Owner */}
       {visibleColumns.has('owner') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          <div className="flex items-center gap-0.5">
-            <span className="text-xs font-semibold text-slate-200">{task.assignedDisplayName || '-'}</span>
-          </div>
+        <td className={cellOverflowClass} onClick={(e) => e.stopPropagation()}>
+          {task.assignedDisplayName ? (
+            <div className="flex items-center gap-1.5 min-w-0 w-full">
+              <UserAvatar
+                loginNo={task.owner_user_No}
+                displayName={task.assignedDisplayName}
+                size="sm"
+                className="shrink-0"
+              />
+              <TruncatedText
+                text={task.assignedDisplayName}
+                className="text-xs font-semibold text-slate-200"
+              />
+            </div>
+          ) : (
+            <span className="text-xs font-semibold text-slate-400">-</span>
+          )}
         </td>
       )}
 
       {/* Due Date */}
       {visibleColumns.has('dueDate') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          {task.end_date ? (
-            <span className="text-xs font-medium text-slate-200">{format(new Date(task.end_date), 'MMM dd, yyyy')}</span>
-          ) : <span className="text-slate-300">-</span>}
+        <td className={cellOverflowClass}>
+          <TruncatedText
+            text={task.end_date ? formatDateOnly(task.end_date) : '-'}
+            className="text-xs font-medium text-slate-200"
+          />
         </td>
       )}
 
       {/* Completion Date */}
       {visibleColumns.has('completionDate') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          {task.completionDate ? (
-            <span className="text-xs font-medium text-slate-200">{format(new Date(task.completionDate), 'MMM dd, yyyy')}</span>
-          ) : <span className="text-slate-300">-</span>}
+        <td className={cellOverflowClass}>
+          <TruncatedText
+            text={task.completionDate ? formatDateOnly(task.completionDate) : '-'}
+            className="text-xs font-medium text-slate-200"
+          />
         </td>
       )}
 
       {/* Folder */}
       {visibleColumns.has('folder') && !isHideFolder && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          <span className="text-xs font-medium text-slate-200">
-            {task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.["Folder Name"] || task.project_No || '-'}
-          </span>
+        <td className={cellOverflowClass}>
+          <TruncatedText
+            text={String(task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.['Folder Name'] || task.project_No || '-')}
+            className="text-xs font-medium text-slate-200"
+          />
         </td>
       )}
 
       {/* Company */}
       {visibleColumns.has('companyName') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          <span className="text-xs font-medium text-slate-200">{task.companyName || '-'}</span>
+        <td className={cellOverflowClass}>
+          <TruncatedText
+            text={task.companyName || '-'}
+            className="text-xs font-medium text-slate-200"
+          />
         </td>
       )}
 
       {/* Location */}
       {visibleColumns.has('location') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          <span className="text-xs font-medium text-slate-200">{task.locationName || (task.location_No ? `Loc ${task.location_No}` : '-')}</span>
+        <td className={cellOverflowClass}>
+          <TruncatedText
+            text={task.locationName || (task.location_No ? `Loc ${task.location_No}` : '-')}
+            className="text-xs font-medium text-slate-200"
+          />
         </td>
       )}
 
       {/* Originator */}
       {visibleColumns.has('originator') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          <span className="text-xs font-medium text-slate-200">{task.originatorDisplayName || '-'}</span>
+        <td className={cellOverflowClass} onClick={(e) => e.stopPropagation()}>
+          {task.originatorDisplayName ? (
+            <div className="flex items-center gap-1.5 min-w-0 w-full">
+              <UserAvatar
+                loginNo={task.originator_user_No}
+                displayName={task.originatorDisplayName}
+                size="sm"
+                className="shrink-0"
+              />
+              <TruncatedText
+                text={task.originatorDisplayName}
+                className="text-xs font-medium text-slate-200"
+              />
+            </div>
+          ) : (
+            <span className="text-xs font-medium text-slate-400">-</span>
+          )}
         </td>
       )}
 
       {/* Created By */}
       {visibleColumns.has('createdBy') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          <span className="text-xs font-medium text-slate-200">
-            {task.createdBy?.displayName || task.originatorDisplayName || '-'}
-          </span>
+        <td className={cellOverflowClass} onClick={(e) => e.stopPropagation()}>
+          {(task.createdBy?.displayName || task.originatorDisplayName) ? (
+            <div className="flex items-center gap-1.5 min-w-0 w-full">
+              <UserAvatar
+                loginNo={task.createdBy?.id || task.createdBy?.loginNo || task.originator_user_No}
+                displayName={task.createdBy?.displayName || task.originatorDisplayName}
+                size="sm"
+                className="shrink-0"
+              />
+              <TruncatedText
+                text={task.createdBy?.displayName || task.originatorDisplayName || ''}
+                className="text-xs font-medium text-slate-200"
+              />
+            </div>
+          ) : (
+            <span className="text-xs font-medium text-slate-400">-</span>
+          )}
         </td>
       )}
 
       {/* Created Date */}
       {visibleColumns.has('createdDate') && (
-        <td className="px-1.5 py-1 align-middle whitespace-nowrap">
-          {task.createdDate ? (
-            <span className="text-xs font-medium text-slate-200">{format(new Date(task.createdDate), 'MMM dd, yyyy h:mm a')}</span>
-          ) : task.start_date ? (
-            <span className="text-xs font-medium text-slate-200">{format(new Date(task.start_date), 'MMM dd, yyyy h:mm a')}</span>
-          ) : <span className="text-slate-300">-</span>}
+        <td className={cellOverflowClass}>
+          <TruncatedText
+            text={
+              task.createdDate
+                ? formatUtcDateTime(task.createdDate)
+                : task.start_date
+                  ? formatUtcDateTime(task.start_date)
+                  : '-'
+            }
+            className="text-xs font-medium text-slate-200"
+          />
         </td>
       )}
 
       {/* Actions */}
       {visibleColumns.has('actions') && (
-        <td className="px-1.5 py-1 align-middle text-right sticky right-0 z-10 tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
-          <div className="inline-flex items-center justify-end gap-0.5 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-            <Button
-              variant="ghost"
-              size="icon"
-              title="View"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onTaskClick) onTaskClick(task.taskNo);
-                else navigate(taskUrl(task.taskNo, task.categoryName));
-              }}
-              className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
-            >
-              <Eye size={14} strokeWidth={2.25} />
-            </Button>
-            {isUpdate && (
+        <td
+          className="px-1 py-2.5 align-middle text-center sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
+          style={{ width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }}
+        >
+          <div className="inline-flex items-center justify-center gap-0.5">
+            <ActionTip label="View">
               <Button
                 variant="ghost"
                 size="icon"
-                title="Edit"
+                aria-label="View"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(taskUrl(task.taskNo, task.categoryName));
+                  if (onTaskClick) onTaskClick(task.taskNo);
+                  else navigate(taskUrl(task.taskNo, task.categoryName));
                 }}
                 className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
               >
-                <Edit2 size={14} strokeWidth={2.5} />
+                <Eye size={14} strokeWidth={2.25} />
               </Button>
+            </ActionTip>
+            {canEditTask(task) && (
+              <ActionTip label="Edit">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Edit"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(taskUrl(task.taskNo, task.categoryName));
+                  }}
+                  className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+                >
+                  <Edit2 size={14} strokeWidth={2.5} />
+                </Button>
+              </ActionTip>
             )}
           </div>
         </td>
@@ -549,10 +728,10 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   );
 
   return (
-    <div className="h-full min-h-0 overflow-auto" data-page-tour="task-table">
+    <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden" data-page-tour="task-table">
       {/* Mobile / tablet cards */}
       <div className="md:hidden flex flex-col gap-2 p-2 sm:p-3">
-        {tasks.map((task) => (
+        {sortedTasks.map((task) => (
           <React.Fragment key={task.taskNo}>
             {renderTaskCard(task)}
             {expandedTasks.has(task.taskNo) && task.subTasks && task.subTasks.length > 0 && (
@@ -564,27 +743,49 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         ))}
       </div>
       {/* Desktop table */}
-      <div className="hidden md:block min-w-0">
-        <table className="tm-data-table w-full text-sm text-left min-w-[720px]">
-          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-200 font-semibold text-xs tracking-wider shadow-[0_1px_0_rgba(14,165,233,0.08)]">
+      <div className="hidden md:block min-w-0 overflow-x-auto">
+        <table
+          className="tm-data-table table-fixed text-sm text-left"
+          style={{ width: '100%', minWidth: tableMinWidthPx }}
+        >
+          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
             <tr>
               {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
                 <th
                   key={col.key}
                   className={cn(
-                    "px-1.5 py-1 whitespace-nowrap relative group/th",
-                    col.key === 'actions' && "w-[50px] text-center p-1 sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]"
+                    'px-3 py-1.5 border-r border-[var(--tm-border)] last:border-r-0 relative group/th text-left whitespace-nowrap overflow-hidden',
+                    col.key === 'code' && 'tm-col-id tm-col-sticky-code sticky left-0 z-[45] bg-[var(--tm-elevated)] border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]',
+                    col.key === 'actions' && 'tm-col-actions px-1 !text-center last:border-r-0 sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]'
                   )}
-                  style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : {}}
+                  style={
+                    col.key === 'actions'
+                      ? { width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }
+                      : col.key === 'code' && !colWidths[col.key]
+                        ? { width: 'var(--tm-col-id-width)', minWidth: 'var(--tm-col-id-width)', maxWidth: 'var(--tm-col-id-width)' }
+                        : colWidths[col.key]
+                          ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] }
+                          : DEFAULT_COL_WIDTH[col.key]
+                            ? { width: DEFAULT_COL_WIDTH[col.key], minWidth: DEFAULT_COL_WIDTH[col.key], maxWidth: DEFAULT_COL_WIDTH[col.key] }
+                            : { width: '14rem', minWidth: '14rem' }
+                  }
+                  {...(col.key !== 'actions' ? sortHeaderCellProps(col.key, handleSort) : {})}
                 >
                   {col.key === 'actions' ? (
                     <div className="flex justify-center">
                       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-6 px-1 flex items-center gap-1 text-slate-400 hover:text-slate-100 hover:bg-[var(--tm-muted)]">
-                            <Settings2 size={14} />
-                          </Button>
-                        </DropdownMenuTrigger>
+                        <ActionTip label="Toggle columns">
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Toggle columns"
+                              className="h-6 px-1 flex items-center gap-1 text-slate-400 hover:text-slate-100 hover:bg-[var(--tm-muted)]"
+                            >
+                              <Settings2 size={14} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </ActionTip>
                         <DropdownMenuContent
                           align="end"
                           className={cn(
@@ -643,7 +844,10 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                               size="sm"
                               className="h-7 text-xs bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
                               onClick={() => {
-                                setVisibleColumns(pendingColumns);
+                                const next = new Set(pendingColumns);
+                                next.add('title');
+                                next.add('actions');
+                                setVisibleColumns(next);
                                 setDropdownOpen(false);
                               }}
                             >
@@ -654,11 +858,23 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                       </DropdownMenu>
                     </div>
                   ) : (
-                    <div className="flex items-center w-full h-full pr-2">
-                      <span className="truncate">{col.label}</span>
+                    <div className="flex items-center justify-start w-full min-w-0 h-full pr-2 text-left">
+                      <SortableHeader
+                        label={col.label}
+                        sortKey={col.key}
+                        sortCol={sortCol}
+                        sortDesc={sortDesc}
+                        onSort={handleSort}
+                        className="min-w-0 w-full justify-start"
+                      />
                       <div
-                        className="w-1.5 h-full absolute right-0 top-0 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500 opacity-0 group-hover/th:opacity-100 transition-opacity z-10"
-                        onMouseDown={(e) => handleResizeStart(e, col.key)}
+                        data-col-resize
+                        className="w-1.5 h-full absolute right-0 top-0 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500 opacity-0 group-hover/th:opacity-100 transition-opacity z-[2]"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleResizeStart(e, col.key);
+                        }}
                       />
                     </div>
                   )}
@@ -667,7 +883,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--tm-border)]">
-            {tasks.map((task) => (
+            {sortedTasks.map((task) => (
               <React.Fragment key={task.taskNo}>
                 {renderTableRow(task)}
                 {expandedTasks.has(task.taskNo) && task.subTasks && task.subTasks.length > 0 && (

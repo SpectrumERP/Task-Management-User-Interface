@@ -13,6 +13,11 @@ import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 import { PriorityMaster } from '@/store/useMasterStore';
 import { getContrastColor } from '@/lib/colorUtils';
+import {
+  formatReminderSummary,
+  parseReminderFromApi,
+  resolveFrequencyLabel,
+} from '@/lib/priorityReminder';
 
 const FORM_NO = 1543;
 const TITLE = 'Priority Master';
@@ -47,17 +52,27 @@ export function PriorityList() {
       const response = await apiService.get<any>(`/api/master/task-priorities/search-data?companyNo=${companyNo}`);
       if (response) {
         const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
-        const mapped = rawItems.map((p: any) => ({
-          id: (p.operTaskPriorityNo ?? '').toString(),
-          code: p.code,
-          name: p.taskPriorityName || '',
-          priorityDuration: p.priorityDuration || '',
-          priorityFrequencyNo: (p.priorityDurationFrequencyNo || '').toString(),
-          sequence: p.sequenceNo || '',
-          colorCoding: p.colorCoding || '',
-          createdBy: p.createdBy?.printingName || p.createdBy?.displayName || p.createdBy?.loginId || p.createdByName || (typeof p.createdBy === 'string' || typeof p.createdBy === 'number' ? p.createdBy : '') || 'System',
-          createdDate: p.createdDate || p.createdDateTime || p.createdOn || ''
-        }));
+        const mapped = rawItems.map((p: any) => {
+          const name = p.taskPriorityName || '';
+          const rule = parseReminderFromApi(p, name);
+          const freqLabel = resolveFrequencyLabel(
+            rule.frequencyNo,
+            fillValues?.frequency as any
+          );
+          return {
+            id: (p.operTaskPriorityNo ?? '').toString(),
+            code: p.code,
+            name,
+            priorityDuration: p.priorityDuration || '',
+            priorityFrequencyNo: (p.priorityDurationFrequencyNo || '').toString(),
+            sequence: p.sequenceNo || '',
+            colorCoding: p.colorCoding || '',
+            isReminderEnabled: rule.enabled,
+            reminderSummary: formatReminderSummary(rule, freqLabel),
+            createdBy: p.createdBy?.printingName || p.createdBy?.displayName || p.createdBy?.loginId || p.createdByName || (typeof p.createdBy === 'string' || typeof p.createdBy === 'number' ? p.createdBy : '') || 'System',
+            createdDate: p.createdDate || p.createdDateTime || p.createdOn || ''
+          };
+        });
         setApiPriorities(mapped);
       }
     } catch (error) {
@@ -95,7 +110,7 @@ export function PriorityList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/task-priorities/delete', {
       params: { operTaskPriorityNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchPriorities(); }).catch(err => { console.error('Failed to delete priority:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Priority deleted'); fetchPriorities(); }).catch(err => { console.error('Failed to delete priority:', err); toast.error('Failed to delete priority'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -117,6 +132,7 @@ export function PriorityList() {
         columns={[
           {
             header: 'Sequence',
+            plainText: false,
             render: (item) => (
               <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[var(--tm-muted)] px-1.5 text-[11px] font-semibold text-slate-200 tabular-nums">
                 {item.sequence || '—'}
@@ -125,9 +141,26 @@ export function PriorityList() {
           },
           {
             header: 'Priority Duration',
+            plainText: false,
             render: (item) => (
               <span className="inline-flex items-center rounded-[6px] border border-[#0EA5E9]/15 bg-[var(--tm-tint)] px-2 py-0.5 text-[11px] font-semibold text-[#0EA5E9]">
                 {item.priorityDuration} {getFrequencyName(item.priorityFrequencyNo)}
+              </span>
+            ),
+          },
+          {
+            header: 'Reminder',
+            plainText: false,
+            render: (item) => (
+              <span
+                className={
+                  item.isReminderEnabled === false
+                    ? 'text-[11px] font-medium text-slate-500'
+                    : 'text-[11px] font-medium text-slate-300'
+                }
+                title={item.reminderSummary || undefined}
+              >
+                {item.reminderSummary || '—'}
               </span>
             ),
           },
@@ -147,6 +180,7 @@ export function PriorityList() {
           }
           return <span className="uppercase tracking-wide">{item.name}</span>;
         }}
+        nameAsRich
         onEdit={(item) => navigate(toMasterEditPath('priority', item.id))}
         onDelete={handleDeleteClick}
         canUpdate={isUpdate}
@@ -179,7 +213,8 @@ export function PriorityList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="priority"
+      />
     </div>
   );
 }

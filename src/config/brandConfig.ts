@@ -139,12 +139,19 @@ export function getBrand(): BrandConfig {
   return cachedBrand;
 }
 
-/** Apply document title + favicon from brand (call once at app start). */
+/** Apply document title + favicon + brand CSS vars (call once at app start). */
 export function applyBrandToDocument(brand: BrandConfig = getBrand()): void {
   if (typeof document === 'undefined') return;
 
   document.title = brand.documentTitle;
   document.documentElement.setAttribute('data-brand-name', brand.brandName);
+
+  // Drive design tokens from brand config (single source for --brand / accent-warm)
+  const root = document.documentElement.style;
+  root.setProperty('--brand', brand.primaryColor);
+  root.setProperty('--accent-warm', brand.accentColor);
+  // Keep focus ring aligned with brand; hover stays theme CSS default unless brand supplies one later
+  root.setProperty('--focus-ring', brand.primaryColor);
 
   let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
   if (!link) {
@@ -160,10 +167,7 @@ export function applyBrandToDocument(brand: BrandConfig = getBrand()): void {
     apple.href = brand.logoSrc;
   }
 
-  const theme = document.querySelector<HTMLMetaElement>("meta[name='theme-color']");
-  if (theme) {
-    theme.content = brand.primaryColor;
-  }
+  // theme-color stays owned by theme store (page chrome), not brand primary
 
   const appTitle = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-title']");
   if (appTitle) {

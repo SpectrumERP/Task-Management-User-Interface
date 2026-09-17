@@ -17,33 +17,48 @@ export function forceStartPageGuide(guideKey?: string) {
 
 type Rect = { top: number; left: number; width: number; height: number };
 
-function isElementVisible(el: HTMLElement) {
-  const style = window.getComputedStyle(el);
-  if (style.display === 'none' || style.visibility === 'hidden') return false;
-  const r = el.getBoundingClientRect();
-  if (r.width < 4 || r.height < 4) return false;
-  if (r.bottom < 0 || r.right < 0 || r.top > window.innerHeight || r.left > window.innerWidth) {
-    return false;
-  }
-  return true;
-}
-
-function getTargetRect(selector: string): Rect | null {
+function getTargetElement(selector: string): HTMLElement | null {
   const nodes = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
   let best: HTMLElement | null = null;
-  let bestArea = 0;
+  let bestScore = -1;
   for (const el of nodes) {
-    if (!isElementVisible(el)) continue;
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') continue;
     const r = el.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) continue;
+    // Prefer fully on-screen, then largest area (stable for single matches)
+    const visibleH = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+    const visibleW = Math.min(r.right, window.innerWidth) - Math.max(r.left, 0);
+    const visibleArea = Math.max(0, visibleH) * Math.max(0, visibleW);
     const area = r.width * r.height;
-    if (area > bestArea) {
-      bestArea = area;
+    const score = visibleArea > 0 ? area + visibleArea : area * 0.1;
+    if (score > bestScore) {
+      bestScore = score;
       best = el;
     }
   }
+  return best;
+}
+
+function getTargetRect(selector: string): Rect | null {
+  const best = getTargetElement(selector);
   if (!best) return null;
   const r = best.getBoundingClientRect();
   return { top: r.top, left: r.left, width: r.width, height: r.height };
+}
+
+function scrollTargetIntoView(selector: string) {
+  const el = getTargetElement(selector);
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const margin = 96;
+  const fullyVisible =
+    r.top >= margin &&
+    r.bottom <= window.innerHeight - margin &&
+    r.left >= 8 &&
+    r.right <= window.innerWidth - 8;
+  if (fullyVisible) return;
+  el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
 }
 
 function findNextStepIndex(steps: PageGuideStep[], fromIndex: number): number {
@@ -122,7 +137,11 @@ export function InternalPageGuideTour() {
   useEffect(() => {
     if (!active || !step) return;
 
-    const apply = () => {
+    let cancelled = false;
+    let measureTimer: number | null = null;
+
+    const measure = () => {
+      if (cancelled) return;
       const r = getTargetRect(step.target);
       if (r) {
         setRect(r);
@@ -137,11 +156,15 @@ export function InternalPageGuideTour() {
       finish();
     };
 
-    apply();
-    const onResize = () => apply();
+    scrollTargetIntoView(step.target);
+    measureTimer = window.setTimeout(measure, 180);
+
+    const onResize = () => measure();
     window.addEventListener('resize', onResize);
     window.addEventListener('scroll', onResize, true);
     return () => {
+      cancelled = true;
+      if (measureTimer != null) window.clearTimeout(measureTimer);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('scroll', onResize, true);
     };
@@ -158,7 +181,7 @@ export function InternalPageGuideTour() {
 
   if (!active || !guide || !step || !rect) return null;
 
-  const pad = 10;
+  const pad = 6;
   const hole = {
     top: Math.max(8, rect.top - pad),
     left: Math.max(8, rect.left - pad),
@@ -166,23 +189,23 @@ export function InternalPageGuideTour() {
     height: rect.height + pad * 2,
   };
 
-  const cardWidth = Math.min(340, window.innerWidth - 24);
-  let cardTop = hole.top + hole.height + 14;
+  const cardWidth = Math.min(320, window.innerWidth - 24);
+  let cardTop = hole.top + hole.height + 12;
   let cardLeft = hole.left;
 
   if (step.prefer === 'left') {
-    cardLeft = Math.max(12, hole.left - cardWidth - 14);
+    cardLeft = Math.max(12, hole.left - cardWidth - 12);
     cardTop = hole.top;
   } else if (step.prefer === 'right') {
-    cardLeft = Math.min(window.innerWidth - cardWidth - 12, hole.left + hole.width + 14);
+    cardLeft = Math.min(window.innerWidth - cardWidth - 12, hole.left + hole.width + 12);
     cardTop = hole.top;
   } else if (step.prefer === 'top') {
-    cardTop = Math.max(12, hole.top - 200);
+    cardTop = Math.max(12, hole.top - 168);
     cardLeft = hole.left;
   }
 
-  if (cardTop + 200 > window.innerHeight) {
-    cardTop = Math.max(12, hole.top - 210);
+  if (cardTop + 168 > window.innerHeight) {
+    cardTop = Math.max(12, hole.top - 176);
   }
   if (cardLeft + cardWidth > window.innerWidth - 12) {
     cardLeft = window.innerWidth - cardWidth - 12;
@@ -247,26 +270,27 @@ export function InternalPageGuideTour() {
         className="pointer-events-auto absolute z-[301] animate-in fade-in-0 zoom-in-95 duration-300"
         style={{ top: cardTop, left: cardLeft, width: cardWidth }}
       >
-        <div className="rounded-2xl border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_20px_50px_-16px_rgba(0,0,0,0.55)] overflow-hidden">
-          <div className="px-4 pt-3.5 pb-2 border-b border-[var(--tm-border)]/60 bg-[var(--tm-elevated)]">
+        <div className="rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_20px_50px_-16px_rgba(0,0,0,0.55)] overflow-hidden">
+          <div className="px-3.5 pt-3 pb-0">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#0EA5E9]">
-                {guide.title} · {stepIndex + 1}/{steps.length}
+              <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-[#0EA5E9]">
+                {guide.title}
+                <span className="ml-1.5 font-semibold tracking-normal text-slate-500 normal-case">
+                  {stepIndex + 1}/{steps.length}
+                </span>
               </p>
               <button
                 type="button"
                 onClick={finish}
-                className="text-[11px] font-medium text-slate-400 hover:text-slate-200 transition-colors"
+                className="shrink-0 text-[11px] font-medium text-slate-400 hover:text-slate-200 transition-colors"
               >
                 Skip
               </button>
             </div>
-            <h3 className="mt-1 text-[14px] font-bold text-slate-100">{step.title}</h3>
+            <h3 className="mt-1 text-[13px] font-bold leading-snug text-slate-100">{step.title}</h3>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">{step.body}</p>
           </div>
-          <div className="px-4 py-3">
-            <p className="text-[12px] leading-relaxed text-slate-400">{step.body}</p>
-          </div>
-          <div className="px-4 pb-3.5 flex items-center justify-between gap-2">
+          <div className="px-3.5 pt-3 pb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               {steps.map((_, i) => (
                 <span

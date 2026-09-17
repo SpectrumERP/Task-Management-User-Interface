@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import { DatePicker } from '../../ui/DatePicker';
 import { StickyNote, Plus, Trash2, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatDateOnly, toDateOnlyLocal } from '@/lib/dateTime';
 import { CONTROL_BORDER, CONTROL_RADIUS, FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { CompanyFormSection } from './CompanyFormSection';
 
@@ -15,21 +16,15 @@ export interface FollowUpNote {
 interface CompanyNotesSectionProps {
   notes: FollowUpNote[];
   onChange: (value: FollowUpNote[]) => void;
+  /** When provided, trash uses this (e.g. confirm dialog) instead of immediate remove. */
+  onRemove?: (index: number) => void;
 }
 
-const toIso = (d: Date) => {
-  const offset = d.getTimezoneOffset();
-  return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
-};
+const toIso = (d: Date) => toDateOnlyLocal(d) ?? '';
 
-const formatDate = (iso: string) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-};
+const formatDate = (iso: string) => formatDateOnly(iso, '');
 
-export function CompanyNotesSection({ notes, onChange }: CompanyNotesSectionProps) {
+export function CompanyNotesSection({ notes, onChange, onRemove }: CompanyNotesSectionProps) {
   const [draftDate, setDraftDate] = useState<Date | undefined>(undefined);
   const [draftNote, setDraftNote] = useState('');
 
@@ -41,6 +36,10 @@ export function CompanyNotesSection({ notes, onChange }: CompanyNotesSectionProp
   };
 
   const removeNote = (index: number) => {
+    if (onRemove) {
+      onRemove(index);
+      return;
+    }
     onChange(notes.filter((_, i) => i !== index));
   };
 

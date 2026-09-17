@@ -1,16 +1,27 @@
 import { Button } from '@/components/ui/button';
 import { User, Plus, Edit, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
+import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 
 interface CompanyContactsSectionProps {
   contacts: any[];
+  companyName?: string;
+  companyCode?: string;
   onAdd: () => void;
   onEdit: (index: number) => void;
   onRemove: (index: number) => void;
 }
 
-export function CompanyContactsSection({ contacts, onAdd, onEdit, onRemove }: CompanyContactsSectionProps) {
+export function CompanyContactsSection({
+  contacts,
+  companyName,
+  companyCode,
+  onAdd,
+  onEdit,
+  onRemove,
+}: CompanyContactsSectionProps) {
   return (
     <CompanyFormSection
       icon={User}
@@ -40,29 +51,45 @@ export function CompanyContactsSection({ contacts, onAdd, onEdit, onRemove }: Co
               className="bg-[var(--tm-elevated)] border border-[var(--tm-border)]/70 rounded-[8px] p-3.5 relative group hover:border-[#0EA5E9]/35 transition-colors"
             >
               <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                <button
-                  type="button"
-                  onClick={() => onEdit(idx)}
-                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
-                  title="Edit Contact"
-                >
-                  <Edit size={13} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemove(idx)}
-                  className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  title="Remove Contact"
-                >
-                  <Trash2 size={13} />
-                </button>
+                <BusinessEntityShareMenu
+                  mode="contact"
+                  contact={{
+                    companyName,
+                    companyCode,
+                    name: c.name || c.contactName,
+                    designation: c.designation,
+                    department: c.department,
+                    phone: c.phone,
+                    email: c.email,
+                  }}
+                />
+                <ActionTip label="Edit Contact">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(idx)}
+                    aria-label="Edit Contact"
+                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
+                  >
+                    <Edit size={13} />
+                  </button>
+                </ActionTip>
+                <ActionTip label="Remove Contact">
+                  <button
+                    type="button"
+                    onClick={() => onRemove(idx)}
+                    aria-label="Remove Contact"
+                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </ActionTip>
               </div>
 
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] flex items-center justify-center font-semibold text-xs shrink-0 uppercase">
                   {c.name ? c.name.substring(0, 2) : 'CP'}
                 </div>
-                <div className="space-y-1 pr-12 min-w-0">
+                <div className="space-y-1 pr-16 min-w-0">
                   <h4 className="text-xs font-semibold text-slate-100 leading-snug truncate">
                     {c.name || c.contactName}
                   </h4>

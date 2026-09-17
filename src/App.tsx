@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
-import { Clock, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Clock, Download } from 'lucide-react';
 import Login from '@/pages/Login';
 import TaskDetail from '@/pages/TaskDetail';
 import MeetingNotesPage from '@/pages/MeetingNotesPage';
 import ReportPage from '@/pages/ReportPage';
 import MeetingReportPage from '@/pages/MeetingReportPage';
 import DealMonitorPage from '@/pages/DealMonitorPage';
+import UserProfilePage from '@/pages/UserProfilePage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/authService';
@@ -27,6 +28,7 @@ import { useTaskStore, type FilterParams } from '@/store/useTaskStore';
 import { TaskCalendarView } from '@/components/task/TaskCalendarView';
 import { cn } from '@/lib/utils';
 import { TaskDetailModal } from '@/components/task/TaskDetailModal';
+import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 import { MasterManager } from '@/components/master/MasterManager';
 import { type MasterType } from '@/components/master/shared/masterRoutes';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
@@ -62,6 +64,7 @@ function Dashboard() {
   const tasks = useTaskStore((state) => state.tasks);
   const fetchError = useTaskStore((state) => state.fetchError);
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
+  const searchKeyword = useTaskStore((state) => state.searchKeyword);
 
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
@@ -69,10 +72,12 @@ function Dashboard() {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  const [pageSize, setPageSize] = useState(100);
+  // 10 records per page by default; page numbers come from total filtered count
+  const [pageSize, setPageSize] = useState(10);
   const [pageNo, setPageNo] = useState(1);
   const [currentFilters, setCurrentFilters] = useState<Record<string, unknown> | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [filterClearNonce, setFilterClearNonce] = useState(0);
   const [trackedFolderNo, setTrackedFolderNo] = useState<number | null>(null);
 
   const selectedFolderNo = selectedFolder?.TaskFolderNo ?? null;
@@ -111,15 +116,32 @@ function Dashboard() {
     initData();
   }, [fetchFillValues, companyNo]);
 
+  // Refetch only when filters change — paging is client-side from total records
   useEffect(() => {
     if (currentFilters) {
-      fetchTasks({
-        ...currentFilters,
-        pageSize,
-        pageNo,
-      } as FilterParams);
+      fetchTasks({ ...currentFilters } as FilterParams);
     }
-  }, [currentFilters, pageSize, pageNo, fetchTasks]);
+  }, [currentFilters, fetchTasks]);
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(t => t.categoryName?.toLowerCase() !== 'deal monitor');
+  }, [tasks]);
+
+  const totalItems = filteredTasks.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize) || 1);
+  const safePageNo = Math.min(pageNo, totalPages);
+
+  useEffect(() => {
+    if (pageNo !== safePageNo) setPageNo(safePageNo);
+  }, [pageNo, safePageNo]);
+
+  const startIndex = totalItems === 0 ? 0 : (safePageNo - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  
+  const pagedTasks = useMemo(
+    () => filteredTasks.slice(startIndex, endIndex),
+    [filteredTasks, startIndex, endIndex]
+  );
 
   const handleCreateTask = useCallback(() => {
     navigate('/task/new');
@@ -186,7 +208,12 @@ function Dashboard() {
 
   return (
     <MainLayout activeTab={activeTab} onTabChange={handleTabChange}>
-      <main className="page-shell gap-4">
+      <main
+        className={cn(
+          "page-shell gap-4",
+          showFilters && "lg:[--tm-filters-drawer-width:min(100vw,18rem)]"
+        )}
+      >
         {/* Unified Top Control Bar */}
         <div className="shrink-0">
           <TaskFilter
@@ -196,6 +223,7 @@ function Dashboard() {
             onCreateTask={isSave ? handleCreateTask : undefined}
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters(!showFilters)}
+            clearNonce={filterClearNonce}
           />
         </div>
 
@@ -204,11 +232,13 @@ function Dashboard() {
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
             {tasks.length > 0 && (
               <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
-                <span className="text-[11px] font-semibold text-slate-400">Total {tasks.length} Records shown</span>
+                <span className="text-[11px] font-semibold text-slate-400">
+                  {totalItems === 1 ? '1 task' : `${totalItems} tasks`}
+                </span>
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={() => exportReportToExcel(tasks, false, 'Tasks.csv')}
+                  onClick={() => exportReportToExcel(filteredTasks, false, 'Tasks.csv')}
                   className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
                 >
                   <Download size={12} />
@@ -218,101 +248,74 @@ function Dashboard() {
             )}
             <div className="flex-1 min-h-0 overflow-hidden">
               <TaskListView
-                tasks={tasks}
+                tasks={pagedTasks}
                 isLoading={isLoading}
                 loadError={Boolean(fetchError)}
                 onRetryLoad={() => {
                   if (currentFilters) {
-                    fetchTasks({
-                      ...currentFilters,
-                      pageSize,
-                      pageNo,
-                    } as FilterParams);
+                    fetchTasks({ ...currentFilters } as FilterParams);
                   }
                 }}
                 onTaskClick={handleTaskClick}
                 onCreateTask={handleCreateTask}
+                onClearFilters={
+                  (searchKeyword ||
+                    currentFilters?.operTaskStatusNo ||
+                    currentFilters?.operTaskPriorityNo ||
+                    currentFilters?.taskCode ||
+                    currentFilters?.operTaskCategoryNo ||
+                    currentFilters?.ownerLoginNo ||
+                    currentFilters?.fromDueDate ||
+                    currentFilters?.toDueDate ||
+                    currentFilters?.isAllFolder)
+                    ? () => setFilterClearNonce((n) => n + 1)
+                    : undefined
+                }
               />
             </div>
 
-            {tasks.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0 select-none">
-                <div className="text-[11px] text-slate-500 font-semibold justify-self-center sm:justify-self-start min-w-0 truncate tabular-nums order-1 sm:order-none">
-                  Showing <span className="text-slate-100 font-bold">{((pageNo - 1) * pageSize) + 1}</span> to{" "}
-                  <span className="text-slate-100 font-bold">{((pageNo - 1) * pageSize) + tasks.length}</span> records
-                </div>
-
-                <div className="flex items-center gap-2 justify-self-center order-3 sm:order-none w-full sm:w-auto justify-center">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">Per Page:</span>
-                  <div className="flex items-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)]">
-                    {[10, 25, 50, 100].map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => {
-                          setPageSize(size);
-                          setPageNo(1);
-                        }}
-                        className={cn(
-                          "h-6 w-9 rounded-md text-[10px] font-semibold tabular-nums tracking-wide transition-all",
-                          pageSize === size
-                            ? "bg-[#0EA5E9] text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-50 hover:bg-[var(--tm-muted)]"
-                        )}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 justify-self-center sm:justify-self-end order-2 sm:order-none">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={pageNo === 1 || isLoading}
-                    onClick={() => setPageNo((prev) => Math.max(1, prev - 1))}
-                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
-                  >
-                    <ChevronLeft size={14} strokeWidth={2.5} />
-                  </Button>
-
-                  <button
-                    type="button"
-                    disabled
-                    className="h-7 w-7 rounded-lg text-[10px] font-bold bg-[#0EA5E9] border border-[#0EA5E9] text-white shadow-sm flex items-center justify-center cursor-default tabular-nums shrink-0"
-                  >
-                    {pageNo}
-                  </button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={tasks.length < pageSize || isLoading}
-                    onClick={() => setPageNo((prev) => prev + 1)}
-                    className="h-7 w-7 rounded-lg text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center shrink-0 border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm"
-                  >
-                    <ChevronRight size={14} strokeWidth={2.5} />
-                  </Button>
-                </div>
-              </div>
+            {totalItems > 0 ? (
+              <MasterPaginationBar
+                totalItems={totalItems}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                itemsPerPage={pageSize}
+                onItemsPerPageChange={(size) => {
+                  setPageSize(size);
+                  setPageNo(1);
+                }}
+                currentPage={safePageNo}
+                totalPages={totalPages}
+                onPageChange={setPageNo}
+                hideBelow={0}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
             ) : null}
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {viewMode === 'board' ? (
-              <Board onAddTask={(status) => navigate(`/task/new?status=${status}`)} onTaskClick={handleTaskClick} />
+              <Board
+                onAddTask={(status) => navigate(`/task/new?status=${status}`)}
+                onTaskClick={handleTaskClick}
+                filterParams={currentFilters}
+                tasks={filteredTasks}
+              />
             ) : (
               <TaskCalendarView
-                tasks={tasks}
+                tasks={filteredTasks}
                 isLoading={isLoading}
+                loadError={Boolean(fetchError)}
+                onRetryLoad={() => {
+                  if (currentFilters) {
+                    fetchTasks({ ...currentFilters } as FilterParams);
+                  }
+                }}
                 onTaskClick={handleTaskClick}
                 onAddTask={(date) => {
                   const dateStr = date ? `?date=${date.toISOString()}` : '';
                   navigate(`/task/new${dateStr}`);
                 }}
-                showFilters={showFilters}
-                onToggleFilters={() => setShowFilters(!showFilters)}
                 onViewModeChange={setViewModeAndStore}
               />
             )}
@@ -323,7 +326,7 @@ function Dashboard() {
           taskNo={selectedTaskId}
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
-          onRefreshTasks={() => fetchTasks({ ...currentFilters, pageSize, pageNo })}
+          onRefreshTasks={() => currentFilters && fetchTasks({ ...currentFilters } as FilterParams)}
         />
       </main>
     </MainLayout>
@@ -562,6 +565,33 @@ function MeetingReportRoute() {
   );
 }
 
+function handleAppNav(navigate: ReturnType<typeof useNavigate>, id: string) {
+  if (id.startsWith('master-')) {
+    navigate(`/master/${id.replace('master-', '')}`);
+  } else if (id === 'tasks') {
+    navigate('/');
+  } else if (id === 'sales-deals') {
+    navigate('/sales/deals');
+  } else if (id === 'deal-monitor') {
+    navigate('/deal-monitor');
+  } else if (id === 'meeting-notes') {
+    navigate('/meetings');
+  } else if (id === 'reports') {
+    navigate('/reports');
+  } else if (id === 'meeting-reports') {
+    navigate('/meeting-reports');
+  }
+}
+
+function UserProfileRoute() {
+  const navigate = useNavigate();
+  return (
+    <MainLayout activeTab="tasks" onTabChange={(id) => handleAppNav(navigate, id)}>
+      <UserProfilePage />
+    </MainLayout>
+  );
+}
+
 const router = createBrowserRouter([
   {
     element: (
@@ -681,10 +711,21 @@ const router = createBrowserRouter([
           </PrivateRoute>
         ),
       },
+      {
+        path: "/users/:loginNo",
+        element: (
+          <PrivateRoute>
+            <UserProfileRoute />
+          </PrivateRoute>
+        ),
+      },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
 ]);
+
+/** Prevent StrictMode remount from hitting version.json twice in the same tick window. */
+let lastAppVersionCheckAt = 0;
 
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -706,13 +747,13 @@ function App() {
 
   // Version Cache Busting Check
   useEffect(() => {
-    // Initial cleanup
-    cleanupExpiredDrafts();
-
-    // Check app version periodically
     const checkVersion = async () => {
+      const now = Date.now();
+      if (now - lastAppVersionCheckAt < 3000) return;
+      lastAppVersionCheckAt = now;
+
       try {
-        const response = await fetch('/version.json?t=' + new Date().getTime());
+        const response = await fetch('/version.json?t=' + now);
         if (response.ok) {
           const data = await response.json();
           const currentVersion = localStorage.getItem('app_version');
@@ -739,6 +780,9 @@ function App() {
         console.error('Failed to check app version:', err);
       }
     };
+
+    // Initial cleanup
+    cleanupExpiredDrafts();
 
     checkVersion();
     // Check version every 5 minutes
@@ -768,7 +812,7 @@ function App() {
         <RouterProvider router={router} />
       </ErrorBoundary>
       <PWAInstallBanner />
-      <Toaster position="top-right" richColors closeButton />
+      <Toaster position="top-right" richColors closeButton duration={4000} />
     </>
   );
 }

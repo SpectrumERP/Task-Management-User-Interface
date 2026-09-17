@@ -79,7 +79,7 @@ export function MeetingCategoryList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/meeting-categories/delete', {
       params: { meetingCategoryNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchMeetingCategories(); }).catch(err => { console.error('Failed to delete meeting category:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Meeting category deleted'); fetchMeetingCategories(); }).catch(err => { console.error('Failed to delete meeting category:', err); toast.error('Failed to delete meeting category'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -129,7 +129,8 @@ export function MeetingCategoryList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="meeting category"
+      />
     </div>
   );
 }

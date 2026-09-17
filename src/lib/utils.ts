@@ -1,5 +1,15 @@
 import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { extendTailwindMerge } from "tailwind-merge"
+
+/** Know custom control heights so e.g. `h-7` correctly overrides `h-control-md`. */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      h: ["h-control-sm", "h-control-md"],
+      "min-h": ["min-h-control-sm", "min-h-control-md"],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

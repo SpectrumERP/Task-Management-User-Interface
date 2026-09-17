@@ -111,7 +111,7 @@ export interface Task {
   attachments?: DocumentAttachment[];
   customFields?: { customFieldNo: number | string; fieldValue: string }[];
   createdDate?: string;
-  createdBy?: { displayName: string };
+  createdBy?: { displayName: string; id?: number; loginNo?: number };
   roadBlock?: string;
   // typeNo 1 = Task Execution Log entry, typeNo 2 = Road Block Remark entry
   executionChallenges?: {

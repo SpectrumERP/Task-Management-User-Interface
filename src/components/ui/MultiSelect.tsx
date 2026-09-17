@@ -17,6 +17,7 @@ import {
   Popover,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { sortByLabel } from "@/lib/sortOptions"
 
 interface MultiSelectProps {
   options: { label: string; value: string }[]
@@ -30,6 +31,9 @@ interface MultiSelectProps {
   isClearable?: boolean
   modal?: boolean
   maxVisible?: number
+  /** Sort options A–Z by label (default true). */
+  sortAlphabetically?: boolean
+  pinValues?: string[]
 }
 
 const CHIP_GAP_PX = 4 // matches the chip row's gap-1
@@ -46,6 +50,8 @@ export function MultiSelect({
   isClearable = true,
   modal = false,
   maxVisible,
+  sortAlphabetically = true,
+  pinValues,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -116,7 +122,7 @@ export function MultiSelect({
             className,
             FIELD_TEXT_STYLE,
             value.length === 0 && "text-slate-400",
-            "rounded-[8px] border-[var(--tm-border)]",
+            "rounded-md border-tm-border",
             !(typeof className === "string" && /border-red/.test(className)) && "!border-[var(--tm-border)]"
           )}
         >
@@ -174,7 +180,7 @@ export function MultiSelect({
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => {
+              {sortByLabel(options, { enabled: sortAlphabetically, pinValues }).map((option) => {
                 const isSelected = value.includes(option.value);
                 return (
                   <CommandItem
@@ -192,7 +198,7 @@ export function MultiSelect({
                     {option.label}
                     <Check
                       className={cn(
-                        "ml-auto h-4 w-4 text-[#0EA5E9]",
+                        "ml-auto h-4 w-4 text-brand",
                         isSelected ? "opacity-100" : "opacity-0"
                       )}
                     />

@@ -2,10 +2,13 @@ import { Button } from '@/components/ui/button';
 import { attachmentService } from '@/services/attachmentService';
 import { UploadCloud, Camera as CameraIcon, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
+import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 
 interface CompanyAttachmentsSectionProps {
   attachments: any[];
+  companyName?: string;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenCamera: () => void;
   onAnalyze: (att: any) => void;
@@ -14,8 +17,14 @@ interface CompanyAttachmentsSectionProps {
   error?: string;
 }
 
+function isShareableAttachment(att: any): boolean {
+  const id = att.id || att.docNo;
+  return Boolean(id);
+}
+
 export function CompanyAttachmentsSection({
   attachments,
+  companyName,
   onFileUpload,
   onOpenCamera,
   onAnalyze,
@@ -130,14 +139,26 @@ export function CompanyAttachmentsSection({
                       )}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(idx)}
-                    className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
-                    title="Remove Attachment"
-                  >
-                    <X size={14} strokeWidth={2.5} />
-                  </button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {isShareableAttachment(att) ? (
+                      <BusinessEntityShareMenu
+                        mode="attachment"
+                        attachmentId={att.id || att.docNo}
+                        fileName={att.fileName || 'document'}
+                        companyName={companyName}
+                      />
+                    ) : null}
+                    <ActionTip label="Remove Attachment">
+                      <button
+                        type="button"
+                        onClick={() => onRemove(idx)}
+                        aria-label="Remove Attachment"
+                        className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
+                        <X size={14} strokeWidth={2.5} />
+                      </button>
+                    </ActionTip>
+                  </div>
                 </div>
               ))}
             </div>

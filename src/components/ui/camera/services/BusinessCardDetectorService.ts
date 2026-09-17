@@ -11,10 +11,13 @@ export class BusinessCardDetectorService {
     this.processing = true;
     let result: DetectionResult = { detected: false, confidence: 0 };
 
-    const width = videoElement.videoWidth;
-    const height = videoElement.videoHeight;
-    canvasElement.width = width;
-    canvasElement.height = height;
+    const MAX_WIDTH = 400;
+    const scale = videoElement.videoWidth > MAX_WIDTH ? MAX_WIDTH / videoElement.videoWidth : 1.0;
+    const processWidth = Math.floor(videoElement.videoWidth * scale);
+    const processHeight = Math.floor(videoElement.videoHeight * scale);
+    
+    canvasElement.width = processWidth;
+    canvasElement.height = processHeight;
 
     const ctx = canvasElement.getContext('2d', { willReadFrequently: true });
     if (!ctx) {
@@ -22,10 +25,10 @@ export class BusinessCardDetectorService {
       return result;
     }
 
-    ctx.drawImage(videoElement, 0, 0, width, height);
+    ctx.drawImage(videoElement, 0, 0, processWidth, processHeight);
     
-    let src = new cv.Mat(height, width, cv.CV_8UC4);
-    src.data.set(ctx.getImageData(0, 0, width, height).data);
+    let src = new cv.Mat(processHeight, processWidth, cv.CV_8UC4);
+    src.data.set(ctx.getImageData(0, 0, processWidth, processHeight).data);
     
     let gray = new cv.Mat();
     let blurred = new cv.Mat();
@@ -38,49 +41,50 @@ export class BusinessCardDetectorService {
       cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
       cv.Canny(blurred, edges, 75, 200);
 
+      // Connect nearby edges (text and card borders) to form a solid block
+      let kernel = cv.Mat.ones(15, 15, cv.CV_8U);
+      cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernel);
+
       cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+      kernel.delete();
 
       let maxArea = 0;
       let bestRect: Rectangle | undefined;
       let bestCorners: any;
 
-      const totalArea = width * height;
+      const totalArea = processWidth * processHeight;
       const minArea = totalArea * 0.15; // 15% of frame
       const maxAllowedArea = totalArea * 0.95; // 95% of frame
 
       for (let i = 0; i < contours.size(); ++i) {
         let cnt = contours.get(i);
-        let area = cv.contourArea(cnt);
+        let rect = cv.boundingRect(cnt);
+        let area = rect.width * rect.height; // Use bounding box area instead of contour area!
 
         if (area > minArea && area < maxAllowedArea) {
-          let peri = cv.arcLength(cnt, true);
-          let approx = new cv.Mat();
-          cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
+          let aspectRatio = rect.width / rect.height;
 
-          if (approx.rows === 4) {
-            let rect = cv.boundingRect(approx);
-            let aspectRatio = rect.width / rect.height;
+          // Business cards usually have an aspect ratio between 1.4 and 1.9 (or inverse if vertical)
+          const isValidRatio = (aspectRatio >= 1.4 && aspectRatio <= 1.9) || (aspectRatio >= 0.5 && aspectRatio <= 0.75);
 
-            // Business cards usually have an aspect ratio between 1.4 and 1.9 (or inverse if vertical)
-            const isValidRatio = (aspectRatio >= 1.4 && aspectRatio <= 1.9) || (aspectRatio >= 0.5 && aspectRatio <= 0.75);
-
-            if (isValidRatio && area > maxArea) {
-              maxArea = area;
-              bestRect = rect;
-              bestCorners = approx.clone(); // Need to clone because approx is deleted
-            }
+          if (isValidRatio && area > maxArea) {
+            maxArea = area;
+            bestRect = rect;
           }
-          approx.delete();
         }
         cnt.delete();
       }
 
-      if (bestRect && bestCorners) {
+      if (bestRect) {
         result = {
           detected: true,
           confidence: maxArea / totalArea,
-          rectangle: bestRect,
-          corners: bestCorners
+          rectangle: {
+            x: bestRect.x / scale,
+            y: bestRect.y / scale,
+            width: bestRect.width / scale,
+            height: bestRect.height / scale
+          }
         };
       }
 

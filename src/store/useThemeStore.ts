@@ -11,8 +11,12 @@ function applyThemeClass(theme: ThemeMode) {
   root.classList.toggle('dark', theme === 'dark');
   root.style.colorScheme = theme;
   root.setAttribute('data-theme', theme);
+  // Prefer computed --tm-page so theme-color stays in sync with design tokens
+  const pageBg =
+    getComputedStyle(root).getPropertyValue('--tm-page').trim() ||
+    (theme === 'dark' ? '#0B1220' : '#F5F7F9');
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0B1220' : '#F5F7F9');
+  if (meta) meta.setAttribute('content', pageBg);
 }
 
 

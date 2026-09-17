@@ -37,7 +37,10 @@ interface AuthState {
   fetchAccessibleForms: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+/** Dedupe concurrent menu fetches (StrictMode / MainLayout + Sidebar). */
+let activeMenuPromise: Promise<void> | null = null;
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   company: null,
   token: null,
@@ -48,30 +51,39 @@ export const useAuthStore = create<AuthState>((set) => ({
   formRights: null,
 
   fetchAccessibleForms: async () => {
-    try {
-      const res = await apiService.get<{ success: boolean; data: FormRight[] }>('/api/globaldata/forms/task-management-menu');
-      if (res?.success && Array.isArray(res.data)) {
-        const rightsRecord: Record<number, FormRight> = {};
-        const accessibleList: number[] = [];
-        
-        res.data.forEach(item => {
-          rightsRecord[item.formNo] = item;
-          if (item.isOpen || item.isReport) {
-            accessibleList.push(item.formNo);
-          }
-        });
-        
-        set({ 
-          accessibleForms: accessibleList,
-          formRights: rightsRecord
-        });
-      } else {
+    if (get().accessibleForms !== null) return;
+    if (activeMenuPromise) return activeMenuPromise;
+
+    activeMenuPromise = (async () => {
+      try {
+        const res = await apiService.get<{ success: boolean; data: FormRight[] }>('/api/globaldata/forms/task-management-menu');
+        if (res?.success && Array.isArray(res.data)) {
+          const rightsRecord: Record<number, FormRight> = {};
+          const accessibleList: number[] = [];
+
+          res.data.forEach(item => {
+            rightsRecord[item.formNo] = item;
+            if (item.isOpen || item.isReport) {
+              accessibleList.push(item.formNo);
+            }
+          });
+
+          set({
+            accessibleForms: accessibleList,
+            formRights: rightsRecord
+          });
+        } else {
+          set({ accessibleForms: [], formRights: {} });
+        }
+      } catch (error) {
+        console.error("Failed to fetch menu access data", error);
         set({ accessibleForms: [], formRights: {} });
+      } finally {
+        activeMenuPromise = null;
       }
-    } catch (error) {
-      console.error("Failed to fetch menu access data", error);
-      set({ accessibleForms: [], formRights: {} });
-    }
+    })();
+
+    return activeMenuPromise;
   },
 
   login: async (loginId, password) => {
@@ -97,6 +109,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       company: null,
       token: null,
       isAuthenticated: false,
+      accessibleForms: null,
+      formRights: null,
     });
   },
 

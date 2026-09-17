@@ -29,11 +29,11 @@ function CompactStepper({
   onDown: () => void
 }) {
   return (
-    <div className="inline-flex shrink-0 items-center rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm">
+    <div className="inline-flex shrink-0 items-center rounded-md border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm">
       <button
         type="button"
         onClick={onDown}
-        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-l-[6px] text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] transition-colors"
+        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-l-[6px] text-slate-500 hover:bg-[var(--tm-tint)] hover:text-brand transition-colors"
         aria-label={`Decrease ${label}`}
       >
         <ChevronLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
@@ -44,7 +44,7 @@ function CompactStepper({
       <button
         type="button"
         onClick={onUp}
-        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-r-[6px] text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] transition-colors"
+        className="h-7 w-6 shrink-0 inline-flex items-center justify-center rounded-r-[6px] text-slate-500 hover:bg-[var(--tm-tint)] hover:text-brand transition-colors"
         aria-label={`Increase ${label}`}
       >
         <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
@@ -236,9 +236,9 @@ export function DateTimePicker({
                 caption_label: "text-[12px] font-semibold text-slate-100",
                 nav: "absolute inset-x-0 top-0 flex items-center justify-between",
                 button_previous:
-                  "size-6 rounded-full text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] z-10",
+                  "size-6 rounded-full text-slate-500 hover:bg-[var(--tm-tint)] hover:text-brand z-10",
                 button_next:
-                  "size-6 rounded-full text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] z-10",
+                  "size-6 rounded-full text-slate-500 hover:bg-[var(--tm-tint)] hover:text-brand z-10",
                 month_grid: "w-full border-collapse table-fixed",
                 weekdays: "w-full",
                 weekday:
@@ -256,13 +256,13 @@ export function DateTimePicker({
                     {...props}
                     className={cn(
                       "mx-auto flex size-7 items-center justify-center rounded-full text-[11px] font-medium tabular-nums transition-colors",
-                      "hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]",
+                      "hover:bg-[var(--tm-tint)] hover:text-brand",
                       modifiers.outside && "text-slate-300",
                       modifiers.today &&
                         !modifiers.selected &&
-                        "bg-[var(--tm-tint)] text-[#0EA5E9] font-semibold",
+                        "bg-[var(--tm-tint)] text-brand font-semibold",
                       modifiers.selected &&
-                        "bg-[#0EA5E9] text-white hover:bg-[#0284C7] hover:text-white font-semibold"
+                        "bg-brand text-white hover:bg-brand-hover hover:text-white font-semibold"
                     )}
                   />
                 ),
@@ -296,8 +296,8 @@ export function DateTimePicker({
                       className={cn(
                         "h-6 min-w-[1.85rem] rounded-[6px] px-1.5 text-[10px] font-semibold transition-all",
                         period === p
-                          ? "bg-[#0EA5E9] text-white shadow-sm"
-                          : "text-slate-500 hover:text-[#0EA5E9]"
+                          ? "bg-brand text-white shadow-sm"
+                          : "text-slate-500 hover:text-brand"
                       )}
                     >
                       {p}
@@ -321,7 +321,7 @@ export function DateTimePicker({
               <Button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="h-7 px-3 rounded-[7px] text-[10px] font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white"
+                className="h-7 px-3 rounded-[7px] text-[10px] font-semibold bg-brand hover:bg-brand-hover text-white"
               >
                 Apply
               </Button>
@@ -341,15 +341,15 @@ export function DateTimePicker({
         aria-expanded={isOpen}
         onClick={() => !disabled && setIsOpen((open) => !open)}
         className={cn(
-          "w-full h-10 justify-start text-left font-medium bg-[var(--tm-surface)] text-xs transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-[#0EA5E9]/35 focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/15 border shadow-none",
+          "w-full h-10 justify-start text-left font-medium bg-[var(--tm-surface)] text-xs transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-brand/35 focus-visible:ring-2 focus-visible:ring-brand/15 border shadow-tm-control",
           !date && "text-slate-400",
-          isOpen && "border-[#0EA5E9]/40 ring-2 ring-[#0EA5E9]/10",
+          isOpen && "border-brand/40 ring-2 ring-brand/10",
           className,
-          "rounded-[8px] border-[var(--tm-border)]",
-          isOpen && "border-[#0EA5E9]/40"
+          "rounded-md border-[var(--tm-border)]",
+          isOpen && "border-brand/40"
         )}
       >
-        <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+        <span className="mr-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-brand">
           <CalendarIcon className="h-3.5 w-3.5" />
         </span>
         {date ? (

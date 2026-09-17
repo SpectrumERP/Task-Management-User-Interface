@@ -11,6 +11,7 @@ import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 import { UserGroupMaster } from '@/store/useMasterStore';
+import { pickDescription } from '@/lib/pickDescription';
 
 const FORM_NO = 1546;
 const TITLE = 'User Group Master';
@@ -38,14 +39,38 @@ export function UserGroupList() {
       const response = await apiService.get<any>(`/api/security/user-groups/search-data?companyNo=${companyNo}`);
       if (response) {
         const rawItems = Array.isArray(response) ? response : (response.data && Array.isArray(response.data) ? response.data : []);
-        const mapped = rawItems.map((u: any) => ({
+        let mapped: UserGroupMaster[] = rawItems.map((u: any) => ({
           id: (u.userGroupNo ?? '').toString(),
           code: u.code || '',
           name: u.userGroupName || '',
-          description: u.description || '',
+          description: pickDescription(u),
           createdBy: u.createdBy?.printingName || u.createdBy?.displayName || u.createdBy?.loginId || u.createdByName || (typeof u.createdBy === 'string' || typeof u.createdBy === 'number' ? u.createdBy : '') || 'System',
           createdDate: u.createdDate || u.createdDateTime || u.createdOn || ''
         }));
+
+        const needsHydrate = mapped.filter((item) => item.id && !item.description);
+        if (needsHydrate.length > 0) {
+          const hydrated = await Promise.all(
+            needsHydrate.map(async (item) => {
+              try {
+                const detail = await apiService.get<any>(
+                  `/api/security/user-groups/load-data/${item.id}?companyNo=${companyNo}`
+                );
+                const body = detail?.data || detail;
+                const dl = body?.data || body;
+                return { id: item.id, description: pickDescription(dl) };
+              } catch {
+                return { id: item.id, description: '' };
+              }
+            })
+          );
+          const byId = new Map(hydrated.map((h) => [h.id, h.description]));
+          mapped = mapped.map((item) => {
+            const next = byId.get(item.id);
+            return next ? { ...item, description: next } : item;
+          });
+        }
+
         setApiUserGroups(mapped);
       }
     } catch (error) {
@@ -80,7 +105,7 @@ export function UserGroupList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/security/user-groups/delete', {
       params: { userGroupNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchUserGroups(); }).catch(err => { console.error('Failed to delete user group:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('User group deleted'); fetchUserGroups(); }).catch(err => { console.error('Failed to delete user group:', err); toast.error('Failed to delete user group'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -102,6 +127,7 @@ export function UserGroupList() {
         columns={[
           {
             header: 'Description',
+            sortKey: 'description',
             render: (item) =>
               item.description || (
                 <span className="italic text-slate-300 font-medium">No description</span>
@@ -142,7 +168,8 @@ export function UserGroupList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="user group"
+      />
     </div>
   );
 }

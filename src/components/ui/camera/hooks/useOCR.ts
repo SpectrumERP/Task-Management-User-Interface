@@ -16,33 +16,35 @@ export function useOCR() {
   const processImage = useCallback(async (imageBlob: Blob): Promise<OCRResult> => {
     setIsProcessing(true);
     setProgress(0);
-    
+
     try {
       const result: OCRResult = { tesseractText: '', googleText: null };
 
-      // Try Google Vision API First
+      // Always try Google Vision path first
       try {
-        setProgress(0.20);
+        setProgress(0.2);
         const text = await googleVisionRef.current.extractText(imageBlob);
         if (text && text.trim()) {
           result.googleText = text;
-          return result; // Fast path: Google Vision succeeded!
+          return result;
         }
-      } catch (err) {
-        console.error("Google Vision Error, falling back to Tesseract:", err);
+      } catch (err: any) {
+        console.warn('Google Vision OCR failed:', err);
+        // If the API explicitly returns an error (like model overloaded), throw it to the UI
+        if (err instanceof Error || err?.message) {
+          throw err;
+        }
       }
 
-      // Fallback to Tesseract if Google Vision failed or returned empty
-      setProgress(0.40);
-      await ocrServiceRef.current.init((p) => setProgress(0.40 + p * 0.50)); 
-      
-      const tesseractText = await ocrServiceRef.current.extractText(imageBlob);
-      result.tesseractText = tesseractText;
+      // Local OCR — no external API / client key
+      setProgress(0.15);
+      await ocrServiceRef.current.init((p) => setProgress(0.15 + p * 0.8));
 
+      result.tesseractText = await ocrServiceRef.current.extractText(imageBlob);
       return result;
     } finally {
       setIsProcessing(false);
-      setProgress(1); // complete
+      setProgress(1);
     }
   }, []);
 

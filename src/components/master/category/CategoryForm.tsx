@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -14,8 +14,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
+import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
+import { useConfirmDelete } from '../shared/useConfirmDelete';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
 const FORM_NO = 1561;
 const TITLE = 'Category Master';
@@ -32,58 +35,6 @@ const COLOR_PRESETS = [
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
-function FieldErrorTip({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <span
-      role="alert"
-      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-    >
-      {message}
-    </span>
-  );
-}
-
-function FieldControl({
-  children,
-  error,
-  className,
-}: {
-  children: ReactNode;
-  error?: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn('relative min-w-0', className)}>
-      {children}
-      <FieldErrorTip message={error} />
-    </div>
-  );
-}
-
-function FieldLabel({
-  children,
-  required,
-  htmlFor,
-}: {
-  children: ReactNode;
-  required?: boolean;
-  htmlFor?: string;
-}) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
-    >
-      <span>{children}</span>
-      {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
-          *
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 interface ChecklistItem {
   description: string;
@@ -109,6 +60,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
   const { goToList } = useMasterFormGuard('category', editingId, rights);
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
+  const deleteConfirm = useConfirmDelete('item');
 
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -239,6 +191,15 @@ export function CategoryForm({ id }: CategoryFormProps) {
   const removeChecklistItem = (index: number) => {
     setChecklist(checklist.filter((_, i) => i !== index));
   };
+  const requestRemoveChecklistItem = (index: number) => {
+    const item = checklist[index];
+    const label = typeof item === 'string' ? item : item?.description || 'Checklist item';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'checklist item',
+      recordName: label,
+      onConfirm: () => removeChecklistItem(index),
+    });
+  };
   const toggleChecklistItem = (index: number) => {
     setChecklist(checklist.map((c, i) => (i === index ? { ...c, isChecked: !c.isChecked } : c)));
   };
@@ -252,6 +213,14 @@ export function CategoryForm({ id }: CategoryFormProps) {
   };
   const removeSubtaskItem = (index: number) => {
     setSubtasks(subtasks.filter((_, i) => i !== index));
+  };
+  const requestRemoveSubtaskItem = (index: number) => {
+    const item = subtasks[index];
+    deleteConfirm.requestConfirm({
+      entityLabel: 'subtask template',
+      recordName: item?.description || 'Subtask',
+      onConfirm: () => removeSubtaskItem(index),
+    });
   };
 
   const taskTypeOptions = ((categoryFillValues?.taskTypes || categoryFillValues?.taskType || []) as any[]).map((t: any) => ({
@@ -494,7 +463,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
                     <div className="flex items-center gap-0.5 shrink-0">
                       {isEditing ? (
                         <>
-                          <Button type="button" variant="ghost" size="icon" disabled={!tempEditText.trim()} onClick={() => {
+                          <Button type="button" variant="ghost" size="icon" aria-label="Save checklist item" disabled={!tempEditText.trim()} onClick={() => {
                             if (!tempEditText.trim()) return;
                             const desc = tempEditText.trim().toLowerCase();
                             if (checklist.some((item: any, idx: number) => idx !== index && (typeof item === 'string' ? item : item.description).toLowerCase() === desc)) {
@@ -509,16 +478,16 @@ export function CategoryForm({ id }: CategoryFormProps) {
                           }} className="h-7 w-7 rounded-[6px] text-emerald-400 hover:bg-emerald-500/10">
                             <CheckCircle size={14} />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingChecklistIdx(null); setTempEditText(''); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:bg-[var(--tm-muted)]">
+                          <Button type="button" variant="ghost" size="icon" aria-label="Cancel checklist edit" onClick={() => { setEditingChecklistIdx(null); setTempEditText(''); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:bg-[var(--tm-muted)]">
                             <X size={14} />
                           </Button>
                         </>
                       ) : (
                         <>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingChecklistIdx(index); setTempEditText(desc); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                          <Button type="button" variant="ghost" size="icon" aria-label="Edit checklist item" onClick={() => { setEditingChecklistIdx(index); setTempEditText(desc); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                             <Edit size={13} />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeChecklistItem(index)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
+                          <Button type="button" variant="ghost" size="icon" aria-label="Delete checklist item" onClick={() => requestRemoveChecklistItem(index)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
                             <Trash2 size={13} />
                           </Button>
                         </>
@@ -644,7 +613,7 @@ export function CategoryForm({ id }: CategoryFormProps) {
                     <div className="flex items-center gap-0.5 shrink-0 self-end sm:self-auto">
                       {isEditing ? (
                         <>
-                          <Button type="button" variant="ghost" size="icon" disabled={!tempEditText.trim()} onClick={() => {
+                          <Button type="button" variant="ghost" size="icon" aria-label="Save subtask" disabled={!tempEditText.trim()} onClick={() => {
                             if (!tempEditText.trim()) return;
                             const next = [...subtasks];
                             next[index] = { ...next[index], description: tempEditText.trim(), taskTypeNo: tempEditSubtaskTaskTypeNo };
@@ -655,16 +624,16 @@ export function CategoryForm({ id }: CategoryFormProps) {
                           }} className="h-7 w-7 rounded-[6px] text-emerald-400 hover:bg-emerald-500/10">
                             <CheckCircle size={14} />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingSubtaskIdx(null); setTempEditText(''); setTempEditSubtaskTaskTypeNo(''); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:bg-[var(--tm-muted)]">
+                          <Button type="button" variant="ghost" size="icon" aria-label="Cancel subtask edit" onClick={() => { setEditingSubtaskIdx(null); setTempEditText(''); setTempEditSubtaskTaskTypeNo(''); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:bg-[var(--tm-muted)]">
                             <X size={14} />
                           </Button>
                         </>
                       ) : (
                         <>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingSubtaskIdx(index); setTempEditText(desc); setTempEditSubtaskTaskTypeNo(taskTypeNo); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                          <Button type="button" variant="ghost" size="icon" aria-label="Edit subtask" onClick={() => { setEditingSubtaskIdx(index); setTempEditText(desc); setTempEditSubtaskTaskTypeNo(taskTypeNo); }} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                             <Edit size={13} />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeSubtaskItem(index)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
+                          <Button type="button" variant="ghost" size="icon" aria-label="Delete subtask" onClick={() => requestRemoveSubtaskItem(index)} className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10">
                             <Trash2 size={13} />
                           </Button>
                         </>
@@ -682,6 +651,15 @@ export function CategoryForm({ id }: CategoryFormProps) {
         customFields={categoryCustomFields}
         onChange={setCategoryCustomFields}
         categoryFillValues={categoryFillValues}
+      />
+
+      <MasterDeleteDialog
+        open={deleteConfirm.open}
+        onOpenChange={deleteConfirm.onOpenChange}
+        onConfirm={deleteConfirm.handleConfirm}
+        recordName={deleteConfirm.recordName}
+        entityLabel={deleteConfirm.entityLabel}
+        confirming={deleteConfirm.confirming}
       />
     </MasterFormShell>
   );

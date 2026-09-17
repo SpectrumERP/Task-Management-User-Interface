@@ -38,6 +38,7 @@ import { useToggleFocusMode } from '@/hooks/useToggleFocusMode';
 import { FullscreenHelpGuide } from '@/components/layout/FullscreenHelpGuide';
 import { forceStartOnboardingTour } from '@/components/layout/OnboardingSpotlightTour';
 import { forceStartPageGuide } from '@/components/layout/InternalPageGuideTour';
+import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { cn } from '@/lib/utils';
 
 interface NavbarProps {
@@ -211,44 +212,46 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
         <div className="flex h-full w-full items-center justify-between gap-3 px-4 sm:px-5">
           <BrandLogo maxHeight={44} maxWidth={200} className="min-w-0" />
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={toggleSidebar}
-              title={isSidebarOpen ? 'Close left menu' : 'Open left menu'}
-              aria-label={isSidebarOpen ? 'Close left menu' : 'Open left menu'}
-              className="h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
-            >
-              {isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={toggleFocusMode}
-              title="Exit full screen"
-              aria-label="Exit full screen"
-              className="h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
-            >
-              <Minimize2 size={15} />
-            </Button>
+            <ActionTip label={isSidebarOpen ? 'Close menu' : 'Open menu'}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={toggleSidebar}
+                aria-label={isSidebarOpen ? 'Close left menu' : 'Open left menu'}
+                className="h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
+              >
+                {isSidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />}
+              </Button>
+            </ActionTip>
+            <ActionTip label="Exit full screen">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={toggleFocusMode}
+                aria-label="Exit full screen"
+                className="h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
+              >
+                <Minimize2 size={15} />
+              </Button>
+            </ActionTip>
 
             <FullscreenHelpGuide autoOpenOnce={false} />
 
             <ThemeToggle variant="chip" size="md" />
 
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  data-tour="profile"
-                  title={`${printingName} (@${loginId})`}
-                  aria-label={`Account menu for ${printingName}`}
-                  className={cn(
-                    "group h-9 gap-2 rounded-[8px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 pl-1 pr-2.5",
-                    "hover:bg-[#0EA5E9]/20 data-[state=open]:bg-[#0EA5E9]/20",
-                    "transition-colors shadow-none"
-                  )}
-                >
+              <ActionTip label="Account">
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    data-tour="profile"
+                    aria-label={`Account menu for ${printingName}`}
+                    className={cn(
+                      "group h-9 gap-2 rounded-[8px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 pl-1 pr-2.5",
+                      "hover:bg-[#0EA5E9]/20 data-[state=open]:bg-[#0EA5E9]/20",
+                      "transition-colors shadow-none"
+                    )}
+                  >
                   <span className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center">
                     <Avatar className="h-7 w-7">
                       <AvatarFallback className="bg-[#0EA5E9] text-white text-[12px] font-semibold">
@@ -272,6 +275,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
                   />
                 </Button>
               </DropdownMenuTrigger>
+              </ActionTip>
               <DropdownMenuContent
                 className="w-[272px] rounded-2xl p-0 overflow-hidden border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)]"
                 align="end"
@@ -288,14 +292,17 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
           {/* Mobile: menu + logo */}
           <div className="flex lg:hidden items-center gap-2.5 min-w-0 pl-4">
             {onMenuClick && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onMenuClick}
-                className="w-10 rounded-xl hover:bg-[var(--tm-muted)] flex items-center justify-center shrink-0 border border-[var(--tm-border)]/80"
-              >
-                <Menu size={20} className="text-slate-300" />
-              </Button>
+              <ActionTip label="Menu">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onMenuClick}
+                  aria-label="Open menu"
+                  className="w-10 rounded-xl hover:bg-[var(--tm-muted)] flex items-center justify-center shrink-0 border border-[var(--tm-border)]/80"
+                >
+                  <Menu size={20} className="text-slate-300" />
+                </Button>
+              </ActionTip>
             )}
             <BrandLogo maxHeight={44} maxWidth={200} className="min-w-0" />
           </div>
@@ -307,7 +314,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
           <div
             className={cn(
               "theme-header-rail relative hidden lg:flex h-full items-center shrink-0 overflow-visible border-r border-[var(--tm-chrome-border)] transition-[width] duration-300",
-              isSidebarCollapsed ? "w-[80px] justify-center px-1.5" : "w-56 pl-3 pr-4"
+              isSidebarCollapsed ? "w-14 justify-center px-1" : "w-56 pl-3 pr-4"
             )}
           >
             {!isSidebarCollapsed && (
@@ -315,29 +322,40 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
             )}
 
             {onToggleSidebar && (
-              <button
-                type="button"
-                onClick={onToggleSidebar}
-                title={isSidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
-                aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              <span
                 className={cn(
-                  'theme-sidebar-edge-toggle z-50 inline-flex items-center justify-center',
-                  'rounded-md border border-white/10',
-                  'bg-[#2A303C] text-slate-300 shadow-[0_2px_8px_rgba(0,0,0,0.35)]',
-                  'hover:bg-[#353B4A] hover:text-white',
-                  'transition-colors duration-200',
+                  'z-50',
                   isSidebarCollapsed
-                    ? 'relative h-9 w-9'
-                    : 'absolute top-1/2 -translate-y-1/2 -right-[9px] h-8 w-[18px]'
+                    ? 'relative'
+                    : 'absolute top-1/2 -translate-y-1/2 -right-[9px]'
                 )}
-                data-tour="sidebar-toggle"
               >
-                {isSidebarCollapsed ? (
-                  <ChevronRight size={16} strokeWidth={2.25} />
-                ) : (
-                  <ChevronLeft size={14} strokeWidth={2.25} />
-                )}
-              </button>
+                <ActionTip
+                  label={isSidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+                  side="bottom"
+                >
+                  <button
+                    type="button"
+                    onClick={onToggleSidebar}
+                    aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    className={cn(
+                      'theme-sidebar-edge-toggle inline-flex items-center justify-center',
+                      'rounded-md border border-white/10',
+                      'bg-[#2A303C] text-slate-300 shadow-[0_2px_8px_rgba(0,0,0,0.35)]',
+                      'hover:bg-[#353B4A] hover:text-white',
+                      'transition-colors duration-200',
+                      isSidebarCollapsed ? 'h-9 w-9' : 'h-8 w-[18px]'
+                    )}
+                    data-tour="sidebar-toggle"
+                  >
+                    {isSidebarCollapsed ? (
+                      <ChevronRight size={16} strokeWidth={2.25} />
+                    ) : (
+                      <ChevronLeft size={14} strokeWidth={2.25} />
+                    )}
+                  </button>
+                </ActionTip>
+              </span>
             )}
           </div>
 
@@ -350,11 +368,13 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
           <div className="flex flex-1 items-center justify-end gap-2 min-w-0 px-4 sm:px-5">
             {!isHideFolder && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2.5 px-3.5 h-9 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] hover:border-[#0EA5E9]/25 transition-all font-semibold text-xs text-slate-200 shadow-sm"
-                  >
+                <ActionTip label="Folders">
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      aria-label="Folders"
+                      className="flex items-center gap-2.5 px-3.5 h-9 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] hover:border-[#0EA5E9]/25 transition-all font-semibold text-xs text-slate-200 shadow-sm"
+                    >
                     <div className="flex w-6 h-6 shrink-0 items-center justify-center rounded-lg bg-[#0EA5E9]/10 text-[#0EA5E9]">
                       <Folder size={14} className="fill-[#0EA5E9]/20" />
                     </div>
@@ -364,6 +384,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
                     <ChevronDown size={14} className="text-slate-400" />
                   </Button>
                 </DropdownMenuTrigger>
+                </ActionTip>
                 <DropdownMenuContent className="w-72 rounded-xl p-1 shadow-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] max-h-[60vh] flex flex-col" align="end">
                   <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3 py-2 shrink-0">
                     Select Workspace Folder
@@ -420,58 +441,60 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
 
             <ClipboardDrawer />
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={toggleFocusMode}
-              title={isFocusMode ? 'Exit full screen' : 'Full screen'}
-              aria-label={isFocusMode ? 'Exit full screen' : 'Full screen'}
-              data-tour="fullscreen"
-              className="h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
-            >
-              {isFocusMode ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-            </Button>
+            <ActionTip label={isFocusMode ? 'Exit full screen' : 'Full screen'}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={toggleFocusMode}
+                aria-label={isFocusMode ? 'Exit full screen' : 'Full screen'}
+                data-tour="fullscreen"
+                className="h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
+              >
+                {isFocusMode ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+              </Button>
+            </ActionTip>
 
             <FullscreenHelpGuide autoOpenOnce={false} />
 
             <ThemeToggle variant="chip" size="md" />
 
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  data-tour="profile"
-                  title={`${printingName} (@${loginId})`}
-                  aria-label={`Account menu for ${printingName}`}
-                  className={cn(
-                    "group h-9 gap-2 rounded-[8px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 pl-1 pr-2.5",
-                    "hover:bg-[#0EA5E9]/20 data-[state=open]:bg-[#0EA5E9]/20",
-                    "transition-colors shadow-none"
-                  )}
-                >
-                  <span className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center">
-                    <Avatar className="h-7 w-7">
-                      <AvatarFallback className="bg-[#0EA5E9] text-white text-[12px] font-semibold">
-                        {initial}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--tm-chrome)] bg-emerald-500" />
-                  </span>
-                  <div className="hidden sm:flex items-center gap-1.5 min-w-0 text-left">
-                    <span className="text-[12px] font-semibold text-slate-100 truncate max-w-[90px]">
-                      {printingName}
+              <ActionTip label="Account">
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    data-tour="profile"
+                    aria-label={`Account menu for ${printingName}`}
+                    className={cn(
+                      "group h-9 gap-2 rounded-[8px] border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 pl-1 pr-2.5",
+                      "hover:bg-[#0EA5E9]/20 data-[state=open]:bg-[#0EA5E9]/20",
+                      "transition-colors shadow-none"
+                    )}
+                  >
+                    <span className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center">
+                      <Avatar className="h-7 w-7">
+                        <AvatarFallback className="bg-[#0EA5E9] text-white text-[12px] font-semibold">
+                          {initial}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--tm-chrome)] bg-emerald-500" />
                     </span>
-                    <span className="text-[11px] font-medium text-[#0EA5E9]/80 truncate max-w-[80px]">
-                      @{loginId}
-                    </span>
-                  </div>
-                  <ChevronDown
-                    size={13}
-                    strokeWidth={2.2}
-                    className="hidden sm:block text-slate-400 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180"
-                  />
-                </Button>
-              </DropdownMenuTrigger>
+                    <div className="hidden sm:flex items-center gap-1.5 min-w-0 text-left">
+                      <span className="text-[12px] font-semibold text-slate-100 truncate max-w-[90px]">
+                        {printingName}
+                      </span>
+                      <span className="text-[11px] font-medium text-[#0EA5E9]/80 truncate max-w-[80px]">
+                        @{loginId}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      size={13}
+                      strokeWidth={2.2}
+                      className="hidden sm:block text-slate-400 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                    />
+                  </Button>
+                </DropdownMenuTrigger>
+              </ActionTip>
               <DropdownMenuContent
                 className="w-[272px] rounded-2xl p-0 overflow-hidden border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)]"
                 align="end"

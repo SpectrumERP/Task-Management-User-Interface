@@ -5,10 +5,13 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 const CameraComp = lazy(() => import('@/components/ui/CameraComp'));
-import { Camera as CameraIcon, Loader2 } from 'lucide-react';
+import { Camera as CameraIcon } from 'lucide-react';
+import { BrandLoader } from '@/components/ui/BrandLoader';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MasterFormShell } from '../shared/MasterFormShell';
+import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
+import { useConfirmDelete } from '../shared/useConfirmDelete';
 import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
@@ -25,7 +28,7 @@ import { CompanyNotesSection, FollowUpNote } from './CompanyNotesSection';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const FORM_NO = 1550;
-const TITLE = 'Business Entity Master';
+const TITLE = 'Business Entity';
 
 /** Loose shapes returned by master geo / fill-values APIs */
 type GeoCountry = { countryName?: string; countryNo?: string | number };
@@ -54,11 +57,14 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const { goToList } = useMasterFormGuard('company', editingId, rights);
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
+  const deleteConfirm = useConfirmDelete('record');
 
   // Header fields
   const [name, setName] = useState('');
+  const [aliasName, setAliasName] = useState('');
   const [companyType, setCompanyType] = useState('');
   const [companyTimeZoneNo, setCompanyTimeZoneNo] = useState('');
+  const [selectedTimeZoneName, setSelectedTimeZoneName] = useState('');
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
   const [creditInsuranceCompanyName, setCreditInsuranceCompanyName] = useState('');
   const [companyVatGst, setCompanyVatGst] = useState('');
@@ -117,6 +123,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isLoadingRecord, setIsLoadingRecord] = useState(!!editingId);
+  const [loadError, setLoadError] = useState(false);
+  const [loadRetryKey, setLoadRetryKey] = useState(0);
 
   useEffect(() => {
     apiService.get<any>(`/api/master/business-entities/fill-values?companyNo=${companyNo}`).then((response) => {
@@ -125,18 +134,34 @@ export function CompanyForm({ id }: CompanyFormProps) {
   }, [companyNo]);
 
   useEffect(() => {
-    if (!editingId) return;
+    if (!editingId) {
+      setIsLoadingRecord(false);
+      setLoadError(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingRecord(true);
+    setLoadError(false);
     apiService.get<any>(`/api/master/business-entities/load-data/${editingId}?companyNo=${companyNo}`).then(async (response) => {
+      if (cancelled) return;
       if (response) {
         const body = response.data || response;
         const dl = body.data || body;
         if (dl) {
           setName(dl.businessEntityName || '');
+          setAliasName(dl.aliasName || dl.businessEntityAlias || dl.AliasName || '');
           setCompanyType(dl.businessEntityType?.id?.toString() || '');
           setCompanyVatGst(dl.vatgstNo || '');
           setCreditLimit(dl.creditInsuranceLimit ?? null);
           setCreditInsuranceCompanyName(dl.creditInsuranceCompanyName || '');
           setCompanyTimeZoneNo(dl.timeZone?.timeZoneNo?.toString() || '');
+          setSelectedTimeZoneName(
+            dl.timeZone?.timeZoneName ||
+              dl.timeZone?.crmTimeZoneName ||
+              dl.timeZone?.name ||
+              dl.timeZoneName ||
+              ''
+          );
           const mappedFollowUpNotes: FollowUpNote[] = Array.isArray(dl.followUpDetails)
             ? dl.followUpDetails.map((n: any) => ({ date: n.followUpDate || '', note: n.followUpNotes || '' }))
             : (dl.notes ? [{ date: '', note: dl.notes }] : []);
@@ -180,6 +205,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
           try {
             const attachmentList = await attachmentService.getAttachments(parseInt(editingId), 1550);
+            if (cancelled) return;
             if (attachmentList && attachmentList.length > 0) {
               setCompanyAttachments(attachmentList.map((a: any) => ({
                 id: a.id || a.docNo || null,
@@ -193,12 +219,24 @@ export function CompanyForm({ id }: CompanyFormProps) {
             }
           } catch (attErr) {
             console.error('Failed to load business entity attachments:', attErr);
-            setCompanyAttachments([]);
+            if (!cancelled) setCompanyAttachments([]);
           }
+        } else {
+          setLoadError(true);
         }
+      } else {
+        setLoadError(true);
       }
-    }).catch(err => console.error('Failed to load company details via API:', err));
-  }, [editingId, companyNo]);
+    }).catch(err => {
+      console.error('Failed to load company details via API:', err);
+      if (!cancelled) setLoadError(true);
+    }).finally(() => {
+      if (!cancelled) setIsLoadingRecord(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingId, companyNo, loadRetryKey]);
 
   const countries: GeoCountry[] = asGeoList<GeoCountry>(
     businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries
@@ -291,6 +329,17 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
   const removeCompanyLocation = (index: number) => {
     setCompanyLocations(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const requestRemoveCompanyLocation = (index: number) => {
+    const loc = companyLocations[index];
+    const typeName = getLocationTypeName(loc?.locationTypeNo || loc?.type || '');
+    const label = [typeName, loc?.city || loc?.address].filter(Boolean).join(' · ') || 'Location';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'location',
+      recordName: label,
+      onConfirm: () => removeCompanyLocation(index),
+    });
   };
 
   const handleLocationCountryChange = async (val: string) => {
@@ -426,6 +475,16 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setCompanyContacts(prev => prev.filter((_, i) => i !== index));
   };
 
+  const requestRemoveCompanyContact = (index: number) => {
+    const c = companyContacts[index];
+    const label = c?.name || c?.contactName || c?.email || 'Contact';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'contact',
+      recordName: label,
+      onConfirm: () => removeCompanyContact(index),
+    });
+  };
+
   const validateEmailBlur = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(contactEmail)) {
@@ -539,6 +598,16 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setCompanyPorts(prev => prev.filter((_, i) => i !== index));
   };
 
+  const requestRemoveCompanyPort = (index: number) => {
+    const p = companyPorts[index];
+    const label = p?.name || p?.portName || 'Port';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'port',
+      recordName: label,
+      onConfirm: () => removeCompanyPort(index),
+    });
+  };
+
   // ---- Attachments ----
   const handleAnalyzeAttachment = async (att: any) => {
     try {
@@ -635,6 +704,26 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setCompanyAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  const requestRemoveCompanyAttachment = (index: number) => {
+    const att = companyAttachments[index];
+    const label = att?.fileName || att?.name || 'Attachment';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'attachment',
+      recordName: label,
+      onConfirm: () => removeCompanyAttachment(index),
+    });
+  };
+
+  const requestRemoveFollowUpNote = (index: number) => {
+    const note = followUpNotes[index];
+    const label = (note?.note || '').trim().slice(0, 60) || 'Note';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'follow-up note',
+      recordName: label,
+      onConfirm: () => setFollowUpNotes((prev) => prev.filter((_, i) => i !== index)),
+    });
+  };
+
   // ---- Save ----
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -697,6 +786,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
       const payload = {
         businessEntityNo: editingId ? parseInt(editingId) : null,
         businessEntityName: name,
+        aliasName: aliasName.trim() || null,
+        businessEntityAlias: aliasName.trim() || null,
         crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : null,
         crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : null,
         vatgstNo: companyVatGst || null,
@@ -737,6 +828,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
       onConfirmSave={handleConfirmSave}
       showSuccessAlert={showSuccessAlert}
       onSuccessOk={() => { setShowSuccessAlert(false); goToList(); }}
+      isLoadingRecord={isLoadingRecord}
+      loadError={loadError}
+      onRetryLoad={() => setLoadRetryKey((k) => k + 1)}
     >
       <div className="space-y-4 pb-4">
         <div data-page-tour="company-header">
@@ -745,10 +839,14 @@ export function CompanyForm({ id }: CompanyFormProps) {
             editingId={editingId}
             name={name}
             setName={setName}
+            aliasName={aliasName}
+            setAliasName={setAliasName}
             companyType={companyType}
             setCompanyType={setCompanyType}
             companyTimeZoneNo={companyTimeZoneNo}
             setCompanyTimeZoneNo={setCompanyTimeZoneNo}
+            selectedTimeZoneName={selectedTimeZoneName}
+            setSelectedTimeZoneName={setSelectedTimeZoneName}
             creditLimit={creditLimit}
             setCreditLimit={setCreditLimit}
             creditInsuranceCompanyName={creditInsuranceCompanyName}
@@ -769,7 +867,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
             getLocationTypeName={getLocationTypeName}
             onAdd={openAddLocationModal}
             onEdit={handleEditLocation}
-            onRemove={removeCompanyLocation}
+            onRemove={requestRemoveCompanyLocation}
             error={errors.companyLocations}
           />
         </div>
@@ -777,9 +875,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
         <div data-page-tour="company-contacts">
           <CompanyContactsSection
             contacts={companyContacts}
+            companyName={name}
             onAdd={openAddContactModal}
             onEdit={handleEditContact}
-            onRemove={removeCompanyContact}
+            onRemove={requestRemoveCompanyContact}
           />
         </div>
 
@@ -789,21 +888,26 @@ export function CompanyForm({ id }: CompanyFormProps) {
           selectedPortName={selectedPortName}
           onSelectedPortNameChange={setSelectedPortName}
           onAdd={addCompanyPort}
-          onRemove={removeCompanyPort}
+          onRemove={requestRemoveCompanyPort}
         />
 
         <div data-page-tour="company-attachments">
           <CompanyAttachmentsSection
             attachments={companyAttachments}
+            companyName={name}
             onFileUpload={handleFileUpload}
             onOpenCamera={() => setIsCameraModalOpen(true)}
             onAnalyze={handleAnalyzeAttachment}
-            onRemove={removeCompanyAttachment}
+            onRemove={requestRemoveCompanyAttachment}
             analyzedAttachmentIds={analyzedAttachmentIds}
             error={errors.attachments}
           />
         </div>
-        <CompanyNotesSection notes={followUpNotes} onChange={setFollowUpNotes} />
+        <CompanyNotesSection
+          notes={followUpNotes}
+          onChange={setFollowUpNotes}
+          onRemove={requestRemoveFollowUpNote}
+        />
 
         {isCameraModalOpen && (
           <Dialog
@@ -834,9 +938,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
               <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 <Suspense
                   fallback={
-                    <div className="flex flex-1 items-center justify-center py-20 text-slate-500 text-sm font-medium">
-                      <Loader2 className="h-5 w-5 animate-spin mr-2 text-[#0EA5E9]" />
-                      Loading camera…
+                    <div className="flex flex-1 items-center justify-center py-20">
+                      <BrandLoader size="sm" message="Loading camera" />
                     </div>
                   }
                 >
@@ -966,6 +1069,15 @@ export function CompanyForm({ id }: CompanyFormProps) {
           contactErrors={contactErrors}
           setContactErrors={setContactErrors}
           onSave={addCompanyContact}
+        />
+
+        <MasterDeleteDialog
+          open={deleteConfirm.open}
+          onOpenChange={deleteConfirm.onOpenChange}
+          onConfirm={deleteConfirm.handleConfirm}
+          recordName={deleteConfirm.recordName}
+          entityLabel={deleteConfirm.entityLabel}
+          confirming={deleteConfirm.confirming}
         />
       </div>
     </MasterFormShell>

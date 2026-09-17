@@ -3,7 +3,7 @@ import { MeetingReportFilter } from '@/components/report/MeetingReportFilter';
 import { MeetingReportTable } from '@/components/report/MeetingReportTable';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { format } from 'date-fns';
+import { toDateOnlyLocal } from '@/lib/dateTime';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toast } from 'sonner';
@@ -45,23 +45,17 @@ export default function MeetingReportPage() {
       if (filters.status) searchParamsPascal.Status = filters.status;
 
       if (filters.meetingDateRange?.from) {
-        searchParamsPascal.MeetingStartDate = format(
-          filters.meetingDateRange.from,
-          'yyyy-MM-dd'
-        );
+        searchParamsPascal.MeetingStartDate = toDateOnlyLocal(filters.meetingDateRange.from);
       }
       if (filters.meetingDateRange?.to) {
-        searchParamsPascal.MeetingEndDate = format(filters.meetingDateRange.to, 'yyyy-MM-dd');
+        searchParamsPascal.MeetingEndDate = toDateOnlyLocal(filters.meetingDateRange.to);
       }
 
       if (filters.createdDateRange?.from) {
-        searchParamsPascal.FromCreatedDate = format(
-          filters.createdDateRange.from,
-          'yyyy-MM-dd'
-        );
+        searchParamsPascal.FromCreatedDate = toDateOnlyLocal(filters.createdDateRange.from);
       }
       if (filters.createdDateRange?.to) {
-        searchParamsPascal.ToCreatedDate = format(filters.createdDateRange.to, 'yyyy-MM-dd');
+        searchParamsPascal.ToCreatedDate = toDateOnlyLocal(filters.createdDateRange.to);
       }
 
       const response = await apiService.get<any>('/api/crm/meeting-notes/report', {
@@ -92,7 +86,7 @@ export default function MeetingReportPage() {
       <div className="shrink-0">
         <MeetingReportFilter onApply={handleApplyFilters} />
       </div>
-      <div className="relative flex min-h-[280px] flex-1 basis-0 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
         {loadError && !isLoading ? (
           <LoadErrorState
             title="Failed to load meeting report"

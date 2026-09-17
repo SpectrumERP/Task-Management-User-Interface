@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { apiService } from "@/services/apiService"
+import { sortByLabel } from "@/lib/sortOptions"
 
 export interface EmployeeResponse {
   empNo: number;
@@ -52,7 +53,7 @@ export function EmployeeCombobox({
   const [options, setOptions] = React.useState<EmployeeResponse[]>([])
   const [search, setSearch] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
-  
+
   const [selectedLabel, setSelectedLabel] = React.useState(initialLabel || "")
 
   const isInitialized = React.useRef(false);
@@ -121,9 +122,9 @@ export function EmployeeCombobox({
         const response = await apiService.get<any>(`/api/payroll/employees?keywordSearch=${search}`);
         if (active) {
           if (response && response.data) {
-             setOptions(response.data);
+            setOptions(response.data);
           } else if (Array.isArray(response)) {
-             setOptions(response);
+            setOptions(response);
           }
         }
       } catch (err) {
@@ -181,8 +182,8 @@ export function EmployeeCombobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverPrimitive.Content 
-        className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95" 
+      <PopoverPrimitive.Content
+        className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         align="start"
       >
         <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={false}>
@@ -214,7 +215,10 @@ export function EmployeeCombobox({
             )}
             {!isLoading && (
               <CommandGroup>
-                {options.map((emp) => (
+                {sortByLabel(options, {
+                  getLabel: (emp) => emp.empName || emp.empCode || '',
+                  getValue: (emp) => String(emp.empNo),
+                }).map((emp) => (
                   <CommandItem
                     key={emp.empNo}
                     value={`${emp.empName} ${emp.empCode}`}

@@ -76,7 +76,7 @@ export function MasterListHeader({
             type="button"
             onClick={onAddClick}
             data-page-tour="master-add"
-            className="h-10 px-4 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 font-semibold text-xs gap-1.5 shrink-0"
+            className="h-10 px-4 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground shadow-sm shadow-brand/20 font-semibold text-xs gap-1.5 shrink-0"
           >
             <Plus size={14} strokeWidth={2.5} />
             Add Record

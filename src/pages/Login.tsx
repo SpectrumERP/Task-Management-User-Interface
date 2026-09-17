@@ -13,6 +13,7 @@ import { authService } from '@/services/authService';
 import { getBrand } from '@/config/brandConfig';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { FieldErrorTip } from '@/components/ui/form-field';
 import { markOnboardingPending } from '@/components/layout/OnboardingSpotlightTour';
 
 const FEATURE_ICONS = {
@@ -303,7 +304,7 @@ export default function Login() {
                     aria-invalid={!!errors.loginId}
                     className={`login-field pl-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${errors.loginId
                       ? '!border-2 !border-red-500 focus:!border-red-500'
-                      : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
+                      : '!border-[1.5px] !border-slate-400 dark:!border-[#5B9BB8] focus:!border-[#0EA5E9] hover:!border-slate-500 dark:hover:!border-sky-400/70'
                       }`}
                     {...register('loginId', {
                       onChange: () => setServerError(''),
@@ -311,12 +312,10 @@ export default function Login() {
                     maxLength={50}
                   />
                   {errors.loginId?.message ? (
-                    <span
-                      role="alert"
-                      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,220px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-                    >
-                      {errors.loginId.message}
-                    </span>
+                    <FieldErrorTip
+                      message={errors.loginId.message}
+                      className="max-w-[min(100%,220px)]"
+                    />
                   ) : null}
                 </div>
               </div>
@@ -336,7 +335,7 @@ export default function Login() {
                     aria-invalid={!!errors.password}
                     className={`login-field pl-10 pr-10 h-11 !rounded-[10px] text-slate-800 dark:!text-slate-50 shadow-none focus-visible:!ring-2 focus-visible:!ring-[#0EA5E9]/35 focus-visible:!ring-offset-0 dark:focus-visible:!ring-offset-[var(--tm-surface)] focus:!ring-2 focus:!ring-[#0EA5E9]/35 outline-none ${errors.password
                       ? '!border-2 !border-red-500 focus:!border-red-500'
-                      : '!border !border-slate-200 dark:!border-[#4A5D73] focus:!border-[#0EA5E9] dark:hover:!border-sky-400/70'
+                      : '!border-[1.5px] !border-slate-400 dark:!border-[#5B9BB8] focus:!border-[#0EA5E9] hover:!border-slate-500 dark:hover:!border-sky-400/70'
                       }`}
                     {...register('password', {
                       onChange: () => setServerError(''),
@@ -344,12 +343,10 @@ export default function Login() {
                     maxLength={50}
                   />
                   {errors.password?.message ? (
-                    <span
-                      role="alert"
-                      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,220px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-                    >
-                      {errors.password.message}
-                    </span>
+                    <FieldErrorTip
+                      message={errors.password.message}
+                      className="max-w-[min(100%,220px)]"
+                    />
                   ) : null}
                   <button
                     type="button"

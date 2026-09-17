@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -9,66 +9,18 @@ import { Users, UserPlus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
+import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
+import { useConfirmDelete } from '../shared/useConfirmDelete';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
+import { SortableHeader } from '@/components/shared/useTableSort';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
 const FORM_NO = 1546;
 const TITLE = 'User Group Master';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
-function FieldErrorTip({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <span
-      role="alert"
-      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-    >
-      {message}
-    </span>
-  );
-}
-
-function FieldControl({
-  children,
-  error,
-  className,
-}: {
-  children: ReactNode;
-  error?: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn('relative min-w-0', className)}>
-      {children}
-      <FieldErrorTip message={error} />
-    </div>
-  );
-}
-
-function FieldLabel({
-  children,
-  required,
-  htmlFor,
-}: {
-  children: ReactNode;
-  required?: boolean;
-  htmlFor?: string;
-}) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className="inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300"
-    >
-      <span>{children}</span>
-      {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
-          *
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 interface UserGroupFormProps {
   id?: string;
@@ -84,6 +36,7 @@ interface GroupMember {
 export function UserGroupForm({ id }: UserGroupFormProps) {
   const editingId = id ?? null;
   const rights = useFormRights(FORM_NO);
+  const deleteConfirm = useConfirmDelete('member');
   const { goToList } = useMasterFormGuard('user-group', editingId, rights);
   const { company: authCompanies } = useAuthStore();
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
@@ -92,6 +45,8 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<GroupMember[]>([]);
+  const [memberSortCol, setMemberSortCol] = useState<string | null>('userName');
+  const [memberSortDesc, setMemberSortDesc] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -198,6 +153,16 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
     if (errors.selectedUsers) setErrors((prev) => ({ ...prev, selectedUsers: '' }));
   };
 
+  const requestRemoveGridUser = (index: number) => {
+    const user = selectedUsers[index];
+    const label = user?.displayName || user?.userName || user?.email || 'Member';
+    deleteConfirm.requestConfirm({
+      entityLabel: 'member',
+      recordName: label,
+      onConfirm: () => removeGridUser(index),
+    });
+  };
+
   const updateGridUser = (index: number, user: any) => {
     const next = [...selectedUsers];
     if (!user || user.loginNo === '' || user.loginNo === 0) {
@@ -213,6 +178,23 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
     }
     setSelectedUsers(next);
     if (errors.selectedUsers) setErrors((prev) => ({ ...prev, selectedUsers: '' }));
+  };
+
+  const handleMemberSort = (key: string) => {
+    const nextDesc = memberSortCol === key ? !memberSortDesc : false;
+    setMemberSortCol(key);
+    setMemberSortDesc(nextDesc);
+    setSelectedUsers((prev) => {
+      const filled = prev.filter((u) => u.loginNo || u.userName || u.displayName || u.email);
+      const empty = prev.filter((u) => !u.loginNo && !u.userName && !u.displayName && !u.email);
+      const sorted = [...filled].sort((a, b) => {
+        const av = String((a as Record<string, unknown>)[key] ?? '');
+        const bv = String((b as Record<string, unknown>)[key] ?? '');
+        const cmp = av.localeCompare(bv, undefined, { sensitivity: 'base', numeric: true });
+        return nextDesc ? -cmp : cmp;
+      });
+      return [...sorted, ...empty];
+    });
   };
 
   const memberCount = selectedUsers.filter((u) => !!u.userName).length;
@@ -351,20 +333,38 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
             <div className="overflow-x-auto">
               <table className="tm-data-table w-full text-left text-[11px] border-collapse table-fixed">
                 <thead>
-                  <tr className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
-                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
-                      User Name
+                  <tr className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                    <th className="px-3 py-2.5 border-r border-[var(--tm-border)] w-[28%]">
+                      <SortableHeader
+                        label="User Name"
+                        sortKey="userName"
+                        sortCol={memberSortCol}
+                        sortDesc={memberSortDesc}
+                        onSort={handleMemberSort}
+                      />
                     </th>
-                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[28%]">
-                      Display Name
+                    <th className="px-3 py-2.5 border-r border-[var(--tm-border)] w-[28%]">
+                      <SortableHeader
+                        label="Display Name"
+                        sortKey="displayName"
+                        sortCol={memberSortCol}
+                        sortDesc={memberSortDesc}
+                        onSort={handleMemberSort}
+                      />
                     </th>
-                    <th className="px-3 py-2.5 font-semibold text-slate-500 uppercase tracking-wide text-[10px] w-[36%]">
-                      Email
+                    <th className="px-3 py-2.5 border-r border-[var(--tm-border)] w-[36%]">
+                      <SortableHeader
+                        label="Email"
+                        sortKey="email"
+                        sortCol={memberSortCol}
+                        sortDesc={memberSortDesc}
+                        onSort={handleMemberSort}
+                      />
                     </th>
-                    <th className="px-2 py-2.5 w-10" />
+                    <th className="px-1 py-2.5 w-10" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--tm-border)]">
+                <tbody>
                   {selectedUsers.map((field, index) => {
                     const isDuplicate = !!field.loginNo && duplicateLoginNos.has(field.loginNo);
                     return (
@@ -372,11 +372,11 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                         key={index}
                         data-row-alert={isDuplicate ? true : undefined}
                         className={cn(
-                          'group transition-colors',
+                          'group border-b border-[var(--tm-border)] transition-colors',
                           isDuplicate ? 'hover:bg-red-500/10' : 'hover:bg-[var(--tm-elevated)]/80'
                         )}
                       >
-                        <td className="px-2 py-1.5">
+                        <td className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)]">
                           <UserCombobox
                             value={field.userName}
                             onChange={(user) => updateGridUser(index, user)}
@@ -386,7 +386,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             error={isDuplicate}
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300">
                           <Input
                             disabled
                             value={field.displayName}
@@ -394,7 +394,7 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-200"
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300">
                           <Input
                             disabled
                             value={field.email}
@@ -402,10 +402,10 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                             className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-200"
                           />
                         </td>
-                        <td className="px-1 py-1.5 text-center">
+                        <td className="px-1 py-2.5 text-center">
                           <button
                             type="button"
-                            onClick={() => removeGridUser(index)}
+                            onClick={() => requestRemoveGridUser(index)}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                             aria-label="Remove member"
                           >
@@ -436,6 +436,15 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
           ) : null}
         </div>
       </section>
+
+      <MasterDeleteDialog
+        open={deleteConfirm.open}
+        onOpenChange={deleteConfirm.onOpenChange}
+        onConfirm={deleteConfirm.handleConfirm}
+        recordName={deleteConfirm.recordName}
+        entityLabel={deleteConfirm.entityLabel}
+        confirming={deleteConfirm.confirming}
+      />
     </MasterFormShell>
   );
 }

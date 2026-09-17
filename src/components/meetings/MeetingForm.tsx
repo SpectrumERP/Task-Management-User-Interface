@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import { useNavigate, useBlocker, useLocation } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Loader2, Clock, UserRound, IdCard, Building2, UserPlus, X } from 'lucide-react';
+import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Loader2, Clock, X } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Combobox } from '@/components/ui/Combobox';
+import { LocationCombobox } from '@/components/ui/LocationCombobox';
+import { formatLocationDisplayLabel } from '@/services/locationService';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { EmployeeCombobox } from '@/components/meetings/EmployeeCombobox';
 import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityCombobox';
@@ -16,16 +18,21 @@ import { DocumentCombobox } from '@/components/meetings/DocumentCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { cn } from '@/lib/utils';
+import { sortByLabel } from '@/lib/sortOptions';
+import { formatUtcDateTime, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useFormRights } from '@/hooks/useFormRights';
+import { useSettings } from '@/hooks/useSettings';
 import { getMeetingSchema, MeetingNotesFormData } from '@/types/meeting';
 import { attachmentService } from '@/services/attachmentService';
 import { UploadCloud, Image as ImageIcon, Trash, RefreshCw, AlertCircle, } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { FieldControl, FieldLabel } from '@/components/ui/form-field';
+import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +41,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { SendMinutesDialog } from '@/components/meetings/SendMinutesDialog';
+import {
+  buildMinutesRecipients,
+  isMinutesSendStatusAllowed,
+  readLastMinutesSentAt,
+} from '@/lib/meetingMinutesShare';
 
 const formatFileSize = (bytes?: number | null) => {
   if (bytes === undefined || bytes === null || bytes === 0) return '';
@@ -51,60 +64,6 @@ const toOptionalInt = (val: string) => {
   return Number.isNaN(n) ? null : n;
 };
 
-function FieldErrorTip({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <span
-      role="alert"
-      className="pointer-events-none absolute right-1.5 top-0 z-40 -translate-y-1/2 max-w-[min(100%,200px)] rounded-[6px] bg-red-600 px-2 py-1 text-[10px] font-medium leading-tight text-white shadow-[0_6px_16px_-4px_rgba(220,38,38,0.45)] whitespace-normal text-right"
-    >
-      {message}
-    </span>
-  );
-}
-
-function FieldControl({
-  children,
-  error,
-  className,
-}: {
-  children: React.ReactNode;
-  error?: string;
-  className?: string;
-}) {
-  return (
-    <div className={cn('relative min-w-0', className)}>
-      {children}
-      <FieldErrorTip message={error} />
-    </div>
-  );
-}
-
-function FieldLabel({
-  children,
-  required,
-  className,
-  htmlFor,
-}: {
-  children: React.ReactNode;
-  required?: boolean;
-  className?: string;
-  htmlFor?: string;
-}) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className={cn('inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300', className)}
-    >
-      <span>{children}</span>
-      {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
-          *
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
   return (
@@ -129,7 +88,9 @@ function FormSection({ title, icon: Icon, children, headerAction, tourId }: { ti
 
 export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initialData?: any, onComplete?: () => void, meetingNotesNo?: number }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isSave, isUpdate } = useFormRights(1559);
+  const { isHideType, isHideFolder } = useSettings();
   const { company: authCompanies } = useAuthStore();
   const companyNoStr = authCompanies?.[0]?.CompanyNo?.toString() || authCompanies?.[0]?.companyNo?.toString() || '1';
 
@@ -164,15 +125,32 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [typeModalOpen, setTypeModalOpen] = useState(false);
+  const [sendMinutesOpen, setSendMinutesOpen] = useState(false);
+  const [lastMinutesSentAt, setLastMinutesSentAt] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [isSavingType, setIsSavingType] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingData, setPendingData] = useState<any>(null);
+  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState(false);
+  const [locationLabel, setLocationLabel] = useState(() =>
+    formatLocationDisplayLabel({
+      operLocationName:
+        initialData?.location?.name ||
+        initialData?.locationName ||
+        initialData?.operLocationName ||
+        '',
+      cityName: initialData?.cityName || initialData?.location?.cityName || '',
+      stateName: initialData?.stateName || initialData?.location?.stateName || '',
+      countryName: initialData?.countryName || initialData?.location?.countryName || '',
+    })
+  );
 
   const form = useForm<MeetingNotesFormData>({
-    resolver: zodResolver(getMeetingSchema() as any),
+    resolver: zodResolver(getMeetingSchema(isHideType) as any),
     mode: 'onChange',
     defaultValues: {
       meetingTitle: initialData?.meetingTitle || '',
@@ -219,6 +197,36 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               operTaskCompanyNo: res.data.companyNo?.toString(),
               operLocationNo: res.data.operLocationNo?.toString(),
             });
+            setLocationLabel(
+              formatLocationDisplayLabel({
+                operLocationName:
+                  res.data.locationName ||
+                  res.data.operLocationName ||
+                  res.data.location?.name ||
+                  res.data.location?.operLocationName ||
+                  '',
+                cityName:
+                  res.data.cityName ||
+                  res.data.location?.cityName ||
+                  '',
+                stateName:
+                  res.data.stateName ||
+                  res.data.location?.stateName ||
+                  '',
+                countryName:
+                  res.data.countryName ||
+                  res.data.location?.countryName ||
+                  '',
+              })
+            );
+            const apiLastSent =
+              res.data.minutesLastSentAt ||
+              res.data.lastMinutesSentAt ||
+              res.data.minutesSentDate ||
+              null;
+            setLastMinutesSentAt(
+              apiLastSent || readLastMinutesSentAt(meetingNotesNo) || null
+            );
           }
         } catch (error) {
           console.error("Failed to fetch meeting", error);
@@ -273,6 +281,49 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
   const startDateTime = form.watch('meetingStartDateTime');
   const endDateTime = form.watch('meetingEndDateTime');
+  const watchedParticipants = form.watch('participants');
+  const watchedDocumentStatusNo = form.watch('documentStatusNo');
+  const watchedTitle = form.watch('meetingTitle');
+
+  const resolvedMeetingNo = meetingNotesNo || initialData?.meetingNotesNo || null;
+
+  const currentStatusName = useMemo(() => {
+    const match = documentStatuses.find(
+      (s) => String(s.documentStatusNo) === String(watchedDocumentStatusNo)
+    );
+    return match?.documentStatusName || match?.DocumentStatusName || '';
+  }, [documentStatuses, watchedDocumentStatusNo]);
+
+  const minutesRecipients = useMemo(
+    () => buildMinutesRecipients(watchedParticipants || []),
+    [watchedParticipants]
+  );
+
+  const canSendMinutesStatus = isMinutesSendStatusAllowed(currentStatusName);
+  const recipientEmailCount = minutesRecipients.filter((r) => r.hasEmail).length;
+
+  useEffect(() => {
+    if (resolvedMeetingNo && !lastMinutesSentAt) {
+      setLastMinutesSentAt(readLastMinutesSentAt(Number(resolvedMeetingNo)));
+    }
+  }, [resolvedMeetingNo, lastMinutesSentAt]);
+
+  // List "Send" action → open send dialog once meeting data is ready
+  useEffect(() => {
+    const state = location.state as { openSendMinutes?: boolean } | null;
+    if (!state?.openSendMinutes) return;
+    if (isLoadingOptions || isFetchingData) return;
+    if (!resolvedMeetingNo) return;
+    setSendMinutesOpen(true);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [
+    location.state,
+    location.pathname,
+    isLoadingOptions,
+    isFetchingData,
+    resolvedMeetingNo,
+    navigate,
+  ]);
 
   useEffect(() => {
     if (startDateTime && endDateTime) {
@@ -307,6 +358,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       form.formState.isDirty &&
+      !isSubmitSuccessful &&
       currentLocation.pathname !== nextLocation.pathname
   );
 
@@ -426,7 +478,16 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
     }
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = (data: any) => {
+    setPendingData(data);
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setShowConfirm(false);
+    const data = pendingData;
+    if (!data) return;
+
     try {
       if (uploadingFiles.some(f => f.status === 'pending' || f.status === 'uploading' || f.status === 'verifying')) {
         toast.error("Please wait for all attachments to finish uploading before saving.");
@@ -498,9 +559,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       }
 
       await apiService.post(url, cleanEmptyStrings(payload));
-      toast.success(isUpdate ? "Meeting Notes Updated Successfully" : "Meeting Notes Saved Successfully");
-      form.reset(form.getValues());
-      if (onComplete) onComplete();
+      toast.success(isUpdate ? 'Meeting notes updated successfully.' : 'Meeting notes saved successfully.');
+      setIsSubmitSuccessful(true);
+
+      // Delay to allow state update for useBlocker
+      setTimeout(() => {
+        form.reset(form.getValues());
+        if (onComplete) onComplete();
+      }, 0);
     } catch (error) {
       console.error(error);
       if (shouldToastCaughtError(error)) {
@@ -542,14 +608,51 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
         <div className="flex items-center gap-2 self-end sm:self-auto" data-page-tour="meeting-form-actions">
           <PageGuideButton guideKey="meeting-form" />
-          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] font-medium border-[var(--tm-border)]/80 text-xs px-4" onClick={requestLeave}>Cancel</Button>
+          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] text-slate-300 shadow-none px-3" onClick={requestLeave}>
+            Cancel
+          </Button>
+          {/* {resolvedMeetingNo ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-page-tour="meeting-form-send-minutes"
+              disabled={!canSendMinutesStatus || recipientEmailCount === 0}
+              title={
+                !resolvedMeetingNo
+                  ? 'Save the meeting first'
+                  : !canSendMinutesStatus
+                    ? 'Set status to Release or Authorized'
+                    : recipientEmailCount === 0
+                      ? 'Add attendees with email'
+                      : 'Send Minutes to attendees'
+              }
+              onClick={() => setSendMinutesOpen(true)}
+              className="h-9 rounded-[8px] font-semibold border-[#0EA5E9]/35 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 text-xs px-3 gap-1.5 disabled:opacity-50"
+            >
+              <Send size={13} strokeWidth={2} />
+              Send Minutes
+            </Button>
+          ) : null} */}
           {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
-            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-[0_8px_20px_-6px_rgba(14,165,233,0.45)] text-xs px-5" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
+            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-sm shadow-[#0EA5E9]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
               {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
             </Button>
           )}
         </div>
       </div>
+
+      {resolvedMeetingNo && lastMinutesSentAt ? (
+        <div className="shrink-0 px-4 py-1.5 border-b border-[var(--tm-border)]/50 bg-[var(--tm-elevated)]/40 text-[10px] text-slate-500">
+          Last minutes sent:{' '}
+          <span className="font-semibold text-slate-300">
+            {formatUtcDateTime(lastMinutesSentAt)}
+          </span>
+          {recipientEmailCount > 0 ? (
+            <span className="text-slate-500"> · {recipientEmailCount} email-ready attendee{recipientEmailCount === 1 ? '' : 's'}</span>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
         <div className="w-full mx-auto p-4">
@@ -658,15 +761,32 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     name="operLocationNo"
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.operLocationNo?.message}>
-                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.operLocationNo && "border-red-400")}
-                          options={taskFillValues?.location?.filter(l => l.Location.toLowerCase() !== 'all' && l.Location.toLowerCase() !== '[all]').map(l => ({ value: l.OperLocationNo.toString(), label: l.Location })) || []}
+                        <LocationCombobox
+                          className={cn(
+                            'rounded-[8px] h-10',
+                            form.formState.errors.operLocationNo && 'border-red-400'
+                          )}
                           value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select Location"
+                          onChange={(location) => {
+                            field.onChange(
+                              location.operLocationNo ? String(location.operLocationNo) : ''
+                            );
+                            setLocationLabel(
+                              location.operLocationNo
+                                ? formatLocationDisplayLabel(location)
+                                : ''
+                            );
+                          }}
+                          initialLabel={locationLabel || undefined}
+                          placeholder="Search city, state or location..."
+                          error={!!form.formState.errors.operLocationNo}
                         />
                       </FieldControl>
                     )}
                   />
+                  <p className="text-[10px] text-slate-500 leading-snug pt-0.5">
+                    City and state show with the location so international places are easier to pick.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -679,7 +799,10 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger className={cn("h-10 rounded-[8px]", form.formState.errors.meetingModeNo && "border-red-400")}><SelectValue placeholder="Select Mode" /></SelectTrigger>
                           <SelectContent>
-                            {meetingModes.map(m => (
+                            {sortByLabel(meetingModes, {
+                              getLabel: (m) => m.meetingModeName || '',
+                              getValue: (m) => String(m.meetingModeNo),
+                            }).map(m => (
                               <SelectItem key={m.meetingModeNo} value={m.meetingModeNo.toString()}>{m.meetingModeName}</SelectItem>
                             ))}
                           </SelectContent>
@@ -696,7 +819,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     name="meetingStartDateTime"
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.meetingStartDateTime?.message}>
-                        <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                        <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))} />
                       </FieldControl>
                     )}
                   />
@@ -709,7 +832,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     name="meetingEndDateTime"
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.meetingEndDateTime?.message}>
-                        <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(d ? d.toISOString() : '')} />
+                        <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))} />
                       </FieldControl>
                     )}
                   />
@@ -745,568 +868,403 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center"
                   error={
                     (form.formState.errors.participants?.message ||
-                      form.formState.errors.participants?.root?.message) as
-                    | string
-                    | undefined
+                      form.formState.errors.participants?.root?.message) as string | undefined
                   }
                 >
-                  <p className="text-xs text-slate-500 font-medium">
-                    No participants added yet.
-                  </p>
+                  <p className="text-xs text-slate-500 font-medium">No participants added yet.</p>
                 </FieldControl>
               ) : (
-                <div className="space-y-3">
-                  {participantFields.map((field, index) => {
-                    const participantType = form.watch(`participants.${index}.participantType`);
-                    const participantName = form.watch(`participants.${index}.participantName`);
-                    const participantEmail = form.watch(`participants.${index}.email`);
-                    const summaryName = (participantName || '').trim();
-                    const summaryEmail = (participantEmail || '').trim();
-                    const TypeIcon =
-                      participantType === 2 ? IdCard :
-                        participantType === 3 ? UserPlus :
-                          participantType === 4 ? Building2 :
-                            UserRound;
-                    return (
-                      <div
-                        key={field.id}
-                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                      >
-                        <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                            {index + 1}
-                          </span>
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
-                            <TypeIcon size={14} strokeWidth={1.75} />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            {summaryName ? (
-                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">{summaryName}</p>
-                            ) : null}
-                            {summaryEmail ? (
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{summaryEmail}</p>
-                            ) : null}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              requestRemoveItem(
-                                'participant',
-                                index,
-                                summaryName || `Participant ${index + 1}`
-                              )
-                            }
-                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                            title="Remove participant"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
+                  <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[800px]">
+                    <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                      <tr>
+                        <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
+                        <th className="px-3 py-2.5 w-[15%] border-r border-[var(--tm-border)]">Type</th>
+                        <th className="px-3 py-2.5 w-[20%] border-r border-[var(--tm-border)]">Participant Name</th>
+                        <th className="px-3 py-2.5 w-[15%] border-r border-[var(--tm-border)]">Company</th>
+                        <th className="px-3 py-2.5 w-[20%] border-r border-[var(--tm-border)]">Email</th>
+                        <th className="px-3 py-2.5 w-[15%] border-r border-[var(--tm-border)]">Designation / Contact</th>
+                        <th className="px-1 py-2.5 w-10 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--tm-border)]">
+                      {participantFields.map((field, index) => {
+                        const participantType = form.watch(`participants.${index}.participantType`);
+                        const participantName = form.watch(`participants.${index}.participantName`);
 
-                        <div className="p-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-
-                            {/* Participant Type — first field in the form row */}
-                            <div className="space-y-1">
-                              <FieldLabel required>Type</FieldLabel>
+                        return (
+                          <tr key={field.id} className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
+                            <td className="px-3 py-2 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
+                              {index + 1}
+                            </td>
+                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top">
                               <Controller
                                 control={form.control}
                                 name={`participants.${index}.participantType`}
                                 render={({ field }) => (
-                                  <Select value={field.value.toString()} onValueChange={(v) => field.onChange(parseInt(v))}>
-                                    <SelectTrigger className="h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs min-w-[150px]">
+                                  <Select value={field.value.toString()} onValueChange={(v) => { field.onChange(parseInt(v)); form.setValue(`participants.${index}.participantName`, ''); form.setValue(`participants.${index}.email`, ''); form.setValue(`participants.${index}.companyName`, ''); form.setValue(`participants.${index}.designation`, ''); form.setValue(`participants.${index}.contactNo`, ''); }}>
+                                    <SelectTrigger className="h-9 rounded-[8px] bg-transparent border-transparent hover:border-[var(--tm-border)] text-xs w-full shadow-none px-2 focus:ring-0">
                                       <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {participantTypes.map(pt => (
+                                      {sortByLabel(participantTypes, { getLabel: (pt) => pt.participantType || '', getValue: (pt) => String(pt.id) }).map(pt => (
                                         <SelectItem key={pt.id} value={pt.id.toString()}>{pt.participantType}</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
                                 )}
                               />
-                            </div>
-
-                            {/* Internal (User) Fields */}
-                            {participantType === 1 && (
-                              <>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <FieldLabel required>Select User</FieldLabel>
-                                  <Controller
-                                    control={form.control}
-                                    name={`participants.${index}.userNo`}
-                                    render={({ field }) => (
-                                      <FieldControl error={form.formState.errors.participants?.[index]?.userNo?.message}>
-                                        <UserCombobox className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.participants?.[index]?.userNo && "border-red-400")}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(user: any) => {
-                                            field.onChange(user?.loginNo ? Number(user.loginNo) : undefined);
-                                            form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || '');
-                                            form.setValue(`participants.${index}.email`, user?.email || '');
-                                          }}
-                                          onResolve={(user: any) => {
-                                            if (!form.getValues(`participants.${index}.email`)) {
-                                              form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || '');
-                                              form.setValue(`participants.${index}.email`, user?.email || '');
-                                            }
-                                          }}
-                                          placeholder="Search internal user..."
-                                        />
-                                      </FieldControl>
-                                    )}
-                                  />
-                                </div>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-2">
-                                  <label className="text-[11px] font-medium text-slate-300">Display Name</label>
-                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Display Name" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
-                                </div>
-                              </>
-                            )}
-
-                            {/* Internal (Employee) Fields */}
-                            {participantType === 2 && (
-                              <>
-                                <div className="space-y-1 sm:col-span-1 lg:col-span-2">
-                                  <FieldLabel required>Employee</FieldLabel>
-                                  <Controller
-                                    control={form.control}
-                                    name={`participants.${index}.empNo`}
-                                    render={({ field }) => (
-                                      <FieldControl error={form.formState.errors.participants?.[index]?.empNo?.message}>
-                                        <EmployeeCombobox className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.participants?.[index]?.empNo && "border-red-400")}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(emp: any) => {
-                                            field.onChange(emp?.empNo ? Number(emp.empNo) : undefined);
-                                            form.setValue(`participants.${index}.participantName`, emp?.empCode || '');
-                                            form.setValue(`participants.${index}.email`, emp?.email || '');
-                                          }}
-                                          onResolve={(emp: any) => {
-                                            if (!form.getValues(`participants.${index}.email`)) {
-                                              form.setValue(`participants.${index}.participantName`, emp?.empCode || '');
-                                              form.setValue(`participants.${index}.email`, emp?.email || '');
-                                            }
-                                          }}
-                                          placeholder="Search employee..."
-                                        />
-                                      </FieldControl>
-                                    )}
-                                  />
-                                </div>
-                                <div className="space-y-1 sm:col-span-1 lg:col-span-1">
-                                  <label className="text-[11px] font-medium text-slate-300">Employee Code</label>
-                                  <Input value={form.watch(`participants.${index}.participantName`) || ''} disabled placeholder="Employee Code" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
-                                </div>
-                                <div className="space-y-1 sm:col-span-2 lg:col-span-2">
-                                  <label className="text-[11px] font-medium text-slate-300">Email</label>
-                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-10 w-full rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
-                                </div>
-                              </>
-                            )}
-
-                            {/* External Fields */}
-                            {participantType === 3 && (
-                              <>
-                                <div className="space-y-1">
-                                  <FieldLabel required>Name</FieldLabel>
-                                  <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
-                                    <Input {...form.register(`participants.${index}.participantName`)} placeholder="Name" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")} maxLength={100} />
-                                  </FieldControl>
-                                </div>
-                                <div className="space-y-1">
-                                  <FieldLabel required>Company</FieldLabel>
-                                  <FieldControl error={form.formState.errors.participants?.[index]?.companyName?.message}>
-                                    <Input {...form.register(`participants.${index}.companyName`)} placeholder="Company" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.companyName && "border-red-400")} maxLength={100} />
-                                  </FieldControl>
-                                </div>
-                                <div className="space-y-1 col-start-1 sm:col-span-2 lg:col-span-2">
-                                  <FieldLabel required>Email</FieldLabel>
-                                  <FieldControl error={form.formState.errors.participants?.[index]?.email?.message}>
-                                    <Input {...form.register(`participants.${index}.email`)} placeholder="Email" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.email && "border-red-400")} maxLength={100} />
-                                  </FieldControl>
-                                </div>
-                                <div className="space-y-1">
-                                  <FieldLabel required>Designation</FieldLabel>
+                            </td >
+                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top space-y-1">
+                              {participantType === 1 && (
+                                <Controller
+                                  control={form.control}
+                                  name={`participants.${index}.userNo`}
+                                  render={({ field }) => (
+                                    <FieldControl error={form.formState.errors.participants?.[index]?.userNo?.message}>
+                                      <UserCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.participants?.[index]?.userNo && "border-red-400")}
+                                        value={field.value?.toString() || ''}
+                                        onChange={(user: any) => { field.onChange(user?.loginNo ? Number(user.loginNo) : undefined); form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || ''); form.setValue(`participants.${index}.email`, user?.email || ''); }}
+                                        onResolve={(user: any) => { if (!form.getValues(`participants.${index}.email`)) { form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || ''); form.setValue(`participants.${index}.email`, user?.email || ''); } }}
+                                        placeholder="Search internal user..."
+                                      />
+                                    </FieldControl>
+                                  )}
+                                />
+                              )}
+                              {participantType === 2 && (
+                                <Controller
+                                  control={form.control}
+                                  name={`participants.${index}.empNo`}
+                                  render={({ field }) => (
+                                    <FieldControl error={form.formState.errors.participants?.[index]?.empNo?.message}>
+                                      <EmployeeCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.participants?.[index]?.empNo && "border-red-400")}
+                                        value={field.value?.toString() || ''}
+                                        onChange={(emp: any) => { field.onChange(emp?.empNo ? Number(emp.empNo) : undefined); form.setValue(`participants.${index}.participantName`, emp?.empCode || ''); form.setValue(`participants.${index}.email`, emp?.email || ''); }}
+                                        onResolve={(emp: any) => { if (!form.getValues(`participants.${index}.email`)) { form.setValue(`participants.${index}.participantName`, emp?.empCode || ''); form.setValue(`participants.${index}.email`, emp?.email || ''); } }}
+                                        placeholder="Search employee..."
+                                      />
+                                    </FieldControl>
+                                  )}
+                                />
+                              )}
+                              {participantType === 3 && (
+                                <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
+                                  <Input {...form.register(`participants.${index}.participantName`)} placeholder="Name" className={cn("h-9 rounded-[8px] bg-transparent text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")} maxLength={100} />
+                                </FieldControl>
+                              )}
+                              {participantType === 4 && (
+                                <Controller
+                                  control={form.control}
+                                  name={`participants.${index}.participantName`}
+                                  render={({ field }) => (
+                                    <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
+                                      <BusinessEntityCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")}
+                                        detailNo={form.watch(`participants.${index}.businessEntityContactPersonDetailNo`)}
+                                        value={field.value || ''}
+                                        onChange={(contact: any) => { field.onChange(contact?.contactPersonName || ''); form.setValue(`participants.${index}.email`, contact?.email || ''); form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || ''); form.setValue(`participants.${index}.designation`, contact?.designation || ''); form.setValue(`participants.${index}.department` as any, contact?.department || ''); form.setValue(`participants.${index}.businessEntityNo`, contact?.businessEntityNo || null); form.setValue(`participants.${index}.businessEntityContactPersonDetailNo`, contact?.businessEntityContactPersonDetailNo || null); }}
+                                        onResolve={(contact: any) => { if (!form.getValues(`participants.${index}.email`)) { form.setValue(`participants.${index}.email`, contact?.email || ''); form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || ''); form.setValue(`participants.${index}.designation`, contact?.designation || ''); form.setValue(`participants.${index}.department` as any, contact?.department || ''); } }}
+                                        placeholder="Search contact..."
+                                      />
+                                    </FieldControl>
+                                  )}
+                                />
+                              )}
+                            </td>
+                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top">
+                              {participantType === 3 ? (
+                                <FieldControl error={form.formState.errors.participants?.[index]?.companyName?.message}>
+                                  <Input {...form.register(`participants.${index}.companyName`)} placeholder="Company" className={cn("h-9 rounded-[8px] bg-transparent text-xs", form.formState.errors.participants?.[index]?.companyName && "border-red-400")} maxLength={100} />
+                                </FieldControl>
+                              ) : participantType === 4 ? (
+                                <Input value={form.watch(`participants.${index}.companyName`) || ''} disabled placeholder="Business Entity" className="h-9 rounded-[8px] bg-transparent border-transparent text-xs text-slate-500" />
+                              ) : (
+                                <span className="text-slate-500 text-xs">-</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top">
+                              {(participantType === 1 || participantType === 2 || participantType === 4) ? (
+                                <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-9 w-full rounded-[8px] bg-transparent border-transparent text-xs text-slate-500" />
+                              ) : (
+                                <FieldControl error={form.formState.errors.participants?.[index]?.email?.message}>
+                                  <Input {...form.register(`participants.${index}.email`)} placeholder="Email" className={cn("h-9 rounded-[8px] bg-transparent text-xs", form.formState.errors.participants?.[index]?.email && "border-red-400")} maxLength={100} />
+                                </FieldControl>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top space-y-1">
+                              {participantType === 3 && (
+                                <>
                                   <FieldControl error={form.formState.errors.participants?.[index]?.designation?.message}>
-                                    <Input {...form.register(`participants.${index}.designation`)} placeholder="Designation" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.designation && "border-red-400")} maxLength={100} />
+                                    <Input {...form.register(`participants.${index}.designation`)} placeholder="Designation" className={cn("h-9 rounded-[8px] bg-transparent text-xs", form.formState.errors.participants?.[index]?.designation && "border-red-400")} maxLength={100} />
                                   </FieldControl>
-                                </div>
-                                <div className="space-y-1">
-                                  <FieldLabel required>Contact No</FieldLabel>
                                   <FieldControl error={form.formState.errors.participants?.[index]?.contactNo?.message}>
-                                    <Input {...form.register(`participants.${index}.contactNo`)} placeholder="Contact No" className={cn("h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs", form.formState.errors.participants?.[index]?.contactNo && "border-red-400")} maxLength={20} />
+                                    <Input {...form.register(`participants.${index}.contactNo`)} placeholder="Contact No" className={cn("h-9 rounded-[8px] bg-transparent text-xs mt-1", form.formState.errors.participants?.[index]?.contactNo && "border-red-400")} maxLength={20} />
                                   </FieldControl>
-                                </div>
-                              </>
-                            )}
-
-                            {/* BusinessEntity Fields */}
-                            {participantType === 4 && (
-                              <>
-                                <div className="space-y-1 md:col-span-1 lg:col-span-2 xl:col-span-2">
-                                  <FieldLabel required>Business Entity Contact</FieldLabel>
-                                  <Controller
-                                    control={form.control}
-                                    name={`participants.${index}.participantName`}
-                                    render={({ field }) => (
-                                      <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
-                                        <BusinessEntityCombobox className={cn("rounded-[8px] h-10 text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")}
-                                          detailNo={form.watch(`participants.${index}.businessEntityContactPersonDetailNo`)}
-                                          value={field.value || ''}
-                                          onChange={(contact: any) => {
-                                            field.onChange(contact?.contactPersonName || '');
-                                            form.setValue(`participants.${index}.email`, contact?.email || '');
-                                            form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || '');
-                                            form.setValue(`participants.${index}.designation`, contact?.designation || '');
-                                            form.setValue(`participants.${index}.department` as any, contact?.department || '');
-                                            form.setValue(`participants.${index}.businessEntityNo`, contact?.businessEntityNo || null);
-                                            form.setValue(`participants.${index}.businessEntityContactPersonDetailNo`, contact?.businessEntityContactPersonDetailNo || null);
-                                          }}
-                                          onResolve={(contact: any) => {
-                                            if (!form.getValues(`participants.${index}.email`)) {
-                                              form.setValue(`participants.${index}.email`, contact?.email || '');
-                                              form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || '');
-                                              form.setValue(`participants.${index}.designation`, contact?.designation || '');
-                                              form.setValue(`participants.${index}.department` as any, contact?.department || '');
-                                            }
-                                          }}
-                                          placeholder="Search contact..."
-                                        />
-                                      </FieldControl>
-                                    )}
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-slate-300">Business Entity</label>
-                                  <Input value={form.watch(`participants.${index}.companyName`) || ''} disabled placeholder="Business Entity" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-slate-300">Designation</label>
-                                  <Input value={form.watch(`participants.${index}.designation`) || ''} disabled placeholder="Designation" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-slate-300">Department</label>
-                                  <Input value={(form.watch(`participants.${index}` as any)?.department) || ''} disabled placeholder="Department" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
-                                </div>
-                                <div className="space-y-1 col-start-1 sm:col-span-2 lg:col-span-3 xl:col-span-3">
-                                  <label className="text-[11px] font-medium text-slate-300">Email</label>
-                                  <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-10 w-full rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500" />
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                                </>
+                              )}
+                              {participantType === 4 && (
+                                <>
+                                  <Input value={form.watch(`participants.${index}.designation`) || ''} disabled placeholder="Designation" className="h-9 rounded-[8px] bg-transparent border-transparent text-xs text-slate-500" />
+                                  <Input value={(form.watch(`participants.${index}` as any)?.department) || ''} disabled placeholder="Department" className="h-9 rounded-[8px] bg-transparent border-transparent text-xs text-slate-500 mt-1" />
+                                </>
+                              )}
+                              {(participantType === 1 || participantType === 2) && (
+                                <span className="text-slate-500 text-xs">-</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-2 text-center align-top">
+                              <button
+                                type="button"
+                                onClick={() => requestRemoveItem('participant', index, participantName || `Participant ${index + 1}`)}
+                                className="h-8 w-8 inline-flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-[8px] transition-colors mt-0.5"
+                                title="Remove participant"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr >
+                        );
+                      })}
+                    </tbody >
+                  </table >
+                </div >
               )}
-            </FormSection>
+            </FormSection >
 
             {/* SECTION 4: Discussions & Action Items */}
-            <FormSection
+            < FormSection
               title="Discussions & Outcomes"
               icon={MessageSquare}
               tourId="meeting-form-discussions"
               headerAction={
-                <Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
+                < Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]" >
                   <Plus size={14} className="mr-1" /> Add Discussion Point
-                </Button>
+                </Button >
               }
             >
-              {discussionFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
-                  <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {discussionFields.map((field, index) => {
-                    const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
-                    const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
-                    return (
-                      <div
-                        key={field.id}
-                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                      >
-                        <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                            {index + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
-                              {topicValue || 'Discussion point'}
-                            </p>
-                            {isActionRequired ? (
-                              <p className="text-[11px] text-[#0EA5E9] font-medium mt-0.5">Action required</p>
-                            ) : (
-                              <p className="text-[11px] text-slate-400 mt-0.5">Discussion only</p>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              requestRemoveItem(
-                                'discussion',
-                                index,
-                                topicValue || `Discussion ${index + 1}`
-                              )
-                            }
-                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                            title="Remove discussion"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+              {
+                discussionFields.length === 0 ? (
+                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                    <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
+                    <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[1000px]">
+                      <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                        <tr>
+                          <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
+                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Topic / Agenda</th>
+                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Discussion Summary</th>
+                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Decision Remarks</th>
+                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Action Required</th>
+                          <th className="px-1 py-2.5 w-10 text-center"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--tm-border)]">
+                        {discussionFields.map((field, index) => {
+                          const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
+                          const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
+                          return (
+                            <tr key={field.id} className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
+                                {index + 1}
+                              </td>
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top space-y-1">
+                                <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
+                                  <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-9 rounded-[8px] text-xs font-medium bg-transparent", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
+                                </FieldControl>
+                              </td>
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                <Controller
+                                  control={form.control}
+                                  name={`discussions.${index}.discussionSummary`}
+                                  render={({ field }) => (
+                                    <Textarea
+                                      value={field.value || ''}
+                                      onChange={field.onChange}
+                                      placeholder="Details..."
+                                      maxLength={700}
+                                      className="min-h-[70px] rounded-[8px] text-xs bg-transparent resize-none focus-visible:ring-[#0EA5E9]/30"
+                                    />
+                                  )}
+                                />
+                              </td>
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                <Controller
+                                  control={form.control}
+                                  name={`discussions.${index}.decisionRemarks`}
+                                  render={({ field }) => (
+                                    <Textarea
+                                      value={field.value || ''}
+                                      onChange={field.onChange}
+                                      placeholder="Final decision..."
+                                      maxLength={300}
+                                      className="min-h-[70px] rounded-[8px] text-xs bg-transparent resize-none focus-visible:ring-[#0EA5E9]/30"
+                                    />
+                                  )}
+                                />
+                              </td>
+                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                <Controller
+                                  control={form.control}
+                                  name={`discussions.${index}.isActionRequired`}
+                                  render={({ field }) => (
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={!!field.value}
+                                        onClick={() => field.onChange(!field.value)}
+                                        className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
+                                      >
+                                        <span className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200', field.value ? 'bg-[#0EA5E9]' : 'bg-slate-600')}>
+                                          <span className={cn('absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200', field.value ? 'translate-x-[18px]' : 'translate-x-[2px]')} />
+                                        </span>
+                                        <span className={cn('text-[10px] font-semibold tracking-wide', field.value ? 'text-[#0EA5E9]' : 'text-slate-400')}>
+                                          {field.value ? 'ON' : 'OFF'}
+                                        </span>
+                                      </button>
+                                    </div>
+                                  )}
+                                />
+                                {isActionRequired && (
+                                  <div className="mt-2 space-y-2 p-2.5 rounded-[8px] bg-[var(--tm-elevated)] border border-[var(--tm-border)]/80">
+                                    <p className="text-[10px] font-semibold text-[#0EA5E9] uppercase tracking-wide mb-2">Task Details</p>
 
-                        <div className="p-4 space-y-4">
-                          <div className="space-y-1">
-                            <FieldLabel required>Topic / Agenda</FieldLabel>
-                            <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
-                              <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-10 rounded-[8px] text-xs font-medium bg-[var(--tm-surface)]", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
-                            </FieldControl>
-                          </div>
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.operTaskCategoryNo`}
+                                        render={({ field }) => (
+                                          <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
+                                            options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: cleanMasterLabel(c.Category) })) || []}
+                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                            onChange={(val) => field.onChange(toOptionalInt(val))}
+                                            placeholder="Category"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <label className="text-[11px] font-medium text-slate-300">Discussion Summary</label>
-                                <span className="text-[10px] text-slate-400 tabular-nums">
-                                  {(form.watch(`discussions.${index}.discussionSummary`) || '').length}/700
-                                </span>
-                              </div>
-                              <Controller
-                                control={form.control}
-                                name={`discussions.${index}.discussionSummary`}
-                                render={({ field }) => (
-                                  <Textarea
-                                    value={field.value || ''}
-                                    onChange={field.onChange}
-                                    placeholder="Details..."
-                                    maxLength={700}
-                                    className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
-                                  />
-                                )}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <label className="text-[11px] font-medium text-slate-300">Decision Remarks</label>
-                                <span className="text-[10px] text-slate-400 tabular-nums">
-                                  {(form.watch(`discussions.${index}.decisionRemarks`) || '').length}/300
-                                </span>
-                              </div>
-                              <Controller
-                                control={form.control}
-                                name={`discussions.${index}.decisionRemarks`}
-                                render={({ field }) => (
-                                  <Textarea
-                                    value={field.value || ''}
-                                    onChange={field.onChange}
-                                    placeholder="Final decision..."
-                                    maxLength={300}
-                                    className="min-h-[120px] rounded-[8px] text-xs bg-[var(--tm-surface)] border-[var(--tm-border)]/80 resize-none focus-visible:ring-[#0EA5E9]/30"
-                                  />
-                                )}
-                              />
-                            </div>
-                          </div>
-
-                          <Controller
-                            control={form.control}
-                            name={`discussions.${index}.isActionRequired`}
-                            render={({ field }) => (
-                              <div
-                                className={cn(
-                                  'w-full flex items-center gap-3 rounded-[10px] border px-3.5 py-3 transition-all duration-200',
-                                  field.value
-                                    ? 'border-[#0EA5E9]/30 bg-gradient-to-r from-[var(--tm-tint)] via-[#f3f9fc] to-[var(--tm-surface)] shadow-[0_8px_20px_-12px_rgba(14,165,233,0.35)]'
-                                    : 'border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]'
-                                )}
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <p className={cn(
-                                    'text-[12px] font-semibold leading-tight transition-colors',
-                                    field.value ? 'text-[#0284C7]' : 'text-slate-200'
-                                  )}>
-                                    Action required
-                                  </p>
-                                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                                    Create a follow-up task from this discussion
-                                  </p>
-                                </div>
-                                <button
-                                  type="button"
-                                  id={`action-${index}`}
-                                  role="switch"
-                                  aria-checked={!!field.value}
-                                  aria-label="Action required"
-                                  onClick={() => field.onChange(!field.value)}
-                                  className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
-                                >
-                                  <span
-                                    className={cn(
-                                      'text-[10px] font-semibold tracking-wide transition-colors',
-                                      field.value ? 'text-[#0EA5E9]' : 'text-slate-400'
+                                    {!isHideType && (
+                                      <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
+                                        <Controller
+                                          control={form.control}
+                                          name={`discussions.${index}.operTaskTypeNo`}
+                                          render={({ field }) => (
+                                            <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
+                                              options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: cleanMasterLabel(c["Task Type"]) })) || []}
+                                              value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                              onChange={(val) => field.onChange(toOptionalInt(val))}
+                                              placeholder="Task Type"
+                                            />
+                                          )}
+                                        />
+                                      </FieldControl>
                                     )}
-                                  >
-                                    {field.value ? 'ON' : 'OFF'}
-                                  </span>
-                                  <span
-                                    aria-hidden
-                                    className={cn(
-                                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
-                                      field.value
-                                        ? 'bg-[#0EA5E9] shadow-[inset_0_0_0_1px_rgba(14,165,233,0.2)]'
-                                        : 'bg-slate-200'
-                                    )}
-                                  >
-                                    <span
-                                      className={cn(
-                                        'absolute h-5 w-5 rounded-full bg-[var(--tm-surface)] shadow-[0_1px_3px_rgba(15,23,42,0.25)] transition-transform duration-200',
-                                        field.value ? 'translate-x-[22px]' : 'translate-x-[2px]'
-                                      )}
-                                    />
-                                  </span>
-                                </button>
-                              </div>
-                            )}
-                          />
 
-                          {isActionRequired && (
-                            <div className="rounded-[8px] border border-[#d7e8f2] bg-[var(--tm-elevated)] p-3 space-y-3">
-                              <p className="text-[11px] font-semibold text-[#0EA5E9] uppercase tracking-wide">Task details</p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                                <div className="space-y-1">
-                                  <FieldLabel required>Task Category</FieldLabel>
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.operTaskCategoryNo`}
-                                      render={({ field }) => (
-                                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
-                                          options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: cleanMasterLabel(c.Category) })) || []}
-                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                          onChange={(val) => field.onChange(toOptionalInt(val))}
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
-                                </div>
-                                <div className="space-y-1">
-                                  <FieldLabel required>Task Type</FieldLabel>
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.operTaskTypeNo`}
-                                      render={({ field }) => (
-                                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
-                                          options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: cleanMasterLabel(c["Task Type"]) })) || []}
-                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                          onChange={(val) => field.onChange(toOptionalInt(val))}
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
-                                </div>
-                                <div className="space-y-1">
-                                  <FieldLabel required>Priority</FieldLabel>
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.operTaskPriorityNo`}
-                                      render={({ field }) => (
-                                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
-                                          options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
-                                          value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                          onChange={(val) => field.onChange(toOptionalInt(val))}
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-slate-300">Folder</label>
-                                  <Controller
-                                    control={form.control}
-                                    name={`discussions.${index}.taskFolderNo`}
-                                    render={({ field }) => (
-                                      <Combobox className="rounded-[8px] h-10"
-                                        options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
-                                        value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                        onChange={(val) => field.onChange(toOptionalInt(val))}
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.operTaskPriorityNo`}
+                                        render={({ field }) => (
+                                          <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
+                                            options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
+                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                            onChange={(val) => field.onChange(toOptionalInt(val))}
+                                            sortAlphabetically={false}
+                                            placeholder="Priority"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+
+                                    {!isHideFolder && (
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.operTaskCategoryNo`}
+                                        render={({ field }) => (
+                                          <Combobox className="rounded-[8px] h-8 text-xs"
+                                            options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
+                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                            onChange={(val) => field.onChange(toOptionalInt(val))}
+                                            placeholder="Folder"
+                                          />
+                                        )}
                                       />
                                     )}
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[11px] font-medium text-slate-300">Task Assign By</label>
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionTaskOriginatorNo`}
-                                      render={({ field }) => (
-                                        <UserCombobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
-                                </div>
-                                <div className="space-y-1">
-                                  <FieldLabel required>Assign Task To</FieldLabel>
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionTaskOwnerNo`}
-                                      render={({ field }) => (
-                                        <UserCombobox className={cn("rounded-[8px] h-10", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
-                                          value={field.value?.toString() || ''}
-                                          onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
-                                </div>
-                                <div className="space-y-1 w-full min-w-0">
-                                  <FieldLabel required>Due Date & Time</FieldLabel>
-                                  <FieldControl
-                                    className="w-full"
-                                    error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}
-                                  >
-                                    <Controller
-                                      control={form.control}
-                                      name={`discussions.${index}.actionDueDate`}
-                                      render={({ field }) => (
-                                        <DateTimePicker
-                                          className={cn(
-                                            "w-full rounded-[8px]",
-                                            form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400"
-                                          )}
-                                          date={field.value ? new Date(field.value) : undefined}
-                                          onChange={(d) => field.onChange(d ? d.toISOString() : '')}
-                                          placeholder="Pick a date and time"
-                                        />
-                                      )}
-                                    />
-                                  </FieldControl>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </FormSection>
+
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionTaskOriginatorNo`}
+                                        render={({ field }) => (
+                                          <UserCombobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
+                                            value={field.value?.toString() || ''}
+                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                            placeholder="Assign By"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionTaskOwnerNo`}
+                                        render={({ field }) => (
+                                          <UserCombobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
+                                            value={field.value?.toString() || ''}
+                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                            placeholder="Assign To"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+
+                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}>
+                                      <Controller
+                                        control={form.control}
+                                        name={`discussions.${index}.actionDueDate`}
+                                        render={({ field }) => (
+                                          <DateTimePicker
+                                            className={cn("w-full rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400")}
+                                            date={field.value ? new Date(field.value) : undefined}
+                                            onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
+                                            placeholder="Due Date & Time"
+                                          />
+                                        )}
+                                      />
+                                    </FieldControl>
+
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-2 py-3 text-center align-top">
+                                <button
+                                  type="button"
+                                  onClick={() => requestRemoveItem('discussion', index, topicValue || `Discussion ${index + 1}`)}
+                                  className="h-8 w-8 inline-flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-[8px] transition-colors mt-0.5"
+                                  title="Remove discussion"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div >
+                )}
+            </FormSection >
 
             {/* SECTION 3: Document Details */}
-            <FormSection
+            < FormSection
               title="Document Details"
               icon={FileText}
               headerAction={
-                <Button
+                < Button
                   type="button"
                   variant="outline"
                   size="sm"
@@ -1315,90 +1273,105 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                 >
                   <Plus size={14} className="mr-1.5" />
                   Add Document
-                </Button>
+                </Button >
               }
             >
-              {documentFields.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
-                  <p className="text-xs text-slate-500 font-medium">No documents added yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {documentFields.map((field, index) => {
-                    const docType = form.watch(`documents.${index}.documentType`);
-                    const selectedDocTypeObj =
-                      docType && Number(docType) > 0
-                        ? meetingDocumentTypes.find((d) => d.documentTypeNo === docType)
-                        : undefined;
-                    const docNoYearly = form.watch(`documents.${index}.documentNoYearly`);
-                    const typeName = selectedDocTypeObj?.documentName || '';
-                    const summaryLabel = (docNoYearly || '').trim() || typeName;
+              {
+                documentFields.length === 0 ? (
+                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                    <p className="text-xs text-slate-500 font-medium">No documents added yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {documentFields.map((field, index) => {
+                      const docType = form.watch(`documents.${index}.documentType`);
+                      const selectedDocTypeObj =
+                        docType && Number(docType) > 0
+                          ? meetingDocumentTypes.find((d) => d.documentTypeNo === docType)
+                          : undefined;
+                      const docNoYearly = form.watch(`documents.${index}.documentNoYearly`);
+                      const typeName = selectedDocTypeObj?.documentName || '';
+                      const summaryLabel = (docNoYearly || '').trim() || typeName;
 
-                    return (
-                      <div
-                        key={field.id}
-                        className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
-                      >
-                        <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)] rounded-t-[8px]">
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                            {index + 1}
-                          </span>
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
-                            <FileText size={14} strokeWidth={1.75} />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            {summaryLabel ? (
-                              <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
-                                {summaryLabel}
-                              </p>
-                            ) : (
-                              <p className="text-[13px] font-medium text-slate-400 truncate leading-tight">
-                                Document {index + 1}
-                              </p>
-                            )}
-                            {typeName && docNoYearly ? (
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{typeName}</p>
-                            ) : null}
+                      return (
+                        <div
+                          key={field.id}
+                          className="relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-visible group shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)] transition-all"
+                        >
+                          <div className="relative flex items-center gap-3 pl-4 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[12px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                              {index + 1}
+                            </span>
+                            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/10">
+                              <FileText size={14} strokeWidth={1.75} />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              {summaryLabel ? (
+                                <p className="text-[13px] font-semibold text-slate-100 truncate leading-tight">
+                                  {summaryLabel}
+                                </p>
+                              ) : (
+                                <p className="text-[13px] font-medium text-slate-400 truncate leading-tight">
+                                  Document {index + 1}
+                                </p>
+                              )}
+                              {typeName && docNoYearly ? (
+                                <p className="text-[11px] text-slate-400 truncate mt-0.5">{typeName}</p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                requestRemoveItem(
+                                  'document',
+                                  index,
+                                  summaryLabel || `Document ${index + 1}`
+                                )
+                              }
+                              className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                              title="Remove document"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              requestRemoveItem(
-                                'document',
-                                index,
-                                summaryLabel || `Document ${index + 1}`
-                              )
-                            }
-                            className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                            title="Remove document"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
 
-                        <div className="p-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <FieldLabel required>Document Name</FieldLabel>
-                              <FieldControl
-                                error={
-                                  form.formState.errors.documents?.[index]?.documentType?.message
-                                }
-                              >
-                                <Controller
-                                  control={form.control}
-                                  name={`documents.${index}.documentType`}
-                                  render={({ field: typeField }) => {
-                                    const selectedType =
-                                      typeField.value && Number(typeField.value) > 0
-                                        ? String(typeField.value)
-                                        : '__none__';
-                                    return (
-                                      <Select
-                                        value={selectedType}
-                                        onValueChange={(val) => {
-                                          if (val === '__none__') {
-                                            typeField.onChange(0);
+                          <div className="p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <FieldLabel required>Document Name</FieldLabel>
+                                <FieldControl
+                                  error={
+                                    form.formState.errors.documents?.[index]?.documentType?.message
+                                  }
+                                >
+                                  <Controller
+                                    control={form.control}
+                                    name={`documents.${index}.documentType`}
+                                    render={({ field: typeField }) => {
+                                      const selectedType =
+                                        typeField.value && Number(typeField.value) > 0
+                                          ? String(typeField.value)
+                                          : '__none__';
+                                      return (
+                                        <Select
+                                          value={selectedType}
+                                          onValueChange={(val) => {
+                                            if (val === '__none__') {
+                                              typeField.onChange(0);
+                                              form.setValue(`documents.${index}.documentNo`, 0);
+                                              form.setValue(
+                                                `documents.${index}.documentNoYearly`,
+                                                ''
+                                              );
+                                              void form.trigger(
+                                                `documents.${index}.documentType`
+                                              );
+                                              void form.trigger(
+                                                `documents.${index}.documentNo`
+                                              );
+                                              return;
+                                            }
+                                            typeField.onChange(parseInt(val, 10));
                                             form.setValue(`documents.${index}.documentNo`, 0);
                                             form.setValue(
                                               `documents.${index}.documentNoYearly`,
@@ -1407,138 +1380,129 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                             void form.trigger(
                                               `documents.${index}.documentType`
                                             );
+                                          }}
+                                        >
+                                          <SelectTrigger
+                                            className={cn(
+                                              'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
+                                              selectedType === '__none__' && 'text-slate-400',
+                                              form.formState.errors.documents?.[index]
+                                                ?.documentType && 'border-red-400'
+                                            )}
+                                          >
+                                            <SelectValue placeholder="Select document name" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem
+                                              value="__none__"
+                                              className="text-slate-400"
+                                            >
+                                              Select document name
+                                            </SelectItem>
+                                            {
+                                              sortByLabel(meetingDocumentTypes, {
+                                                getLabel: (d) => d.documentName || '',
+                                                getValue: (d) => String(d.documentTypeNo),
+                                              }).map((d) => (
+                                                <SelectItem
+                                                  key={d.documentTypeNo}
+                                                  value={d.documentTypeNo.toString()}
+                                                >
+                                                  {d.documentName}
+                                                </SelectItem>
+                                              ))
+                                            }
+                                          </SelectContent >
+                                        </Select >
+                                      );
+                                    }}
+                                  />
+                                </FieldControl >
+                              </div >
+
+                              <div className="space-y-1">
+                                <FieldLabel required>Document No</FieldLabel>
+                                <FieldControl
+                                  error={
+                                    form.formState.errors.documents?.[index]?.documentNo?.message
+                                  }
+                                >
+                                  <Controller
+                                    control={form.control}
+                                    name={`documents.${index}.documentNo`}
+                                    render={({ field: noField }) => (
+                                      <DocumentCombobox
+                                        formNo={selectedDocTypeObj?.formNo}
+                                        contextStr={selectedDocTypeObj?.context}
+                                        displayColumnsStr={selectedDocTypeObj?.displayColumns}
+                                        value={
+                                          Number(noField.value) > 0
+                                            ? String(noField.value)
+                                            : ''
+                                        }
+                                        initialLabel={
+                                          form.watch(`documents.${index}.documentNoYearly`) ||
+                                          undefined
+                                        }
+                                        onChange={(doc: any) => {
+                                          if (!doc) {
+                                            noField.onChange(0);
+                                            form.setValue(
+                                              `documents.${index}.documentNoYearly`,
+                                              ''
+                                            );
                                             void form.trigger(
                                               `documents.${index}.documentNo`
                                             );
-                                            return;
+                                          } else {
+                                            const no =
+                                              doc.id ||
+                                              doc.documentNo ||
+                                              doc.DocumentNo ||
+                                              doc.Value ||
+                                              0;
+                                            noField.onChange(parseInt(no.toString()) || 0);
+                                            form.setValue(
+                                              `documents.${index}.documentNoYearly`,
+                                              doc.documentNoYearly ||
+                                              doc.DocumentNoYearly ||
+                                              doc.Text ||
+                                              doc.name ||
+                                              ''
+                                            );
+                                            void form.trigger(
+                                              `documents.${index}.documentNo`
+                                            );
                                           }
-                                          typeField.onChange(parseInt(val, 10));
-                                          form.setValue(`documents.${index}.documentNo`, 0);
-                                          form.setValue(
-                                            `documents.${index}.documentNoYearly`,
-                                            ''
-                                          );
-                                          void form.trigger(
-                                            `documents.${index}.documentType`
-                                          );
                                         }}
-                                      >
-                                        <SelectTrigger
-                                          className={cn(
-                                            'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
-                                            selectedType === '__none__' && 'text-slate-400',
-                                            form.formState.errors.documents?.[index]
-                                              ?.documentType && 'border-red-400'
-                                          )}
-                                        >
-                                          <SelectValue placeholder="Select document name" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem
-                                            value="__none__"
-                                            className="text-slate-400"
-                                          >
-                                            Select document name
-                                          </SelectItem>
-                                          {meetingDocumentTypes.map((d) => (
-                                            <SelectItem
-                                              key={d.documentTypeNo}
-                                              value={d.documentTypeNo.toString()}
-                                            >
-                                              {d.documentName}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    );
-                                  }}
-                                />
-                              </FieldControl>
-                            </div>
-
-                            <div className="space-y-1">
-                              <FieldLabel required>Document No</FieldLabel>
-                              <FieldControl
-                                error={
-                                  form.formState.errors.documents?.[index]?.documentNo?.message
-                                }
-                              >
-                                <Controller
-                                  control={form.control}
-                                  name={`documents.${index}.documentNo`}
-                                  render={({ field: noField }) => (
-                                    <DocumentCombobox
-                                      formNo={selectedDocTypeObj?.formNo}
-                                      contextStr={selectedDocTypeObj?.context}
-                                      displayColumnsStr={selectedDocTypeObj?.displayColumns}
-                                      value={
-                                        Number(noField.value) > 0
-                                          ? String(noField.value)
-                                          : ''
-                                      }
-                                      initialLabel={
-                                        form.watch(`documents.${index}.documentNoYearly`) ||
-                                        undefined
-                                      }
-                                      onChange={(doc: any) => {
-                                        if (!doc) {
-                                          noField.onChange(0);
-                                          form.setValue(
-                                            `documents.${index}.documentNoYearly`,
-                                            ''
-                                          );
-                                          void form.trigger(
-                                            `documents.${index}.documentNo`
-                                          );
-                                        } else {
-                                          const no =
-                                            doc.id ||
-                                            doc.documentNo ||
-                                            doc.DocumentNo ||
-                                            doc.Value ||
-                                            0;
-                                          noField.onChange(parseInt(no.toString()) || 0);
-                                          form.setValue(
-                                            `documents.${index}.documentNoYearly`,
-                                            doc.documentNoYearly ||
-                                            doc.DocumentNoYearly ||
-                                            doc.Text ||
-                                            doc.name ||
-                                            ''
-                                          );
-                                          void form.trigger(
-                                            `documents.${index}.documentNo`
-                                          );
+                                        placeholder={
+                                          Number(docType) > 0
+                                            ? 'Search document...'
+                                            : 'Select Document Name first'
                                         }
-                                      }}
-                                      placeholder={
-                                        Number(docType) > 0
-                                          ? 'Search document...'
-                                          : 'Select Document Name first'
-                                      }
-                                      disabled={!(Number(docType) > 0)}
-                                      className={cn(
-                                        'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
-                                        form.formState.errors.documents?.[index]?.documentNo &&
-                                        'border-red-400',
-                                        !(Number(docType) > 0) && 'bg-[var(--tm-muted)]/80 text-slate-400'
-                                      )}
-                                    />
-                                  )}
-                                />
-                              </FieldControl>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </FormSection>
+                                        disabled={!(Number(docType) > 0)}
+                                        className={cn(
+                                          'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
+                                          form.formState.errors.documents?.[index]?.documentNo &&
+                                          'border-red-400',
+                                          !(Number(docType) > 0) && 'bg-[var(--tm-muted)]/80 text-slate-400'
+                                        )}
+                                      />
+                                    )}
+                                  />
+                                </FieldControl>
+                              </div>
+                            </div >
+                          </div >
+                        </div >
+                      );
+                    })}
+                  </div >
+                )}
+            </FormSection >
 
             {/* SECTION 5: Attachments */}
-            <FormSection title="Attachments" icon={Paperclip} tourId="meeting-form-attachments">
+            < FormSection title="Attachments" icon={Paperclip} tourId="meeting-form-attachments" >
               <div className="space-y-3">
                 <div
                   onClick={() => fileInputRef.current?.click()}
@@ -1731,97 +1695,38 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   );
                 })()}
               </div>
-            </FormSection>
+            </FormSection >
 
-          </form>
-        </div>
-      </div>
+          </form >
+        </div >
+      </div >
 
-      <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-[2%]">
-          {itemToDelete && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-            >
-              <DialogHeader className="p-6 pb-3 text-center sm:text-center items-center">
-                <motion.div
-                  initial={{ scale: 0.6, rotate: -12 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }}
-                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 ring-8 ring-red-500/10"
-                >
-                  <Trash2 size={22} strokeWidth={1.75} />
-                </motion.div>
-                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">
-                  {itemToDelete.type === 'participant'
-                    ? 'Remove participant?'
-                    : itemToDelete.type === 'discussion'
-                      ? 'Remove discussion?'
-                      : 'Remove document?'}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
-                  <span className="font-medium text-slate-200">“{itemToDelete.label}”</span>
-                  {' '}will be removed from this meeting note. This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setItemToDelete(null)}
-                  className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={confirmRemoveItem}
-                  className="h-10 px-5 rounded-[8px] bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/20 transition-transform hover:scale-[1.02] active:scale-95"
-                >
-                  Delete
-                </Button>
-              </DialogFooter>
-            </motion.div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <MasterDeleteDialog
+        open={!!itemToDelete}
+        onOpenChange={(open) => {
+          if (!open) setItemToDelete(null);
+        }}
+        onConfirm={confirmRemoveItem}
+        recordName={itemToDelete?.label}
+        entityLabel={
+          itemToDelete?.type === 'participant'
+            ? 'participant'
+            : itemToDelete?.type === 'discussion'
+              ? 'discussion'
+              : 'document'
+        }
+      />
 
-      <Dialog open={!!attachmentToDelete} onOpenChange={(open) => !open && !isDeletingAttachment && setAttachmentToDelete(null)}>
-        <DialogContent className="rounded-[16px] max-w-sm p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden [&>button]:hidden data-[state=open]:zoom-in-95">
-          {attachmentToDelete && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-            >
-              <DialogHeader className="p-6 pb-3 text-center sm:text-center items-center">
-                <motion.div
-                  initial={{ scale: 0.6, rotate: -12 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }}
-                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 ring-8 ring-red-500/10"
-                >
-                  <Trash2 size={22} strokeWidth={1.75} />
-                </motion.div>
-                <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">Remove attachment?</DialogTitle>
-                <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
-                  <span className="font-medium text-slate-200">“{attachmentToDelete.name}”</span>
-                  {' '}will be deleted. This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="p-4 pt-2 bg-[var(--tm-muted)]/80 flex flex-row justify-end gap-2 rounded-b-[16px]">
-                <Button type="button" variant="outline" disabled={isDeletingAttachment} onClick={() => setAttachmentToDelete(null)} className="h-10 px-4 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none">Cancel</Button>
-                <Button disabled={isDeletingAttachment} onClick={confirmRemoveAttachment} className="h-10 px-5 rounded-[8px] bg-red-600 hover:bg-red-700 text-white font-medium text-xs shadow-md shadow-red-600/20 gap-0.5 transition-transform hover:scale-[1.02] active:scale-95">
-                  {isDeletingAttachment ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-                  Delete
-                </Button>
-              </DialogFooter>
-            </motion.div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <MasterDeleteDialog
+        open={!!attachmentToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingAttachment) setAttachmentToDelete(null);
+        }}
+        onConfirm={confirmRemoveAttachment}
+        recordName={attachmentToDelete?.name}
+        entityLabel="attachment"
+        confirming={isDeletingAttachment}
+      />
 
       <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
         <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl">
@@ -1857,7 +1762,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Enter category name" className="h-10 rounded-[8px]" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <Button type="button" variant="outline" onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" className="h-9 rounded-[8px]" onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
               <Button type="button" disabled={isSavingCategory || !newCategoryName.trim()} onClick={async () => {
                 setIsSavingCategory(true);
                 try {
@@ -1900,7 +1805,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               <Input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Enter type name" className="h-10 rounded-[8px]" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <Button type="button" variant="outline" onClick={() => setTypeModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" className="h-9 rounded-[8px]" onClick={() => setTypeModalOpen(false)}>Cancel</Button>
               <Button type="button" disabled={isSavingType || !newTypeName.trim()} onClick={async () => {
                 setIsSavingType(true);
                 try {
@@ -1964,6 +1869,57 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {
+        resolvedMeetingNo ? (
+          <SendMinutesDialog
+            open={sendMinutesOpen}
+            onOpenChange={setSendMinutesOpen}
+            meetingNotesNo={Number(resolvedMeetingNo)}
+            companyNo={Number(form.watch('operTaskCompanyNo') || companyNoStr) || Number(companyNoStr)}
+            meetingTitle={watchedTitle}
+            startDateTime={startDateTime}
+            endDateTime={endDateTime}
+            statusName={currentStatusName}
+            statusAllowed={canSendMinutesStatus}
+            recipients={minutesRecipients}
+            onSent={() => setLastMinutesSentAt(toUtcIso(new Date()) || new Date().toISOString())}
+          />
+        ) : null
+      }
+      {/* Save Confirmation Dialog */}
+      <Dialog open={showConfirm} onOpenChange={(open) => { if (!open) setShowConfirm(false); }}>
+        <DialogContent className="rounded-[12px] max-w-sm p-0 border border-[var(--tm-border)]/80 shadow-xl">
+          <DialogHeader className="p-5 pb-3">
+            <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">
+              Confirm Save
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500 mt-1.5">
+              Are you sure you want to save these meeting notes?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="p-4 pt-2 bg-[var(--tm-elevated)] flex justify-end gap-2 rounded-b-[12px] border-t border-[var(--tm-border)]">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowConfirm(false)}
+              className="h-9 rounded-[8px] text-xs font-medium border-[var(--tm-border)] shadow-none"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              autoFocus
+              onClick={handleConfirmSave}
+              className="h-9 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div >
   );
 }

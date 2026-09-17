@@ -1,6 +1,7 @@
 import { dbService } from './dbService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'sonner';
+import { toErrorMessage } from '@/lib/toErrorMessage';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -9,11 +10,11 @@ interface RequestOptions extends RequestInit {
 }
 
 const getErrorMessage = (data: any, status: number): string => {
-  if (data?.errors?.[0]?.errorMessage) return data.errors[0].errorMessage;
-  if (data?.errorMessage) return data.errorMessage;
-  if (data?.message) return data.message;
-  if (data?.error) return data.error;
-  if (data?.title) return data.title;
+  if (data?.errors?.[0]?.errorMessage) return toErrorMessage(data.errors[0].errorMessage, `HTTP Error ${status}`);
+  if (data?.errorMessage) return toErrorMessage(data.errorMessage, `HTTP Error ${status}`);
+  if (data?.message) return toErrorMessage(data.message, `HTTP Error ${status}`);
+  if (data?.error) return toErrorMessage(data.error, `HTTP Error ${status}`);
+  if (data?.title) return toErrorMessage(data.title, `HTTP Error ${status}`);
   return `HTTP Error ${status}`;
 };
 
@@ -30,14 +31,28 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { params, headers, ...rest } = options;
-
+function buildUrl(endpoint: string, params?: Record<string, string>): string {
   let url = `${BASE_URL}${endpoint}`;
   if (params) {
     const searchParams = new URLSearchParams(params);
-    url += `?${searchParams.toString()}`;
+    url += `${endpoint.includes('?') ? '&' : '?'}${searchParams.toString()}`;
   }
+  return url;
+}
+
+/** Collapse concurrent identical GETs (StrictMode remount, parent+child) into one network call. */
+const pendingGets = new Map<string, Promise<unknown>>();
+
+function getDedupeKey(endpoint: string, params?: Record<string, string>): string {
+  if (!params) return endpoint;
+  const searchParams = new URLSearchParams(params);
+  return `${endpoint}${endpoint.includes('?') ? '&' : '?'}${searchParams.toString()}`;
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const { params, headers, ...rest } = options;
+
+  const url = buildUrl(endpoint, params);
 
   const defaultHeaders: Record<string, string> = {};
   if (!(rest.body instanceof FormData)) {
@@ -72,7 +87,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     }
 
     if (data && typeof data === 'object' && data.success === false) {
-      const errorMessage = data.message || data.error || 'Operation failed';
+      const errorMessage = toErrorMessage(
+        data.message ?? data.error,
+        'Operation failed'
+      );
       if (errorMessage) {
         toast.error(errorMessage);
       }
@@ -92,8 +110,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 }
 
 export const apiService = {
-  get: <T>(endpoint: string, options?: RequestOptions) =>
-    request<T>(endpoint, { ...options, method: 'GET' }),
+  get: <T>(endpoint: string, options?: RequestOptions) => {
+    const key = getDedupeKey(endpoint, options?.params);
+    const existing = pendingGets.get(key);
+    if (existing) return existing as Promise<T>;
+
+    const promise = request<T>(endpoint, { ...options, method: 'GET' }).finally(() => {
+      if (pendingGets.get(key) === promise) pendingGets.delete(key);
+    });
+    pendingGets.set(key, promise);
+    return promise;
+  },
 
   post: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) }),

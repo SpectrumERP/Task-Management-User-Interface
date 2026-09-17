@@ -79,7 +79,7 @@ export function CountryList() {
     if (!deleteTargetId) return;
     apiService.delete('/api/master/countries/delete', {
       params: { countryNo: deleteTargetId }
-    }).then(() => { toast.success('Record deleted'); fetchCountries(); }).catch(err => { console.error('Failed to delete country:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Country deleted'); fetchCountries(); }).catch(err => { console.error('Failed to delete country:', err); toast.error('Failed to delete country'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -132,7 +132,8 @@ export function CountryList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="country"
+      />
     </div>
   );
 }

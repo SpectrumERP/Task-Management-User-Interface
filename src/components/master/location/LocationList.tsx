@@ -94,7 +94,7 @@ export function LocationList() {
         locationNo: deleteTargetId,
         id: deleteTargetId,
       },
-    }).then(() => { toast.success('Record deleted'); fetchLocations(); }).catch(err => { console.error('Failed to delete location:', err); toast.error('Failed to delete record'); });
+    }).then(() => { toast.success('Location deleted'); fetchLocations(); }).catch(err => { console.error('Failed to delete location:', err); toast.error('Failed to delete location'); });
     setDeleteConfirmOpen(false);
     setDeleteTargetId(null);
     setDeleteTargetLabel(null);
@@ -122,52 +122,26 @@ export function LocationList() {
           {
             header: 'Type',
             className: 'w-[100px]',
-            render: (item) =>
-              item.type ? (
-                <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[var(--tm-border)]/80 bg-[var(--tm-muted)] px-2 py-0.5 text-[10px] font-semibold text-slate-300">
-                  {item.type}
-                </span>
-              ) : (
-                <span className="text-slate-300">—</span>
-              ),
+            render: (item) => item.type || '—',
           },
           {
             header: 'Incharge',
             className: 'w-[14%]',
-            render: (item) => (
-              <span className="truncate block" title={item.inchargeNo || undefined}>
-                {item.inchargeNo || 'No Lead'}
-              </span>
-            ),
+            render: (item) => item.inchargeNo || 'No Lead',
           },
           {
             header: 'Address',
             className: 'w-[18%]',
-            render: (item) => {
-              const address = formatAddress(item);
-              return (
-                <span className="truncate block" title={address !== '—' ? address : undefined}>
-                  {address}
-                </span>
-              );
-            },
+            render: (item) => formatAddress(item),
           },
           {
             header: 'Region',
             className: 'w-[110px]',
-            render: (item) => (
-              <span className="inline-flex max-w-full truncate items-center rounded-[6px] border border-[#0EA5E9]/15 bg-[var(--tm-tint)] px-2 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
-                {item.locationRegion || 'Central'}
-              </span>
-            ),
+            render: (item) => item.locationRegion || 'Central',
           },
         ]}
         getCode={(item) => item.code || `SYS-${item.id}`}
-        getName={(item) => (
-          <span className="truncate" title={item.name}>
-            {item.name}
-          </span>
-        )}
+        getName={(item) => item.name}
         onEdit={(item) => navigate(toMasterEditPath('location', item.id))}
         onDelete={handleDeleteClick}
         canUpdate={isUpdate}
@@ -200,7 +174,8 @@ export function LocationList() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         recordName={deleteTargetLabel}
-/>
+        entityLabel="location"
+      />
     </div>
   );
 }
