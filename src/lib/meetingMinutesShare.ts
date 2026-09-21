@@ -75,7 +75,7 @@ export function isMeetingDeleteStatusAllowed(statusName?: string | null): boolea
   if (n.includes('release') || n.includes('authori') || n.includes('final') || n.includes('complete')) {
     return false;
   }
-  return n.includes('initial') || n.includes('draft') || n.includes('open') || n.includes('pending');
+  return n.includes('initial') || n.includes('draft') || n.includes('open') || n.includes('pending') || n.includes('prepared');
 }
 
 export function canDeleteMeetingNote(

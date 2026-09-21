@@ -21,6 +21,13 @@ type BusinessEntityTypeOption = {
   operCRMBusinessEntityTypeNo?: string | number;
 };
 
+type GstinTypeOption = {
+  gstinTypeName?: string;
+  gstinTypeNo?: string | number;
+  id?: string | number;
+  name?: string;
+};
+
 type TimeZoneOption = TimeZoneOptionLike;
 
 type BeSuggestion = {
@@ -54,6 +61,9 @@ interface CompanyHeaderFieldsProps {
   setCreditInsuranceCompanyName: (v: string) => void;
   companyVatGst: string;
   setCompanyVatGst: (v: string) => void;
+  gstinTypeNo: string;
+  setGstinTypeNo: (v: string) => void;
+  gstinTypes: GstinTypeOption[];
   businessEntityTypes: BusinessEntityTypeOption[];
   timeZones: TimeZoneOption[];
   errors: Record<string, string>;
@@ -80,6 +90,9 @@ export function CompanyHeaderFields({
   setCreditInsuranceCompanyName,
   companyVatGst,
   setCompanyVatGst,
+  gstinTypeNo,
+  setGstinTypeNo,
+  gstinTypes,
   businessEntityTypes,
   timeZones,
   errors,
@@ -334,7 +347,21 @@ export function CompanyHeaderFields({
           />
         </div>
 
-        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-1">
+        <div className="space-y-1.5 min-w-0">
+          <FieldLabel>Document Type</FieldLabel>
+          <Combobox
+            options={gstinTypes.map((t) => ({
+              label: t.gstinTypeName || t.name || '',
+              value: String(t.gstinTypeNo || t.id || ''),
+            }))}
+            value={gstinTypeNo}
+            onChange={(val) => setGstinTypeNo(val)}
+            placeholder="Select document type"
+            className={cn(fieldClass, 'px-3')}
+          />
+        </div>
+
+        <div className="space-y-1.5 min-w-0 sm:col-span-1 lg:col-span-1">
           <FieldLabel htmlFor="vatGst">VAT / GST No</FieldLabel>
           <Input
             id="vatGst"

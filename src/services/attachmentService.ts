@@ -265,6 +265,23 @@ export const attachmentService = {
   },
 
   /**
+   * 6. PUT /api/document-attachments/rename
+   * Renames a specific attachment
+   */
+  async renameAttachment(docNo: number, docName: string, formNo: number): Promise<boolean> {
+    const response = await apiService.put<{ success: boolean; message?: string }>(
+      '/api/document-attachments/rename',
+      { docNo, docName, formNo }
+    );
+    
+    if (response && response.success) {
+      return true;
+    }
+    
+    throw new Error(response?.message || 'Failed to rename attachment');
+  },
+
+  /**
    * 6. DELETE /api/document-attachments/delete
    * Deletes an attachment by docNo.
    */

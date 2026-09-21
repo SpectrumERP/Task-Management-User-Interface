@@ -177,7 +177,7 @@ export function MultiUserCombobox({
               </div>
             </div>
 
-            <CommandList className="max-h-72 overflow-y-auto p-1.5 scrollbar-hide">
+            <CommandList className="max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-1.5 custom-scrollbar" style={{ maxHeight: 'calc(var(--radix-popover-content-available-height) - 100px)' }}>
               {isLoading && (
                 <div className="flex items-center justify-center py-8 text-slate-500">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />

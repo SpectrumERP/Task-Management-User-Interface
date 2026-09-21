@@ -392,7 +392,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           </div>
 
           <div className="flex items-center gap-2 pr-10 shrink-0">
-            <PageGuideButton guideKey="task-detail-modal" />
+            <PageGuideButton guideKey="task-detail-modal" title="" />
             {task && canEdit && (
               <Button
                 type="button"

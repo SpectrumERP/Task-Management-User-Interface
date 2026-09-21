@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { attachmentService } from '@/services/attachmentService';
-import { UploadCloud, Camera as CameraIcon, FileText, X } from 'lucide-react';
+import { UploadCloud, Camera as CameraIcon, FileText, X, FileEdit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ALLOWED_UPLOAD_HELPER_TEXT, UPLOAD_ACCEPT_ATTR } from '@/lib/allowedUploadFiles';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
@@ -14,6 +14,7 @@ interface CompanyAttachmentsSectionProps {
   onOpenCamera: () => void;
   onAnalyze: (att: any) => void;
   onRemove: (index: number) => void;
+  onRename?: (index: number) => void;
   analyzedAttachmentIds: number[];
   error?: string;
 }
@@ -30,6 +31,7 @@ export function CompanyAttachmentsSection({
   onOpenCamera,
   onAnalyze,
   onRemove,
+  onRename,
   analyzedAttachmentIds,
   error,
 }: CompanyAttachmentsSectionProps) {
@@ -150,16 +152,30 @@ export function CompanyAttachmentsSection({
                         companyName={companyName}
                       />
                     ) : null}
-                    <ActionTip label="Remove Attachment">
-                      <button
-                        type="button"
-                        onClick={() => onRemove(idx)}
-                        aria-label="Remove Attachment"
-                        className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      >
-                        <X size={14} strokeWidth={2.5} />
-                      </button>
-                    </ActionTip>
+                    <div className="flex items-center gap-0">
+                      {isShareableAttachment(att) && onRename ? (
+                        <ActionTip label="Rename Attachment">
+                          <button
+                            type="button"
+                            onClick={() => onRename(idx)}
+                            aria-label="Rename Attachment"
+                            className="p-1.5 rounded-[6px] text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
+                          >
+                            <FileEdit size={14} strokeWidth={2.5} />
+                          </button>
+                        </ActionTip>
+                      ) : null}
+                      <ActionTip label="Remove Attachment">
+                        <button
+                          type="button"
+                          onClick={() => onRemove(idx)}
+                          aria-label="Remove Attachment"
+                          className="p-1.5 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <X size={14} strokeWidth={2.5} />
+                        </button>
+                      </ActionTip>
+                    </div>
                   </div>
                 </div>
               ))}

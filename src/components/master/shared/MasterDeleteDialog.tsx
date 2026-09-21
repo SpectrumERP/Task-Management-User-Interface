@@ -51,6 +51,7 @@ export function MasterDeleteDialog({
         onPointerDownOutside={(e) => {
           if (confirming) e.preventDefault();
         }}
+        onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="p-5 pb-3">
           <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight flex items-center gap-2">

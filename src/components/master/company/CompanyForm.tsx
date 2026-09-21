@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { validateUploadFile } from '@/lib/allowedUploadFiles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
+import { RenameAttachmentDialog } from '../shared/RenameAttachmentDialog';
 import { useConfirmDelete } from '../shared/useConfirmDelete';
 import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
 import { parseApiSaveError } from '../shared/parseSaveError';
@@ -69,6 +70,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
   const [creditInsuranceCompanyName, setCreditInsuranceCompanyName] = useState('');
   const [companyVatGst, setCompanyVatGst] = useState('');
+  const [gstinTypeNo, setGstinTypeNo] = useState('');
   const [followUpNotes, setFollowUpNotes] = useState<FollowUpNote[]>([]);
   const [businessEntityFillValues, setBusinessEntityFillValues] = useState<any>(null);
 
@@ -118,6 +120,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [analyzeFile, setAnalyzeFile] = useState<File | undefined>();
   const [analyzingAttachmentId, setAnalyzingAttachmentId] = useState<number | null>(null);
   const [analyzedAttachmentIds, setAnalyzedAttachmentIds] = useState<number[]>([]);
+  const [attachmentToRename, setAttachmentToRename] = useState<{ id: number; name: string } | null>(null);
+  const [isRenamingAttachment, setIsRenamingAttachment] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -153,6 +157,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
           setAliasName(dl.aliasName || dl.businessEntityAlias || dl.AliasName || '');
           setCompanyType(dl.businessEntityType?.id?.toString() || '');
           setCompanyVatGst(dl.vatgstNo || '');
+          setGstinTypeNo(dl.gstinTypeNo?.toString() || dl.gstinType?.id?.toString() || dl.gstinType?.gstinTypeNo?.toString() || '');
           setCreditLimit(dl.creditInsuranceLimit ?? null);
           setCreditInsuranceCompanyName(dl.creditInsuranceCompanyName || '');
           setCompanyTimeZoneNo(dl.timeZone?.timeZoneNo?.toString() || '');
@@ -723,6 +728,37 @@ export function CompanyForm({ id }: CompanyFormProps) {
     });
   };
 
+  const requestRenameCompanyAttachment = (index: number) => {
+    const att = companyAttachments[index];
+    if (att && (att.id || att.docNo)) {
+      setAttachmentToRename({ id: att.id || att.docNo, name: att.fileName || att.name || 'document' });
+    }
+  };
+
+  const confirmRenameCompanyAttachment = async (newName: string) => {
+    if (!attachmentToRename) return;
+    const { id } = attachmentToRename;
+    setIsRenamingAttachment(true);
+    try {
+      await attachmentService.renameAttachment(id, newName, 1550); // 1550 for Company forms
+      
+      setCompanyAttachments(prev => prev.map(a => {
+        if ((a.id === id) || (a.docNo === id)) {
+          return { ...a, fileName: newName, name: newName };
+        }
+        return a;
+      }));
+      
+      toast.success("Attachment renamed successfully.");
+      setAttachmentToRename(null);
+    } catch (error) {
+      console.error('Failed to rename attachment on server:', error);
+      toast.error('Failed to rename attachment');
+    } finally {
+      setIsRenamingAttachment(false);
+    }
+  };
+
   const requestRemoveFollowUpNote = (index: number) => {
     const note = followUpNotes[index];
     const label = (note?.note || '').trim().slice(0, 60) || 'Note';
@@ -800,6 +836,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
         crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : null,
         crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : null,
         vatgstNo: companyVatGst || null,
+        gstinTypeNo: gstinTypeNo ? parseInt(gstinTypeNo) : null,
         creditInsuranceLimit: creditLimit ?? null,
         creditInsuranceCompanyName: creditInsuranceCompanyName || null,
         address: null,
@@ -862,6 +899,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
             setCreditInsuranceCompanyName={setCreditInsuranceCompanyName}
             companyVatGst={companyVatGst}
             setCompanyVatGst={setCompanyVatGst}
+            gstinTypeNo={gstinTypeNo}
+            setGstinTypeNo={setGstinTypeNo}
+            gstinTypes={asGeoList(businessEntityFillValues?.gstinTypes)}
             businessEntityTypes={businessEntityTypes}
             timeZones={timeZones}
             errors={errors}
@@ -908,6 +948,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
             onOpenCamera={() => setIsCameraModalOpen(true)}
             onAnalyze={handleAnalyzeAttachment}
             onRemove={requestRemoveCompanyAttachment}
+            onRename={requestRenameCompanyAttachment}
             analyzedAttachmentIds={analyzedAttachmentIds}
             error={errors.attachments}
           />
@@ -1088,6 +1129,18 @@ export function CompanyForm({ id }: CompanyFormProps) {
           entityLabel={deleteConfirm.entityLabel}
           confirming={deleteConfirm.confirming}
         />
+
+        {attachmentToRename && (
+          <RenameAttachmentDialog
+            open={!!attachmentToRename}
+            onOpenChange={(open) => {
+              if (!open && !isRenamingAttachment) setAttachmentToRename(null);
+            }}
+            onConfirm={confirmRenameCompanyAttachment}
+            originalName={attachmentToRename.name}
+            confirming={isRenamingAttachment}
+          />
+        )}
       </div>
     </MasterFormShell>
   );

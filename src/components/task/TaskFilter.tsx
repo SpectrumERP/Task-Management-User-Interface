@@ -922,15 +922,13 @@ export function TaskFilter({
               : [];
             const isActive = activeStatuses.includes(statusNoStr);
 
-            const baseClass = "theme-status-pill rounded-full h-7 px-3 text-[11px] font-semibold transition-all duration-200 border bg-[var(--tm-surface)] hover:shadow-md";
+            const baseClass = "theme-status-pill inline-flex items-center justify-center whitespace-nowrap rounded-full h-7 px-3 text-[11px] font-semibold transition-all duration-200 border bg-[var(--tm-surface)] hover:shadow-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
             const colorClass = getStatusPillClass(statusName, isActive);
 
             return (
-              <Button
+              <button
                 key={statusName}
                 type="button"
-                variant="outline"
-                size="sm"
                 aria-pressed={isActive}
                 onClick={() => {
                   const next = isActive
@@ -943,7 +941,7 @@ export function TaskFilter({
               >
                 {statusName} <span className="ml-1.5 opacity-70 text-[10px]">({count})</span>
                 {isActive && <X size={12} className="ml-1 -mr-1 opacity-80 shrink-0" />}
-              </Button>
+              </button>
             );
           })}
           {String(watch('operTaskStatusNo') || '').split(',').map((s) => s.trim()).filter(Boolean).length > 0 && (

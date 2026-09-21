@@ -101,7 +101,7 @@ function HoverTipBubble({
       ref={tipRef}
       role="tooltip"
       className={cn(
-        'pointer-events-none fixed z-[300] w-fit',
+        'pointer-events-none fixed z-[300] w-max',
         placed === 'top' && '-translate-y-full',
         'animate-in fade-in-0 zoom-in-95 duration-150'
       )}

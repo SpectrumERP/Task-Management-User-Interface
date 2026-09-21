@@ -27,7 +27,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
-import { getStatusTextClass } from '@/lib/taskStatusGroups';
+import { getStatusPillClass } from '@/lib/taskStatusGroups';
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -363,7 +363,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               {task.code || `CP-${100 + task.taskNo}`}
             </span>
             {task.status ? (
-              <span className={cn('text-[9px]', getStatusTextClass(task.status))}>
+              <span className={cn('text-[9px] px-2 py-0.5 rounded-full border font-semibold', getStatusPillClass(task.status, false))}>
                 {task.status}
               </span>
             ) : null}
@@ -466,13 +466,13 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         </td>
       )}
 
-      {/* Status — colored text only (no badge background) */}
+      {/* Status — pill badge style */}
       {visibleColumns.has('status') && (
         <td className={cn(cellOverflowClass, 'text-left')} style={{ textAlign: 'left' }}>
           <div className="flex w-full min-w-0 justify-start items-center">
             <TruncatedText
               text={task.status || '-'}
-              className={cn('!w-auto !max-w-full text-left text-[10px] normal-case', getStatusTextClass(task.status))}
+              className={cn('!w-fit !max-w-full text-center text-[10px] normal-case px-2 py-0.5 rounded-full border inline-block font-medium', getStatusPillClass(task.status, false))}
             />
           </div>
         </td>

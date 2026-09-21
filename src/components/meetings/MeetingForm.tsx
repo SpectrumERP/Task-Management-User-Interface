@@ -29,10 +29,11 @@ import { useFormRights } from '@/hooks/useFormRights';
 import { useSettings } from '@/hooks/useSettings';
 import { getMeetingSchema, MeetingNotesFormData } from '@/types/meeting';
 import { attachmentService } from '@/services/attachmentService';
-import { UploadCloud, Image as ImageIcon, Trash, RefreshCw, AlertCircle, } from 'lucide-react';
+import { UploadCloud, Image as ImageIcon, Trash, RefreshCw, AlertCircle, FileEdit } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
+import { RenameAttachmentDialog } from '@/components/master/shared/RenameAttachmentDialog';
 import {
   Dialog,
   DialogContent,
@@ -108,7 +109,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const [meetingModes, setMeetingModes] = useState<any[]>([]);
   const [participantTypes, setParticipantTypes] = useState<any[]>([]);
   const [meetingDocumentTypes, setMeetingDocumentTypes] = useState<any[]>([]);
-  const [documentStatuses, setDocumentStatuses] = useState<any[]>([]);
+  const [statuses, setStatuses] = useState<any[]>([]);
 
   const [uploadingFiles, setUploadingFiles] = useState<Array<{
     tempId: string;
@@ -119,6 +120,8 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [attachmentToRename, setAttachmentToRename] = useState<{ id: number; name: string } | null>(null);
+  const [isRenamingAttachment, setIsRenamingAttachment] = useState(false);
   const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{
     type: 'participant' | 'discussion' | 'document';
@@ -170,7 +173,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       operLocationNo: initialData?.location?.id?.toString() || initialData?.operLocationNo?.toString() || '',
       meetingMinutesUrl: initialData?.meetingMinutesUrl || '',
       remarks: initialData?.remarks || '',
-      documentStatusNo: initialData?.documentStatusNo || 10,
+      statusNo: initialData?.statusNo || 17,
       participants: initialData?.participants || [],
       discussions: initialData?.discussions || [],
       documents: initialData?.documents || []
@@ -273,7 +276,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         if (data.participantTypes) setParticipantTypes(data.participantTypes);
 
         if (data.meetingDocumentTypes) setMeetingDocumentTypes(data.meetingDocumentTypes);
-        if (data.documentStatuses) setDocumentStatuses(data.documentStatuses);
+        if (data.statuses) setStatuses(data.statuses);
 
       } catch (err) {
         console.error("Failed to load meeting fill-values data", err);
@@ -287,17 +290,17 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const startDateTime = form.watch('meetingStartDateTime');
   const endDateTime = form.watch('meetingEndDateTime');
   const watchedParticipants = form.watch('participants');
-  const watchedDocumentStatusNo = form.watch('documentStatusNo');
+  const watchedStatusNo = form.watch('statusNo');
   const watchedTitle = form.watch('meetingTitle');
 
   const resolvedMeetingNo = meetingNotesNo || initialData?.meetingNotesNo || null;
 
   const currentStatusName = useMemo(() => {
-    const match = documentStatuses.find(
-      (s) => String(s.documentStatusNo) === String(watchedDocumentStatusNo)
+    const match = statuses.find(
+      (s) => String(s.statusNo) === String(watchedStatusNo)
     );
-    return match?.documentStatusName || match?.DocumentStatusName || '';
-  }, [documentStatuses, watchedDocumentStatusNo]);
+    return match?.statusName || match?.StatusName || '';
+  }, [statuses, watchedStatusNo]);
 
   const minutesRecipients = useMemo(
     () => buildMinutesRecipients(watchedParticipants || []),
@@ -484,6 +487,29 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
     }
   };
 
+  const confirmRenameAttachment = async (newName: string) => {
+    if (!attachmentToRename) return;
+    const { id } = attachmentToRename;
+    setIsRenamingAttachment(true);
+    try {
+      if (id) {
+        await attachmentService.renameAttachment(id, newName, 1559); // 1559 for Meetings
+      }
+      const currentAttachments = form.getValues('attachments') || [];
+      const updatedAttachments = currentAttachments.map((a: any) =>
+        a.id === id ? { ...a, name: newName } : a
+      );
+      form.setValue('attachments', updatedAttachments, { shouldDirty: true });
+      toast.success("Attachment renamed successfully.");
+      setAttachmentToRename(null);
+    } catch (error) {
+      console.error('Failed to rename attachment on server:', error);
+      toast.error('Failed to rename attachment');
+    } finally {
+      setIsRenamingAttachment(false);
+    }
+  };
+
   const onSubmit = (data: any) => {
     setPendingData(data);
     setShowConfirm(true);
@@ -542,7 +568,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
             };
           } else if (type === 2) {
             return {
-              participantType: 1,
+              participantType: 2,
               empNo: p.empNo
             };
           } else if (type === 4) {
@@ -578,6 +604,70 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       if (shouldToastCaughtError(error)) {
         toast.error(getUserErrorMessage(error, 'Failed to save meeting notes. Please try again.'));
       }
+    }
+  };
+
+  const onValidationError = (errors: any) => {
+    console.error('Form Validation Errors:', errors);
+
+    const getFirstErrorKey = (obj: any, prefix = ''): string | null => {
+      // Order of top-level fields for predictable scrolling
+      const topLevelOrder = [
+        'meetingTitle',
+        'meetingCategoryNo',
+        'meetingTypeNo',
+        'companyNo',
+        'operLocationNo',
+        'meetingModeNo',
+        'meetingStartDateTime',
+        'meetingEndDateTime',
+        'participants',
+        'discussions',
+        'documents'
+      ];
+
+      const keys = Object.keys(obj).sort((a, b) => {
+        if (!prefix) {
+          const idxA = topLevelOrder.indexOf(a);
+          const idxB = topLevelOrder.indexOf(b);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+        }
+        return 0;
+      });
+
+      for (const key of keys) {
+        if (obj[key] && typeof obj[key] === 'object' && !obj[key].message) {
+          const nested = getFirstErrorKey(obj[key], prefix ? `${prefix}.${key}` : key);
+          if (nested) return nested;
+        } else if (obj[key]?.message) {
+          return prefix ? `${prefix}.${key}` : key;
+        }
+      }
+      return null;
+    };
+
+    const firstError = getFirstErrorKey(errors);
+    if (firstError) {
+      setTimeout(() => {
+        let element = document.querySelector(`[name="${firstError}"]`);
+
+        if (!element) {
+          const baseName = firstError.split('.')[0];
+          element = document.getElementById(`form-group-${firstError}`) || document.getElementById(`form-group-${baseName}`);
+        }
+
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => {
+            const focusable = element?.querySelector('button, input:not([type="hidden"]), select, textarea') as HTMLElement;
+            if (focusable) {
+              focusable.focus();
+            }
+          }, 150);
+        }
+      }, 0);
     }
   };
 
@@ -662,7 +752,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
       <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
         <div className="w-full mx-auto p-4">
-          <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))} className="space-y-3">
+          <form onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="space-y-3">
 
             {/* SECTION 1: Basic Information */}
             <FormSection
@@ -672,7 +762,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               headerAction={
                 <Controller
                   control={form.control}
-                  name="documentStatusNo"
+                  name="statusNo"
                   render={({ field }) => (
                     <Select
                       value={field.value?.toString()}
@@ -682,9 +772,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        {documentStatuses?.map(status => (
-                          <SelectItem key={status.documentStatusNo} value={status.documentStatusNo.toString()}>
-                            {status.documentStatusName}
+                        {statuses?.map(status => (
+                          <SelectItem key={status.statusNo} value={status.statusNo.toString()}>
+                            {status.statusName}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -694,14 +784,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               }
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-4">
-                <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
+                <div id="form-group-meetingTitle" className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
                   <FieldLabel required>Meeting Title</FieldLabel>
                   <FieldControl error={form.formState.errors.meetingTitle?.message}>
                     <Input {...form.register('meetingTitle')} placeholder="e.g. Weekly Sync with Client" className={cn("h-10 rounded-[8px]", form.formState.errors.meetingTitle && "border-red-400")} />
                   </FieldControl>
                 </div>
 
-                <div className="space-y-1.5">
+                <div id="form-group-meetingCategoryNo" className="space-y-1.5">
                   <FieldLabel required>Meeting Category</FieldLabel>
                   <Controller
                     control={form.control}
@@ -721,7 +811,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div id="form-group-meetingTypeNo" className="space-y-1.5">
                   <FieldLabel required>Meeting Type</FieldLabel>
                   <Controller
                     control={form.control}
@@ -742,7 +832,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                 </div>
 
 
-                <div className="space-y-1.5">
+                <div id="form-group-companyNo" className="space-y-1.5">
                   <FieldLabel required>Company</FieldLabel>
                   <Controller
                     control={form.control}
@@ -760,7 +850,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div id="form-group-operLocationNo" className="space-y-1.5">
                   <FieldLabel required>Location</FieldLabel>
                   <Controller
                     control={form.control}
@@ -795,7 +885,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   </p>
                 </div>
 
-                <div className="space-y-1.5">
+                <div id="form-group-meetingModeNo" className="space-y-1.5">
                   <FieldLabel required>Meeting Mode</FieldLabel>
                   <Controller
                     control={form.control}
@@ -818,7 +908,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div id="form-group-meetingStartDateTime" className="space-y-1.5">
                   <FieldLabel required>Start Date & Time</FieldLabel>
                   <Controller
                     control={form.control}
@@ -836,7 +926,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div id="form-group-meetingEndDateTime" className="space-y-1.5">
                   <FieldLabel required>End Date & Time</FieldLabel>
                   <Controller
                     control={form.control}
@@ -859,8 +949,8 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   <Input value={form.watch('durationMinutes') || 0} readOnly placeholder="0" className="h-10 rounded-[8px] bg-[var(--tm-muted)]/50 text-xs text-slate-500 text-right" />
                 </div>
 
-                <div className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
-                  <label className="text-[11px] font-medium text-slate-300">Meeting Link (URL)</label>
+                <div id="form-group-meetingTitle" className="space-y-1.5 md:col-span-2 lg:col-span-3 xl:col-span-4">
+                  <label className="text-[11px] font-medium text-slate-300">Meeting Note Link (URL)</label>
                   <FieldControl error={form.formState.errors.meetingMinutesUrl?.message}>
                     <Input {...form.register('meetingMinutesUrl')} placeholder="https://..." className={cn("h-10 rounded-[8px]", form.formState.errors.meetingMinutesUrl && "border-red-400")} />
                   </FieldControl>
@@ -1081,193 +1171,202 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                           const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
                           const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
                           return (
-                            <tr key={field.id} className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
-                              <td className="px-3 py-3 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
-                                {index + 1}
-                              </td>
-                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top space-y-1">
-                                <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
-                                  <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-9 rounded-[8px] text-xs font-medium bg-transparent", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
-                                </FieldControl>
-                              </td>
-                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                                <Controller
-                                  control={form.control}
-                                  name={`discussions.${index}.discussionSummary`}
-                                  render={({ field }) => (
-                                    <Textarea
-                                      value={field.value || ''}
-                                      onChange={field.onChange}
-                                      placeholder="Details..."
-                                      maxLength={700}
-                                      className="min-h-[70px] rounded-[8px] text-xs bg-transparent resize-none focus-visible:ring-[#0EA5E9]/30"
-                                    />
-                                  )}
-                                />
-                              </td>
-                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                                <Controller
-                                  control={form.control}
-                                  name={`discussions.${index}.decisionRemarks`}
-                                  render={({ field }) => (
-                                    <Textarea
-                                      value={field.value || ''}
-                                      onChange={field.onChange}
-                                      placeholder="Final decision..."
-                                      maxLength={300}
-                                      className="min-h-[70px] rounded-[8px] text-xs bg-transparent resize-none focus-visible:ring-[#0EA5E9]/30"
-                                    />
-                                  )}
-                                />
-                              </td>
-                              <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                                <Controller
-                                  control={form.control}
-                                  name={`discussions.${index}.isActionRequired`}
-                                  render={({ field }) => (
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <button
-                                        type="button"
-                                        role="switch"
-                                        aria-checked={!!field.value}
-                                        onClick={() => field.onChange(!field.value)}
-                                        className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
-                                      >
-                                        <span className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200', field.value ? 'bg-[#0EA5E9]' : 'bg-slate-600')}>
-                                          <span className={cn('absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200', field.value ? 'translate-x-[18px]' : 'translate-x-[2px]')} />
-                                        </span>
-                                        <span className={cn('text-[10px] font-semibold tracking-wide', field.value ? 'text-[#0EA5E9]' : 'text-slate-400')}>
-                                          {field.value ? 'ON' : 'OFF'}
-                                        </span>
-                                      </button>
-                                    </div>
-                                  )}
-                                />
-                                {isActionRequired && (
-                                  <div className="mt-2 space-y-2 p-2.5 rounded-[8px] bg-[var(--tm-elevated)] border border-[var(--tm-border)]/80">
-                                    <p className="text-[10px] font-semibold text-[#0EA5E9] uppercase tracking-wide mb-2">Task Details</p>
-
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.operTaskCategoryNo`}
-                                        render={({ field }) => (
-                                          <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
-                                            options={taskFillValues?.category?.map(c => ({ value: c.OperTaskCategoryNo.toString(), label: cleanMasterLabel(c.Category) })) || []}
-                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                            onChange={(val) => field.onChange(toOptionalInt(val))}
-                                            placeholder="Category"
-                                          />
-                                        )}
+                            <React.Fragment key={field.id}>
+                              <tr className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
+                                <td className="px-3 py-3 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
+                                  {index + 1}
+                                </td>
+                                <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top space-y-1">
+                                  <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
+                                    <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-9 rounded-[8px] text-xs font-medium bg-transparent", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
+                                  </FieldControl>
+                                </td>
+                                <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                  <Controller
+                                    control={form.control}
+                                    name={`discussions.${index}.discussionSummary`}
+                                    render={({ field }) => (
+                                      <Textarea
+                                        value={field.value || ''}
+                                        onChange={field.onChange}
+                                        placeholder="Details..."
+                                        maxLength={700}
+                                        className="min-h-[60px] rounded-[8px] text-xs bg-transparent resize-y focus-visible:ring-[#0EA5E9]/30"
                                       />
-                                    </FieldControl>
+                                    )}
+                                  />
+                                </td>
+                                <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                  <Controller
+                                    control={form.control}
+                                    name={`discussions.${index}.decisionRemarks`}
+                                    render={({ field }) => (
+                                      <Textarea
+                                        value={field.value || ''}
+                                        onChange={field.onChange}
+                                        placeholder="Final decision..."
+                                        maxLength={300}
+                                        className="min-h-[60px] rounded-[8px] text-xs bg-transparent resize-y focus-visible:ring-[#0EA5E9]/30"
+                                      />
+                                    )}
+                                  />
+                                </td>
+                                <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
+                                  <Controller
+                                    control={form.control}
+                                    name={`discussions.${index}.isActionRequired`}
+                                    render={({ field }) => (
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <button
+                                          type="button"
+                                          role="switch"
+                                          aria-checked={!!field.value}
+                                          onClick={() => field.onChange(!field.value)}
+                                          className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
+                                        >
+                                          <span className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200', field.value ? 'bg-[#0EA5E9]' : 'bg-slate-600')}>
+                                            <span className={cn('absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200', field.value ? 'translate-x-[18px]' : 'translate-x-[2px]')} />
+                                          </span>
+                                          <span className={cn('text-[10px] font-semibold tracking-wide', field.value ? 'text-[#0EA5E9]' : 'text-slate-400')}>
+                                            {field.value ? 'ON' : 'OFF'}
+                                          </span>
+                                        </button>
+                                      </div>
+                                    )}
+                                  />
+                                </td>
+                                <td className="px-2 py-3 text-center align-top">
+                                  <button
+                                    type="button"
+                                    onClick={() => requestRemoveItem('discussion', index, topicValue || `Discussion ${index + 1}`)}
+                                    className="h-8 w-8 inline-flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-[8px] transition-colors mt-0.5"
+                                    title="Remove discussion"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
 
-                                    {!isHideType && (
-                                      <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
+                              {/* Expandable Task Details Row */}
+                              {isActionRequired && (
+                                <tr className="bg-[var(--tm-muted)]/10 border-t border-[var(--tm-border)]/50">
+                                  <td colSpan={6} className="p-3 pl-14">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-[#0EA5E9]"></div>
+                                      <p className="text-[10px] font-semibold text-[#0EA5E9] uppercase tracking-wide">Task Details</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                      <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
                                         <Controller
                                           control={form.control}
-                                          name={`discussions.${index}.operTaskTypeNo`}
+                                          name={`discussions.${index}.operTaskCategoryNo`}
                                           render={({ field }) => (
-                                            <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
-                                              options={taskFillValues?.type?.map(c => ({ value: c.OperTaskTypeNo.toString(), label: cleanMasterLabel(c["Task Type"]) })) || []}
+                                            <Combobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
+                                              options={taskFillValues?.category?.filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]').map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category, colorCoding: c.colorCoding || c.ColorCoding })) || []}
                                               value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
                                               onChange={(val) => field.onChange(toOptionalInt(val))}
-                                              placeholder="Task Type"
+                                              placeholder="Category"
                                             />
                                           )}
                                         />
                                       </FieldControl>
-                                    )}
 
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.operTaskPriorityNo`}
-                                        render={({ field }) => (
-                                          <Combobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
-                                            options={taskFillValues?.priority?.map(c => ({ value: c.OperTaskPriorityNo.toString(), label: cleanMasterLabel(c.Priority) })) || []}
-                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                            onChange={(val) => field.onChange(toOptionalInt(val))}
-                                            sortAlphabetically={false}
-                                            placeholder="Priority"
+                                      {!isHideType && (
+                                        <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
+                                          <Controller
+                                            control={form.control}
+                                            name={`discussions.${index}.operTaskTypeNo`}
+                                            render={({ field }) => (
+                                              <Combobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
+                                                options={taskFillValues?.type?.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]').map(c => ({ value: c.OperTaskTypeNo.toString(), label: c["Task Type"] })) || []}
+                                                value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                                onChange={(val) => field.onChange(toOptionalInt(val))}
+                                                placeholder="Task Type"
+                                              />
+                                            )}
                                           />
-                                        )}
-                                      />
-                                    </FieldControl>
+                                        </FieldControl>
+                                      )}
 
-                                    {!isHideFolder && (
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.operTaskCategoryNo`}
-                                        render={({ field }) => (
-                                          <Combobox className="rounded-[8px] h-8 text-xs"
-                                            options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
-                                            value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                            onChange={(val) => field.onChange(toOptionalInt(val))}
-                                            placeholder="Folder"
-                                          />
-                                        )}
-                                      />
-                                    )}
+                                      <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
+                                        <Controller
+                                          control={form.control}
+                                          name={`discussions.${index}.operTaskPriorityNo`}
+                                          render={({ field }) => (
+                                            <Combobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
+                                              options={taskFillValues?.priority?.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]').map(c => ({ value: c.OperTaskPriorityNo.toString(), label: c.Priority, colorCoding: c.colorCoding || c.ColorCoding })) || []}
+                                              value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                              onChange={(val) => field.onChange(toOptionalInt(val))}
+                                              sortAlphabetically={false}
+                                              placeholder="Priority"
+                                            />
+                                          )}
+                                        />
+                                      </FieldControl>
 
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.actionTaskOriginatorNo`}
-                                        render={({ field }) => (
-                                          <UserCombobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
-                                            value={field.value?.toString() || ''}
-                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                            placeholder="Assign By"
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
+                                      {!isHideFolder && (
+                                        <Controller
+                                          control={form.control}
+                                          name={`discussions.${index}.operTaskCategoryNo`}
+                                          render={({ field }) => (
+                                            <Combobox className="rounded-[8px] h-9 text-xs"
+                                              options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
+                                              value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
+                                              onChange={(val) => field.onChange(toOptionalInt(val))}
+                                              placeholder="Folder"
+                                            />
+                                          )}
+                                        />
+                                      )}
 
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.actionTaskOwnerNo`}
-                                        render={({ field }) => (
-                                          <UserCombobox className={cn("rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
-                                            value={field.value?.toString() || ''}
-                                            onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                            placeholder="Assign To"
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
+                                      <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
+                                        <Controller
+                                          control={form.control}
+                                          name={`discussions.${index}.actionTaskOriginatorNo`}
+                                          render={({ field }) => (
+                                            <UserCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
+                                              value={field.value?.toString() || ''}
+                                              onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                              placeholder="Assign By"
+                                            />
+                                          )}
+                                        />
+                                      </FieldControl>
 
-                                    <FieldControl error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}>
-                                      <Controller
-                                        control={form.control}
-                                        name={`discussions.${index}.actionDueDate`}
-                                        render={({ field }) => (
-                                          <DateTimePicker
-                                            hour24
-                                            className={cn("w-full rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400")}
-                                            date={field.value ? new Date(field.value) : undefined}
-                                            onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
-                                            placeholder="Due Date & Time"
-                                          />
-                                        )}
-                                      />
-                                    </FieldControl>
+                                      <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
+                                        <Controller
+                                          control={form.control}
+                                          name={`discussions.${index}.actionTaskOwnerNo`}
+                                          render={({ field }) => (
+                                            <UserCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
+                                              value={field.value?.toString() || ''}
+                                              onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
+                                              placeholder="Assign To"
+                                            />
+                                          )}
+                                        />
+                                      </FieldControl>
 
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-2 py-3 text-center align-top">
-                                <button
-                                  type="button"
-                                  onClick={() => requestRemoveItem('discussion', index, topicValue || `Discussion ${index + 1}`)}
-                                  className="h-8 w-8 inline-flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-[8px] transition-colors mt-0.5"
-                                  title="Remove discussion"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </td>
-                            </tr>
+                                      <FieldControl error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}>
+                                        <Controller
+                                          control={form.control}
+                                          name={`discussions.${index}.actionDueDate`}
+                                          render={({ field }) => (
+                                            <DateTimePicker
+                                              hour24
+                                              className={cn("w-full rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400")}
+                                              date={field.value ? new Date(field.value) : undefined}
+                                              onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
+                                              placeholder="Due Date & Time"
+                                            />
+                                          )}
+                                        />
+                                      </FieldControl>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
@@ -1695,15 +1794,26 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                   View
                                 </button>
                               </div>
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => handleRemoveAttachment(file.id, file.name)}
-                                className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                              >
-                                <Trash size={12} />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => setAttachmentToRename({ id: file.id, name: file.name })}
+                                  className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-sky-400 hover:bg-sky-500/10 transition-all"
+                                >
+                                  <FileEdit size={12} />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => handleRemoveAttachment(file.id, file.name)}
+                                  className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                >
+                                  <Trash size={12} />
+                                </Button>
+                              </div>
                             </motion.div>
                           );
                         })}
@@ -1744,6 +1854,18 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         entityLabel="attachment"
         confirming={isDeletingAttachment}
       />
+
+      {attachmentToRename && (
+        <RenameAttachmentDialog
+          open={!!attachmentToRename}
+          onOpenChange={(open) => {
+            if (!open && !isRenamingAttachment) setAttachmentToRename(null);
+          }}
+          onConfirm={confirmRenameAttachment}
+          originalName={attachmentToRename.name}
+          confirming={isRenamingAttachment}
+        />
+      )}
 
       <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
         <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-xl bg-[var(--tm-surface)]/95 backdrop-blur-xl">

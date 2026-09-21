@@ -42,12 +42,9 @@ interface MeetingListViewProps {
   onMeetingClick?: (meetingNotesNo: number) => void;
 }
 
-const STATUS_PILLS = [
-  { id: 'all', label: 'All' },
-  { id: 'initial', label: 'Initial' },
-  { id: 'release', label: 'Release' },
-  { id: 'authorized', label: 'Authorized' },
-] as const;
+// Dynamic pills are constructed from API data.
+// We preserve this type for reference, but it will be dynamic.
+type StatusPill = { id: string; label: string };
 
 function meetingStatusBadgeClass(statusName?: string | null) {
   const n = String(statusName || '').toLowerCase();
@@ -76,6 +73,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
     '1';
 
   const [meetings, setMeetings] = useState<any[]>([]);
+  const [meetingStatuses, setMeetingStatuses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -89,6 +87,21 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { isSave, isUpdate, isDelete } = useFormRights(1559);
+
+  const fetchMeetingFills = async () => {
+    try {
+      const fillRes = await apiService.get<any>(
+        `/api/crm/meeting-notes/fill-values?companyNo=${companyNoStr}`
+      );
+      if (fillRes?.data?.statuses) {
+        setMeetingStatuses(fillRes.data.statuses);
+      } else if (fillRes?.statuses) {
+        setMeetingStatuses(fillRes.statuses);
+      }
+    } catch (error) {
+      console.error('Failed to fetch meeting fills:', error);
+    }
+  };
 
   const fetchMeetings = async () => {
     setIsLoading(true);
@@ -116,8 +129,18 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
 
   useEffect(() => {
     fetchMeetings();
+    fetchMeetingFills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyNoStr]);
+
+  const dynamicStatusPills = useMemo(() => {
+    const defaultPills: StatusPill[] = [{ id: 'all', label: 'All' }];
+    const apiPills: StatusPill[] = meetingStatuses.map((s) => ({
+      id: s.statusName,
+      label: s.statusName,
+    }));
+    return [...defaultPills, ...apiPills];
+  }, [meetingStatuses]);
 
   const filteredMeetings = useMemo(
     () =>
@@ -129,7 +152,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
         if (
           filterStatus &&
           filterStatus !== 'all' &&
-          !m.docStatusName?.toLowerCase().includes(filterStatus.toLowerCase())
+          !m.statusName?.toLowerCase().includes(filterStatus.toLowerCase())
         ) {
           match = false;
         }
@@ -177,8 +200,8 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
         const t = toUtcMs(row.meetingEndDateTime);
         return t ?? row.meetingEndDateTime ?? '';
       }
-      case 'docStatusName':
-        return row.docStatusName || row.statusName || '';
+      case 'statusName':
+        return row.statusName || '';
       case 'createdBy':
         return row.createdBy?.printingName || row.createdBy?.displayName || row.createdByName || '';
       case 'createdDate': {
@@ -236,7 +259,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
   };
 
   const requestDelete = (meeting: any) => {
-    const status = meeting.docStatusName || meeting.statusName || '';
+    const status = meeting.statusName || '';
     const gate = canDeleteMeetingNote(isDelete, status);
     if (!gate.allowed) {
       toast.error(gate.reason || 'You cannot delete this meeting note.');
@@ -359,11 +382,14 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
             data-page-tour="meeting-status-filter"
             className="flex items-center gap-1 p-1 rounded-[10px] border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)]/40 overflow-x-auto"
           >
-            {STATUS_PILLS.map((pill) => (
+            {dynamicStatusPills.map((pill) => (
               <button
                 key={pill.id}
                 type="button"
-                onClick={() => setFilterStatus(pill.id)}
+                onClick={() => {
+                  setFilterStatus(pill.id);
+                  setCurrentPage(1);
+                }}
                 className={cn(
                   'h-8 px-3 rounded-[8px] text-[11px] font-semibold whitespace-nowrap transition-colors',
                   filterStatus === pill.id
@@ -444,7 +470,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           {/* Mobile cards */}
           <div className="md:hidden flex-1 min-h-0 overflow-y-auto space-y-2.5 pb-2">
             {sortedMeetings.map((meeting) => {
-              const status = meeting.docStatusName || meeting.statusName || '—';
+              const status = meeting.statusName || '—';
               const start = formatScheduleLine(meeting.meetingStartDateTime);
               const canSend = isMinutesSendStatusAllowed(status);
               const deleteGate = canDeleteMeetingNote(isDelete, status);
@@ -628,10 +654,10 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                         onSort={handleSort}
                       />
                     </th>
-                    <th className="w-[9%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('docStatusName', handleSort)}>
+                    <th className="w-[9%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('statusName', handleSort)}>
                       <SortableHeader
                         label="Status"
-                        sortKey="docStatusName"
+                        sortKey="statusName"
                         sortCol={sortCol}
                         sortDesc={sortDesc}
                         onSort={handleSort}
@@ -644,7 +670,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                 </thead>
                 <tbody>
                   {sortedMeetings.map((meeting) => {
-                    const status = meeting.docStatusName || meeting.statusName || '—';
+                    const status = meeting.statusName || '—';
                     const start = formatScheduleLine(meeting.meetingStartDateTime);
                     const end = formatScheduleLine(meeting.meetingEndDateTime);
                     const canSend = isMinutesSendStatusAllowed(status);
@@ -729,7 +755,8 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="inline-flex items-center justify-end gap-0">
-                            {canSend ? (
+                            {/* Not Needed as of now */}
+                            {/* {canSend ? (
                               <ActionTip label="Send minutes">
                                 <Button
                                   type="button"
@@ -742,7 +769,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                                   <Send size={13} strokeWidth={2.25} />
                                 </Button>
                               </ActionTip>
-                            ) : null}
+                            ) : null} */}
                             {isUpdate ? (
                               <ActionTip label="Edit">
                                 <Button

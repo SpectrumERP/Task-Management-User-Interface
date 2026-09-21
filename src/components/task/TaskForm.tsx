@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { useTaskStore } from '@/store/useTaskStore';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
+import { RenameAttachmentDialog } from '@/components/master/shared/RenameAttachmentDialog';
 import { useConfirmDelete } from '@/components/master/shared/useConfirmDelete';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
@@ -507,6 +508,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingSaveData, setPendingSaveData] = useState<any>(null);
   const [attachmentToDelete, setAttachmentToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [attachmentToRename, setAttachmentToRename] = useState<{ id: number; name: string } | null>(null);
+  const [isRenamingAttachment, setIsRenamingAttachment] = useState(false);
+  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState(false);
   const rowDeleteConfirm = useConfirmDelete('item');
   const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<Array<{
@@ -838,6 +842,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   // Block in-app navigation if the form is dirty
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
+      !isSubmitSuccessful &&
       form.formState.isDirty &&
       currentLocation.pathname !== nextLocation.pathname
   );
@@ -1601,6 +1606,29 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }
   };
 
+  const confirmRenameAttachment = async (newName: string) => {
+    if (!attachmentToRename) return;
+    const { id } = attachmentToRename;
+    setIsRenamingAttachment(true);
+    try {
+      if (id) {
+        await attachmentService.renameAttachment(id, newName, 1547);
+      }
+      const currentAttachments = form.getValues('attachments') || [];
+      const updatedAttachments = currentAttachments.map((a: any) => 
+        a.id === id ? { ...a, name: newName } : a
+      );
+      form.setValue('attachments', updatedAttachments, { shouldDirty: true });
+      toast.success("Attachment renamed successfully.");
+      setAttachmentToRename(null);
+    } catch (error) {
+      console.error('Failed to rename attachment on server:', error);
+      toast.error('Failed to rename attachment');
+    } finally {
+      setIsRenamingAttachment(false);
+    }
+  };
+
   const onSubmit = async (data: any) => {
     if (uploadingFiles.some(f => f.status === 'pending' || f.status === 'uploading' || f.status === 'verifying')) {
       toast.error("Please wait for all attachments to finish uploading before saving the task.");
@@ -1770,9 +1798,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         });
       }
       clearDraft();
-      form.reset(data); // Reset form state to clear isDirty flag
-      toast.success('Data saved successfully.');
-      if (onComplete) onComplete();
+      
+      // Remove unsaved changes in case it's tracked
+      removeUnsavedChanges(location.pathname);
+      setIsSubmitSuccessful(true);
+      
+      setTimeout(() => {
+        form.reset(data); // Reset form state to clear isDirty flag
+        toast.success('Data saved successfully.');
+        if (onComplete) onComplete();
+      }, 0);
     } catch (error: any) {
       console.error('Failed to save task:', error);
 
@@ -2006,10 +2041,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               getStatusChipClass(field.value)
                             )}
                           >
-                            <span
-                              className={cn('size-1.5 shrink-0 rounded-full', getStatusDotClass(field.value))}
-                              aria-hidden
-                            />
+
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent className="rounded-[10px] min-w-[160px]">
@@ -2979,15 +3011,27 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                   View
                                 </button>
                               </div>
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => handleRemoveAttachment(file.id, file.name)}
-                                className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                              >
-                                <Trash size={12} />
-                              </Button>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    title='Rename'
+                                    onClick={() => setAttachmentToRename({ id: file.id, name: file.name })}
+                                    className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-sky-400 hover:bg-sky-500/10 transition-all"
+                                  >
+                                    <FileEdit size={12} />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => handleRemoveAttachment(file.id, file.name)}
+                                    className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                  >
+                                    <Trash size={12} />
+                                  </Button>
+                                </div>
                             </motion.div>
                           );
                         })}
@@ -3757,6 +3801,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         entityLabel="attachment"
         confirming={isDeletingAttachment}
       />
+      
+      {attachmentToRename && (
+        <RenameAttachmentDialog
+          open={!!attachmentToRename}
+          onOpenChange={(open) => {
+            if (!open && !isRenamingAttachment) setAttachmentToRename(null);
+          }}
+          onConfirm={confirmRenameAttachment}
+          originalName={attachmentToRename.name}
+          confirming={isRenamingAttachment}
+        />
+      )}
 
       {/* Success feedback is toast + onComplete (see save handler) */}
 

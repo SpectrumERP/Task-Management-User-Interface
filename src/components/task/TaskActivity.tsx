@@ -123,7 +123,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
   return (
     <div className="grid grid-cols-1 gap-4">
       {/* Effort Tracking */}
-      <div className="rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_55%,var(--tm-surface))] p-4">
+      {/* <div className="rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_55%,var(--tm-surface))] p-4">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 border border-blue-500/30 shrink-0">
@@ -254,7 +254,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
             ))}
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* Comments */}
       <div className="rounded-xl border border-[var(--tm-border)]/70 bg-[color-mix(in_srgb,var(--tm-muted)_55%,var(--tm-surface))] p-4">

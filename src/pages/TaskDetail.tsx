@@ -93,12 +93,14 @@ export default function TaskDetail() {
         setIsDeleteDialogOpen(false);
         toast.success('Task deleted');
 
-        // Force remove pointer-events: none that Radix UI Dialog might leave behind when unmounting quickly
-        document.body.style.pointerEvents = '';
-
         setTimeout(() => {
+          // Forcefully clean up any lingering Radix UI dialog locks before navigating
+          document.body.style.pointerEvents = '';
+          document.body.removeAttribute('data-scroll-locked');
+          document.querySelectorAll('style[data-radix-scroll-lock]').forEach(el => el.remove());
+          
           handleGoBack();
-        }, 100);
+        }, 400);
       } else {
         toast.error(response.message || 'Failed to delete task. Please try again.');
       }
