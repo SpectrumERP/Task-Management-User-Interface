@@ -13,6 +13,7 @@ import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettings } from '@/hooks/useSettings';
+import { filterSelectableStatuses } from '@/lib/taskStatusGroups';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
@@ -218,9 +219,10 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
                 <Combobox
                   value={field.value}
                   onChange={field.onChange}
-                  options={(fillValues?.status || [])
-                    .filter((s) => s.Status !== '[All]' && s.Status !== 'All')
-                    .map((s) => ({ value: s.StatusNo.toString(), label: s.Status }))}
+                  options={filterSelectableStatuses(fillValues?.status || []).map((s) => ({
+                    value: s.StatusNo.toString(),
+                    label: s.Status,
+                  }))}
                   placeholder="Select Status"
                   sortAlphabetically={false}
                   className={fieldClass}

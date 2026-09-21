@@ -273,7 +273,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
         const mappedSubTasks = (d.subTasks || d.subtasks || []).map((st: any) => ({
           taskNo: st.operTaskNo || st.taskNo,
           title: st.title || st.taskName || st.subTaskTitle || '',
-          status: st.status?.statusName || st.status || 'Draft',
+          status: st.status?.statusName || st.status || 'Assigned',
           ownerDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.ownerLoginNo || '',
           endDate: st.endDate || st.end_date || '',
           typeName: st.type?.typeName || st.typeName || ''
@@ -309,7 +309,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           actual_benefit_amount: d.businessBenefit?.actualBenefitAmount ?? null,
           benefit_period: reverseBenefitFrequencyMap[d.businessBenefit?.benefitFrequency?.frequencyNo || 1] || 'One Time',
           status_No: d.status?.operTaskStatusNo || 1,
-          status: d.status?.statusName || 'Draft',
+          status: d.status?.statusName || 'Assigned',
           priority: d.priority?.priorityName || 'Low Priority',
           categoryName: d.category?.categoryName || '',
           typeName: d.type?.typeName || '',

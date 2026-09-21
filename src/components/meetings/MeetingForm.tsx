@@ -47,6 +47,11 @@ import {
   isMinutesSendStatusAllowed,
   readLastMinutesSentAt,
 } from '@/lib/meetingMinutesShare';
+import {
+  ALLOWED_UPLOAD_HELPER_TEXT,
+  UPLOAD_ACCEPT_ATTR,
+  validateUploadFile,
+} from '@/lib/allowedUploadFiles';
 
 const formatFileSize = (bytes?: number | null) => {
   if (bytes === undefined || bytes === null || bytes === 0) return '';
@@ -405,8 +410,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
     const validFiles: File[] = [];
     const failed: Array<{ name: string; size: number; reason: string }> = [];
     files.forEach(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        failed.push({ name: file.name, size: file.size, reason: "File size exceeds the 10MB limit." });
+      const result = validateUploadFile(file);
+      if (!result.ok) {
+        failed.push({ name: file.name, size: file.size, reason: result.reason });
         return;
       }
       validFiles.push(file);
@@ -819,7 +825,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     name="meetingStartDateTime"
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.meetingStartDateTime?.message}>
-                        <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))} />
+                        <DateTimePicker
+                          hour24
+                          className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")}
+                          date={field.value ? new Date(field.value) : undefined}
+                          onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
+                        />
                       </FieldControl>
                     )}
                   />
@@ -832,7 +843,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     name="meetingEndDateTime"
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.meetingEndDateTime?.message}>
-                        <DateTimePicker className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")} date={field.value ? new Date(field.value) : undefined} onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))} />
+                        <DateTimePicker
+                          hour24
+                          className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")}
+                          date={field.value ? new Date(field.value) : undefined}
+                          onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
+                        />
                       </FieldControl>
                     )}
                   />
@@ -1228,6 +1244,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                         name={`discussions.${index}.actionDueDate`}
                                         render={({ field }) => (
                                           <DateTimePicker
+                                            hour24
                                             className={cn("w-full rounded-[8px] h-8 text-xs", form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400")}
                                             date={field.value ? new Date(field.value) : undefined}
                                             onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
@@ -1522,7 +1539,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept="application/pdf,image/*"
+                    accept={UPLOAD_ACCEPT_ATTR}
                     onChange={handleFileSelection}
                     className="hidden"
                   />
@@ -1537,7 +1554,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       </span>
                     </p>
                     <p className="mt-0.5 text-[10px] font-medium text-slate-400">
-                      PDF &amp; Images · Max 10MB each
+                      {ALLOWED_UPLOAD_HELPER_TEXT}
                     </p>
                   </div>
                   <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">

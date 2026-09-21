@@ -202,7 +202,7 @@ export default function TaskDetail() {
           actual_benefit_amount: d.businessBenefit?.actualBenefitAmount ?? null,
           benefit_period: reverseBenefitFrequencyMap[d.businessBenefit?.benefitFrequency?.frequencyNo || 1] || 'One Time',
           status_No: d.status?.operTaskStatusNo || 1,
-          status: d.status?.statusName || 'Draft',
+          status: d.status?.statusName || 'Assigned',
           priority: d.priority?.priorityName || 'Low Priority',
           categoryName: d.category?.categoryName || '',
           typeName: d.type?.typeName || '',

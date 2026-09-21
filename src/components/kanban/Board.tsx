@@ -6,6 +6,7 @@ import { TaskStatus, Task } from '@/types/task';
 import { useState, useEffect } from 'react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { filterSelectableStatuses, STATUS_PILL_ORDER, resolveCanonicalStatus, statusMatchesPill } from '@/lib/taskStatusGroups';
 
 interface BoardProps {
   onAddTask: (status?: string) => void;
@@ -17,25 +18,17 @@ interface BoardProps {
 }
 
 function sortBoardStatuses(statuses: { StatusNo: number; Status: string }[]) {
-  const order = ['draft', 'todo', 'to-do', 'to do', 'in progress', 'in-progress', 'inreview', 'in review', 'complete', 'completed', 'close', 'closed'];
   return [...statuses].sort((a, b) => {
-    const nameA = a.Status.toLowerCase().trim();
-    const nameB = b.Status.toLowerCase().trim();
-    const indexA = order.indexOf(nameA);
-    const indexB = order.indexOf(nameB);
-    const valA = indexA === -1 ? 99 : indexA;
-    const valB = indexB === -1 ? 99 : indexB;
-    return valA - valB;
+    const pillA = resolveCanonicalStatus(a.Status);
+    const pillB = resolveCanonicalStatus(b.Status);
+    const indexA = pillA ? STATUS_PILL_ORDER.indexOf(pillA) : 99;
+    const indexB = pillB ? STATUS_PILL_ORDER.indexOf(pillB) : 99;
+    return indexA - indexB;
   });
 }
 
 function boardStatusesFromFill(status: { StatusNo: number; Status: string }[] | undefined) {
-  if (!status?.length) return [];
-  const filtered = status.filter((s) => {
-    const lower = s.Status.toLowerCase();
-    return lower !== 'all' && lower !== '[all]' && lower !== 'approval in progress' && lower !== 'approval-in-progress';
-  });
-  return sortBoardStatuses(filtered);
+  return sortBoardStatuses(filterSelectableStatuses(status));
 }
 
 export function Board({ onAddTask, onTaskClick, filterParams, tasks: propTasks }: BoardProps) {
@@ -126,12 +119,16 @@ export function Board({ onAddTask, onTaskClick, filterParams, tasks: propTasks }
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-3 h-full overflow-x-auto pb-8 pt-1 px-1 snap-x snap-mandatory">
+      <div className="flex gap-3 h-full w-full min-h-0 overflow-x-auto pb-8 pt-1 px-1">
         {statuses.map((s) => (
           <Column
             key={s.StatusNo}
             status={s.Status as any}
-            tasks={tasks.filter((t: Task) => t.status === s.Status)}
+            tasks={tasks.filter((t: Task) => {
+              const columnPill = resolveCanonicalStatus(s.Status);
+              if (!columnPill) return false;
+              return statusMatchesPill(t.status, columnPill);
+            })}
             onAddTask={() => onAddTask(s.Status)}
             onTaskClick={onTaskClick}
           />

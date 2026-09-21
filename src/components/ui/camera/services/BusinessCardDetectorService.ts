@@ -50,7 +50,6 @@ export class BusinessCardDetectorService {
 
       let maxArea = 0;
       let bestRect: Rectangle | undefined;
-      let bestCorners: any;
 
       const totalArea = processWidth * processHeight;
       const minArea = totalArea * 0.15; // 15% of frame

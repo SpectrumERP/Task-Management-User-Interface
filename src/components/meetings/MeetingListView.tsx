@@ -253,7 +253,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
     if (!deleteTargetId) return;
     try {
       await apiService.delete('/api/crm/meeting-notes/delete', {
-        params: { meetingNotesNo: deleteTargetId },
+        params: { meetingNotesNo: String(deleteTargetId) },
       });
       toast.success('Meeting note deleted');
       setMeetings((prev) =>

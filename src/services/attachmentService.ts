@@ -3,6 +3,11 @@ import { DocumentAttachment } from '@/types/task';
 import { dbService } from './dbService';
 import { toast } from 'sonner';
 import { toErrorMessage } from '@/lib/toErrorMessage';
+import {
+  isInlineViewableUpload,
+  mimeFromFileName,
+  validateUploadFile,
+} from '@/lib/allowedUploadFiles';
 
 export interface AttachmentResponse<T> {
   success: boolean;
@@ -50,6 +55,11 @@ export const attachmentService = {
    * Uploads the file binary for the created entry id.
    */
   async uploadFile(id: number, file: File): Promise<boolean> {
+    const validation = validateUploadFile(file);
+    if (!validation.ok) {
+      throw new Error(validation.reason);
+    }
+
     const formData = new FormData();
 
     // Fallbacks for direct binders
@@ -94,14 +104,7 @@ export const attachmentService = {
    * Downloads the file content securely with authorization headers, then opens it in a new window (PDF/Images) or downloads it.
    */
   async downloadAttachment(id: number, name: string): Promise<void> {
-    const lowercaseName = name.toLowerCase();
-    const isInlineViewable =
-      lowercaseName.endsWith('.pdf') ||
-      lowercaseName.endsWith('.png') ||
-      lowercaseName.endsWith('.jpg') ||
-      lowercaseName.endsWith('.jpeg') ||
-      lowercaseName.endsWith('.gif') ||
-      lowercaseName.endsWith('.webp');
+    const isInlineViewable = isInlineViewableUpload(name);
 
     let newTab: Window | null = null;
     if (isInlineViewable) {
@@ -171,18 +174,7 @@ export const attachmentService = {
       }
 
       // Explicitly set matching mimeType to override backend attachment disposition headers
-      let mimeType = '';
-      if (lowercaseName.endsWith('.pdf')) {
-        mimeType = 'application/pdf';
-      } else if (lowercaseName.endsWith('.png')) {
-        mimeType = 'image/png';
-      } else if (lowercaseName.endsWith('.jpg') || lowercaseName.endsWith('.jpeg')) {
-        mimeType = 'image/jpeg';
-      } else if (lowercaseName.endsWith('.gif')) {
-        mimeType = 'image/gif';
-      } else if (lowercaseName.endsWith('.webp')) {
-        mimeType = 'image/webp';
-      }
+      const mimeType = mimeFromFileName(name);
 
       const rawBlob = await response.blob();
       const blob = mimeType ? new Blob([rawBlob], { type: mimeType }) : rawBlob;
@@ -232,13 +224,7 @@ export const attachmentService = {
       throw new Error(`HTTP Error ${response.status}`);
     }
 
-    let mimeType = '';
-    const lowercaseName = name.toLowerCase();
-    if (lowercaseName.endsWith('.pdf')) mimeType = 'application/pdf';
-    else if (lowercaseName.endsWith('.png')) mimeType = 'image/png';
-    else if (lowercaseName.endsWith('.jpg') || lowercaseName.endsWith('.jpeg')) mimeType = 'image/jpeg';
-    else if (lowercaseName.endsWith('.gif')) mimeType = 'image/gif';
-    else if (lowercaseName.endsWith('.webp')) mimeType = 'image/webp';
+    const mimeType = mimeFromFileName(name);
 
     const rawBlob = await response.blob();
     const blob = mimeType ? new Blob([rawBlob], { type: mimeType }) : rawBlob;

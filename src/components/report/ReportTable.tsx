@@ -22,13 +22,6 @@ interface ReportTableProps {
   data: any[];
 }
 
-const getExecutionLogRemarks = (task: any) => {
-  if (Array.isArray(task.executionLog) && task.executionLog.length > 0) {
-    return task.executionLog.map((log: any) => log.remarks || '').filter(Boolean).join(', ');
-  }
-  return task.taskProgressReview || '';
-};
-
 const DEFAULT_COLUMNS = [
   // minWidth guides auto layout — columns size to content within these bounds
   { id: 'srNo', label: 'Sr. No.', defaultVisible: true, width: 88 },
@@ -151,9 +144,6 @@ export function ReportTable({ data }: ReportTableProps) {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
-
-  const getColWidth = (colId: string) =>
-    colWidths[colId] ?? DEFAULT_COLUMNS.find((c) => c.id === colId)?.width ?? 140;
 
   const getColStyle = (colId: string): CSSProperties => {
     const meta = DEFAULT_COLUMNS.find((c) => c.id === colId);

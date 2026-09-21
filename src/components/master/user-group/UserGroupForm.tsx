@@ -188,8 +188,8 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
       const filled = prev.filter((u) => u.loginNo || u.userName || u.displayName || u.email);
       const empty = prev.filter((u) => !u.loginNo && !u.userName && !u.displayName && !u.email);
       const sorted = [...filled].sort((a, b) => {
-        const av = String((a as Record<string, unknown>)[key] ?? '');
-        const bv = String((b as Record<string, unknown>)[key] ?? '');
+        const av = String((a as unknown as Record<string, unknown>)[key] ?? '');
+        const bv = String((b as unknown as Record<string, unknown>)[key] ?? '');
         const cmp = av.localeCompare(bv, undefined, { sensitivity: 'base', numeric: true });
         return nextDesc ? -cmp : cmp;
       });

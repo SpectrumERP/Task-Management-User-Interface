@@ -25,7 +25,14 @@ import { FieldInfoControl } from '@/components/ui/info-tooltip';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
 import { SortableHeader } from '@/components/shared/useTableSort';
-import { getStatusTextClass, getStatusChipClass, getStatusDotClass } from '@/lib/taskStatusGroups';
+import { getStatusTextClass, getStatusChipClass, getStatusDotClass, filterSelectableStatuses, resolveCanonicalStatus, STATUS_TRANSITIONS, statusMatchesPill } from '@/lib/taskStatusGroups';
+import {
+  ALLOWED_UPLOAD_EXTENSIONS_LABEL,
+  ALLOWED_UPLOAD_HELPER_TEXT,
+  ALLOWED_UPLOAD_TYPES_LABEL,
+  UPLOAD_ACCEPT_ATTR,
+  validateUploadFile,
+} from '@/lib/allowedUploadFiles';
 import { sortByLabel } from '@/lib/sortOptions';
 import { formatDateOnly, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import {
@@ -37,6 +44,7 @@ import {
 import { motion } from 'framer-motion';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
+import { canUserChangeTaskAssignee } from '@/lib/taskAccess';
 import { Combobox } from '@/components/ui/Combobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
@@ -295,19 +303,7 @@ interface TaskFillValues {
   taskCompany?: any[];
 }
 
-const statusTransitions: Record<string, string[]> = {
-  // "Draft": ["Approval In Progress", "Open"],
-  // "Approval In Progress": ["Open", "Rejected"],
-  // "Rejected": ["Close"],
-  // "Open": ["In Progress"],
-  "Assigned": ["In Progress"],
-  "In Progress": ["Complete", "Hold"],
-  "Hold": ["In Progress"],
-  "Complete": ["In Review"],
-  "In Review": ["Reopen", "Close"],
-  "Reopen": ["In Progress"],
-  "Close": []
-};
+const statusTransitions: Record<string, string[]> = STATUS_TRANSITIONS;
 
 // The backend stores both the Task Execution Log and Road Block Remarks in a single
 // `executionChallenges` array, distinguished by `typeNo` (1 = execution log, 2 = road block).
@@ -441,6 +437,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       priority: st.priority?.priorityName || st.priority,
       assignedDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
       ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || '',
+      originatorLoginNo: st.originator?.id || st.originator?.loginNo || st.originatorLoginNo || st.createdBy?.id || '',
       endDate: st.endDate || st.end_date || '',
       completionDate: st.completionDate || '',
       completionRemark: st.completionRemark || '',
@@ -482,6 +479,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   };
 
   const { company: authCompanies, user: authUser } = useAuthStore();
+
+  /** Assign To editable only for the original assigner (or on create). Uses persisted originator, not the live form field. */
+  const canChangeAssignee = canUserChangeTaskAssignee(authUser, initialData, {
+    isNewTask: !initialData?.taskNo,
+  });
   const [selectedCollabTeam, setSelectedCollabTeam] = useState<string>(
     () => initialData?.collaboratorUserGroupNo?.toString() || ""
   );
@@ -699,7 +701,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         fieldValue: cf.fieldValue || ''
       })) || [],
       execution_logs: executionChallengeDefaults.execution_logs,
-      status: initialData?.status || initialStatus || 'Draft',
+      status: initialData?.status || initialStatus || 'Assigned',
       isPrivate: initialData?.isPrivate || searchParams.get('isPrivate') === 'true' || false,
       isAllDay: initialData?.isAllDay ?? false,
       calendarColor: initialData?.calendarColor || '',
@@ -977,7 +979,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         taskNo: newFakeTaskNo,
         code: '',
         title: st.title,
-        status: 'Draft',
+        status: 'Assigned',
         ownerLoginNo: st.ownerLoginNo,
         assignedDisplayName: assignedDisplayName,
         endDate: st.endDate || null,
@@ -1470,24 +1472,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     const failed: Array<{ name: string; size: number; reason: string }> = [];
 
     files.forEach(file => {
-      // Validation: Max 10MB
-      if (file.size > 10 * 1024 * 1024) {
+      const result = validateUploadFile(file);
+      if (!result.ok) {
         failed.push({
           name: file.name,
           size: file.size,
-          reason: "File size exceeds the 10MB limit."
-        });
-        return;
-      }
-
-      // Validation: PDF/Images only
-      const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
-      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
-      if (!isImage && !isPdf) {
-        failed.push({
-          name: file.name,
-          size: file.size,
-          reason: "Unsupported file type. Only PDF and Image files are allowed."
+          reason: result.reason,
         });
         return;
       }
@@ -1622,6 +1612,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const proceedSubmit = async (data: any) => {
     console.log('proceedSubmit triggered with data:', data);
+
+    // Guard: only original assigner may change Assign To (payload must match persisted owner if locked)
+    if (initialData?.taskNo && !canChangeAssignee) {
+      const originalOwner = initialData.owner_user_No != null ? String(initialData.owner_user_No) : '';
+      if (String(data.owner_user_No || '') !== originalOwner) {
+        data.owner_user_No = originalOwner;
+        form.setValue('owner_user_No', originalOwner);
+        toast.error('Only the user who assigned this task can change Assign To.');
+      }
+    }
 
     // (effort frequency mapping handled by form value directly)
 
@@ -1894,14 +1894,28 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     );
   }
 
-  // Status flow logic
-  const allowedNextStatuses = initialData && currentStatus
-    ? statusTransitions[currentStatus] || []
+  // Status flow — only the five canonical statuses
+  const allowedStatuses = filterSelectableStatuses(fillValues?.status);
+  const currentPill = resolveCanonicalStatus(currentStatus);
+  const allowedNextPills = currentPill && initialData
+    ? statusTransitions[currentPill] || []
     : [];
 
-  const filteredStatuses = fillValues?.status.filter(s => {
-    return s.Status === currentStatus || allowedNextStatuses.includes(s.Status);
-  }) || [];
+  const filteredStatuses = (() => {
+    if (!initialData) {
+      return allowedStatuses.filter(
+        (s) =>
+          statusMatchesPill(s.Status, 'Assigned') ||
+          statusMatchesPill(s.Status, currentStatus || 'Assigned')
+      );
+    }
+    // Legacy / unknown status → allow moving into any of the five
+    if (!currentPill) return allowedStatuses;
+    return allowedStatuses.filter((s) => {
+      if (statusMatchesPill(s.Status, currentStatus || '')) return true;
+      return allowedNextPills.some((pill) => statusMatchesPill(s.Status, pill));
+    });
+  })();
 
   // Company options from fillValues taskCompany, fallback to auth data
   const companyOptions = (fillValues?.taskCompany && fillValues.taskCompany.length > 0)
@@ -1931,7 +1945,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <h3 className="mt-4 text-base font-medium text-slate-100">Drop to Upload</h3>
             <p className="mt-2 text-xs font-medium text-slate-500">Release files anywhere to attach to this task.</p>
             <div className="mt-4 flex items-center gap-4 text-[10px] font-medium text-slate-400">
-              <span>PDF & Images Only</span>
+              <span>{ALLOWED_UPLOAD_TYPES_LABEL}</span>
               <span className="h-1.5 w-1.5 rounded-full bg-slate-300"></span>
               <span>Max 10MB</span>
             </div>
@@ -2270,7 +2284,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             placeholder="Select Assign To"
                             initialLabel={initialData?.assignedDisplayName || undefined}
                             className={form.formState.errors.owner_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                            disabled={isPrivateTask}
+                            disabled={isPrivateTask || !canChangeAssignee}
                           />
                         )}
                       />
@@ -2803,7 +2817,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept="application/pdf,image/*"
+                    accept={UPLOAD_ACCEPT_ATTR}
                     onChange={handleFileSelection}
                     className="hidden"
                   />
@@ -2818,7 +2832,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       </span>
                     </p>
                     <p className="mt-0.5 text-[10px] font-medium text-slate-400">
-                      PDF &amp; Images · Max 10MB each
+                      {ALLOWED_UPLOAD_HELPER_TEXT}
                     </p>
                   </div>
                   <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
@@ -3598,8 +3612,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                               <SelectValue placeholder="Select status" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-[8px]">
-                                              {fillValues?.status
-                                                .filter(s => ['Open', 'In Progress', 'Close'].includes(s.Status))
+                                              {filterSelectableStatuses(fillValues?.status)
                                                 .map(s => (
                                                   <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs">{s.Status}</SelectItem>
                                                 ))}
@@ -3789,8 +3802,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-2xl bg-[var(--tm-muted)]/80 border border-[var(--tm-border)]/60 shadow-sm">
                   <p className="text-[10px] font-medium text-slate-400 leading-none mb-1.5">Allowed Types</p>
-                  <p className="text-xs font-medium text-slate-200">PDF & Images</p>
-                  <p className="text-[9px] font-medium text-slate-400 mt-1">.pdf, .jpg, .jpeg, .png, .gif, .webp</p>
+                  <p className="text-xs font-medium text-slate-200">{ALLOWED_UPLOAD_TYPES_LABEL}</p>
+                  <p className="text-[9px] font-medium text-slate-400 mt-1">{ALLOWED_UPLOAD_EXTENSIONS_LABEL}</p>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-[var(--tm-muted)]/80 border border-[var(--tm-border)]/60 shadow-sm">
                   <p className="text-[10px] font-medium text-slate-400 leading-none mb-1.5">Maximum Size</p>
@@ -3943,7 +3956,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <Controller
                                 name={`sub_tasks.${index}.ownerLoginNo`}
                                 control={form.control}
-                                render={({ field: subField }) => (
+                                render={({ field: subField }) => {
+                                  const canChangeSubAssignee = canUserChangeTaskAssignee(
+                                    authUser,
+                                    { originatorLoginNo: task.originatorLoginNo },
+                                    { isNewTask: !task.taskNo || Number(task.taskNo) < 0 }
+                                  );
+                                  return (
                                   <FieldControl error={ownerErr}>
                                     <UserCombobox
                                       className={cn("rounded-[8px] h-10 text-xs", ownerErr && "border-red-400")}
@@ -3957,9 +3976,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                       placeholder="Search owner"
                                       modal={true}
                                       error={!!ownerErr}
+                                      disabled={!canChangeSubAssignee}
                                     />
                                   </FieldControl>
-                                )}
+                                  );
+                                }}
                               />
                             </div>
                             <div className="space-y-1">

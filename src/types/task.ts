@@ -1,6 +1,12 @@
 export type Priority = 'Low' | 'Medium' | 'High' | 'Urgent';
 export type TaskType = 'Task' | 'Bug' | 'Feature' | 'Improvement';
-export type TaskStatus = 'Todo' | 'In Progress' | 'In Review' | 'Done';
+/** Only these five task statuses are used app-wide. */
+export type TaskStatus =
+  | 'Assigned'
+  | 'In-Progress'
+  | 'Hold'
+  | 'Complete'
+  | 'Cancelled';
 
 export interface Person {
   userName: string;
@@ -92,8 +98,8 @@ export interface Task {
     until?: string;
   };
 
-  // UI helper fields
-  status: TaskStatus;
+  // UI helper fields — runtime may still receive legacy API labels; UI selectors allow only TaskStatus
+  status: string;
   priority: Priority;
   categoryName?: string;
   typeName?: string;

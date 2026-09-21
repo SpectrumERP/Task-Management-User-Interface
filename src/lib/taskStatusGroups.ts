@@ -1,38 +1,147 @@
 /**
- * Status pills on the task list support multi-select (OR by statusName).
- * Each pill counts/filters its own aliases — do not overlap Assigned/In-Progress into Pending.
- * (API StatusNo can disagree with statusName, so pills filter client-side by name.)
+ * Canonical task statuses (UI allowlist) — these five only:
+ * Assigned → In-Progress → Hold → Complete → Cancelled
+ *
+ * Extra strings in aliases are API spelling variants of the same status
+ * (not separate status types).
  */
 
-/** True "pending queue" statuses — not Assigned / In-Progress (those have their own pills). */
-export const PENDING_STATUS_NAMES = [
-  'Pending',
-  'Open',
-  'Draft',
-  'Reopen',
-] as const;
-
-/** Canonical pill label → statusName values that belong to that pill */
+/** Canonical pill label → API statusName spellings for that same status */
 export const STATUS_PILL_ALIASES: Record<string, readonly string[]> = {
-  Pending: PENDING_STATUS_NAMES,
   Assigned: ['Assigned'],
   'In-Progress': ['In-Progress', 'In Progress', 'In-Progess'],
   Hold: ['Hold', 'On Hold'],
-  Completed: ['Completed', 'Complete', 'Done'],
-  Close: ['Close', 'Closed'],
+  Complete: ['Complete', 'Completed', 'Done'],
+  Cancelled: ['Cancelled', 'Canceled'],
 };
 
 export const STATUS_PILL_PREFIX = 'StatusPill:';
 
-/** Same order as the task-list status chips. */
+/** Same order as the task-list status chips (Cancelled last). */
 export const STATUS_PILL_ORDER = [
-  'Pending',
   'Assigned',
   'In-Progress',
   'Hold',
   'Complete',
-  'Close',
+  'Cancelled',
 ] as const;
+
+export type CanonicalStatusPill = (typeof STATUS_PILL_ORDER)[number];
+
+/**
+ * Single source of truth for task-status colours (Tailwind classes).
+ * Every list / card / chip / pill / board column must use these helpers —
+ * do not hardcode status colours in components.
+ */
+export type StatusColorTokens = {
+  /** Text-only (tables, labels) */
+  text: string;
+  /** Soft bordered chip / select trigger */
+  chip: string;
+  /** Small indicator dot */
+  dot: string;
+  /** Filter pill — idle */
+  pillIdle: string;
+  /** Filter pill — selected */
+  pillActive: string;
+  /** Kanban column top border */
+  columnTop: string;
+  /** Kanban column accent bar */
+  columnBar: string;
+  /** Kanban count badge */
+  columnBadge: string;
+};
+
+const STATUS_COLOR_DEFAULT: StatusColorTokens = {
+  text: 'text-slate-300 font-medium',
+  chip: 'border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200 hover:bg-[var(--tm-muted)]',
+  dot: 'bg-slate-400',
+  pillIdle: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10',
+  pillActive: 'border-slate-500 bg-slate-500 text-white shadow-[0_4px_12px_-4px_rgba(100,116,139,0.45)]',
+  columnTop: 'border-t-[3px] border-t-slate-400',
+  columnBar: 'bg-slate-400',
+  columnBadge: 'bg-slate-400 text-white',
+};
+
+/** Colour map keyed by canonical status. Unknown → STATUS_COLOR_DEFAULT. */
+export const STATUS_COLORS: Record<CanonicalStatusPill, StatusColorTokens> = {
+  // Sky / brand blue
+  Assigned: {
+    text: 'text-[#0EA5E9] font-medium',
+    chip: '!border-[#0EA5E9]/40 !bg-[#0EA5E9]/10 !text-[#0EA5E9] hover:!bg-[#0EA5E9]/15',
+    dot: 'bg-[#0EA5E9]',
+    pillIdle: 'border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[#0EA5E9]/10',
+    pillActive:
+      'border-[#0EA5E9] bg-[#0EA5E9] text-white shadow-[0_4px_12px_-4px_rgba(14,165,233,0.45)]',
+    columnTop: 'border-t-[3px] border-t-[#0EA5E9]',
+    columnBar: 'bg-[#0EA5E9]',
+    columnBadge: 'bg-[#0EA5E9] text-white',
+  },
+  // Violet — distinct from Assigned blue
+  'In-Progress': {
+    text: 'text-violet-400 font-medium',
+    chip: '!border-violet-500/40 !bg-violet-500/10 !text-violet-400 hover:!bg-violet-500/15',
+    dot: 'bg-violet-400',
+    pillIdle: 'border-violet-500/40 text-violet-400 hover:bg-violet-500/10',
+    pillActive:
+      'border-violet-500 bg-violet-500 text-white shadow-[0_4px_12px_-4px_rgba(139,92,246,0.45)]',
+    columnTop: 'border-t-[3px] border-t-violet-500',
+    columnBar: 'bg-violet-500',
+    columnBadge: 'bg-violet-500 text-white',
+  },
+  // Amber / hold
+  Hold: {
+    text: 'text-[#F59E0B] font-medium',
+    chip: '!border-[#F59E0B]/40 !bg-[#F59E0B]/10 !text-[#F59E0B] hover:!bg-[#F59E0B]/15',
+    dot: 'bg-[#F59E0B]',
+    pillIdle: 'border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10',
+    pillActive:
+      'border-[#F59E0B] bg-[#F59E0B] text-[#0B1220] shadow-[0_4px_12px_-4px_rgba(245,158,11,0.45)]',
+    columnTop: 'border-t-[3px] border-t-[#F59E0B]',
+    columnBar: 'bg-[#F59E0B]',
+    columnBadge: 'bg-[#F59E0B] text-[#0B1220]',
+  },
+  // Emerald / complete
+  Complete: {
+    text: 'text-emerald-500 font-medium',
+    chip: '!border-emerald-500/35 !bg-emerald-500/10 !text-emerald-400 hover:!bg-emerald-500/15',
+    dot: 'bg-emerald-400',
+    pillIdle: 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10',
+    pillActive:
+      'border-emerald-500 bg-emerald-500 text-white shadow-[0_4px_12px_-4px_rgba(16,185,129,0.45)]',
+    columnTop: 'border-t-[3px] border-t-emerald-500',
+    columnBar: 'bg-emerald-500',
+    columnBadge: 'bg-emerald-500 text-white',
+  },
+  // Neutral slate / cancelled
+  Cancelled: {
+    text: 'text-slate-400 font-medium',
+    chip: '!border-slate-500/40 !bg-slate-500/10 !text-slate-400 hover:!bg-slate-500/15',
+    dot: 'bg-slate-400',
+    pillIdle: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10',
+    pillActive:
+      'border-slate-500 bg-slate-500 text-white shadow-[0_4px_12px_-4px_rgba(100,116,139,0.45)]',
+    columnTop: 'border-t-[3px] border-t-slate-500',
+    columnBar: 'bg-slate-500',
+    columnBadge: 'bg-slate-500 text-white',
+  },
+};
+
+/** Resolve colour tokens for any status label (API aliases included). Unknown → default. */
+export function getStatusColorTokens(status?: string | null): StatusColorTokens {
+  const pill = resolveCanonicalStatus(status);
+  if (!pill) return STATUS_COLOR_DEFAULT;
+  return STATUS_COLORS[pill];
+}
+
+/** Allowed next canonical statuses from the current one (form transitions). */
+export const STATUS_TRANSITIONS: Record<CanonicalStatusPill, CanonicalStatusPill[]> = {
+  Assigned: ['In-Progress', 'Hold', 'Cancelled'],
+  'In-Progress': ['Complete', 'Hold', 'Cancelled'],
+  Hold: ['In-Progress', 'Cancelled'],
+  Complete: ['Cancelled'],
+  Cancelled: [],
+};
 
 export function getStatusPillAliases(pillName: string): readonly string[] {
   return STATUS_PILL_ALIASES[pillName] ?? [pillName];
@@ -44,20 +153,55 @@ export function statusMatchesPill(status: string | null | undefined, pillName: s
   return getStatusPillAliases(pillName).some((alias) => alias.toLowerCase() === needle);
 }
 
-export function isPendingGroupStatus(status?: string | null): boolean {
-  return statusMatchesPill(status, 'Pending');
+/** Map any API/status label to a canonical pill, or null if not allowed. */
+export function resolveCanonicalStatus(status?: string | null): CanonicalStatusPill | null {
+  if (!status) return null;
+  for (const pill of STATUS_PILL_ORDER) {
+    if (statusMatchesPill(status, pill)) return pill;
+  }
+  return null;
+}
+
+export function isAllowedTaskStatus(status?: string | null): boolean {
+  return resolveCanonicalStatus(status) != null;
+}
+
+/** Keep only the five canonical statuses from fill-value lists (All-sentinels dropped). */
+export function filterSelectableStatuses<T extends { Status: string }>(
+  statuses: T[] | undefined | null
+): T[] {
+  if (!statuses?.length) return [];
+  const seen = new Set<string>();
+  const out: T[] = [];
+
+  for (const pill of STATUS_PILL_ORDER) {
+    const match = statuses.find(
+      (s) =>
+        !isAllFilterSentinel(String(s.Status || '')) &&
+        statusMatchesPill(s.Status, pill) &&
+        !seen.has(pill)
+    );
+    if (match) {
+      seen.add(pill);
+      out.push(match);
+    }
+  }
+
+  return out;
 }
 
 /** Form/API token for a status pill (not a numeric StatusNo). */
 export function toStatusPillToken(pillName: string): string {
-  // Keep PendingGroup for older applied filters / chips
-  if (pillName === 'Pending') return 'PendingGroup';
   return `${STATUS_PILL_PREFIX}${pillName}`;
 }
 
 export function parseStatusPillToken(token: string): string | null {
-  if (token === 'PendingGroup') return 'Pending';
-  if (token.startsWith(STATUS_PILL_PREFIX)) return token.slice(STATUS_PILL_PREFIX.length);
+  if (token === 'PendingGroup') return null;
+  if (token.startsWith(STATUS_PILL_PREFIX)) {
+    const name = token.slice(STATUS_PILL_PREFIX.length);
+    if (!STATUS_PILL_ORDER.includes(name as CanonicalStatusPill)) return null;
+    return name;
+  }
   return null;
 }
 
@@ -67,67 +211,37 @@ export function resolveStatusPillLabel(token: string): string {
 
 /** Text-only status color — no background / pill chrome. */
 export function getStatusTextClass(status?: string | null): string {
-  const s = (status || '').trim();
-  if (!s) return 'text-slate-400 font-medium';
-
-  if (statusMatchesPill(s, 'Completed') || statusMatchesPill(s, 'Close')) {
-    return 'text-emerald-500 font-medium';
-  }
-  if (statusMatchesPill(s, 'In-Progress')) {
-    return 'text-blue-500 font-medium';
-  }
-  if (statusMatchesPill(s, 'Hold')) {
-    return 'text-[#F59E0B] font-medium';
-  }
-  if (statusMatchesPill(s, 'Pending')) {
-    return 'text-[#F59E0B] font-medium';
-  }
-  if (statusMatchesPill(s, 'Assigned')) {
-    return 'text-[#0EA5E9] font-medium';
-  }
-
-  const lower = s.toLowerCase();
-  if (lower === 'in review' || lower === 'in-review') {
-    return 'text-violet-500 font-medium';
-  }
-  if (lower === 'todo') {
-    return 'text-slate-400 font-medium';
-  }
-
-  return 'text-slate-300 font-medium';
+  if (!(status || '').trim()) return 'text-slate-400 font-medium';
+  return getStatusColorTokens(status).text;
 }
 
 /** Soft tinted surface for status chip / select trigger. */
 export function getStatusChipClass(status?: string | null): string {
-  const s = (status || '').trim();
-  if (statusMatchesPill(s, 'Completed') || statusMatchesPill(s, 'Close')) {
-    return '!border-emerald-500/35 !bg-emerald-500/10 !text-emerald-400 hover:!bg-emerald-500/15';
-  }
-  if (statusMatchesPill(s, 'In-Progress')) {
-    return '!border-blue-500/35 !bg-blue-500/10 !text-blue-400 hover:!bg-blue-500/15';
-  }
-  if (statusMatchesPill(s, 'Hold') || statusMatchesPill(s, 'Pending')) {
-    return '!border-amber-500/35 !bg-amber-500/10 !text-amber-400 hover:!bg-amber-500/15';
-  }
-  if (statusMatchesPill(s, 'Assigned')) {
-    return '!border-sky-500/40 !bg-sky-500/10 !text-sky-400 hover:!bg-sky-500/15';
-  }
-  const lower = s.toLowerCase();
-  if (lower === 'in review' || lower === 'in-review') {
-    return '!border-violet-500/35 !bg-violet-500/10 !text-violet-400 hover:!bg-violet-500/15';
-  }
-  return 'border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-200 hover:bg-[var(--tm-muted)]';
+  return getStatusColorTokens(status).chip;
 }
 
 export function getStatusDotClass(status?: string | null): string {
-  const s = (status || '').trim();
-  if (statusMatchesPill(s, 'Completed') || statusMatchesPill(s, 'Close')) return 'bg-emerald-400';
-  if (statusMatchesPill(s, 'In-Progress')) return 'bg-blue-400';
-  if (statusMatchesPill(s, 'Hold') || statusMatchesPill(s, 'Pending')) return 'bg-amber-400';
-  if (statusMatchesPill(s, 'Assigned')) return 'bg-sky-400';
-  const lower = s.toLowerCase();
-  if (lower === 'in review' || lower === 'in-review') return 'bg-violet-400';
-  return 'bg-slate-400';
+  return getStatusColorTokens(status).dot;
+}
+
+/** Dashboard / filter status pill classes (idle vs active). */
+export function getStatusPillClass(status?: string | null, isActive = false): string {
+  const tokens = getStatusColorTokens(status);
+  return isActive ? tokens.pillActive : tokens.pillIdle;
+}
+
+/** Kanban column accent classes from the same colour map. */
+export function getStatusColumnAccent(status?: string | null): {
+  top: string;
+  bar: string;
+  badge: string;
+} {
+  const tokens = getStatusColorTokens(status);
+  return {
+    top: tokens.columnTop,
+    bar: tokens.columnBar,
+    badge: tokens.columnBadge,
+  };
 }
 
 /** Sum counts for every alias of a pill (case-insensitive keys). */
@@ -150,19 +264,14 @@ export function isAllFilterSentinel(name: string): boolean {
   return !n || n === '[All]' || n.toLowerCase() === 'all';
 }
 
-function isAllStatusSentinel(name: string): boolean {
-  return isAllFilterSentinel(name);
-}
-
 /**
  * Status dropdown options = same set as the top status chips.
  * Prefer API StatusNo when a fill-values row matches a pill alias; otherwise pill token.
- * Extra API-only statuses (e.g. Cancelled) are omitted so the drawer matches the chips.
  */
 export function buildStatusFilterOptions(
   fillStatuses: FillStatus[] = []
 ): { value: string; label: string }[] {
-  const realStatuses = fillStatuses.filter((s) => !isAllStatusSentinel(String(s.Status || '')));
+  const realStatuses = filterSelectableStatuses(fillStatuses);
   const options: { value: string; label: string }[] = [];
 
   for (const pill of STATUS_PILL_ORDER) {
@@ -204,12 +313,12 @@ export function taskMatchesStatusIds(
     if (!label) continue;
     if (label.toLowerCase() === taskStatus) return true;
 
-    for (const pillName of Object.keys(STATUS_PILL_ALIASES)) {
-      const aliases = getStatusPillAliases(pillName);
+    for (const pill of STATUS_PILL_ORDER) {
+      const aliases = getStatusPillAliases(pill);
       const labelInGroup =
-        pillName.toLowerCase() === label.toLowerCase()
+        pill.toLowerCase() === label.toLowerCase()
         || aliases.some((a) => a.toLowerCase() === label.toLowerCase());
-      if (labelInGroup && statusMatchesPill(task.status, pillName)) return true;
+      if (labelInGroup && statusMatchesPill(task.status, pill)) return true;
     }
   }
 
@@ -227,4 +336,3 @@ export function parseNumericStatusIds(raw: string | undefined | null): number[] 
     .map(Number)
     .filter((n) => !Number.isNaN(n));
 }
-

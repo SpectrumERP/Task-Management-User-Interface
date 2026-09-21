@@ -3,7 +3,7 @@ import { Task, TaskStatus } from '@/types/task';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getPriorityBadgeClass } from '@/lib/priorityStyles';
-import { getStatusTextClass } from '@/lib/taskStatusGroups';
+import { getStatusTextClass, resolveCanonicalStatus } from '@/lib/taskStatusGroups';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import {
@@ -207,16 +207,19 @@ export function TaskCalendarView({
   const getPriorityStyle = (priority: string) => getPriorityBadgeClass(priority, null, 'soft');
 
   // Get Status styles — text color only (no badge background)
-  const getStatusBadge = (status: TaskStatus) => {
+  const getStatusBadge = (status: TaskStatus | string) => {
+    const pill = resolveCanonicalStatus(status);
     const label =
-      status === 'In Progress' ? 'Progress' :
-      status === 'In Review' ? 'Review' :
-      status === 'Done' ? 'Done' :
-      status || 'Todo';
+      pill === 'In-Progress' ? 'In-Progress' :
+      pill === 'Complete' ? 'Complete' :
+      pill === 'Cancelled' ? 'Cancelled' :
+      pill === 'Hold' ? 'Hold' :
+      pill === 'Assigned' ? 'Assigned' :
+      status || 'Assigned';
     const Icon =
-      status === 'Done' ? CheckCircle2 :
-      status === 'In Progress' ? Clock :
-      status === 'In Review' ? Layers :
+      pill === 'Complete' ? CheckCircle2 :
+      pill === 'In-Progress' ? Clock :
+      pill === 'Hold' ? Layers :
       null;
     return (
       <span className={cn('flex items-center gap-1 text-[10px]', getStatusTextClass(status))}>

@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { getStatusColumnAccent } from '@/lib/taskStatusGroups';
 
 interface ColumnProps {
   status: TaskStatus;
@@ -31,66 +32,8 @@ interface ColumnProps {
 
 type ColumnSort = 'default' | 'priority' | 'title';
 
-function statusAccent(status: string) {
-  const s = status.toLowerCase().trim();
-  if (s.includes('complete') || s === 'done') {
-    return {
-      top: 'border-t-[3px] border-t-emerald-500',
-      bar: 'bg-emerald-500',
-      badge: 'bg-emerald-500 text-white',
-    };
-  }
-  if (s === 'close' || s === 'closed') {
-    return {
-      top: 'border-t-[3px] border-t-teal-400',
-      bar: 'bg-teal-400',
-      badge: 'bg-teal-400 text-white',
-    };
-  }
-  if (s.includes('progress')) {
-    return {
-      top: 'border-t-[3px] border-t-sky-500',
-      bar: 'bg-sky-500',
-      badge: 'bg-sky-500 text-white',
-    };
-  }
-  if (s.includes('review')) {
-    return {
-      top: 'border-t-[3px] border-t-violet-500',
-      bar: 'bg-violet-500',
-      badge: 'bg-violet-500 text-white',
-    };
-  }
-  if (s.includes('rejected')) {
-    return {
-      top: 'border-t-[3px] border-t-slate-500',
-      bar: 'bg-slate-500',
-      badge: 'bg-slate-500 text-white',
-    };
-  }
-  if (s.includes('hold') || s.includes('pending') || s.includes('open') || s.includes('reopen')) {
-    return {
-      top: 'border-t-[3px] border-t-[#F59E0B]',
-      bar: 'bg-[#F59E0B]',
-      badge: 'bg-[#F59E0B] text-white',
-    };
-  }
-  if (s.includes('draft') || s.includes('todo') || s.includes('to do') || s.includes('to-do')) {
-    return {
-      top: 'border-t-[3px] border-t-[#0EA5E9]',
-      bar: 'bg-[#0EA5E9]',
-      badge: 'bg-[#0EA5E9] text-white',
-    };
-  }
-  return {
-    top: 'border-t-[3px] border-t-slate-400',
-    bar: 'bg-slate-400',
-    badge: 'bg-slate-400 text-white',
-  };
-}
-
 export function Column({ status, tasks, onAddTask, onTaskClick }: ColumnProps) {
-  const accent = statusAccent(status);
+  const accent = getStatusColumnAccent(status);
   const [collapsed, setCollapsed] = useState(false);
   const [sortBy, setSortBy] = useState<ColumnSort>('default');
 
@@ -107,7 +50,7 @@ export function Column({ status, tasks, onAddTask, onTaskClick }: ColumnProps) {
 
   if (collapsed) {
     return (
-      <div className="flex flex-col w-12 min-w-12 h-full rounded-[12px] theme-kanban-column bg-[var(--tm-surface)] border border-[var(--tm-border)]/80 overflow-hidden">
+      <div className="flex flex-col w-12 min-w-12 shrink-0 h-full rounded-[12px] theme-kanban-column bg-[var(--tm-surface)] border border-[var(--tm-border)]/80 overflow-hidden">
         <button
           type="button"
           onClick={() => setCollapsed(false)}
@@ -138,7 +81,7 @@ export function Column({ status, tasks, onAddTask, onTaskClick }: ColumnProps) {
   }
 
   return (
-    <div className="flex flex-col w-[85vw] sm:w-[320px] min-w-[260px] sm:min-w-[320px] h-full rounded-[12px] theme-kanban-column bg-[var(--tm-surface)] border border-[var(--tm-border)] shadow-[var(--tm-shadow)] overflow-hidden snap-center shrink-0">
+    <div className="flex flex-col flex-1 min-w-[220px] h-full rounded-[12px] theme-kanban-column bg-[var(--tm-surface)] border border-[var(--tm-border)] shadow-[var(--tm-shadow)] overflow-hidden">
       <div className={cn('relative px-3.5 py-3 border-b border-[var(--tm-border)] bg-[var(--tm-surface)]', accent.top)}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">

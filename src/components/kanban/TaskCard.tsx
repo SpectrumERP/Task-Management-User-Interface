@@ -4,6 +4,7 @@ import { Task } from '@/types/task';
 import { MessageSquare, Clock, AlertCircle, AlertTriangle, Info, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getPriorityBadgeClass } from '@/lib/priorityStyles';
+import { getStatusChipClass } from '@/lib/taskStatusGroups';
 import { useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
@@ -162,14 +163,9 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
                       <span className="text-[10px]">2h</span>
                     </div>
                   )}
-                  {task.status === 'In Progress' && (
-                    <div className="bg-[var(--tm-tint)] text-[#0EA5E9] text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
+                  {(task.status === 'In Progress' || task.status === 'In-Progress') && (
+                    <div className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]', getStatusChipClass(task.status))}>
                       65%
-                    </div>
-                  )}
-                  {task.status === 'In Review' && (
-                    <div className="bg-red-500/10 text-red-400 text-[9px] font-semibold px-1.5 py-0.5 rounded-[5px]">
-                      Needs Fix
                     </div>
                   )}
                 </div>

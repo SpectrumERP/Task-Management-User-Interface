@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { attachmentService } from '@/services/attachmentService';
 import { UploadCloud, Camera as CameraIcon, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ALLOWED_UPLOAD_HELPER_TEXT, UPLOAD_ACCEPT_ATTR } from '@/lib/allowedUploadFiles';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
 import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
@@ -52,13 +53,14 @@ export function CompanyAttachmentsSection({
           >
             <input
               type="file"
+              accept={UPLOAD_ACCEPT_ATTR}
               onChange={onFileUpload}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               title="Choose file to attach"
             />
             <UploadCloud size={24} className={cn('text-slate-400 mb-1.5', error && 'text-red-400')} strokeWidth={1.75} />
             <p className="text-xs font-semibold text-slate-200">Upload Attachment</p>
-            <p className="text-[9px] text-slate-400 font-medium mt-0.5">PDF, DOCX or XLSX up to 10MB</p>
+            <p className="text-[9px] text-slate-400 font-medium mt-0.5">{ALLOWED_UPLOAD_HELPER_TEXT}</p>
           </div>
           <Button
             type="button"

@@ -32,7 +32,7 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
       S('task-filters', 'Filters', 'Opens the filter drawer — priority, task code, category, assign to, and due date. Use Reset to clear all filters.'),
       S('task-view-mode', 'View mode', 'Switch between List, Board, or Calendar from this control.'),
       S('task-create', 'Create task', 'Opens the form to create a new task.', 'left'),
-      S('task-status-pills', 'Status filters', 'Tap status pills (Pending, Draft, Complete, …) to filter. Tap again to clear. Multiple pills work together.'),
+      S('task-status-pills', 'Status filters', 'Tap status pills (Assigned, In-Progress, Hold, Complete, Cancelled) to filter. Tap again to clear. Multiple pills work together.'),
       S('task-table', 'Task list', 'Browse tasks here. Click the code for a quick preview, or edit from the row actions. Sort by clicking column headers.', 'top'),
     ],
   },

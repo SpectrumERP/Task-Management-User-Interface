@@ -160,7 +160,7 @@ export function DealSearchPage() {
       case 'documentNoYearly': return row.documentNoYearly || '';
       case 'documentDate': return row.documentDate || '';
       case 'description': return row.description || '';
-      default: return (row as Record<string, unknown>)[key] ?? '';
+      default: return (row as unknown as Record<string, unknown>)[key] ?? '';
     }
   }, []);
 

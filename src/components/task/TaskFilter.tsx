@@ -22,7 +22,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/hooks/useSettings';
 import { forceStartPageGuide } from '@/components/layout/InternalPageGuideTour';
-import { STATUS_PILL_ORDER, isAllFilterSentinel, sumStatusPillCounts, toStatusPillToken } from '@/lib/taskStatusGroups';
+import { STATUS_PILL_ORDER, isAllFilterSentinel, sumStatusPillCounts, toStatusPillToken, getStatusPillClass } from '@/lib/taskStatusGroups';
 import { formatDateOnly, toUtcIso } from '@/lib/dateTime';
 
 function isAllFillValueId(
@@ -174,7 +174,7 @@ export function TaskFilter({
     })
     .map(sc => ({ value: sc.SortingColumnName, label: sc.DisplayName }));
 
-  const { control, handleSubmit, reset, watch, setValue, getValues, trigger, formState: { errors } } = useForm<FilterFormValues>({
+  const { control, handleSubmit, reset, watch, setValue, getValues } = useForm<FilterFormValues>({
     defaultValues: {
       taskCode: '',
       title: '',
@@ -923,23 +923,7 @@ export function TaskFilter({
             const isActive = activeStatuses.includes(statusNoStr);
 
             const baseClass = "theme-status-pill rounded-full h-7 px-3 text-[11px] font-semibold transition-all duration-200 border bg-[var(--tm-surface)] hover:shadow-md";
-            const colorClass =
-              statusName === 'Complete' || statusName === 'Close'
-                ? isActive
-                  ? "border-green-500 bg-green-500 text-white shadow-[0_4px_12px_-4px_rgba(34,197,94,0.45)]"
-                  : "border-green-500/30 text-green-400 hover:bg-green-500/10"
-                : statusName === 'In-Progress'
-                  ? isActive
-                    ? "border-blue-500 bg-blue-500 text-white shadow-[0_4px_12px_-4px_rgba(59,130,246,0.45)]"
-                    : "border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-                  : statusName === 'Pending' || statusName === 'Hold'
-                    ? isActive
-                      ? "border-[#F59E0B] bg-[#F59E0B] text-[#0B1220] shadow-[0_4px_12px_-4px_rgba(245,158,11,0.45)]"
-                      : "border-[#F59E0B]/40 text-[#F59E0B] hover:bg-[#F59E0B]/10"
-                    : // Assigned (+ any other) — solid fill like the rest when active
-                    isActive
-                      ? "border-[#0EA5E9] bg-[#0EA5E9] text-white shadow-[0_4px_12px_-4px_rgba(14,165,233,0.45)]"
-                      : "border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[#0EA5E9]/10";
+            const colorClass = getStatusPillClass(statusName, isActive);
 
             return (
               <Button

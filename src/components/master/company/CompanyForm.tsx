@@ -9,6 +9,7 @@ import { Camera as CameraIcon } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { validateUploadFile } from '@/lib/allowedUploadFiles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { useConfirmDelete } from '../shared/useConfirmDelete';
@@ -636,6 +637,14 @@ export function CompanyForm({ id }: CompanyFormProps) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    e.target.value = '';
+
+    const validation = validateUploadFile(file);
+    if (!validation.ok) {
+      toast.error(validation.reason);
+      return;
+    }
+
     try {
       const activeCompanyNo = parseInt(companyNo as any) || 1;
       let newAttachment: any = null;

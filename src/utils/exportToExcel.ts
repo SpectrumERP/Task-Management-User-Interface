@@ -16,20 +16,29 @@ function loadXlsx(): Promise<XLSXModule> {
   return xlsxPromise;
 }
 
-export const exportReportToExcel = (data: any[], groupedByUser: boolean, filename: string = 'Task_Report.xlsx') => {
+export const exportReportToExcel = (
+  data: any[],
+  groupedByUser: boolean,
+  filename: string = 'Task_Report.xlsx',
+  visibleColumns?: string[]
+) => {
   if (data.length === 0) return;
 
   void loadXlsx().then((XLSX) => {
     const wb = XLSX.utils.book_new();
 
-    const savedStr = localStorage.getItem('taskListViewColumns');
     let visibleSet = new Set<string>();
-    if (savedStr) {
-      try {
-        const parsed = JSON.parse(savedStr);
-        if (Array.isArray(parsed)) parsed.forEach((k) => visibleSet.add(k));
-      } catch {
-        /* ignore */
+    if (visibleColumns?.length) {
+      visibleColumns.forEach((k) => visibleSet.add(k));
+    } else {
+      const savedStr = localStorage.getItem('taskListViewColumns');
+      if (savedStr) {
+        try {
+          const parsed = JSON.parse(savedStr);
+          if (Array.isArray(parsed)) parsed.forEach((k) => visibleSet.add(k));
+        } catch {
+          /* ignore */
+        }
       }
     }
     if (visibleSet.size === 0) {

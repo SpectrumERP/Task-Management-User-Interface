@@ -13,6 +13,8 @@ interface DateTimePickerProps {
   className?: string
   disabled?: boolean
   hideTime?: boolean
+  /** When true (default), time uses 24-hour clock (HH:mm) with no AM/PM. */
+  hour24?: boolean
 }
 
 const MINUTES = [0, 15, 30, 45]
@@ -60,6 +62,7 @@ export function DateTimePicker({
   className,
   disabled,
   hideTime = false,
+  hour24 = true,
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const rootRef = React.useRef<HTMLDivElement | null>(null)
@@ -69,8 +72,20 @@ export function DateTimePicker({
   const displayPlaceholder = placeholder || defaultPlaceholder
 
   const hour12 = date ? (date.getHours() % 12 === 0 ? 12 : date.getHours() % 12) : 12
+  const hour24Value = date ? date.getHours() : 0
   const minute = date ? date.getMinutes() : 0
   const period = date && date.getHours() >= 12 ? "PM" : "AM"
+
+  const displayFormat = hideTime
+    ? "MMM dd, yyyy"
+    : hour24
+      ? "MMM dd, yyyy HH:mm"
+      : "MMM dd, yyyy h:mm a"
+  const panelTitleFormat = hideTime
+    ? "MMM dd, yyyy"
+    : hour24
+      ? "EEE, MMM d · HH:mm"
+      : "EEE, MMM d · h:mm a"
 
   const getPortalTarget = React.useCallback(() => {
     const trigger = rootRef.current
@@ -147,20 +162,41 @@ export function DateTimePicker({
     }
   }, [isOpen, updatePanelPosition])
 
-  const applyTime = (next: { hour12?: number; minute?: number; period?: "AM" | "PM" }) => {
+  const applyTime = (next: {
+    hour12?: number
+    hour24?: number
+    minute?: number
+    period?: "AM" | "PM"
+  }) => {
     const base = date ? new Date(date) : new Date()
     if (!date) base.setSeconds(0, 0)
-    const h12 = next.hour12 ?? hour12
     const m = next.minute ?? minute
-    const p = next.period ?? period
-    let hrs = h12
-    if (p === "PM" && hrs < 12) hrs += 12
-    if (p === "AM" && hrs === 12) hrs = 0
+
+    let hrs: number
+    if (hour24) {
+      hrs = next.hour24 ?? hour24Value
+      if (hrs < 0) hrs = 23
+      if (hrs > 23) hrs = 0
+    } else {
+      const h12 = next.hour12 ?? hour12
+      const p = next.period ?? period
+      hrs = h12
+      if (p === "PM" && hrs < 12) hrs += 12
+      if (p === "AM" && hrs === 12) hrs = 0
+    }
+
     base.setHours(hrs, m, 0, 0)
     onChange?.(base)
   }
 
   const stepHour = (delta: number) => {
+    if (hour24) {
+      let next = hour24Value + delta
+      if (next > 23) next = 0
+      if (next < 0) next = 23
+      applyTime({ hour24: next })
+      return
+    }
     let next = hour12 + delta
     if (next > 12) next = 1
     if (next < 1) next = 12
@@ -176,6 +212,15 @@ export function DateTimePicker({
     applyTime({ minute: MINUTES[nextIdx] })
   }
 
+  const resolveDefaultHours = () => {
+    if (hour24) return hour24Value
+    return period === "PM" && hour12 < 12
+      ? hour12 + 12
+      : hour12 === 12 && period === "AM"
+        ? 0
+        : hour12
+  }
+
   const panel = isOpen
     ? createPortal(
         <div
@@ -189,7 +234,7 @@ export function DateTimePicker({
           <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]">
             <p className="text-[11px] font-semibold text-slate-100 truncate">
               {date
-                ? format(date, hideTime ? "MMM dd, yyyy" : "EEE, MMM d · h:mm a")
+                ? format(date, panelTitleFormat)
                 : hideTime
                   ? "Select date"
                   : "Select date & time"}
@@ -213,13 +258,7 @@ export function DateTimePicker({
                   if (date) {
                     selectedDate.setHours(date.getHours(), date.getMinutes())
                   } else {
-                    const hrs =
-                      period === "PM" && hour12 < 12
-                        ? hour12 + 12
-                        : hour12 === 12 && period === "AM"
-                          ? 0
-                          : hour12
-                    selectedDate.setHours(hrs, minute, 0, 0)
+                    selectedDate.setHours(resolveDefaultHours(), minute, 0, 0)
                   }
                   onChange?.(selectedDate)
                   if (hideTime) setIsOpen(false)
@@ -276,7 +315,7 @@ export function DateTimePicker({
               <div className="flex items-center gap-1.5 shrink-0">
                 <CompactStepper
                   label="hour"
-                  value={String(hour12).padStart(2, "0")}
+                  value={String(hour24 ? hour24Value : hour12).padStart(2, "0")}
                   onUp={() => stepHour(1)}
                   onDown={() => stepHour(-1)}
                 />
@@ -287,23 +326,25 @@ export function DateTimePicker({
                   onUp={() => stepMinute(1)}
                   onDown={() => stepMinute(-1)}
                 />
-                <div className="inline-flex shrink-0 rounded-[7px] bg-[var(--tm-muted)]/90 p-0.5">
-                  {(["AM", "PM"] as const).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => applyTime({ period: p })}
-                      className={cn(
-                        "h-6 min-w-[1.85rem] rounded-[6px] px-1.5 text-[10px] font-semibold transition-all",
-                        period === p
-                          ? "bg-brand text-white shadow-sm"
-                          : "text-slate-500 hover:text-brand"
-                      )}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
+                {!hour24 && (
+                  <div className="inline-flex shrink-0 rounded-[7px] bg-[var(--tm-muted)]/90 p-0.5">
+                    {(["AM", "PM"] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => applyTime({ period: p })}
+                        className={cn(
+                          "h-6 min-w-[1.85rem] rounded-[6px] px-1.5 text-[10px] font-semibold transition-all",
+                          period === p
+                            ? "bg-brand text-white shadow-sm"
+                            : "text-slate-500 hover:text-brand"
+                        )}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <div className="ml-auto flex items-center gap-1 shrink-0">
@@ -353,9 +394,7 @@ export function DateTimePicker({
           <CalendarIcon className="h-3.5 w-3.5" />
         </span>
         {date ? (
-          <span className="truncate">
-            {format(date, hideTime ? "MMM dd, yyyy" : "MMM dd, yyyy h:mm a")}
-          </span>
+          <span className="truncate">{format(date, displayFormat)}</span>
         ) : (
           <span className="truncate">{displayPlaceholder}</span>
         )}

@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 
 import { useBusinessCardDetection } from './camera/hooks/useBusinessCardDetection';
 import { useOCR, OCRResult } from './camera/hooks/useOCR';
-import { CardCropperService } from './camera/services/CardCropperService';
 import { BusinessCardParserService } from './camera/services/BusinessCardParserService';
 import { GoogleVisionService } from './camera/services/GoogleVisionService';
 import { LogoDetectionService } from './camera/services/LogoDetectionService';
@@ -147,7 +146,6 @@ export function CameraComp({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const cropperService = useRef(new CardCropperService());
   const parserService = useRef(new BusinessCardParserService());
   const googleVisionService = useRef(new GoogleVisionService());
   const logoService = useRef(new LogoDetectionService());
