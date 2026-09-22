@@ -355,22 +355,36 @@ export function CompanyHeaderFields({
               value: String(t.gstinTypeNo || t.id || ''),
             }))}
             value={gstinTypeNo}
-            onChange={(val) => setGstinTypeNo(val)}
+            onChange={(val) => {
+              setGstinTypeNo(val);
+              if (!val && errors.companyVatGst) setErrors((prev) => ({ ...prev, companyVatGst: '' }));
+            }}
             placeholder="Select document type"
             className={cn(fieldClass, 'px-3')}
           />
         </div>
 
         <div className="space-y-1.5 min-w-0 sm:col-span-1 lg:col-span-1">
-          <FieldLabel htmlFor="vatGst">VAT / GST No</FieldLabel>
-          <Input
-            id="vatGst"
-            placeholder="Enter VAT No. / GST No."
-            value={companyVatGst}
-            maxLength={30}
-            onChange={(e) => setCompanyVatGst(e.target.value)}
-            className={fieldClass}
-          />
+          <FieldLabel htmlFor="vatGst" required={!!gstinTypeNo}>
+            VAT / GST No
+          </FieldLabel>
+          <FieldControl error={errors.companyVatGst}>
+            <Input
+              id="vatGst"
+              placeholder="Enter VAT No. / GST No."
+              value={companyVatGst}
+              maxLength={30}
+              onChange={(e) => {
+                setCompanyVatGst(e.target.value);
+                if (errors.companyVatGst) setErrors((prev) => ({ ...prev, companyVatGst: '' }));
+              }}
+              className={cn(
+                fieldClass,
+                errors.companyVatGst &&
+                'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+              )}
+            />
+          </FieldControl>
         </div>
       </div>
     </CompanyFormSection>
