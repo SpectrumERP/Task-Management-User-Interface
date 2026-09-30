@@ -300,6 +300,34 @@ export const attachmentService = {
       console.error('Failed to delete attachment:', docNo, error);
       throw error;
     }
+  },
+
+  /**
+   * 7. POST /api/document-attachments/images
+   * Batch fetches images for preview
+   */
+  async getAttachmentImages(docNos: number[], signal?: AbortSignal): Promise<Map<number, { imageBase64: string; contentType: string }>> {
+    try {
+      const response = await apiService.post<AttachmentResponse<any[]>>(
+        '/api/document-attachments/images',
+        docNos,
+        { signal }
+      );
+      
+      const map = new Map<number, { imageBase64: string; contentType: string }>();
+      if (response && response.success && Array.isArray(response.data)) {
+        response.data.forEach((item: any) => {
+          map.set(item.docNo || item.id, {
+            imageBase64: item.imageBase64 || item.base64,
+            contentType: item.contentType || item.mimeType || 'image/png'
+          });
+        });
+      }
+      return map;
+    } catch (error) {
+      console.error('Failed to get attachment images:', error);
+      return new Map();
+    }
   }
 };
 

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, Bell, type LucideIcon } from 'lucide-react';
+import { Info, Users, Clock, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, Bell, FileEdit, type LucideIcon } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
@@ -1799,8 +1799,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       }
       clearDraft();
       
-      // Remove unsaved changes in case it's tracked
-      removeUnsavedChanges(location.pathname);
       setIsSubmitSuccessful(true);
       
       setTimeout(() => {

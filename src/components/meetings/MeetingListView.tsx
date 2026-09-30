@@ -673,7 +673,6 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                     const status = meeting.statusName || '—';
                     const start = formatScheduleLine(meeting.meetingStartDateTime);
                     const end = formatScheduleLine(meeting.meetingEndDateTime);
-                    const canSend = isMinutesSendStatusAllowed(status);
                     const deleteGate = canDeleteMeetingNote(isDelete, status);
                     const id = meeting.meetingNotesNo || meeting.id;
                     const lastSent = id ? readLastMinutesSentAt(Number(id)) : null;

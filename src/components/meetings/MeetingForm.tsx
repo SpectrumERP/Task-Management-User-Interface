@@ -1294,7 +1294,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                           name={`discussions.${index}.operTaskPriorityNo`}
                                           render={({ field }) => (
                                             <Combobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
-                                              options={taskFillValues?.priority?.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]').map(c => ({ value: c.OperTaskPriorityNo.toString(), label: c.Priority, colorCoding: c.colorCoding || c.ColorCoding })) || []}
+                                              options={taskFillValues?.priority?.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]').map(c => ({ value: c.OperTaskPriorityNo.toString(), label: c.Priority, colorCoding: c.ColorCoding })) || []}
                                               value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
                                               onChange={(val) => field.onChange(toOptionalInt(val))}
                                               sortAlphabetically={false}

@@ -4,15 +4,11 @@ import { apiService } from '@/services/apiService';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { DateTimePicker } from '@/components/ui/DateTimePicker';
-import { formatDateOnly, formatUtcDateTime, toDateOnlyLocal, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
+import { formatUtcDateTime } from '@/lib/dateTime';
 import {
   MessageSquare,
-  Clock,
-  Send,
-  Plus
+  Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,20 +29,13 @@ interface TaskActivityProps {
   readOnly?: boolean;
 }
 
-export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, readOnly = false }: TaskActivityProps) {
+export function TaskActivity({ taskNo, comments = [], onRefresh, readOnly = false }: TaskActivityProps) {
   const { user: authUser } = useAuthStore();
   const loginNo = authUser?.loginNo || authUser?.LoginNo || 1;
 
   // Comment state
   const [commentText, setCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-
-  // Effort log state
-  const [showEffortForm, setShowEffortForm] = useState(false);
-  const [effortHours, setEffortHours] = useState('');
-  const [effortDesc, setEffortDesc] = useState('');
-  const [effortDate, setEffortDate] = useState(toDateOnlyLocal(new Date()) || '');
-  const [isSubmittingEffort, setIsSubmittingEffort] = useState(false);
 
   const handlePostComment = async (e?: React.FormEvent | React.MouseEvent) => {
     e?.preventDefault();
@@ -77,48 +66,7 @@ export function TaskActivity({ taskNo, comments = [], efforts = [], onRefresh, r
     }
   };
 
-  const handleLogEffort = async (e?: React.FormEvent | React.MouseEvent) => {
-    e?.preventDefault();
-    const hours = parseFloat(effortHours);
-    if (isNaN(hours) || hours <= 0) {
-      toast.error('Please enter a valid amount of hours');
-      return;
-    }
-    if (!effortDesc.trim()) {
-      toast.error('Please provide a description of the effort');
-      return;
-    }
 
-    try {
-      setIsSubmittingEffort(true);
-      const payload = {
-        operTaskNo: taskNo,
-        effortDate: toUtcIso(effortDate),
-        effortHours: hours,
-        effortDescription: effortDesc.trim(),
-        loginNo: loginNo,
-        effortLogDetailNo: null
-      };
-
-      const response = await apiService.post<{ success: boolean; message: string }>('/api/crm/tasks/effort-log-detail', payload);
-      if (response.success) {
-        setEffortHours('');
-        setEffortDesc('');
-        setShowEffortForm(false);
-        toast.success('Effort logged successfully');
-        onRefresh();
-      } else {
-        toast.error(response.message || 'Failed to log effort');
-      }
-    } catch (error) {
-      console.error('Effort log error:', error);
-      toast.error('An error occurred while logging effort');
-    } finally {
-      setIsSubmittingEffort(false);
-    }
-  };
-
-  const totalLoggedHours = efforts.reduce((sum, e) => sum + (e.hours || 0), 0);
 
   return (
     <div className="grid grid-cols-1 gap-4">
