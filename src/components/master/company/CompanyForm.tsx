@@ -251,6 +251,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const timeZones = businessEntityFillValues?.data?.timeZones || businessEntityFillValues?.timeZones || [];
   const locationTypes = businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || [];
   const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
+  const gstinTypes = businessEntityFillValues?.data?.gstinTypes || businessEntityFillValues?.gstinTypes || [];
 
   const getCountryNo = (countryName: string) => {
     const found = countries.find((x) => x.countryName?.toLowerCase() === countryName?.toLowerCase());
@@ -781,6 +782,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
     if (companyLocations.length === 0) {
       newErrors.companyLocations = 'At least one location is required';
     }
+    if (gstinTypeNo && !companyVatGst.trim()) {
+      newErrors.companyVatGst = 'VAT / GST No is required';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -901,7 +905,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
             setCompanyVatGst={setCompanyVatGst}
             gstinTypeNo={gstinTypeNo}
             setGstinTypeNo={setGstinTypeNo}
-            gstinTypes={asGeoList(businessEntityFillValues?.gstinTypes)}
+            gstinTypes={asGeoList(gstinTypes)}
             businessEntityTypes={businessEntityTypes}
             timeZones={timeZones}
             errors={errors}
