@@ -1,9 +1,8 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X, Plus } from 'lucide-react';
-import { MasterBreadcrumb } from './MasterBreadcrumb';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 
 interface MasterListHeaderProps {
   title: string;
@@ -11,7 +10,7 @@ interface MasterListHeaderProps {
   onSearchChange: (value: string) => void;
   onAddClick: () => void;
   canAdd: boolean;
-  children?: React.ReactNode;
+  children?: ReactNode;
   searchPlaceholder?: string;
   /** Optional forced guide key (e.g. master-company) */
   guideKey?: string;
@@ -29,20 +28,16 @@ export function MasterListHeader({
 }: MasterListHeaderProps) {
   return (
     <>
-      <div
-        className="-mx-[var(--page-pad)] -mt-[var(--page-pad)] shrink-0 z-20 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-2.5 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]"
+      <AppBreadcrumbBar
+        items={[
+          { label: 'Masters' },
+          { label: title, current: true },
+        ]}
+        guideKey={guideKey}
+        bleed
+        className="shrink-0"
         data-page-tour="master-breadcrumb"
-      >
-        <div className="flex items-center justify-between gap-2">
-          <MasterBreadcrumb
-            items={[
-              { label: 'Masters' },
-              { label: title, current: true },
-            ]}
-          />
-          <PageGuideButton guideKey={guideKey} />
-        </div>
-      </div>
+      />
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
         <div

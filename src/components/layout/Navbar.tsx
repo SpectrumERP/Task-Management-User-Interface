@@ -36,6 +36,7 @@ import { BrandLogo } from '@/components/ui/BrandLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useToggleFocusMode } from '@/hooks/useToggleFocusMode';
 import { FullscreenHelpGuide } from '@/components/layout/FullscreenHelpGuide';
+import { NotificationNav } from '@/components/layout/NotificationNav';
 import { forceStartOnboardingTour } from '@/components/layout/OnboardingSpotlightTour';
 import { forceStartPageGuide } from '@/components/layout/InternalPageGuideTour';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
@@ -236,6 +237,8 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
             </ActionTip>
 
             <FullscreenHelpGuide autoOpenOnce={false} />
+
+            <NotificationNav />
 
             <ThemeToggle variant="chip" size="md" />
 
@@ -455,6 +458,8 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
             </ActionTip>
 
             <FullscreenHelpGuide autoOpenOnce={false} />
+
+            <NotificationNav />
 
             <ThemeToggle variant="chip" size="md" />
 

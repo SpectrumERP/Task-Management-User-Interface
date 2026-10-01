@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Button } from '@/components/ui/button';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
@@ -196,18 +197,24 @@ export default function UserProfilePage() {
 
   return (
     <div className="page-shell gap-4 w-full min-w-0 overflow-hidden">
-      <div className="flex items-center gap-2 shrink-0">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleBack}
-          className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5"
-        >
-          <ArrowLeft size={14} />
-          Back
-        </Button>
-        <span className="text-[11px] font-medium text-slate-500">User profile</span>
-      </div>
+      <AppBreadcrumbBar
+        items={[
+          { label: 'Home', href: '/' },
+          { label: 'User Profile', current: true },
+        ]}
+        bleed
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleBack}
+            className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5"
+          >
+            <ArrowLeft size={14} />
+            Back
+          </Button>
+        }
+      />
 
       {isLoading ? (
         <div className="flex-1 min-h-0 flex items-center justify-center rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)]">

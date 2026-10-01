@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDateOnly } from '@/lib/dateTime';
-import { ChevronRight, Edit, FileText, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Edit, FileText, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Button } from '@/components/ui/button';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Card } from '@/components/ui/card';
 import { Combobox } from '@/components/ui/Combobox';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
@@ -18,6 +18,7 @@ import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCe
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FieldLabel } from '@/components/ui/form-field';
 import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
+import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 
 export function DealSearchPage() {
@@ -188,28 +189,28 @@ export function DealSearchPage() {
 
   return (
     <div className="page-shell">
-      <div className="shrink-0">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <button className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded cursor-default">Sales</button>
-            <ChevronRight size={16} className="text-slate-400" />
-            <span className="text-slate-50 font-bold tracking-tight">Sales Deals</span>
-            <PageGuideButton guideKey="deals" />
-          </div>
+      <AppBreadcrumbBar
+        items={[
+          { label: 'Sales' },
+          { label: 'Sales Deals', current: true },
+        ]}
+        guideKey="deals"
+        bleed
+        data-page-tour="deals-breadcrumb"
+        actions={
           <Button
             type="button"
             data-page-tour="deal-create"
             onClick={() => navigate('/sales/deals/new')}
-            className="h-10 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold gap-1.5 shadow-sm shadow-brand/20"
+            className="h-9 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold gap-1.5 shadow-sm shadow-brand/20"
           >
             <Plus size={15} />
             New Deal
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="flex-1 overflow-y-auto space-y-2">
-        <Card data-page-tour="deal-filters" className="rounded-2xl border-[var(--tm-border)] shadow-sm p-4">
+      <Card data-page-tour="deal-filters" className="shrink-0 rounded-2xl border-[var(--tm-border)] shadow-sm p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
             <div className="space-y-0.5">
               <FieldLabel className="text-[11px] font-medium text-slate-200 normal-case ml-1">Company</FieldLabel>
@@ -265,7 +266,7 @@ export function DealSearchPage() {
           </div>
         </Card>
 
-        <Card data-page-tour="deal-table" className="rounded-2xl border-[var(--tm-border)] shadow-sm overflow-hidden">
+        <Card data-page-tour="deal-table" className="flex-1 min-h-0 flex flex-col rounded-2xl border-[var(--tm-border)] shadow-sm overflow-hidden">
           {isLoading && deals.length === 0 ? (
             <div className="px-4 py-16 flex items-center justify-center">
               <BrandLoader size="sm" message="Loading sales deals" />
@@ -286,94 +287,116 @@ export function DealSearchPage() {
               compact
             />
           ) : (
-            <>
-              <div className="md:hidden flex flex-col gap-2 p-2">
-                {sortedDeals.map((deal) => (
-                  <div
-                    key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`}
-                    className="rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 px-3 py-2.5"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <TruncatedText
-                          text={String(deal.companyName || deal.companyNo || '-')}
-                          className="text-sm font-semibold text-slate-100"
-                        />
-                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400">
-                          <span className="min-w-0 truncate">
-                            <span className="text-slate-500">Division: </span>
-                            {String(deal.divisionName || deal.divisionNo || 'N/A')}
-                          </span>
-                          <span className="min-w-0 truncate">
-                            <span className="text-slate-500">Doc: </span>
-                            {String(deal.documentNoYearly || '-')}
-                          </span>
-                          <span className="min-w-0 truncate">
-                            <span className="text-slate-500">Date: </span>
-                            {deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
-                          </span>
-                        </div>
-                        {deal.description ? (
+            <DataTableScroll
+              minWidth={760}
+              mobile={
+                <div className="flex flex-col gap-2 p-2">
+                  {sortedDeals.map((deal) => (
+                    <div
+                      key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`}
+                      className="rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 px-3 py-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
                           <TruncatedText
-                            text={deal.description}
-                            className="mt-1 text-[11px] text-slate-500"
+                            text={String(deal.companyName || deal.companyNo || '-')}
+                            className="text-sm font-semibold text-slate-100"
                           />
-                        ) : null}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-0.5">
-                        <ActionTip label="Edit">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Edit"
-                            onClick={() => handleEdit(deal)}
-                            className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
-                          >
-                            <Edit size={14} />
-                          </Button>
-                        </ActionTip>
-                        <ActionTip label="Delete">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Delete"
-                            onClick={() => setDeleteTarget(deal)}
-                            disabled={!deal.id}
-                            className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </ActionTip>
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-400">
+                            <span className="min-w-0 truncate">
+                              <span className="text-slate-500">Division: </span>
+                              {String(deal.divisionName || deal.divisionNo || 'N/A')}
+                            </span>
+                            <span className="min-w-0 truncate">
+                              <span className="text-slate-500">Doc: </span>
+                              {String(deal.documentNoYearly || '-')}
+                            </span>
+                            <span className="min-w-0 truncate">
+                              <span className="text-slate-500">Date: </span>
+                              {deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
+                            </span>
+                          </div>
+                          {deal.description ? (
+                            <TruncatedText
+                              text={deal.description}
+                              className="mt-1 text-[11px] text-slate-500"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <ActionTip label="Edit">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Edit"
+                              onClick={() => handleEdit(deal)}
+                              className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+                            >
+                              <Edit size={14} />
+                            </Button>
+                          </ActionTip>
+                          <ActionTip label="Delete">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Delete"
+                              onClick={() => setDeleteTarget(deal)}
+                              disabled={!deal.id}
+                              className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </ActionTip>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="hidden md:block overflow-x-auto">
-                <table className="tm-data-table w-full min-w-[760px] text-left">
-                  <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                  ))}
+                </div>
+              }
+              header={
+                <table className="tm-data-table w-full table-fixed border-collapse text-left">
+                  <colgroup>
+                    <col style={{ width: '10rem' }} />
+                    <col style={{ width: '9rem' }} />
+                    <col style={{ width: '9rem' }} />
+                    <col style={{ width: '8rem' }} />
+                    <col />
+                    <col style={{ width: '4.5rem' }} />
+                  </colgroup>
+                  <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
                     <tr>
-                      <th className="tm-col-sticky-code sticky left-0 z-[45] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('companyName', handleSort)}>
+                      <th className="tm-col-sticky-code sticky left-0 z-[45] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('companyName', handleSort)}>
                         <SortableHeader label="Company" sortKey="companyName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('divisionName', handleSort)}>
+                      <th className="px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('divisionName', handleSort)}>
                         <SortableHeader label="Division" sortKey="divisionName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('documentNoYearly', handleSort)}>
+                      <th className="px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('documentNoYearly', handleSort)}>
                         <SortableHeader label="Document No Yearly" sortKey="documentNoYearly" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('documentDate', handleSort)}>
+                      <th className="px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('documentDate', handleSort)}>
                         <SortableHeader label="Document Date" sortKey="documentDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('description', handleSort)}>
+                      <th className="px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('description', handleSort)}>
                         <SortableHeader label="Description" sortKey="description" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                       </th>
-                      <th className="tm-col-actions sticky right-0 z-40 px-1 py-2.5 pr-2 text-[10px] font-semibold uppercase tracking-wide text-slate-300 text-right border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
+                      <th className="tm-col-actions sticky right-0 z-40 px-1 py-2.5 pr-2 font-semibold tracking-wide text-slate-300 text-right border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                     </tr>
                   </thead>
+                </table>
+              }
+              body={
+                <table className="tm-data-table w-full table-fixed border-collapse text-left">
+                  <colgroup>
+                    <col style={{ width: '10rem' }} />
+                    <col style={{ width: '9rem' }} />
+                    <col style={{ width: '9rem' }} />
+                    <col style={{ width: '8rem' }} />
+                    <col />
+                    <col style={{ width: '4.5rem' }} />
+                  </colgroup>
                   <tbody>
                     {sortedDeals.map((deal) => (
                       <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50 transition-colors">
@@ -431,8 +454,8 @@ export function DealSearchPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </>
+              }
+            />
           )}
         </Card>
 
@@ -448,7 +471,6 @@ export function DealSearchPage() {
             onPageChange={setCurrentPage}
           />
         )}
-      </div>
 
       <MasterDeleteDialog
         open={!!deleteTarget}

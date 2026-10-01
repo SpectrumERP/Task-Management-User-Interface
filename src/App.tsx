@@ -11,7 +11,9 @@ import ReportPage from '@/pages/ReportPage';
 import MeetingReportPage from '@/pages/MeetingReportPage';
 import DealMonitorPage from '@/pages/DealMonitorPage';
 import UserProfilePage from '@/pages/UserProfilePage';
+import NotificationsPage from '@/pages/NotificationsPage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
+import { NotificationsProvider } from '@/context/NotificationsContext';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/authService';
 import {
@@ -592,6 +594,15 @@ function UserProfileRoute() {
   );
 }
 
+function NotificationsRoute() {
+  const navigate = useNavigate();
+  return (
+    <MainLayout activeTab="tasks" onTabChange={(id) => handleAppNav(navigate, id)}>
+      <NotificationsPage />
+    </MainLayout>
+  );
+}
+
 const router = createBrowserRouter([
   {
     element: (
@@ -719,6 +730,14 @@ const router = createBrowserRouter([
           </PrivateRoute>
         ),
       },
+      {
+        path: "/notifications",
+        element: (
+          <PrivateRoute>
+            <NotificationsRoute />
+          </PrivateRoute>
+        ),
+      },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
@@ -809,7 +828,9 @@ function App() {
     <>
       <AppErrorListeners />
       <ErrorBoundary label="router">
-        <RouterProvider router={router} />
+        <NotificationsProvider>
+          <RouterProvider router={router} />
+        </NotificationsProvider>
       </ErrorBoundary>
       <PWAInstallBanner />
       <Toaster position="top-right" richColors closeButton duration={4000} />

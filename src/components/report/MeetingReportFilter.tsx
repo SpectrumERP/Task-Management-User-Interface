@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldLabel } from '@/components/ui/form-field';
 import { SlidersHorizontal, RotateCcw, FileBarChart2, ChevronDown, ChevronUp, PencilLine } from 'lucide-react';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
@@ -147,7 +146,6 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <PageGuideButton guideKey="meeting-report" title="Open page guide" />
           <ActionTip
             label={
               filtersCollapsed

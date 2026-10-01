@@ -1798,7 +1798,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         });
       }
       clearDraft();
-      
       setIsSubmitSuccessful(true);
       
       setTimeout(() => {
@@ -2423,8 +2422,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     ) : (
                       <FieldControl error={hasCollabError ? (collabError as any).message : undefined}>
                         <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                          <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[600px]">
-                            <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                          <table className="tm-data-table w-full text-left border-collapse min-w-[600px]">
+                            <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                               <tr>
                                 <th className="tm-col-sr px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-left">#</th>
                                 <th className="px-3 py-2.5 w-[30%] border-r border-[var(--tm-border)]">
@@ -2655,8 +2654,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     ) : (
                       <FieldControl error={hasInformError ? (informError as any).message : undefined}>
                         <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                          <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[600px]">
-                            <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                          <table className="tm-data-table w-full text-left border-collapse min-w-[600px]">
+                            <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                               <tr>
                                 <th className="tm-col-sr px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-left">#</th>
                                 <th className="px-3 py-2.5 w-[30%] border-r border-[var(--tm-border)]">

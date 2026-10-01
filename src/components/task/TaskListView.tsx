@@ -27,6 +27,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
+import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { getStatusPillClass } from '@/lib/taskStatusGroups';
 
 interface TaskListViewProps {
@@ -63,7 +64,7 @@ const COLUMNS: ColumnDef[] = [
   { key: 'createdBy', label: 'Created By', defaultVisible: false },
   { key: 'createdDate', label: 'Created Date', defaultVisible: false },
 
-  { key: 'actions', label: '', defaultVisible: true }, // Actions shouldn't typically be hidden but we can allow it
+  { key: 'actions', label: 'Actions', defaultVisible: true }, // Actions shouldn't typically be hidden but we can allow it
 ];
 
 /** Default widths sized so header labels (e.g. Priority, Completion Date) fit fully. */
@@ -75,7 +76,7 @@ const DEFAULT_COL_WIDTH: Partial<Record<ColumnKey, string>> = {
   type: '6.5rem',
   priority: '6.5rem',
   owner: '7.5rem',
-  dueDate: '7rem',
+  dueDate: '5.75rem',
   completionDate: '9.5rem',
   folder: '6.5rem',
   companyName: '8rem',
@@ -85,8 +86,8 @@ const DEFAULT_COL_WIDTH: Partial<Record<ColumnKey, string>> = {
   createdDate: '11.5rem',
 };
 
-/** Actions: only enough for View + Edit icon buttons. */
-const ACTIONS_COL_PX = 72;
+/** Actions: full "Actions" label + column toggle + View/Edit icons. */
+const ACTIONS_COL_PX = 118;
 
 const cellOverflowClass = 'px-3 py-1.5 border-r border-[var(--tm-border)] text-slate-300 align-middle overflow-hidden max-w-0';
 
@@ -359,7 +360,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                 {expandedTasks.has(task.taskNo) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </button>
             )}
-            <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+            <span className="font-semibold text-[#0EA5E9] tabular-nums">
               {task.code || `CP-${100 + task.taskNo}`}
             </span>
             {task.status ? (
@@ -459,7 +460,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
             <div className="min-w-0 flex-1 overflow-hidden">
               <TruncatedText
                 text={task.code || `CP-${100 + task.taskNo}`}
-                className="text-left text-[11px] font-medium text-[#0EA5E9]"
+                className="text-left text-[#0EA5E9]"
               />
             </div>
           </div>
@@ -472,7 +473,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           <div className="flex w-full min-w-0 justify-start items-center">
             <TruncatedText
               text={task.status || '-'}
-              className={cn('!w-fit !max-w-full text-center text-[10px] normal-case px-2 py-0.5 rounded-full border inline-block font-medium', getStatusPillClass(task.status, false))}
+              className={cn('!w-fit !max-w-full text-center normal-case px-2 py-0.5 rounded-full border inline-block', getStatusPillClass(task.status, false))}
             />
           </div>
         </td>
@@ -483,7 +484,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cn(cellOverflowClass, 'tm-col-primary')}>
           <TruncatedText
             text={task.title || ''}
-            className="font-medium text-slate-50 group-hover:text-[#0EA5E9] transition-colors select-all"
+            className="text-slate-50 group-hover:text-[#0EA5E9] transition-colors select-all"
           />
         </td>
       )}
@@ -500,7 +501,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
             return (
               <div
                 style={{ backgroundColor: bgColor, color: textColor }}
-                className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+                className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] shadow-sm"
               >
                 <TruncatedText text={task.categoryName} />
               </div>
@@ -513,7 +514,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('type') && !isHideType && (
         <td className={cellOverflowClass}>
           {task.typeName ? (
-            <div className="max-w-full min-w-0 text-xs font-semibold text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-md border border-[var(--tm-border)]">
+            <div className="max-w-full min-w-0 text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-md border border-[var(--tm-border)]">
               <TruncatedText text={task.typeName} />
             </div>
           ) : (
@@ -535,7 +536,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               const contrastText = getContrastColor(colorCoding);
               return (
                 <div
-                  className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
+                  className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] shadow-sm"
                   style={{ backgroundColor: colorCoding, color: contrastText }}
                 >
                   <TruncatedText text={label} />
@@ -543,7 +544,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               );
             }
             return (
-              <div className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] text-[10px] font-medium text-slate-300 bg-[var(--tm-muted)]">
+              <div className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] text-slate-300 bg-[var(--tm-muted)]">
                 <TruncatedText text={label} />
               </div>
             );
@@ -564,11 +565,11 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               />
               <TruncatedText
                 text={task.assignedDisplayName}
-                className="text-xs font-semibold text-slate-200"
+                className="text-slate-200"
               />
             </div>
           ) : (
-            <span className="text-xs font-semibold text-slate-400">-</span>
+            <span className="text-slate-400">-</span>
           )}
         </td>
       )}
@@ -578,7 +579,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cellOverflowClass}>
           <TruncatedText
             text={task.end_date ? formatDateOnly(task.end_date) : '-'}
-            className="text-xs font-medium text-slate-200"
+            className="text-slate-200"
           />
         </td>
       )}
@@ -588,7 +589,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cellOverflowClass}>
           <TruncatedText
             text={task.completionDate ? formatDateOnly(task.completionDate) : '-'}
-            className="text-xs font-medium text-slate-200"
+            className="text-slate-200"
           />
         </td>
       )}
@@ -598,7 +599,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cellOverflowClass}>
           <TruncatedText
             text={String(task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.['Folder Name'] || task.project_No || '-')}
-            className="text-xs font-medium text-slate-200"
+            className="text-slate-200"
           />
         </td>
       )}
@@ -608,7 +609,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cellOverflowClass}>
           <TruncatedText
             text={task.companyName || '-'}
-            className="text-xs font-medium text-slate-200"
+            className="text-slate-200"
           />
         </td>
       )}
@@ -618,7 +619,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cellOverflowClass}>
           <TruncatedText
             text={task.locationName || (task.location_No ? `Loc ${task.location_No}` : '-')}
-            className="text-xs font-medium text-slate-200"
+            className="text-slate-200"
           />
         </td>
       )}
@@ -636,11 +637,11 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               />
               <TruncatedText
                 text={task.originatorDisplayName}
-                className="text-xs font-medium text-slate-200"
+                className="text-slate-200"
               />
             </div>
           ) : (
-            <span className="text-xs font-medium text-slate-400">-</span>
+            <span className="text-slate-400">-</span>
           )}
         </td>
       )}
@@ -658,11 +659,11 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               />
               <TruncatedText
                 text={task.createdBy?.displayName || task.originatorDisplayName || ''}
-                className="text-xs font-medium text-slate-200"
+                className="text-slate-200"
               />
             </div>
           ) : (
-            <span className="text-xs font-medium text-slate-400">-</span>
+            <span className="text-slate-400">-</span>
           )}
         </td>
       )}
@@ -678,7 +679,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                   ? formatUtcDateTime(task.start_date)
                   : '-'
             }
-            className="text-xs font-medium text-slate-200"
+            className="text-slate-200"
           />
         </td>
       )}
@@ -686,10 +687,11 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {/* Actions */}
       {visibleColumns.has('actions') && (
         <td
-          className="px-1 py-2.5 align-middle text-center sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
+          className="px-1.5 py-1.5 align-middle text-center sticky right-0 z-[35] tm-col-actions tm-sticky-cell border-l border-[var(--tm-border)] bg-[var(--tm-surface)]"
           style={{ width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }}
+          onClick={(e) => e.stopPropagation()}
         >
-          <div className="inline-flex items-center justify-center gap-0.5">
+          <div className="flex h-7 w-full items-center justify-center gap-0.5">
             <ActionTip label="View">
               <Button
                 variant="ghost"
@@ -700,9 +702,9 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                   if (onTaskClick) onTaskClick(task.taskNo);
                   else navigate(taskUrl(task.taskNo, task.categoryName));
                 }}
-                className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+                className="h-7 w-7 shrink-0 rounded-md p-0 text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
               >
-                <Eye size={14} strokeWidth={2.25} />
+                <Eye size={14} strokeWidth={2.25} className="block" />
               </Button>
             </ActionTip>
             {canEditTask(task) && (
@@ -715,9 +717,9 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                     e.stopPropagation();
                     navigate(taskUrl(task.taskNo, task.categoryName));
                   }}
-                  className="h-7 w-7 rounded-md text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
+                  className="h-7 w-7 shrink-0 rounded-md p-0 text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
                 >
-                  <Edit2 size={14} strokeWidth={2.5} />
+                  <Edit2 size={14} strokeWidth={2.25} className="block" />
                 </Button>
               </ActionTip>
             )}
@@ -727,52 +729,65 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
     </tr>
   );
 
+  const visibleCols = COLUMNS.filter((col) => visibleColumns.has(col.key) && isColumnAllowed(col.key));
+
+  const colWidthStyle = (col: (typeof COLUMNS)[number]) =>
+    col.key === 'actions'
+      ? { width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }
+      : col.key === 'code' && !colWidths[col.key]
+        ? { width: 'var(--tm-col-id-width)', minWidth: 'var(--tm-col-id-width)', maxWidth: 'var(--tm-col-id-width)' }
+        : colWidths[col.key]
+          ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] }
+          : DEFAULT_COL_WIDTH[col.key]
+            ? { width: DEFAULT_COL_WIDTH[col.key], minWidth: DEFAULT_COL_WIDTH[col.key], maxWidth: DEFAULT_COL_WIDTH[col.key] }
+            : { width: '14rem', minWidth: '14rem' };
+
+  const tableColgroup = (
+    <colgroup>
+      {visibleCols.map((col) => (
+        <col key={col.key} style={colWidthStyle(col)} />
+      ))}
+    </colgroup>
+  );
+
   return (
-    <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden" data-page-tour="task-table">
-      {/* Mobile / tablet cards */}
-      <div className="md:hidden flex flex-col gap-2 p-2 sm:p-3">
-        {sortedTasks.map((task) => (
-          <React.Fragment key={task.taskNo}>
-            {renderTaskCard(task)}
-            {expandedTasks.has(task.taskNo) && task.subTasks && task.subTasks.length > 0 && (
-              <div className="flex flex-col gap-2 pl-4 border-l-2 border-[#0EA5E9]/20 ml-2 mt-1 mb-1">
-                {task.subTasks.map((subTask: Task) => renderTaskCard(subTask, true))}
-              </div>
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-      {/* Desktop table */}
-      <div className="hidden md:block min-w-0 overflow-x-auto">
-        <table
-          className="tm-data-table table-fixed text-sm text-left"
-          style={{ width: '100%', minWidth: tableMinWidthPx }}
-        >
-          <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+    <DataTableScroll
+      className="h-full"
+      data-page-tour="task-table"
+      minWidth={tableMinWidthPx}
+      mobile={
+        <div className="flex flex-col gap-2 p-2 sm:p-3">
+          {sortedTasks.map((task) => (
+            <React.Fragment key={task.taskNo}>
+              {renderTaskCard(task)}
+              {expandedTasks.has(task.taskNo) && task.subTasks && task.subTasks.length > 0 && (
+                <div className="flex flex-col gap-2 pl-4 border-l-2 border-[#0EA5E9]/20 ml-2 mt-1 mb-1">
+                  {task.subTasks.map((subTask: Task) => renderTaskCard(subTask, true))}
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      }
+      header={
+        <table className="tm-data-table table-fixed text-left w-full">
+          {tableColgroup}
+          <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 tracking-wide">
             <tr>
-              {COLUMNS.map(col => visibleColumns.has(col.key) && isColumnAllowed(col.key) && (
+              {visibleCols.map((col) => (
                 <th
                   key={col.key}
                   className={cn(
                     'px-3 py-1.5 border-r border-[var(--tm-border)] last:border-r-0 relative group/th text-left whitespace-nowrap overflow-hidden',
                     col.key === 'code' && 'tm-col-id tm-col-sticky-code sticky left-0 z-[45] bg-[var(--tm-elevated)] border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)]',
-                    col.key === 'actions' && 'tm-col-actions px-1 !text-center last:border-r-0 sticky right-0 z-40 bg-[var(--tm-elevated)] backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]'
+                    col.key === 'actions' && 'tm-col-actions px-1.5 !text-center last:border-r-0 sticky right-0 z-40 bg-[var(--tm-elevated)] border-l border-[var(--tm-border)]'
                   )}
-                  style={
-                    col.key === 'actions'
-                      ? { width: ACTIONS_COL_PX, minWidth: ACTIONS_COL_PX, maxWidth: ACTIONS_COL_PX }
-                      : col.key === 'code' && !colWidths[col.key]
-                        ? { width: 'var(--tm-col-id-width)', minWidth: 'var(--tm-col-id-width)', maxWidth: 'var(--tm-col-id-width)' }
-                        : colWidths[col.key]
-                          ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] }
-                          : DEFAULT_COL_WIDTH[col.key]
-                            ? { width: DEFAULT_COL_WIDTH[col.key], minWidth: DEFAULT_COL_WIDTH[col.key], maxWidth: DEFAULT_COL_WIDTH[col.key] }
-                            : { width: '14rem', minWidth: '14rem' }
-                  }
+                  style={colWidthStyle(col)}
                   {...(col.key !== 'actions' ? sortHeaderCellProps(col.key, handleSort) : {})}
                 >
                   {col.key === 'actions' ? (
-                    <div className="flex justify-center">
+                    <div className="flex items-center justify-center gap-0.5 w-full min-w-0">
+                      <span className="whitespace-nowrap">Actions</span>
                       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                         <ActionTip label="Toggle columns">
                           <DropdownMenuTrigger asChild>
@@ -780,7 +795,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                               variant="ghost"
                               size="sm"
                               aria-label="Toggle columns"
-                              className="h-6 px-1 flex items-center gap-1 text-slate-400 hover:text-slate-100 hover:bg-[var(--tm-muted)]"
+                              className="h-6 w-6 shrink-0 px-0 flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-[var(--tm-muted)]"
                             >
                               <Settings2 size={14} />
                             </Button>
@@ -882,6 +897,11 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               ))}
             </tr>
           </thead>
+        </table>
+      }
+      body={
+        <table className="tm-data-table table-fixed text-left w-full">
+          {tableColgroup}
           <tbody className="divide-y divide-[var(--tm-border)]">
             {sortedTasks.map((task) => (
               <React.Fragment key={task.taskNo}>
@@ -893,7 +913,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
+      }
+    />
   );
 }

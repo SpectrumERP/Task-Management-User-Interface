@@ -103,7 +103,7 @@ export function MeetingTypeList() {
   };
 
   return (
-    <div className="page-shell-scroll bg-[var(--tm-page)]">
+    <div className="page-shell">
       <MasterListHeader
         title={TITLE}
         searchQuery={searchQuery}

@@ -203,7 +203,7 @@ export function ActionTip({
     <>
       <span
         ref={ref}
-        className="inline-flex"
+        className="inline-flex shrink-0 items-center justify-center leading-none"
         onMouseEnter={() => showAt(ref.current, Boolean(label))}
         onMouseLeave={hide}
         onFocus={() => showAt(ref.current, Boolean(label))}

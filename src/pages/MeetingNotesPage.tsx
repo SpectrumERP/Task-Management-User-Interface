@@ -25,11 +25,7 @@ export default function MeetingNotesPage({ isListView = false }: { isListView?: 
   }, [isNew, isEdit, isSave, isUpdate, navigate]);
 
   if (isListView) {
-    return (
-      <div className="page-shell-scroll">
-        <MeetingListView />
-      </div>
-    );
+    return <MeetingListView />;
   }
 
   return (

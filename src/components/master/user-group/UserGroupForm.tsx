@@ -331,8 +331,8 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
             )}
           >
             <div className="overflow-x-auto">
-              <table className="tm-data-table w-full text-left text-[11px] border-collapse table-fixed">
-                <thead>
+              <table className="tm-data-table w-full text-left border-collapse table-fixed">
+                <thead className="sticky top-0 z-30">
                   <tr className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                     <th className="px-3 py-2.5 border-r border-[var(--tm-border)] w-[28%]">
                       <SortableHeader

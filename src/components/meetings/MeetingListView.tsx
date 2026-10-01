@@ -28,6 +28,7 @@ import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback
 import { exportMeetingReportToExcel } from '@/utils/exportToExcel';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
+import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { formatUtcScheduleLine, formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
@@ -296,7 +297,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
 
   if (isLoading && meetings.length === 0) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center py-10">
+      <div className="page-shell items-center justify-center">
         <BrandLoader size="sm" message="Loading meetings" />
       </div>
     );
@@ -304,41 +305,44 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
 
   if (loadError) {
     return (
-      <LoadErrorState
-        title="Failed to load meetings"
-        description="Could not load meeting notes. Retry uses the same company filter."
-        onRetry={fetchMeetings}
-      />
+      <div className="page-shell">
+        <LoadErrorState
+          title="Failed to load meetings"
+          description="Could not load meeting notes. Retry uses the same company filter."
+          onRetry={fetchMeetings}
+        />
+      </div>
     );
   }
 
   if (meetings.length === 0) {
     return (
-      <Card className="h-full min-h-0 flex flex-col bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] overflow-hidden">
-        <EmptyState
-          className="flex-1"
-          icon={ClipboardList}
-          title="No meeting notes yet"
-          description="Capture discussions, attendees, and minutes in one place — then send MoM when ready."
-          actions={
-            isSave ? (
-              <Button
-                onClick={() => navigate('/meetings/new')}
-                className="h-10 px-5 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold shadow-sm shadow-brand/20"
-              >
-                <Plus className="w-4 h-4 mr-1.5" strokeWidth={2.4} />
-                New Meeting Note
-              </Button>
-            ) : null
-          }
-        />
-      </Card>
+      <div className="page-shell">
+        <Card className="flex-1 min-h-0 flex flex-col bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] overflow-hidden">
+          <EmptyState
+            className="flex-1"
+            icon={ClipboardList}
+            title="No meeting notes yet"
+            description="Capture discussions, attendees, and minutes in one place — then send MoM when ready."
+            actions={
+              isSave ? (
+                <Button
+                  onClick={() => navigate('/meetings/new')}
+                  className="h-10 px-5 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold shadow-sm shadow-brand/20"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" strokeWidth={2.4} />
+                  New Meeting Note
+                </Button>
+              ) : null
+            }
+          />
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 gap-3">
-      {/* Header */}
+    <div className="page-shell">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 shrink-0">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -425,7 +429,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
       </Card>
 
       {filteredMeetings.length === 0 ? (
-        <Card className="flex-1 min-h-[220px] bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl overflow-hidden">
+        <Card className="flex flex-1 min-h-0 flex-col bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl overflow-hidden">
           <EmptyState
             icon={ClipboardList}
             title="No meetings match these filters"
@@ -467,360 +471,393 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
             </Button>
           </div>
 
-          {/* Mobile cards */}
-          <div className="md:hidden flex-1 min-h-0 overflow-y-auto space-y-2.5 pb-2">
-            {sortedMeetings.map((meeting) => {
-              const status = meeting.statusName || '—';
-              const start = formatScheduleLine(meeting.meetingStartDateTime);
-              const canSend = isMinutesSendStatusAllowed(status);
-              const deleteGate = canDeleteMeetingNote(isDelete, status);
-              const id = meeting.meetingNotesNo || meeting.id;
-              const lastSent = id ? readLastMinutesSentAt(Number(id)) : null;
-
-              return (
-                <div
-                  key={id}
-                  className="rounded-[14px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] p-3.5 shadow-sm"
-                >
-                  <button type="button" onClick={() => openMeeting(meeting)} className="w-full text-left">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <TruncatedText
-                          text={meeting.meetingTitle || 'Untitled meeting'}
-                          className="text-sm font-semibold text-slate-100"
-                        />
-                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                          {[meeting.meetingTypeName, meeting.meetingCategoryName]
-                            .filter(Boolean)
-                            .join(' · ') || '—'}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          'shrink-0 inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold',
-                          meetingStatusBadgeClass(status)
-                        )}
-                      >
-                        {status}
-                      </span>
-                    </div>
-                    <div className="mt-2.5 flex items-center gap-3 text-[11px] text-slate-500">
-                      <span className="inline-flex items-center gap-1 min-w-0">
-                        <CalendarIcon size={11} className="shrink-0 text-[#0EA5E9]" />
-                        <span className="truncate">
-                          {start.date} {start.time}
-                        </span>
-                      </span>
-                      {meeting.companyName ? (
-                        <span className="inline-flex items-center gap-1 min-w-0">
-                          <Building2 size={11} className="shrink-0" />
-                          <span className="truncate">{meeting.companyName}</span>
-                        </span>
-                      ) : null}
-                    </div>
-                    {lastSent ? (
-                      <p className="mt-1.5 text-[10px] text-slate-500">
-                        Minutes sent {formatUtcDateTime(lastSent)}
-                      </p>
-                    ) : null}
-                  </button>
-                  <div className="mt-3 pt-2.5 border-t border-[var(--tm-border)]/60 flex items-center justify-end gap-0.5">
-                    {canSend ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 rounded-[8px] text-[11px] font-semibold text-[#0EA5E9] hover:!bg-transparent gap-1"
-                        onClick={() => openMeeting(meeting, { sendMinutes: true })}
-                      >
-                        <Send size={13} />
-                        Send
-                      </Button>
-                    ) : null}
-                    {isUpdate ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 rounded-[8px] text-[11px] font-semibold text-slate-300 hover:text-[#0EA5E9] hover:!bg-transparent gap-1"
-                        onClick={() => openMeeting(meeting)}
-                      >
-                        <Edit2 size={13} />
-                        Edit
-                      </Button>
-                    ) : null}
-                    {isDelete ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={!deleteGate.allowed}
-                        title={deleteGate.allowed ? 'Delete meeting note' : deleteGate.reason}
-                        className="h-8 rounded-[8px] text-[11px] font-semibold text-slate-400 hover:text-red-400 hover:!bg-transparent gap-1 disabled:opacity-40 disabled:pointer-events-auto"
-                        onClick={() => requestDelete(meeting)}
-                      >
-                        <Trash2 size={13} />
-                        Delete
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Desktop table */}
+          {/* Table (mobile cards + desktop) */}
           <Card
             data-page-tour="meeting-table"
-            className="hidden md:flex flex-1 min-h-0 flex-col overflow-hidden border-[var(--tm-border)]/70 rounded-[14px] bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]"
+            className="flex flex-1 min-h-0 flex-col overflow-hidden border-[var(--tm-border)]/70 rounded-[14px] bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]"
           >
-            <div className="flex-1 min-h-0 overflow-auto">
-              <table className="tm-data-table w-full text-sm text-left table-fixed">
-                <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
-                  <tr>
-                    <th
-                      className="tm-col-sr tm-col-id px-2 py-2.5 border-r border-[var(--tm-border)] cursor-pointer"
-                      {...sortHeaderCellProps('srNo', handleSort)}
-                    >
-                      <SortableHeader
-                        label="Sr. No."
-                        sortKey="srNo"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                        className="pr-1"
-                      />
-                    </th>
-                    <th className="w-[20%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTitle', handleSort)}>
-                      <SortableHeader
-                        label="Title"
-                        sortKey="meetingTitle"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                      />
-                    </th>
-                    <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTypeName', handleSort)}>
-                      <SortableHeader
-                        label="Type"
-                        sortKey="meetingTypeName"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                      />
-                    </th>
-                    <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingCategoryName', handleSort)}>
-                      <SortableHeader
-                        label="Category"
-                        sortKey="meetingCategoryName"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                      />
-                    </th>
-                    <th className="w-[10%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('companyName', handleSort)}>
-                      <SortableHeader
-                        label="Company"
-                        sortKey="companyName"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                      />
-                    </th>
-                    <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingStartDateTime', handleSort)}>
-                      <SortableHeader
-                        label="Schedule"
-                        sortKey="meetingStartDateTime"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                      />
-                    </th>
-                    <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('createdBy', handleSort)}>
-                      <SortableHeader
-                        label="Created By"
-                        sortKey="createdBy"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                      />
-                    </th>
-                    <th className="w-[11%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('createdDate', handleSort)}>
-                      <SortableHeader
-                        label="Created Date"
-                        sortKey="createdDate"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                      />
-                    </th>
-                    <th className="w-[9%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('statusName', handleSort)}>
-                      <SortableHeader
-                        label="Status"
-                        sortKey="statusName"
-                        sortCol={sortCol}
-                        sortDesc={sortDesc}
-                        onSort={handleSort}
-                      />
-                    </th>
-                    <th className="tm-col-actions w-[84px] px-1.5 py-2.5 pr-2.5 text-right sticky right-0 z-40 bg-[var(--tm-elevated)] border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.12)]">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+            <DataTableScroll
+              mobile={
+                <div className="space-y-2.5 p-2 pb-2">
                   {sortedMeetings.map((meeting) => {
                     const status = meeting.statusName || '—';
                     const start = formatScheduleLine(meeting.meetingStartDateTime);
+                    const canSend = isMinutesSendStatusAllowed(status);
                     const end = formatScheduleLine(meeting.meetingEndDateTime);
                     const deleteGate = canDeleteMeetingNote(isDelete, status);
                     const id = meeting.meetingNotesNo || meeting.id;
                     const lastSent = id ? readLastMinutesSentAt(Number(id)) : null;
 
                     return (
-                      <tr
+                      <div
                         key={id}
-                        onClick={() => openMeeting(meeting)}
-                        className="border-b border-[var(--tm-border)] group hover:bg-[var(--tm-muted)]/60 transition-colors cursor-pointer"
+                        className="rounded-[14px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] p-3.5 shadow-sm"
                       >
-                        <td className="tm-col-sr tm-col-id px-2 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle">
-                          <span className="tabular-nums">
-                            {meeting._sr}
-                          </span>
-                        </td>
-                        <td className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0">
-                          <TruncatedText
-                            text={meeting.meetingTitle || '—'}
-                            className="font-medium text-slate-50"
-                          />
+                        <button type="button" onClick={() => openMeeting(meeting)} className="w-full text-left">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <TruncatedText
+                                text={meeting.meetingTitle || 'Untitled meeting'}
+                                className="text-sm font-semibold text-slate-100"
+                              />
+                              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                                {[meeting.meetingTypeName, meeting.meetingCategoryName]
+                                  .filter(Boolean)
+                                  .join(' · ') || '—'}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                'shrink-0 inline-flex items-center px-2 py-0.5 rounded-full border font-semibold',
+                                meetingStatusBadgeClass(status)
+                              )}
+                            >
+                              {status}
+                            </span>
+                          </div>
+                          <div className="mt-2.5 flex items-center gap-3 text-[11px] text-slate-500">
+                            <span className="inline-flex items-center gap-1 min-w-0">
+                              <CalendarIcon size={11} className="shrink-0 text-[#0EA5E9]" />
+                              <span className="truncate">
+                                {start.date} {start.time}
+                              </span>
+                            </span>
+                            {meeting.companyName ? (
+                              <span className="inline-flex items-center gap-1 min-w-0">
+                                <Building2 size={11} className="shrink-0" />
+                                <span className="truncate">{meeting.companyName}</span>
+                              </span>
+                            ) : null}
+                          </div>
                           {lastSent ? (
-                            <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                              Sent {formatUtcDateTime(lastSent)}
+                            <p className="mt-1.5 text-slate-500">
+                              Minutes sent {formatUtcDateTime(lastSent)}
                             </p>
                           ) : null}
-                        </td>
-                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                          <TruncatedText
-                            text={meeting.meetingTypeName || '—'}
-                            className="text-slate-300"
-                          />
-                        </td>
-                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                          <TruncatedText
-                            text={meeting.meetingCategoryName || '—'}
-                            className="text-slate-300"
-                          />
-                        </td>
-                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                          <TruncatedText
-                            text={meeting.companyName || '—'}
-                            className="text-slate-300"
-                          />
-                        </td>
-                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                          <div className="text-[11px] leading-snug">
-                            <p className="font-medium text-slate-50">{start.date}</p>
-                            <p className="text-slate-500">
-                              {start.time}
-                              {end.time ? ` – ${end.time}` : ''}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                          <TruncatedText
-                            text={meeting.createdBy?.printingName || meeting.createdBy?.displayName || meeting.createdByName || '—'}
-                            className="text-slate-300"
-                          />
-                        </td>
-                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                          <TruncatedText
-                            text={meeting.createdDate || meeting.createdOn ? formatUtcDateTime(meeting.createdDate || meeting.createdOn) : '—'}
-                            className="text-slate-300"
-                          />
-                        </td>
-                        <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle">
-                          <span
-                            className={cn(
-                              'inline-flex max-w-full items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold truncate',
-                              meetingStatusBadgeClass(status)
-                            )}
-                            title={status}
-                          >
-                            {status}
-                          </span>
-                        </td>
-                        <td
-                          className="px-1.5 py-2.5 pr-2.5 align-middle text-right sticky right-0 z-10 tm-col-actions tm-sticky-cell backdrop-blur-md border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="inline-flex items-center justify-end gap-0">
-                            {/* Not Needed as of now */}
-                            {/* {canSend ? (
-                              <ActionTip label="Send minutes">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Send minutes"
-                                  onClick={() => openMeeting(meeting, { sendMinutes: true })}
-                                  className="h-7 w-7 rounded-[6px] text-[#0EA5E9] hover:!bg-transparent"
-                                >
-                                  <Send size={13} strokeWidth={2.25} />
-                                </Button>
-                              </ActionTip>
-                            ) : null} */}
-                            {isUpdate ? (
-                              <ActionTip label="Edit">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Edit meeting"
-                                  onClick={() => openMeeting(meeting)}
-                                  className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:!bg-transparent"
-                                >
-                                  <Edit2 size={13} strokeWidth={2.5} />
-                                </Button>
-                              </ActionTip>
-                            ) : null}
-                            {isDelete ? (
-                              <ActionTip
-                                label={deleteGate.allowed ? 'Delete' : deleteGate.reason || 'Cannot delete'}
-                              >
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Delete meeting"
-                                  disabled={!deleteGate.allowed}
-                                  onClick={() => requestDelete(meeting)}
-                                  className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:!bg-transparent disabled:opacity-40"
-                                >
-                                  <Trash2 size={13} strokeWidth={2.25} />
-                                </Button>
-                              </ActionTip>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
+                        </button>
+                        <div className="mt-3 pt-2.5 border-t border-[var(--tm-border)]/60 flex items-center justify-end gap-0.5">
+                          {canSend ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-[8px] text-[11px] font-semibold text-[#0EA5E9] hover:!bg-transparent gap-1"
+                              onClick={() => openMeeting(meeting, { sendMinutes: true })}
+                            >
+                              <Send size={13} />
+                              Send
+                            </Button>
+                          ) : null}
+                          {isUpdate ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-[8px] text-[11px] font-semibold text-slate-300 hover:text-[#0EA5E9] hover:!bg-transparent gap-1"
+                              onClick={() => openMeeting(meeting)}
+                            >
+                              <Edit2 size={13} />
+                              Edit
+                            </Button>
+                          ) : null}
+                          {isDelete ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={!deleteGate.allowed}
+                              title={deleteGate.allowed ? 'Delete meeting note' : deleteGate.reason}
+                              className="h-8 rounded-[8px] text-[11px] font-semibold text-slate-400 hover:text-red-400 hover:!bg-transparent gap-1 disabled:opacity-40 disabled:pointer-events-auto"
+                              onClick={() => requestDelete(meeting)}
+                            >
+                              <Trash2 size={13} />
+                              Delete
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              }
+              header={
+                <table className="tm-data-table w-full text-left table-fixed border-collapse">
+                  <colgroup>
+                    <col className="tm-col-sr" style={{ width: '4.5rem' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '84px' }} />
+                  </colgroup>
+                  <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
+                    <tr>
+                      <th
+                        className="tm-col-sr tm-col-id px-2 py-2.5 border-r border-[var(--tm-border)] cursor-pointer"
+                        {...sortHeaderCellProps('srNo', handleSort)}
+                      >
+                        <SortableHeader
+                          label="Sr. No."
+                          sortKey="srNo"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                          className="pr-1"
+                        />
+                      </th>
+                      <th className="w-[20%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTitle', handleSort)}>
+                        <SortableHeader
+                          label="Title"
+                          sortKey="meetingTitle"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingTypeName', handleSort)}>
+                        <SortableHeader
+                          label="Type"
+                          sortKey="meetingTypeName"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingCategoryName', handleSort)}>
+                        <SortableHeader
+                          label="Category"
+                          sortKey="meetingCategoryName"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      <th className="w-[10%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('companyName', handleSort)}>
+                        <SortableHeader
+                          label="Company"
+                          sortKey="companyName"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('meetingStartDateTime', handleSort)}>
+                        <SortableHeader
+                          label="Schedule"
+                          sortKey="meetingStartDateTime"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      <th className="w-[12%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('createdBy', handleSort)}>
+                        <SortableHeader
+                          label="Created By"
+                          sortKey="createdBy"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      <th className="w-[11%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('createdDate', handleSort)}>
+                        <SortableHeader
+                          label="Created Date"
+                          sortKey="createdDate"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      <th className="w-[9%] px-3 py-2.5 border-r border-[var(--tm-border)] overflow-visible cursor-pointer" {...sortHeaderCellProps('statusName', handleSort)}>
+                        <SortableHeader
+                          label="Status"
+                          sortKey="statusName"
+                          sortCol={sortCol}
+                          sortDesc={sortDesc}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      <th className="tm-col-actions w-[84px] px-1.5 py-2.5 pr-2.5 text-right sticky right-0 z-40 bg-[var(--tm-elevated)] border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.12)]">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                </table>
+              }
+              body={
+                <table className="tm-data-table w-full text-left table-fixed border-collapse">
+                  <colgroup>
+                    <col className="tm-col-sr" style={{ width: '4.5rem' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '84px' }} />
+                  </colgroup>
+                  <tbody>
+                    {sortedMeetings.map((meeting) => {
+                      const status = meeting.statusName || '—';
+                      const start = formatScheduleLine(meeting.meetingStartDateTime);
+                      const end = formatScheduleLine(meeting.meetingEndDateTime);
+                      const deleteGate = canDeleteMeetingNote(isDelete, status);
+                      const id = meeting.meetingNotesNo || meeting.id;
+                      const lastSent = id ? readLastMinutesSentAt(Number(id)) : null;
+
+                      return (
+                        <tr
+                          key={id}
+                          onClick={() => openMeeting(meeting)}
+                          className="border-b border-[var(--tm-border)] group hover:bg-[var(--tm-muted)]/60 transition-colors cursor-pointer"
+                        >
+                          <td className="tm-col-sr tm-col-id px-2 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle">
+                            <span className="tabular-nums">
+                              {meeting._sr}
+                            </span>
+                          </td>
+                          <td className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0">
+                            <TruncatedText
+                              text={meeting.meetingTitle || '—'}
+                              className="font-medium text-slate-50"
+                            />
+                            {lastSent ? (
+                              <p className="text-slate-500 mt-0.5 truncate">
+                                Sent {formatUtcDateTime(lastSent)}
+                              </p>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                            <TruncatedText
+                              text={meeting.meetingTypeName || '—'}
+                              className="text-slate-300"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                            <TruncatedText
+                              text={meeting.meetingCategoryName || '—'}
+                              className="text-slate-300"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                            <TruncatedText
+                              text={meeting.companyName || '—'}
+                              className="text-slate-300"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                            <div className="text-[11px] leading-snug">
+                              <p className="font-medium text-slate-50">{start.date}</p>
+                              <p className="text-slate-500">
+                                {start.time}
+                                {end.time ? ` – ${end.time}` : ''}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                            <TruncatedText
+                              text={meeting.createdBy?.printingName || meeting.createdBy?.displayName || meeting.createdByName || '—'}
+                              className="text-slate-300"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                            <TruncatedText
+                              text={meeting.createdDate || meeting.createdOn ? formatUtcDateTime(meeting.createdDate || meeting.createdOn) : '—'}
+                              className="text-slate-300"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle">
+                            <span
+                              className={cn(
+                                'inline-flex max-w-full items-center px-2 py-0.5 rounded-full border font-semibold truncate',
+                                meetingStatusBadgeClass(status)
+                              )}
+                              title={status}
+                            >
+                              {status}
+                            </span>
+                          </td>
+                          <td
+                            className="px-1.5 py-2.5 pr-2.5 align-middle text-right sticky right-0 z-[35] tm-col-actions tm-sticky-cell border-l border-[var(--tm-border)]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="inline-flex items-center justify-end gap-0">
+                              {/* Not Needed as of now */}
+                              {/* {canSend ? (
+                                <ActionTip label="Send minutes">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label="Send minutes"
+                                    onClick={() => openMeeting(meeting, { sendMinutes: true })}
+                                    className="h-7 w-7 rounded-[6px] text-[#0EA5E9] hover:!bg-transparent"
+                                  >
+                                    <Send size={13} strokeWidth={2.25} />
+                                  </Button>
+                                </ActionTip>
+                              ) : null} */}
+                              {isUpdate ? (
+                                <ActionTip label="Edit">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label="Edit meeting"
+                                    onClick={() => openMeeting(meeting)}
+                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:!bg-transparent"
+                                  >
+                                    <Edit2 size={13} strokeWidth={2.5} />
+                                  </Button>
+                                </ActionTip>
+                              ) : null}
+                              {isDelete ? (
+                                <ActionTip
+                                  label={deleteGate.allowed ? 'Delete' : deleteGate.reason || 'Cannot delete'}
+                                >
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label="Delete meeting"
+                                    disabled={!deleteGate.allowed}
+                                    onClick={() => requestDelete(meeting)}
+                                    className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:!bg-transparent disabled:opacity-40"
+                                  >
+                                    <Trash2 size={13} strokeWidth={2.25} />
+                                  </Button>
+                                </ActionTip>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              }
+            />
           </Card>
 
           {totalItems > 0 && (
-            <MasterPaginationBar
-              totalItems={totalItems}
-              startIndex={startIndex}
-              endIndex={endIndex}
-              itemsPerPage={itemsPerPage}
-              onItemsPerPageChange={handleItemsPerPageChange}
-              currentPage={safePage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
+            <div className="shrink-0">
+              <MasterPaginationBar
+                totalItems={totalItems}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                currentPage={safePage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
           )}
         </>
       )}

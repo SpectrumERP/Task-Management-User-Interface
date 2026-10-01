@@ -14,8 +14,7 @@ import { toast } from 'sonner';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterListPath, MasterType } from './masterRoutes';
-import { MasterBreadcrumb } from './MasterBreadcrumb';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 
 interface MasterFormShellProps {
   type: MasterType | string;
@@ -74,50 +73,47 @@ export function MasterFormShell({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--tm-page)]">
-      <div
-        className="shrink-0 z-20 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]"
+      <AppBreadcrumbBar
         data-page-tour="master-form-breadcrumb"
-      >
-        <MasterBreadcrumb
-          items={[
-            { label: 'Masters', href: listPath },
-            { label: title, href: listPath },
-            { label: editingId ? 'Edit' : 'New', current: true },
-          ]}
-        />
-
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto" data-page-tour="master-form-actions">
-          <PageGuideButton guideKey={type === 'company' ? 'company-form' : 'master-form'} />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={goToList}
-            disabled={isSaving}
-            className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
-          >
-            <X size={14} />
-            <span className="hidden sm:inline">Cancel</span>
-          </Button>
-          <Button
-            type="button"
-            onClick={onSubmit}
-            disabled={blockSave}
-            className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 gap-1.5 disabled:opacity-50"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span className="hidden sm:inline">Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save size={14} />
-                <span className="hidden sm:inline">{editingId ? 'Update' : 'Save'}</span>
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+        items={[
+          { label: 'Masters', href: listPath },
+          { label: title, href: listPath },
+          { label: editingId ? 'Edit' : 'New', current: true },
+        ]}
+        guideKey={type === 'company' ? 'company-form' : 'master-form'}
+        actions={
+          <div className="flex items-center gap-2" data-page-tour="master-form-actions">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={goToList}
+              disabled={isSaving}
+              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
+            >
+              <X size={14} />
+              <span className="hidden sm:inline">Cancel</span>
+            </Button>
+            <Button
+              type="button"
+              onClick={onSubmit}
+              disabled={blockSave}
+              className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 gap-1.5 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span className="hidden sm:inline">Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={14} />
+                  <span className="hidden sm:inline">{editingId ? 'Update' : 'Save'}</span>
+                </>
+              )}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Page-level scroll (matches TaskDetail / Create Task) */}
       <form

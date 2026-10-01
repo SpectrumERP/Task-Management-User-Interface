@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,6 +7,8 @@ export interface MasterBreadcrumbItem {
   label: string;
   href?: string;
   current?: boolean;
+  /** Optional chip/badge rendered immediately after this crumb label */
+  endAdornment?: ReactNode;
 }
 
 interface MasterBreadcrumbProps {
@@ -33,27 +35,32 @@ export function MasterBreadcrumb({ items, className }: MasterBreadcrumbProps) {
               <ChevronRight size={14} className="text-slate-400 shrink-0" aria-hidden />
             ) : null}
 
-            {item.href && !isCurrent ? (
-              <button
-                type="button"
-                onClick={() => navigate(item.href!)}
-                className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded truncate"
-              >
-                {item.label}
-              </button>
-            ) : (
-              <span
-                className={cn(
-                  'truncate',
-                  isCurrent
-                    ? 'text-slate-50 font-bold tracking-tight'
-                    : 'text-slate-500'
-                )}
-                aria-current={isCurrent ? 'page' : undefined}
-              >
-                {item.label}
-              </span>
-            )}
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              {item.href && !isCurrent ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(item.href!)}
+                  className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded truncate"
+                >
+                  {item.label}
+                </button>
+              ) : (
+                <span
+                  className={cn(
+                    'truncate',
+                    isCurrent
+                      ? 'text-slate-50 font-bold tracking-tight'
+                      : 'text-slate-500'
+                  )}
+                  aria-current={isCurrent ? 'page' : undefined}
+                >
+                  {item.label}
+                </span>
+              )}
+              {item.endAdornment ? (
+                <span className="shrink-0">{item.endAdornment}</span>
+              ) : null}
+            </span>
           </React.Fragment>
         );
       })}

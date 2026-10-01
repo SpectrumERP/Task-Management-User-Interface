@@ -7,6 +7,7 @@ import { toDateOnlyLocal } from '@/lib/dateTime';
 import { useSettings } from '@/hooks/useSettings';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 
@@ -81,7 +82,16 @@ export default function ReportPage() {
   };
 
   return (
-    <div className="page-shell-scroll bg-[var(--tm-page)]">
+    <div className="page-shell bg-[var(--tm-page)]">
+      <AppBreadcrumbBar
+        items={[
+          { label: 'Reports' },
+          { label: 'MIS Task Report', current: true },
+        ]}
+        guideKey="task-report"
+        bleed
+        data-page-tour="task-report-breadcrumb"
+      />
       <div className="shrink-0">
         <ReportFilter onApply={handleApplyFilters} />
       </div>

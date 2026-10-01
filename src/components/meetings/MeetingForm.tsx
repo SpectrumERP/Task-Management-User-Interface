@@ -16,7 +16,7 @@ import { EmployeeCombobox } from '@/components/meetings/EmployeeCombobox';
 import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityCombobox';
 import { DocumentCombobox } from '@/components/meetings/DocumentCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { cn } from '@/lib/utils';
 import { sortByLabel } from '@/lib/sortOptions';
 import { formatUtcDateTime, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
@@ -684,59 +684,32 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[var(--tm-page)] absolute inset-0">
-      {/* Header & Breadcrumb */}
-      <div className="shrink-0 sticky top-0 z-50 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-2.5 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
-        <nav className="flex items-center gap-2 min-w-0">
-          <button
-            type="button"
-            onClick={requestLeave}
-            className="shrink-0 text-sm font-medium text-[#0EA5E9] underline decoration-[#0EA5E9]/40 underline-offset-[3px] hover:decoration-[#0EA5E9] hover:text-[#0284C7] cursor-pointer transition-colors bg-transparent p-0 border-0"
-          >
-            Meeting Notes
-          </button>
-          <span className="text-slate-300 text-sm font-light leading-none select-none" aria-hidden>
-            /
-          </span>
-          <span className="text-sm font-semibold text-slate-100 truncate">
-            {meetingNotesNo || initialData?.meetingNotesNo ? 'Edit Meeting Note' : 'Create Meeting Note'}
-          </span>
-        </nav>
-
-        <div className="flex items-center gap-2 self-end sm:self-auto" data-page-tour="meeting-form-actions">
-          <PageGuideButton guideKey="meeting-form" />
-          <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] text-slate-300 shadow-none px-3" onClick={requestLeave}>
-            Cancel
-          </Button>
-          {/* {resolvedMeetingNo ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              data-page-tour="meeting-form-send-minutes"
-              disabled={!canSendMinutesStatus || recipientEmailCount === 0}
-              title={
-                !resolvedMeetingNo
-                  ? 'Save the meeting first'
-                  : !canSendMinutesStatus
-                    ? 'Set status to Release or Authorized'
-                    : recipientEmailCount === 0
-                      ? 'Add attendees with email'
-                      : 'Send Minutes to attendees'
-              }
-              onClick={() => setSendMinutesOpen(true)}
-              className="h-9 rounded-[8px] font-semibold border-[#0EA5E9]/35 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 text-xs px-3 gap-1.5 disabled:opacity-50"
-            >
-              <Send size={13} strokeWidth={2} />
-              Send Minutes
+      <AppBreadcrumbBar
+        className="sticky top-0 z-50"
+        items={[
+          { label: 'Meeting Notes', href: '/meetings' },
+          {
+            label:
+              meetingNotesNo || initialData?.meetingNotesNo
+                ? 'Edit Meeting Note'
+                : 'Create Meeting Note',
+            current: true,
+          },
+        ]}
+        guideKey="meeting-form"
+        actions={
+          <div className="flex items-center gap-2" data-page-tour="meeting-form-actions">
+            <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] text-slate-300 shadow-none px-3" onClick={requestLeave}>
+              Cancel
             </Button>
-          ) : null} */}
-          {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
-            <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-sm shadow-[#0EA5E9]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
-              {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
-            </Button>
-          )}
-        </div>
-      </div>
+            {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
+              <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-sm shadow-[#0EA5E9]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
+                {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {resolvedMeetingNo && lastMinutesSentAt ? (
         <div className="shrink-0 px-4 py-1.5 border-b border-[var(--tm-border)]/50 bg-[var(--tm-elevated)]/40 text-[10px] text-slate-500">
@@ -981,8 +954,8 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                 </FieldControl>
               ) : (
                 <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                  <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[800px]">
-                    <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                  <table className="tm-data-table w-full text-left border-collapse min-w-[800px]">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                       <tr>
                         <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
                         <th className="px-3 py-2.5 w-[15%] border-r border-[var(--tm-border)]">Type</th>
@@ -1155,9 +1128,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   </div>
                 ) : (
                   <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                    <table className="tm-data-table w-full text-left text-xs border-collapse min-w-[1000px]">
-                      <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
-                        <tr>
+                    <table className="tm-data-table w-full text-left border-collapse min-w-[1000px]">
+                      <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                          <tr>
                           <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
                           <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Topic / Agenda</th>
                           <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Discussion Summary</th>

@@ -3,11 +3,11 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, Loader2, Save, X } from 'lucide-react';
+import { Loader2, Save, X } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { Button } from '@/components/ui/button';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/Combobox';
@@ -151,24 +151,14 @@ export function DealForm() {
 
   return (
     <div className="flex-1 w-full flex flex-col overflow-hidden">
-      <div className="w-full px-2 sm:px-4 py-1 z-20">
-        <div className="flex items-center justify-between gap-3 flex-col sm:flex-row">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <button
-              type="button"
-              onClick={() => navigate('/sales/deals')}
-              className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded"
-            >
-              Sales Deals
-            </button>
-            <ChevronRight size={16} className="text-slate-400" />
-            <span className="text-slate-50 font-bold tracking-tight">
-              {isEdit ? 'Update' : 'New'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3" data-page-tour="deal-form-actions">
-            <PageGuideButton guideKey="deal-form" />
+      <AppBreadcrumbBar
+        items={[
+          { label: 'Sales Deals', href: '/sales/deals' },
+          { label: isEdit ? 'Update' : 'New', current: true },
+        ]}
+        guideKey="deal-form"
+        actions={
+          <div className="flex items-center gap-2" data-page-tour="deal-form-actions">
             <Button
               type="button"
               variant="outline"
@@ -198,8 +188,8 @@ export function DealForm() {
               )}
             </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto px-3 sm:px-8">
         <div data-page-tour="deal-form-fields" className=" mx-auto bg-[var(--tm-surface)] rounded-[16px] sm:rounded-[24px] p-4 sm:p-8 shadow-xl shadow-black/40/40 border border-[var(--tm-border)]">

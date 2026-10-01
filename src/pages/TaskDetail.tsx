@@ -2,14 +2,14 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { TaskForm } from '@/components/task/TaskForm';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
+import { Save, X, Loader2, Trash2, MoreVertical } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { useState, useEffect, useCallback } from 'react';
 import { useFormRights } from '@/hooks/useFormRights';
 import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { useAuthStore } from '@/store/useAuthStore';
 import { canUserEditTask, isTaskViewOnlyForUser } from '@/lib/taskAccess';
 import { toUtcIso } from '@/lib/dateTime';
@@ -270,79 +270,74 @@ export default function TaskDetail() {
       }}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--tm-page)]">
-        <div className="shrink-0 z-20 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="text-slate-500 hover:text-[#0EA5E9] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] rounded"
-            >
-              Tasks List
-            </button>
-            <ChevronRight size={14} className="text-slate-400 shrink-0" />
-            <span className="text-slate-50 font-bold tracking-tight">
-              {!isEdit ? 'Create Task' : viewOnly ? 'View Task' : 'Update Task'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto" data-page-tour="task-form-actions">
-            <PageGuideButton guideKey="task-form" />
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => navigate(-1)}
-              disabled={isSaving}
-              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
-            >
-              <X size={14} />
-              <span className="hidden sm:inline">{viewOnly ? 'Close' : 'Cancel'}</span>
-            </Button>
-
-            {canSave && !viewOnly && (
+        <AppBreadcrumbBar
+          items={[
+            { label: 'Tasks List', href: '/' },
+            {
+              label: !isEdit ? 'Create Task' : viewOnly ? 'View Task' : 'Update Task',
+              current: true,
+            },
+          ]}
+          guideKey="task-form"
+          actions={
+            <div className="flex items-center gap-2" data-page-tour="task-form-actions">
               <Button
-                type="submit"
-                form="task-form"
+                variant="outline"
+                type="button"
+                onClick={() => navigate(-1)}
                 disabled={isSaving}
-                className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 gap-1.5 disabled:opacity-50"
+                className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
               >
-                {isSaving ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={14} />
-                    <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
-                  </>
-                )}
+                <X size={14} />
+                <span className="hidden sm:inline">{viewOnly ? 'Close' : 'Cancel'}</span>
               </Button>
-            )}
-            {canDelete && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="More actions"
-                    className="h-9 w-9 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
-                  >
-                    <MoreVertical size={16} className="text-slate-300" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-[8px] w-36 shadow-md border-[var(--tm-border)]">
-                  <DropdownMenuItem
-                    onClick={() => setIsDeleteDialogOpen(true)}
-                    className="text-red-400 focus:text-red-400 focus:bg-red-500/10 font-semibold text-xs cursor-pointer flex items-center gap-2 px-3 py-2 rounded-[6px]"
-                  >
-                    <Trash2 size={14} />
-                    Delete Task
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        </div>
+
+              {canSave && !viewOnly && (
+                <Button
+                  type="submit"
+                  form="task-form"
+                  disabled={isSaving}
+                  className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 gap-1.5 disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span className="hidden sm:inline">{isEdit ? 'Updating...' : 'Saving...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
+                    </>
+                  )}
+                </Button>
+              )}
+              {canDelete && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="More actions"
+                      className="h-9 w-9 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none"
+                    >
+                      <MoreVertical size={16} className="text-slate-300" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rounded-[8px] w-36 shadow-md border-[var(--tm-border)]">
+                    <DropdownMenuItem
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      className="text-red-400 focus:text-red-400 focus:bg-red-500/10 font-semibold text-xs cursor-pointer flex items-center gap-2 px-3 py-2 rounded-[6px]"
+                    >
+                      <Trash2 size={14} />
+                      Delete Task
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          }
+        />
 
         <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
           <div className="w-full max-w-none px-3 py-3 sm:px-4 lg:px-5">

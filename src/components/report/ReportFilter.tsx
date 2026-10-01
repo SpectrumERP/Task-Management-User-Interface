@@ -8,7 +8,6 @@ import { UserCombobox } from '@/components/ui/UserCombobox';
 import { MultiUserCombobox } from '@/components/ui/MultiUserCombobox';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SlidersHorizontal, RotateCcw, FileBarChart2, ChevronDown, ChevronUp, PencilLine } from 'lucide-react';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -128,7 +127,6 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <PageGuideButton guideKey="task-report" title="Open page guide" />
           <ActionTip
             label={
               filtersCollapsed

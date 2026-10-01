@@ -192,13 +192,15 @@
 @layer base {
   * {
     @apply border-border;
+    /* Firefox — thinnest built-in track */
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--brand) 35%, transparent) transparent;
+    scrollbar-color: color-mix(in srgb, var(--brand) 40%, transparent) transparent;
   }
 
+  /* App-wide slim scrollbars (WebKit / Chromium / Edge) */
   *::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 3px;
+    height: 3px;
   }
 
   *::-webkit-scrollbar-track {
@@ -206,12 +208,14 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--brand) 35%, transparent);
+    background: color-mix(in srgb, var(--brand) 40%, transparent);
     border-radius: 999px;
+    border: none;
+    min-height: 24px;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--brand) 55%, transparent);
+    background: color-mix(in srgb, var(--brand) 65%, transparent);
   }
 
   *::-webkit-scrollbar-button {
@@ -282,30 +286,37 @@
     scrollbar-width: none;
   }
 
-  .scrollbar-sleek {
+  .scrollbar-sleek,
+  .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(14, 165, 233, 0.35) transparent;
+    scrollbar-color: color-mix(in srgb, var(--brand) 40%, transparent) transparent;
   }
 
-  .scrollbar-sleek::-webkit-scrollbar {
-    width: 4px;
+  .scrollbar-sleek::-webkit-scrollbar,
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
   }
 
-  .scrollbar-sleek::-webkit-scrollbar-track {
+  .scrollbar-sleek::-webkit-scrollbar-track,
+  .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
-    margin-block: 6px;
   }
 
-  .scrollbar-sleek::-webkit-scrollbar-thumb {
-    background: rgba(14, 165, 233, 0.35);
+  .scrollbar-sleek::-webkit-scrollbar-thumb,
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--brand) 40%, transparent);
     border-radius: 999px;
+    border: none;
   }
 
-  .scrollbar-sleek::-webkit-scrollbar-thumb:hover {
-    background: rgba(14, 165, 233, 0.55);
+  .scrollbar-sleek::-webkit-scrollbar-thumb:hover,
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--brand) 65%, transparent);
   }
 
-  .scrollbar-sleek::-webkit-scrollbar-button {
+  .scrollbar-sleek::-webkit-scrollbar-button,
+  .scrollbar-thin::-webkit-scrollbar-button {
     display: none;
     width: 0;
     height: 0;
@@ -801,17 +812,33 @@ html:not(.dark) .tm-sidebar-tip {
 
 /* Shared data table — Meeting Report look (padding, header, muted cells, zebra) */
 .tm-data-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
   text-align: left;
-  font-size: 0.875rem;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+
+/* Sticky header fallback — prefer DataTableScroll (header outside scrollport) */
+.tm-data-table>thead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+/* Header: 13px / 600 — beat Tailwind text-sm / text-xs / font-* on th and nested labels */
+.tm-data-table>thead>tr>th,
+.tm-data-table>thead>tr>th * {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.25;
 }
 
 .tm-data-table>thead>tr>th {
   padding: 0.625rem 0.75rem;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
+  /* Title case as authored (Code, Due Date, Actions) — not ALL CAPS */
+  text-transform: none !important;
   letter-spacing: 0.025em;
   color: var(--tm-placeholder);
   background-color: var(--tm-elevated);
@@ -823,17 +850,33 @@ html:not(.dark) .tm-sidebar-tip {
   vertical-align: middle;
 }
 
+.tm-data-table>thead>tr>th * {
+  text-transform: none !important;
+}
+
 .tm-data-table>thead>tr>th:last-child {
   border-right: none;
 }
 
-.tm-data-table>tbody>tr {
-  border-bottom: 1px solid var(--tm-border);
+/* Body: 12px / 400 — including nested TruncatedText / badges / links */
+.tm-data-table>tbody>tr>td,
+.tm-data-table>tbody>tr>td * {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  line-height: 1.35;
+}
+
+/* Opt-in bold body text (e.g. unread notifications) — still 12px */
+.tm-data-table>tbody>tr>td .tm-text-semibold,
+.tm-data-table>tbody>tr>td .tm-text-semibold * {
+  font-size: 12px !important;
+  font-weight: 600 !important;
 }
 
 .tm-data-table>tbody>tr>td {
   padding: 0.425rem 0.75rem;
   border-right: 1px solid var(--tm-border);
+  border-bottom: 1px solid var(--tm-border);
   color: var(--tm-placeholder);
   vertical-align: middle;
   overflow: hidden;
@@ -844,9 +887,14 @@ html:not(.dark) .tm-sidebar-tip {
   border-right: none;
 }
 
-/* Primary / title cell — brighter than muted body text */
+/* Keep last-row bottom edge visible inside overflow scrollports */
+.tm-data-table>tbody>tr:last-child>td {
+  border-bottom: 1px solid var(--tm-border);
+}
+
+/* Primary / title cell — same weight as body; brighter color only */
 .tm-data-table>tbody>tr>td.tm-col-primary {
-  font-weight: 500;
+  font-weight: 400 !important;
   color: var(--tm-input-fg);
 }
 
@@ -858,6 +906,7 @@ html:not(.dark) .tm-sidebar-tip {
 
 /*
  * Identity columns (Code / Sr. No.) — app-wide fixed width (Category Master look).
+ * Edge shadow only while horizontally scrolled (see .tm-data-table-scroll data attrs).
  */
 .tm-data-table>thead>tr>th.tm-col-id,
 .tm-data-table>tbody>tr>td.tm-col-id,
@@ -870,7 +919,18 @@ html:not(.dark) .tm-sidebar-tip {
   position: sticky;
   left: 0;
   z-index: 20;
-  box-shadow: 4px 0 10px -4px rgba(0, 0, 0, 0.18);
+  overflow: visible;
+  box-shadow: none !important;
+}
+
+/* Left sticky without fixed id width (e.g. company / deal first col) */
+.tm-data-table>thead>tr>th.tm-col-sticky-code,
+.tm-data-table>tbody>tr>td.tm-col-sticky-code {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  overflow: visible;
+  box-shadow: none !important;
 }
 
 /* Non-sticky Code cells (e.g. middle columns) — same fixed width only */
@@ -887,10 +947,27 @@ html:not(.dark) .tm-sidebar-tip {
 }
 
 .tm-data-table>thead>tr>th.tm-col-id,
-.tm-data-table>thead>tr>th.tm-col-sr {
+.tm-data-table>thead>tr>th.tm-col-sr,
+.tm-data-table>thead>tr>th.tm-col-sticky-code {
   z-index: 45;
   background-color: var(--tm-elevated);
-  box-shadow: 4px 0 10px -4px rgba(0, 0, 0, 0.28);
+  box-shadow: none !important;
+}
+
+/* Scrolled away from start → left sticky light shadow (content under Code) */
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>thead>tr>th.tm-col-id,
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>tbody>tr>td.tm-col-id,
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>thead>tr>th.tm-col-sr,
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>tbody>tr>td.tm-col-sr,
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>thead>tr>th.tm-col-sticky-code,
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>tbody>tr>td.tm-col-sticky-code {
+  box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.08) !important;
+}
+
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>thead>tr>th.tm-col-id,
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>thead>tr>th.tm-col-sr,
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>thead>tr>th.tm-col-sticky-code {
+  box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.1) !important;
 }
 
 .tm-data-table>tbody>tr:nth-child(odd)>td.tm-col-id,
@@ -908,19 +985,75 @@ html:not(.dark) .tm-sidebar-tip {
   background-color: var(--tm-row-hover);
 }
 
-/* Actions — sticky on the right */
+/* Actions — sticky on the right; opaque bg; left shadow only while scrollable to the right */
 .tm-data-table>thead>tr>th.tm-col-actions,
 .tm-data-table>tbody>tr>td.tm-col-actions {
   position: sticky;
   right: 0;
-  z-index: 20;
-  box-shadow: -4px 0 10px -4px rgba(0, 0, 0, 0.18);
+  z-index: 35 !important;
+  overflow: visible;
+  background-clip: padding-box;
+  box-shadow: none !important;
 }
 
+/*
+ * Header sits beside a scrollbar-width spacer (not padding). Body sticks at right: 0.
+ * Vertical scrollbar is only on the body viewport — header has no vertical bar.
+ */
 .tm-data-table>thead>tr>th.tm-col-actions {
-  z-index: 40;
-  background-color: var(--tm-elevated);
-  box-shadow: -4px 0 10px -4px rgba(0, 0, 0, 0.35);
+  right: 0;
+  z-index: 45 !important;
+  background-color: var(--tm-elevated) !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  letter-spacing: 0.025em;
+}
+
+.tm-data-table>thead>tr>th.tm-col-actions * {
+  text-transform: none !important;
+}
+
+/* Same light weight as left sticky — mirrored to the left edge */
+.tm-data-table-scroll[data-tm-scroll-right='1'] .tm-data-table>thead>tr>th.tm-col-actions,
+.tm-data-table-scroll[data-tm-scroll-right='1'] .tm-data-table>tbody>tr>td.tm-col-actions {
+  box-shadow: -4px 0 8px -4px rgba(15, 23, 42, 0.08) !important;
+}
+
+.tm-data-table-scroll[data-tm-scroll-right='1'] .tm-data-table>thead>tr>th.tm-col-actions {
+  box-shadow: -4px 0 8px -4px rgba(15, 23, 42, 0.1) !important;
+}
+
+.tm-data-table>tbody>tr:nth-child(odd)>td.tm-col-actions,
+.tm-data-table>tbody>tr:nth-child(odd)>td.tm-sticky-cell {
+  background-color: var(--tm-row-odd) !important;
+}
+
+.tm-data-table>tbody>tr:nth-child(even)>td.tm-col-actions,
+.tm-data-table>tbody>tr:nth-child(even)>td.tm-sticky-cell {
+  background-color: var(--tm-row-even) !important;
+}
+
+.tm-data-table>tbody>tr:hover>td.tm-col-actions,
+.tm-data-table>tbody>tr:hover>td.tm-sticky-cell {
+  background-color: var(--tm-row-hover) !important;
+}
+
+.tm-data-table>tbody>tr:nth-child(odd)>td.tm-col-id,
+.tm-data-table>tbody>tr:nth-child(odd)>td.tm-col-sr,
+.tm-data-table>tbody>tr:nth-child(odd)>td.tm-col-sticky-code {
+  background-color: var(--tm-row-odd) !important;
+}
+
+.tm-data-table>tbody>tr:nth-child(even)>td.tm-col-id,
+.tm-data-table>tbody>tr:nth-child(even)>td.tm-col-sr,
+.tm-data-table>tbody>tr:nth-child(even)>td.tm-col-sticky-code {
+  background-color: var(--tm-row-even) !important;
+}
+
+.tm-data-table>tbody>tr:hover>td.tm-col-id,
+.tm-data-table>tbody>tr:hover>td.tm-col-sr,
+.tm-data-table>tbody>tr:hover>td.tm-col-sticky-code {
+  background-color: var(--tm-row-hover) !important;
 }
 
 /* Fixed-layout tables: keep long text cells from blowing out column widths */
@@ -937,37 +1070,46 @@ html:not(.dark) .tm-sidebar-tip {
   max-width: none;
 }
 
-/* Icon-only actions — never show "..." clipping */
+/* Icon-only actions — keep icons centered */
 .tm-data-table>tbody>tr>td.tm-col-actions,
 .tm-data-table>tbody>tr>td.tm-sticky-cell {
   overflow: visible;
   text-overflow: clip;
   white-space: nowrap;
+  vertical-align: middle;
+}
+
+.tm-data-table>tbody>tr>td.tm-col-actions>div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 1.75rem;
 }
 
 /* Sticky Code (left) + Actions (right) — keep opaque row bg while scrolling */
 .tm-data-table>thead>tr>th.tm-col-sticky-code,
 .tm-data-table>thead>tr>th.tm-col-actions,
 .tm-data-table>thead>tr>th.tm-sticky-cell {
-  background-color: var(--tm-elevated);
+  background-color: var(--tm-elevated) !important;
 }
 
 .tm-data-table>tbody>tr:nth-child(odd)>td.tm-col-sticky-code,
 .tm-data-table>tbody>tr:nth-child(odd)>td.tm-col-actions,
 .tm-data-table>tbody>tr:nth-child(odd)>td.tm-sticky-cell {
-  background-color: var(--tm-row-odd);
+  background-color: var(--tm-row-odd) !important;
 }
 
 .tm-data-table>tbody>tr:nth-child(even)>td.tm-col-sticky-code,
 .tm-data-table>tbody>tr:nth-child(even)>td.tm-col-actions,
 .tm-data-table>tbody>tr:nth-child(even)>td.tm-sticky-cell {
-  background-color: var(--tm-row-even);
+  background-color: var(--tm-row-even) !important;
 }
 
 .tm-data-table>tbody>tr:hover>td.tm-col-sticky-code,
 .tm-data-table>tbody>tr:hover>td.tm-col-actions,
 .tm-data-table>tbody>tr:hover>td.tm-sticky-cell {
-  background-color: var(--tm-row-hover);
+  background-color: var(--tm-row-hover) !important;
 }
 
 .tm-data-table>tbody>tr:nth-child(odd)>td {

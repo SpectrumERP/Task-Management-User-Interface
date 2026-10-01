@@ -15,6 +15,7 @@ import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCe
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
+import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import { cn } from '@/lib/utils';
 
@@ -371,13 +372,13 @@ export function ReportTable({ data }: ReportTableProps) {
   };
 
   return (
-    <section data-page-tour="report-table" className="flex h-full min-h-0 flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
+    <section data-page-tour="report-table" className="flex flex-1 min-h-0 flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
       <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center justify-between px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-slate-100 tracking-tight inline-flex items-center">
             Report Results
             <ActionTip label={`${data.length} matching record${data.length === 1 ? '' : 's'}`}>
-              <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+              <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 font-semibold text-[#0EA5E9] tabular-nums">
                 {data.length}
               </span>
             </ActionTip>
@@ -447,17 +448,19 @@ export function ReportTable({ data }: ReportTableProps) {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto">
-        {totalItems === 0 ? (
+      {totalItems === 0 ? (
+        <div className="flex-1 min-h-0 overflow-auto">
           <EmptyState
             icon={ClipboardList}
             title="No results match your filters"
             description="Adjust filters and generate the report again."
             compact
           />
-        ) : (
-          <>
-            <div className="md:hidden flex flex-col gap-2 p-2">
+        </div>
+      ) : (
+        <DataTableScroll
+          mobile={
+            <div className="flex flex-col gap-2 p-2">
               {pageRows.map((task, index) => {
                 const statusName = String(task.status?.statusName || task.status || '-');
                 const companyName =
@@ -470,19 +473,19 @@ export function ReportTable({ data }: ReportTableProps) {
                     className="rounded-xl border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 px-3 py-2.5"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
+                      <span className="font-semibold text-[#0EA5E9] tabular-nums">
                         #{task._sr ?? startIndex + index + 1}
                       </span>
                       <TruncatedText
                         text={statusName}
-                        className={cn('text-[10px] font-semibold shrink-0', getStatusTextClass(statusName))}
+                        className={cn('font-semibold shrink-0', getStatusTextClass(statusName))}
                       />
                     </div>
                     <TruncatedText
                       text={task.title || '-'}
                       className="mt-1 text-sm font-semibold text-slate-100"
                     />
-                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400">
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-slate-400">
                       <span className="min-w-0 truncate">
                         <span className="text-slate-500">Company: </span>
                         {companyName}
@@ -500,9 +503,10 @@ export function ReportTable({ data }: ReportTableProps) {
                 );
               })}
             </div>
-
+          }
+          header={
             <table
-              className="tm-data-table hidden md:table w-max text-sm text-left relative"
+              className="tm-data-table w-max text-left relative border-collapse"
               style={{ tableLayout: 'auto' }}
             >
               <colgroup>
@@ -510,7 +514,7 @@ export function ReportTable({ data }: ReportTableProps) {
                   <col key={col.id} style={getColStyle(col.id)} />
                 ))}
               </colgroup>
-              <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide sticky top-0 z-10">
+              <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
                 <tr>
                   {activeColumns.map((col) => (
                     <th
@@ -543,6 +547,18 @@ export function ReportTable({ data }: ReportTableProps) {
                   ))}
                 </tr>
               </thead>
+            </table>
+          }
+          body={
+            <table
+              className="tm-data-table w-max text-left relative border-collapse"
+              style={{ tableLayout: 'auto' }}
+            >
+              <colgroup>
+                {activeColumns.map((col) => (
+                  <col key={col.id} style={getColStyle(col.id)} />
+                ))}
+              </colgroup>
               <tbody>
                 {pageRows.map((task, index) => (
                   <tr
@@ -554,9 +570,9 @@ export function ReportTable({ data }: ReportTableProps) {
                 ))}
               </tbody>
             </table>
-          </>
-        )}
-      </div>
+          }
+        />
+      )}
 
       {totalItems > 0 && (
         <MasterPaginationBar
