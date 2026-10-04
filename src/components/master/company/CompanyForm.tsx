@@ -14,12 +14,13 @@ import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { RenameAttachmentDialog } from '../shared/RenameAttachmentDialog';
 import { useConfirmDelete } from '../shared/useConfirmDelete';
-import { fetchStatesByCountry, fetchCitiesByState } from '../shared/geo';
+import { fetchStatesByCountry, fetchCitiesByState, fetchCityCombo, type CityComboRow } from '../shared/geo';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 import { CompanyHeaderFields } from './CompanyHeaderFields';
 import { CompanyLocationsSection } from './CompanyLocationsSection';
 import { CompanyLocationModal } from './CompanyLocationModal';
+import { MasterCreateDialog } from '../MasterCreateDialog';
 import { CompanyContactsSection } from './CompanyContactsSection';
 import { CompanyContactModal } from './CompanyContactModal';
 import { CompanyPortsSection } from './CompanyPortsSection';
@@ -47,6 +48,11 @@ const resolveGeoNo = (
   const value = row[key] ?? row.id;
   if (value === undefined || value === null || value === '') return null;
   return value;
+};
+
+const toGeoNo = (value: string | number | null | undefined): number | null => {
+  const n = parseInt(String(value ?? ''), 10);
+  return Number.isNaN(n) ? null : n;
 };
 
 interface CompanyFormProps {
@@ -83,13 +89,14 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [locCountry, setLocCountry] = useState('');
   const [locState, setLocState] = useState('');
   const [locCity, setLocCity] = useState('');
+  const [locCityNo, setLocCityNo] = useState('');
+  const [isCityCreateOpen, setIsCityCreateOpen] = useState(false);
   const [locPin, setLocPin] = useState('');
   const [locMapUrl, setLocMapUrl] = useState('');
   const [locLatitude, setLocLatitude] = useState('');
   const [locLongitude, setLocLongitude] = useState('');
   const [locErrors, setLocErrors] = useState<Record<string, string>>({});
   const [locStatesList, setLocStatesList] = useState<GeoState[]>([]);
-  const [locCitiesList, setLocCitiesList] = useState<GeoCity[]>([]);
 
   // Contacts
   const [companyContacts, setCompanyContacts] = useState<any[]>([]);
@@ -179,6 +186,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
             country: l.country?.countryName || '',
             state: l.state?.stateName || '',
             city: l.city?.cityName || '',
+            countryNo: toGeoNo(resolveGeoNo(l.country, 'countryNo')),
+            stateNo: toGeoNo(resolveGeoNo(l.state, 'stateNo')),
+            cityNo: toGeoNo(resolveGeoNo(l.city, 'cityNo')),
             pinCode: l.pinCode || '',
             mapUrl: l.mapUrl || l.MapUrl || '',
             latitude: l.latitude ?? l.Latitude ?? '',
@@ -265,8 +275,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     return no != null ? parseInt(String(no), 10) : null;
   };
   const getCityNo = (cityName: string) => {
-    const list = locCitiesList.length ? locCitiesList : (contactCitiesList.length ? contactCitiesList : []);
-    const found = list.find((x) => x.cityName?.toLowerCase() === cityName?.toLowerCase());
+    const found = contactCitiesList.find((x) => x.cityName?.toLowerCase() === cityName?.toLowerCase());
     const no = resolveGeoNo(found, 'cityNo');
     return no != null ? parseInt(String(no), 10) : null;
   };
@@ -285,6 +294,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
   };
 
   // ---- Location modal ----
+  const locStateNo = resolveGeoNo(locStatesList.find((s) => s.stateName === locState), 'stateNo');
+
   const openAddLocationModal = () => {
     setLocErrors({});
     setEditingLocationIndex(null);
@@ -293,6 +304,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCountry('');
     setLocState('');
     setLocCity('');
+    setLocCityNo('');
     setLocPin('');
     setLocMapUrl('');
     setLocLatitude('');
@@ -307,6 +319,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCountry(loc.country || '');
     setLocState(loc.state || '');
     setLocCity(loc.city || '');
+    setLocCityNo(loc.cityNo != null ? String(loc.cityNo) : '');
     setLocPin(loc.pinCode || loc.pin || '');
     setLocMapUrl(loc.mapUrl || '');
     setLocLatitude(loc.latitude !== undefined && loc.latitude !== null ? loc.latitude.toString() : '');
@@ -320,15 +333,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
       const countryNo = resolveGeoNo(foundCountry, 'countryNo');
       if (countryNo != null) {
         fetchStatesByCountry(countryNo).then((states) => {
-          const stateRows = asGeoList<GeoState>(states);
-          setLocStatesList(stateRows);
-          if (loc.state) {
-            const foundState = stateRows.find((s) => s.stateName?.toLowerCase() === loc.state.toLowerCase());
-            const stateNo = resolveGeoNo(foundState, 'stateNo');
-            if (stateNo != null) {
-              fetchCitiesByState(stateNo).then((cities) => setLocCitiesList(asGeoList<GeoCity>(cities)));
-            }
-          }
+          setLocStatesList(asGeoList<GeoState>(states));
         });
       }
     }
@@ -353,8 +358,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCountry(val);
     setLocState('');
     setLocCity('');
+    setLocCityNo('');
     setLocStatesList([]);
-    setLocCitiesList([]);
     if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
 
     const foundCountry = countries.find((c) => c.countryName === val);
@@ -365,17 +370,44 @@ export function CompanyForm({ id }: CompanyFormProps) {
     }
   };
 
-  const handleLocationStateChange = async (val: string) => {
+  const handleLocationStateChange = (val: string) => {
     setLocState(val);
     setLocCity('');
-    setLocCitiesList([]);
+    setLocCityNo('');
     if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
+  };
 
-    const foundState = locStatesList.find((s) => s.stateName === val);
-    const stateNo = resolveGeoNo(foundState, 'stateNo');
-    if (stateNo != null) {
-      const citiesData = await fetchCitiesByState(stateNo);
-      setLocCitiesList(asGeoList<GeoCity>(citiesData));
+  /** Picking a city fills in its state and country (same as the Task Location master). */
+  const handleLocationCitySelect = async (city: CityComboRow | null) => {
+    if (locErrors.city) setLocErrors(prev => ({ ...prev, city: '' }));
+    if (!city) {
+      setLocCity('');
+      setLocCityNo('');
+      return;
+    }
+    setLocCity(city.cityName || '');
+    setLocCityNo((city.cityNo ?? '').toString());
+
+    const sameState = (s: GeoState) => String(resolveGeoNo(s, 'stateNo')) === String(city.stateNo);
+    if (city.countryNo != null && toGeoNo(city.countryNo) !== getCountryNo(locCountry)) {
+      const country = countries.find((c) => String(c.countryNo) === String(city.countryNo));
+      setLocCountry(country?.countryName || city.countryName || '');
+      const states = asGeoList<GeoState>(await fetchStatesByCountry(city.countryNo));
+      setLocStatesList(states);
+      setLocState(states.find(sameState)?.stateName || city.stateName || '');
+    } else if (city.stateNo != null && String(city.stateNo) !== String(locStateNo)) {
+      setLocState(locStatesList.find(sameState)?.stateName || city.stateName || '');
+    }
+  };
+
+  const handleLocationCityCreated = async (cityNo: string, cityName: string) => {
+    const rows = await fetchCityCombo(cityName);
+    const created = rows.find((c) => String(c.cityNo) === cityNo);
+    if (created) {
+      await handleLocationCitySelect(created);
+    } else {
+      setLocCity(cityName);
+      setLocCityNo(cityNo);
     }
   };
 
@@ -395,6 +427,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
       country: locCountry,
       state: locState,
       city: locCity,
+      countryNo: getCountryNo(locCountry),
+      stateNo: toGeoNo(locStateNo),
+      cityNo: toGeoNo(locCityNo),
       pinCode: locPin,
       mapUrl: locMapUrl,
       latitude: locLatitude,
@@ -417,6 +452,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCountry('');
     setLocState('');
     setLocCity('');
+    setLocCityNo('');
     setLocPin('');
     setLocMapUrl('');
     setLocLatitude('');
@@ -815,9 +851,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
       const computedLocations = companyLocations.map(l => ({
         locationTypeNo: getLocationTypeNo(l.type) || parseInt(l.type) || null,
         address: l.address || '',
-        countryNo: getCountryNo(l.country) || null,
-        stateNo: getStateNo(l.state) || null,
-        cityNo: getCityNo(l.city) || null,
+        countryNo: l.countryNo || getCountryNo(l.country) || null,
+        stateNo: l.stateNo || getStateNo(l.state) || null,
+        cityNo: l.cityNo || getCityNo(l.city) || null,
         pinCode: l.pinCode || l.pin || '',
         mapUrl: l.mapUrl || '',
         latitude: l.latitude !== undefined && l.latitude !== null && l.latitude !== '' ? Number(l.latitude) : null,
@@ -1066,7 +1102,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
           locationTypes={locationTypes}
           countries={countries}
           statesList={locStatesList}
-          citiesList={locCitiesList}
+          stateNo={locStateNo}
           locType={locType}
           setLocType={setLocType}
           locAddress={locAddress}
@@ -1076,7 +1112,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
           locState={locState}
           onStateChange={handleLocationStateChange}
           locCity={locCity}
-          setLocCity={setLocCity}
+          locCityNo={locCityNo}
+          onCitySelect={handleLocationCitySelect}
+          onAddNewCity={() => setIsCityCreateOpen(true)}
           locPin={locPin}
           setLocPin={setLocPin}
           locMapUrl={locMapUrl}
@@ -1088,6 +1126,15 @@ export function CompanyForm({ id }: CompanyFormProps) {
           locErrors={locErrors}
           setLocErrors={setLocErrors}
           onSave={addCompanyLocation}
+        />
+
+        <MasterCreateDialog
+          open={isCityCreateOpen}
+          onOpenChange={setIsCityCreateOpen}
+          type="city"
+          companyNo={companyNo}
+          fillValues={null}
+          onSuccess={handleLocationCityCreated}
         />
 
         <CompanyContactModal

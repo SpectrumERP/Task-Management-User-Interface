@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +7,61 @@ import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
+import type { CityComboRow } from '../shared/geo';
+import { useCityComboSearch } from '../shared/useCityComboSearch';
 
 const fieldClass = FIELD_CONTROL_CLASS;
+
+interface LocationCityFieldProps {
+  stateNo?: string | number | null;
+  cityNo: string;
+  cityName: string;
+  error?: string;
+  onSelect: (city: CityComboRow | null) => void;
+  onAddNew: () => void;
+}
+
+/**
+ * Searchable City combobox (same behaviour as the Task Location master):
+ * keyword search across all cities, narrowed by state when one is chosen.
+ * Rendered inside DialogContent so the search resets each time the dialog opens.
+ */
+function LocationCityField({ stateNo, cityNo, cityName, error, onSelect, onAddNew }: LocationCityFieldProps) {
+  const [citySearch, setCitySearch] = useState('');
+  const cities = useCityComboSearch(citySearch, stateNo);
+
+  const value = cityNo || cityName;
+  const options = cities.map((c) => ({
+    label: c.cityName || '',
+    value: (c.cityNo ?? '').toString(),
+    description: [c.stateName, c.countryName].filter(Boolean).join(', '),
+  }));
+  // Keep the chosen city labelled when it is not in the current search results
+  if (value && !options.some((o) => o.value === value)) {
+    options.push({ label: cityName, value, description: '' });
+  }
+
+  return (
+    <Combobox
+      options={options}
+      value={value}
+      onChange={(val) => {
+        if (!val) {
+          onSelect(null);
+          return;
+        }
+        const city = cities.find((c) => (c.cityNo ?? '').toString() === val);
+        if (city) onSelect(city);
+      }}
+      onSearchChange={setCitySearch}
+      shouldFilter={false}
+      placeholder="Select city"
+      searchPlaceholder="Search city..."
+      className={cn(fieldClass, 'px-3', error && 'border-red-400')}
+      onAddNew={onAddNew}
+    />
+  );
+}
 
 interface CompanyLocationModalProps {
   open: boolean;
@@ -16,7 +70,8 @@ interface CompanyLocationModalProps {
   locationTypes: any[];
   countries: any[];
   statesList: any[];
-  citiesList: any[];
+  /** Selected state's id — narrows the city search */
+  stateNo?: string | number | null;
   locType: string;
   setLocType: (v: string) => void;
   locAddress: string;
@@ -26,7 +81,9 @@ interface CompanyLocationModalProps {
   locState: string;
   onStateChange: (val: string) => void;
   locCity: string;
-  setLocCity: (v: string) => void;
+  locCityNo: string;
+  onCitySelect: (city: CityComboRow | null) => void;
+  onAddNewCity: () => void;
   locPin: string;
   setLocPin: (v: string) => void;
   locMapUrl: string;
@@ -47,7 +104,7 @@ export function CompanyLocationModal({
   locationTypes,
   countries,
   statesList,
-  citiesList,
+  stateNo,
   locType,
   setLocType,
   locAddress,
@@ -57,7 +114,9 @@ export function CompanyLocationModal({
   locState,
   onStateChange,
   locCity,
-  setLocCity,
+  locCityNo,
+  onCitySelect,
+  onAddNewCity,
   locPin,
   setLocPin,
   locMapUrl,
@@ -162,18 +221,13 @@ export function CompanyLocationModal({
             <div className="space-y-1.5 min-w-0">
               <FieldLabel>City</FieldLabel>
               <FieldControl error={locErrors.city}>
-              <Combobox
-                options={citiesList.map((ci: any) => ({
-                  label: ci.cityName,
-                  value: ci.cityName,
-                }))}
-                value={locCity}
-                onChange={(val) => {
-                  setLocCity(val);
-                  if (locErrors.city) setLocErrors((prev) => ({ ...prev, city: '' }));
-                }}
-                placeholder="Select city"
-                className={cn(fieldClass, 'px-3', locErrors.city && 'border-red-400')}
+              <LocationCityField
+                stateNo={stateNo}
+                cityNo={locCityNo}
+                cityName={locCity}
+                error={locErrors.city}
+                onSelect={onCitySelect}
+                onAddNew={onAddNewCity}
               />
               </FieldControl>
             </div>

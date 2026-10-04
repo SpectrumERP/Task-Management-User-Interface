@@ -68,20 +68,22 @@ export function useTableSort<T>(
   const [sortDesc, setSortDesc] = useState(Boolean(options?.defaultDesc));
 
   const handleSort = (colKey: string) => {
-    // Toggle asc ↔ desc on the active column. Never clear on click —
-    // clearing broke UX when defaultDesc was already true (first click
-    // looked like a no-op because API order often matched desc).
-    if (sortCol === colKey) {
-      setSortDesc((d) => !d);
-      return;
-    }
-    setSortCol(colKey);
     // Timestamp / audit columns: first click = newest first.
     // Due / start schedule targets stay ascending (soonest first).
     const newestFirst =
       /(created|updated|completion|logDate|meetingStart|schedule|timestamp|sentAt)/i.test(colKey) &&
       !/(dueDate|end_date|start_date|^due$)/i.test(colKey);
-    setSortDesc(newestFirst);
+
+    // Each column cycles: first direction → opposite direction → unsorted (original order).
+    if (sortCol !== colKey) {
+      setSortCol(colKey);
+      setSortDesc(newestFirst);
+    } else if (sortDesc === newestFirst) {
+      setSortDesc(!newestFirst);
+    } else {
+      setSortCol(null);
+      setSortDesc(false);
+    }
   };
 
   const sortedRows = useMemo(() => {
@@ -172,8 +174,10 @@ export function SortableHeader({
       }}
       aria-label={`Sort by ${label}`}
       aria-sort={isActive ? (sortDesc ? 'descending' : 'ascending') : 'none'}
+      title={label}
     >
-      <span className="whitespace-nowrap">{label}</span>
+      {/* Truncate instead of spilling into the next column on fixed-width tables */}
+      <span className="min-w-0 truncate">{label}</span>
       <span
         className={cn(
           'flex flex-col shrink-0 text-current transition-opacity',

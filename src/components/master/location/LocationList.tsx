@@ -121,22 +121,22 @@ export function LocationList() {
         columns={[
           {
             header: 'Type',
-            className: 'w-[100px]',
+            width: 100,
             render: (item) => item.type || '—',
           },
           {
             header: 'Incharge',
-            className: 'w-[14%]',
+            width: 140,
             render: (item) => item.inchargeNo || 'No Lead',
           },
           {
             header: 'Address',
-            className: 'w-[18%]',
+            width: 220,
             render: (item) => formatAddress(item),
           },
           {
             header: 'Region',
-            className: 'w-[110px]',
+            width: 100,
             render: (item) => item.locationRegion || 'Central',
           },
         ]}

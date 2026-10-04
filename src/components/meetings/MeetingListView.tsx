@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -295,10 +295,26 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
     }
   };
 
+  const renderBreadcrumb = (actions?: ReactNode) => (
+    <AppBreadcrumbBar
+      items={[
+        { label: 'Meetings' },
+        { label: 'Meeting Notes', current: true },
+      ]}
+      guideKey="meetings"
+      bleed
+      data-page-tour="meetings-breadcrumb"
+      actions={actions}
+    />
+  );
+
   if (isLoading && meetings.length === 0) {
     return (
-      <div className="page-shell items-center justify-center">
-        <BrandLoader size="sm" message="Loading meetings" />
+      <div className="page-shell">
+        {renderBreadcrumb()}
+        <div className="flex flex-1 items-center justify-center">
+          <BrandLoader size="sm" message="Loading meetings" />
+        </div>
       </div>
     );
   }
@@ -306,6 +322,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
   if (loadError) {
     return (
       <div className="page-shell">
+        {renderBreadcrumb()}
         <LoadErrorState
           title="Failed to load meetings"
           description="Could not load meeting notes. Retry uses the same company filter."
@@ -318,6 +335,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
   if (meetings.length === 0) {
     return (
       <div className="page-shell">
+        {renderBreadcrumb()}
         <Card className="flex-1 min-h-0 flex flex-col bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)] overflow-hidden">
           <EmptyState
             className="flex-1"
@@ -343,28 +361,20 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
 
   return (
     <div className="page-shell">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 shrink-0">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-100 tracking-tight truncate">Meeting Notes</h1>
-            <PageGuideButton guideKey="meetings" />
-          </div>
-          <p className="text-[12px] text-slate-500 font-medium mt-0.5">
-            Review meetings, update status, and send minutes to attendees.
-          </p>
-        </div>
-        {isSave && (
+      {renderBreadcrumb(
+        isSave ? (
           <Button
+            type="button"
             data-page-tour="meeting-create"
             onClick={() => navigate('/meetings/new')}
-            className="shrink-0 h-10 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold shadow-sm shadow-brand/20 gap-1.5 px-4"
+            className="h-9 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold shadow-sm shadow-brand/20 gap-1.5 px-4"
           >
             <Plus size={15} strokeWidth={2.4} />
             <span className="hidden sm:inline">New Meeting</span>
             <span className="sm:hidden">New</span>
           </Button>
-        )}
-      </div>
+        ) : null
+      )}
 
       {/* Filters */}
       <Card className="shrink-0 rounded-[14px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] p-3">
@@ -483,7 +493,6 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                     const status = meeting.statusName || '—';
                     const start = formatScheduleLine(meeting.meetingStartDateTime);
                     const canSend = isMinutesSendStatusAllowed(status);
-                    const end = formatScheduleLine(meeting.meetingEndDateTime);
                     const deleteGate = canDeleteMeetingNote(isDelete, status);
                     const id = meeting.meetingNotesNo || meeting.id;
                     const lastSent = id ? readLastMinutesSentAt(Number(id)) : null;

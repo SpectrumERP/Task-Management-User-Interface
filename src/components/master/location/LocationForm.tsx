@@ -12,6 +12,7 @@ import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterCreateDialog } from '../MasterCreateDialog';
 import { fetchStatesByCountry } from '../shared/geo';
+import { useCityComboSearch } from '../shared/useCityComboSearch';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
@@ -48,7 +49,6 @@ export function LocationForm({ id }: LocationFormProps) {
   const [pinCode, setPinCode] = useState('');
   const [locationRegion, setLocationRegion] = useState('');
   const [locStatesList, setLocStatesList] = useState<any[]>([]);
-  const [locCitiesList, setLocCitiesList] = useState<any[]>([]);
   const [locationFillValues, setLocationFillValues] = useState<any>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -58,36 +58,7 @@ export function LocationForm({ id }: LocationFormProps) {
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
   const [activeMasterType, setActiveMasterType] = useState<'country' | 'state' | 'city'>('country');
   const [citySearch, setCitySearch] = useState('');
-
-  useEffect(() => {
-    if (!citySearch && !stateNo) {
-      setLocCitiesList([]);
-      return;
-    }
-
-    const fetchCities = async () => {
-      try {
-        const response = await apiService.get<{ success: boolean, data: any[] }>('/api/master/cities/fill-city-combo', {
-          params: {
-            ...(citySearch ? { KeywordSearch: citySearch } : {}),
-            ...(stateNo ? { StateNo: String(stateNo) } : {})
-          }
-        });
-        if (response?.data) {
-          setLocCitiesList(response.data);
-        } else {
-          setLocCitiesList([]);
-        }
-      } catch (err) {
-        console.error('Failed to fetch cities:', err);
-      }
-    };
-
-    const timer = setTimeout(() => {
-      fetchCities();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [citySearch, stateNo]);
+  const locCitiesList = useCityComboSearch(citySearch, stateNo);
 
   useEffect(() => {
     apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${companyNo}`).then((response) => {

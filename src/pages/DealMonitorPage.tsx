@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { dealMonitorTaskUrl } from '@/lib/dealMonitor';
 import { exportReportToExcel } from '@/utils/exportToExcel';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 
 const DEAL_MONITOR_FORM_NO = 1548;
 
@@ -119,6 +120,17 @@ export default function DealMonitorPage() {
         showFilters && "lg:[--tm-filters-drawer-width:min(100vw,18rem)]"
       )}
     >
+      <AppBreadcrumbBar
+        items={[
+          { label: 'Tasks' },
+          { label: 'Deal Monitor', current: true },
+        ]}
+        guideKey="deal-monitor"
+        bleed
+        className="mb-[var(--page-gap)]"
+        data-page-tour="deal-monitor-breadcrumb"
+      />
+
       {dealMonitorCategoryNo === null ? (
         <div className="shrink-0 mx-0 mb-2 flex items-start gap-2.5 rounded-xl border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-3.5 py-2.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" strokeWidth={2.25} />

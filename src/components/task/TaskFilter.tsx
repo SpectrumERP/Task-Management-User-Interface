@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, Calendar as CalendarIcon, Clipboard, ChevronDown, Plus, LayoutGrid, List as ListIcon, X, User, CircleHelp, type LucideIcon } from 'lucide-react';
+import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, Calendar as CalendarIcon, Clipboard, ChevronDown, Plus, LayoutGrid, List as ListIcon, X, User, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_TEXT_STYLE } from '@/lib/fieldStyles';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/hooks/useSettings';
-import { forceStartPageGuide } from '@/components/layout/InternalPageGuideTour';
 import { STATUS_PILL_ORDER, isAllFilterSentinel, sumStatusPillCounts, toStatusPillToken, getStatusPillClass } from '@/lib/taskStatusGroups';
 import { formatDateOnly, toUtcIso } from '@/lib/dateTime';
 
@@ -858,17 +857,6 @@ export function TaskFilter({
                 </ActionTip>
               )}
 
-              <ActionTip label="Page guide">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => forceStartPageGuide('tasks')}
-                  aria-label="Start page guide"
-                  className="h-9 w-9 p-0 rounded-lg border border-[#0EA5E9]/35 bg-[#0EA5E9]/10 text-[#0EA5E9] hover:bg-[#0EA5E9]/20 shadow-none shrink-0"
-                >
-                  <CircleHelp size={15} />
-                </Button>
-              </ActionTip>
             </div>
           </div>
         </Card>

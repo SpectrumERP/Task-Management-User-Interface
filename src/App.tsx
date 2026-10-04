@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
 import { Clock, Download } from 'lucide-react';
@@ -216,6 +217,17 @@ function Dashboard() {
           showFilters && "lg:[--tm-filters-drawer-width:min(100vw,18rem)]"
         )}
       >
+        <AppBreadcrumbBar
+          items={[
+            { label: 'Tasks' },
+            { label: 'Tasks List', current: true },
+          ]}
+          guideKey="tasks"
+          bleed
+          className="mb-[var(--page-gap)]"
+          data-page-tour="tasks-breadcrumb"
+        />
+
         {/* Unified Top Control Bar */}
         <div className="shrink-0">
           <TaskFilter

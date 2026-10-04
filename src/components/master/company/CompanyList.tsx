@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatUtcDateTime } from '@/lib/dateTime';
 import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
+import { useColumnResize } from '@/components/shared/useColumnResize';
 import { MasterListHeader } from '../shared/MasterListHeader';
 import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
@@ -30,6 +31,17 @@ import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 const FORM_NO = 1550;
 const TITLE = 'Business Entity';
 type CompanyViewMode = 'list' | 'album' | 'contact-list' | 'contact-album' | 'attachment';
+
+/**
+ * Default px widths for the desktop tables. In each table one column fills the remaining
+ * space (its value here is its minimum); the rest stay fixed until the user resizes them.
+ */
+const GRID_LIST_WIDTHS = { name: 200, alias: 110, type: 150, address: 200, city: 110, state: 110, country: 110, vatGst: 140, creditLimit: 130, actions: 100 };
+const CONTACT_LIST_WIDTHS = { contactName: 180, name: 180, designation: 150, department: 140, phone: 130, email: 200, status: 100, actions: 100 };
+const ATTACHMENT_LIST_WIDTHS = { fileName: 220, name: 200, fileType: 110, fileSize: 100, actions: 160 };
+
+const sumWidths = (defaults: Record<string, number>, widthOf: (key: string, fallback: number) => number) =>
+  Object.entries(defaults).reduce((sum, [key, fallback]) => sum + widthOf(key, fallback), 0);
 
 /** Trim + lowercase. Empty / whitespace-only → no active search. */
 function normalizeSearchQuery(raw: string): string {
@@ -534,6 +546,10 @@ export function CompanyList() {
     pageSize: itemsPerPage,
   });
 
+  const gridResize = useColumnResize();
+  const contactResize = useColumnResize();
+  const attachmentResize = useColumnResize();
+
   const groupedCompanies = useMemo(() => {
     // Album view: letter-group the current page rows (name order for grouping only).
     const sorted = [...paginatedList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -629,7 +645,7 @@ export function CompanyList() {
               type="button"
               onClick={() => setCompanyViewMode(id)}
               className={cn(
-                'px-2.5 h-8 rounded-[6px] font-semibold transition-colors flex items-center gap-1.5',
+                'px-2.5 h-8 rounded-[6px] text-xs font-semibold transition-colors flex items-center gap-1.5',
                 companyViewMode === id
                   ? 'bg-[#0EA5E9] text-white'
                   : 'text-slate-500 hover:text-slate-100 hover:bg-[var(--tm-muted)]'
@@ -810,41 +826,59 @@ export function CompanyList() {
                         );
                       })}
                     </div>
-                    <table className="tm-data-table hidden md:table w-full min-w-[1100px] table-fixed border-collapse text-left">
+                    <table
+                      className="tm-data-table hidden md:table w-full table-fixed border-collapse text-left"
+                      style={{ minWidth: `calc(var(--tm-col-id-width) + ${sumWidths(GRID_LIST_WIDTHS, gridResize.widthOf)}px)` }}
+                    >
                     <colgroup>
                       <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
+                      {/* Name fills the remaining space */}
+                      <col />
+                      {(['alias', 'type', 'address', 'city', 'state', 'country', 'vatGst', 'creditLimit'] as const).map((key) => (
+                        <col key={key} style={{ width: gridResize.widthOf(key, GRID_LIST_WIDTHS[key]) }} />
+                      ))}
+                      <col style={{ width: GRID_LIST_WIDTHS.actions }} />
                     </colgroup>
                     <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
                       <tr>
                         <th className="tm-col-id tm-col-sticky-code sticky left-0 z-[45] px-2 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('code', handleSort)}>
                           <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} className="pr-1" />
                         </th>
-                        <th className="min-w-[140px] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
+                        <th className="relative min-w-[140px] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
                           <SortableHeader label="Business Entity Name" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('name')}
                         </th>
-                        <th className="w-[10%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('alias', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('alias', handleSort)}>
                           <SortableHeader label="Alias" sortKey="alias" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('alias')}
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('type', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('type', handleSort)}>
                           <SortableHeader label="Type" sortKey="type" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('type')}
                         </th>
-                        <th className="w-[14%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('address', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('address', handleSort)}>
                           <SortableHeader label="Primary Address" sortKey="address" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('address')}
                         </th>
-                        <th className="w-[7%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('city', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('city', handleSort)}>
                           <SortableHeader label="City" sortKey="city" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('city')}
                         </th>
-                        <th className="w-[7%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('state', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('state', handleSort)}>
                           <SortableHeader label="State" sortKey="state" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('state')}
                         </th>
-                        <th className="w-[7%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('country', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('country', handleSort)}>
                           <SortableHeader label="Country" sortKey="country" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('country')}
                         </th>
-                        <th className="w-[8%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('vatGst', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('vatGst', handleSort)}>
                           <SortableHeader label="VAT/GST No." sortKey="vatGst" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('vatGst')}
                         </th>
-                        <th className="w-[7%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('creditLimit', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('creditLimit', handleSort)}>
                           <SortableHeader label="Credit Limit" sortKey="creditLimit" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {gridResize.resizeHandle('creditLimit')}
                         </th>
                         <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center font-semibold tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                       </tr>
@@ -1043,29 +1077,48 @@ export function CompanyList() {
                     ))}
                   </div>
                 ) : companyViewMode === 'contact-list' ? (
-                  <table className="tm-data-table w-full min-w-[960px] table-fixed border-collapse text-left">
+                  <table
+                    className="tm-data-table w-full table-fixed border-collapse text-left"
+                    style={{ minWidth: sumWidths(CONTACT_LIST_WIDTHS, contactResize.widthOf) }}
+                  >
+                    <colgroup>
+                      <col style={{ width: contactResize.widthOf('contactName', CONTACT_LIST_WIDTHS.contactName) }} />
+                      {/* Business Entity fills the remaining space */}
+                      <col />
+                      {(['designation', 'department', 'phone', 'email', 'status'] as const).map((key) => (
+                        <col key={key} style={{ width: contactResize.widthOf(key, CONTACT_LIST_WIDTHS[key]) }} />
+                      ))}
+                      <col style={{ width: CONTACT_LIST_WIDTHS.actions }} />
+                    </colgroup>
                     <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
                       <tr>
-                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[14%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('contactName', handleSort)}>
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('contactName', handleSort)}>
                           <SortableHeader label="Contact Name" sortKey="contactName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {contactResize.resizeHandle('contactName')}
                         </th>
-                        <th className="w-[18%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
                           <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {contactResize.resizeHandle('name')}
                         </th>
-                        <th className="w-[14%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('designation', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('designation', handleSort)}>
                           <SortableHeader label="Designation" sortKey="designation" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {contactResize.resizeHandle('designation')}
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('department', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('department', handleSort)}>
                           <SortableHeader label="Department" sortKey="department" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {contactResize.resizeHandle('department')}
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('phone', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('phone', handleSort)}>
                           <SortableHeader label="Phone" sortKey="phone" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {contactResize.resizeHandle('phone')}
                         </th>
-                        <th className="w-[16%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('email', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('email', handleSort)}>
                           <SortableHeader label="Email" sortKey="email" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {contactResize.resizeHandle('email')}
                         </th>
-                        <th className="w-[8%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('status', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('status', handleSort)}>
                           <SortableHeader label="Status" sortKey="status" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {contactResize.resizeHandle('status')}
                         </th>
                         <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center font-semibold tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                       </tr>
@@ -1227,23 +1280,40 @@ export function CompanyList() {
                     })}
                   </div>
                 ) : (
-                  <table className="tm-data-table w-full min-w-[900px] table-fixed border-collapse text-left">
+                  <table
+                    className="tm-data-table w-full table-fixed border-collapse text-left"
+                    style={{ minWidth: `calc(var(--tm-col-id-width) + ${sumWidths(ATTACHMENT_LIST_WIDTHS, attachmentResize.widthOf)}px)` }}
+                  >
+                    <colgroup>
+                      {/* File name fills the remaining space */}
+                      <col />
+                      <col style={{ width: attachmentResize.widthOf('name', ATTACHMENT_LIST_WIDTHS.name) }} />
+                      <col style={{ width: 'var(--tm-col-id-width)' }} />
+                      {(['fileType', 'fileSize'] as const).map((key) => (
+                        <col key={key} style={{ width: attachmentResize.widthOf(key, ATTACHMENT_LIST_WIDTHS[key]) }} />
+                      ))}
+                      <col style={{ width: ATTACHMENT_LIST_WIDTHS.actions }} />
+                    </colgroup>
                     <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
                       <tr>
-                        <th className="tm-col-sticky-code sticky left-0 z-[45] w-[28%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('fileName', handleSort)}>
+                        <th className="tm-col-sticky-code sticky left-0 z-[45] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('fileName', handleSort)}>
                           <SortableHeader label="File Name" sortKey="fileName" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {attachmentResize.resizeHandle('fileName')}
                         </th>
-                        <th className="w-[22%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
                           <SortableHeader label="Business Entity" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {attachmentResize.resizeHandle('name')}
                         </th>
                         <th className="tm-col-code px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('code', handleSort)}>
                           <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('fileType', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('fileType', handleSort)}>
                           <SortableHeader label="Type" sortKey="fileType" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {attachmentResize.resizeHandle('fileType')}
                         </th>
-                        <th className="w-[12%] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('fileSize', handleSort)}>
+                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('fileSize', handleSort)}>
                           <SortableHeader label="Size" sortKey="fileSize" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                          {attachmentResize.resizeHandle('fileSize')}
                         </th>
                         <th className="tm-col-actions sticky right-0 z-40 w-[160px] px-1 py-2.5 pr-2 text-center font-semibold tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
                       </tr>

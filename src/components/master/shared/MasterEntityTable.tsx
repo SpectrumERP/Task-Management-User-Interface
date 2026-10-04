@@ -8,6 +8,7 @@ import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ActionTip, TruncatedText, nodeToPlainText } from './TruncatedCellTip';
 import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
+import { useColumnResize } from '@/components/shared/useColumnResize';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
 
 /** Sticky column policy (wide desktop tables): Code left, Actions right. */
@@ -17,6 +18,8 @@ export interface MasterColumn<T> {
   render: (row: T) => React.ReactNode;
   className?: string;
   headerClassName?: string;
+  /** Column width in px (default 140; description columns 240). */
+  width?: number;
   /** Row field / key used for column sorting. Defaults to header slug if omitted. */
   sortKey?: string;
   getSortValue?: (row: T) => unknown;
@@ -55,6 +58,26 @@ interface MasterEntityTableProps<T extends { id: string; code?: string; createdB
    * Sort/export still use plain text via getName or row.name.
    */
   nameAsRich?: boolean;
+}
+
+/**
+ * Every column except the name has an explicit width; the name column takes the rest
+ * and is guaranteed NAME_MIN_WIDTH_PX — the table scrolls horizontally instead of squeezing it.
+ * Users can drag-resize any column but Code / Actions; resizing the name raises its minimum.
+ */
+const NAME_MIN_WIDTH_PX = 170;
+const COLUMN_WIDTH_PX = 140;
+const DESCRIPTION_COLUMN_WIDTH_PX = 240;
+const CREATED_BY_WIDTH_PX = 152;
+const CREATED_DATE_WIDTH_PX = 168;
+const ACTIONS_WIDTH_PX = 72;
+
+function isDescriptionColumn<T>(col: MasterColumn<T>): boolean {
+  return /description/i.test(col.header) || col.sortKey === 'description';
+}
+
+function columnWidthPx<T>(col: MasterColumn<T>): number {
+  return col.width ?? (isDescriptionColumn(col) ? DESCRIPTION_COLUMN_WIDTH_PX : COLUMN_WIDTH_PX);
 }
 
 function columnSortKey<T>(col: MasterColumn<T>, index: number): string {
@@ -108,6 +131,8 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
     return (row as Record<string, unknown>)[key] ?? '';
   }, [columns, getName]);
 
+  const { colWidths, resizeHandle } = useColumnResize();
+
   const { sortCol, sortDesc, handleSort, sortedRows } = useTableSort(rows, getSortValue, {
     defaultKey: defaultSortKey,
     defaultDesc: false,
@@ -152,6 +177,29 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
       document.body.removeChild(link);
     }
   };
+
+  const extraColumnWidths = columns.map((col, idx) => colWidths[columnSortKey(col, idx)] ?? columnWidthPx(col));
+  const createdByWidth = colWidths.createdBy ?? CREATED_BY_WIDTH_PX;
+  const createdDateWidth = colWidths.createdDate ?? CREATED_DATE_WIDTH_PX;
+  const fixedColumnsPx =
+    (colWidths.name ?? NAME_MIN_WIDTH_PX) +
+    extraColumnWidths.reduce((sum, w) => sum + w, 0) +
+    createdByWidth +
+    createdDateWidth +
+    ACTIONS_WIDTH_PX;
+  const tableMinWidth = `calc(var(--tm-col-id-width) + ${fixedColumnsPx}px)`;
+  const colgroup = (
+    <colgroup>
+      <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
+      <col />
+      {extraColumnWidths.map((width, idx) => (
+        <col key={idx} style={{ width }} />
+      ))}
+      <col style={{ width: createdByWidth }} />
+      <col style={{ width: createdDateWidth }} />
+      <col style={{ width: ACTIONS_WIDTH_PX }} />
+    </colgroup>
+  );
 
   // Loader only when there is nothing to show yet (first load / empty refetch).
   if (isLoading && rows.length === 0) {
@@ -200,7 +248,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
         </Button>
       </div>
       <DataTableScroll
-        minWidth={1100}
+        minWidth={tableMinWidth}
         mobile={
           <div className="flex flex-col gap-2 p-2">
             {sortedRows.map((item) => (
@@ -288,23 +336,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
         }
         header={
           <table className="tm-data-table w-full table-fixed border-collapse text-left">
-            <colgroup>
-              <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
-              <col />
-              {columns.map((_, idx) => (
-                <col
-                  key={idx}
-                  style={{
-                    width: /description/i.test(columns[idx].header) || columns[idx].sortKey === 'description'
-                      ? '22%'
-                      : '12%',
-                  }}
-                />
-              ))}
-              <col style={{ width: '9.5rem' }} />
-              <col style={{ width: '10.5rem' }} />
-              <col style={{ width: '4.5rem' }} />
-            </colgroup>
+            {colgroup}
             <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
               <tr>
                 <th
@@ -313,17 +345,18 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                 >
                   <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} className="pr-1" />
                 </th>
-                <th className="min-w-[140px] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
+                <th className="relative min-w-[140px] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
                   <SortableHeader label={nameHeader} sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                  {resizeHandle('name')}
                 </th>
                 {columns.map((col, idx) => {
                   const key = columnSortKey(col, idx);
-                  const isDescription = /description/i.test(col.header) || col.sortKey === 'description';
+                  const isDescription = isDescriptionColumn(col);
                   return (
                     <th
                       key={idx}
                       className={cn(
-                        'px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer',
+                        'relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer',
                         isDescription ? 'min-w-[160px]' : 'min-w-[110px]',
                         col.headerClassName || col.className
                       )}
@@ -336,14 +369,17 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                         sortDesc={sortDesc}
                         onSort={handleSort}
                       />
+                      {resizeHandle(key)}
                     </th>
                   );
                 })}
-                <th className="px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('createdBy', handleSort)}>
+                <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('createdBy', handleSort)}>
                   <SortableHeader label="Created By" sortKey="createdBy" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                  {resizeHandle('createdBy')}
                 </th>
-                <th className="px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('createdDate', handleSort)}>
+                <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('createdDate', handleSort)}>
                   <SortableHeader label="Created Date" sortKey="createdDate" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                  {resizeHandle('createdDate')}
                 </th>
                 <th className="tm-col-actions sticky right-0 z-40 px-1 py-2.5 pr-2 text-center font-semibold tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">
                   Actions
@@ -354,23 +390,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
         }
         body={
           <table className="tm-data-table w-full table-fixed border-collapse text-left">
-            <colgroup>
-              <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
-              <col />
-              {columns.map((_, idx) => (
-                <col
-                  key={idx}
-                  style={{
-                    width: /description/i.test(columns[idx].header) || columns[idx].sortKey === 'description'
-                      ? '22%'
-                      : '12%',
-                  }}
-                />
-              ))}
-              <col style={{ width: '9.5rem' }} />
-              <col style={{ width: '10.5rem' }} />
-              <col style={{ width: '4.5rem' }} />
-            </colgroup>
+            {colgroup}
             <tbody>
               {sortedRows.map((item) => {
                 const codeText = nodeToPlainText(getCode(item)) || String(item.code || `SYS-${item.id}`);
