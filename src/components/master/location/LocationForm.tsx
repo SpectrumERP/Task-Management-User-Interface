@@ -1,18 +1,14 @@
 import { useEffect, useState } from 'react';
-import { MapPin, Home } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Input } from '@/components/ui/input';
-import { Combobox } from '@/components/ui/Combobox';
-import { UserCombobox } from '@/components/ui/UserCombobox';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterCreateDialog } from '../MasterCreateDialog';
-import { fetchStatesByCountry } from '../shared/geo';
-import { useCityComboSearch } from '../shared/useCityComboSearch';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
@@ -39,7 +35,6 @@ export function LocationForm({ id }: LocationFormProps) {
   const [code, setCode] = useState('');
   const [parentLocationNo, setParentLocationNo] = useState('');
   const [inchargeNo, setInchargeNo] = useState('');
-  const [inchargeLabel, setInchargeLabel] = useState('');
   const [address1, setAddress1] = useState('');
   const [address2, setAddress2] = useState('');
   const [address3, setAddress3] = useState('');
@@ -48,23 +43,13 @@ export function LocationForm({ id }: LocationFormProps) {
   const [cityNo, setCityNo] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [locationRegion, setLocationRegion] = useState('');
-  const [locStatesList, setLocStatesList] = useState<any[]>([]);
-  const [locationFillValues, setLocationFillValues] = useState<any>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
-  const [activeMasterType, setActiveMasterType] = useState<'country' | 'state' | 'city'>('country');
-  const [citySearch, setCitySearch] = useState('');
-  const locCitiesList = useCityComboSearch(citySearch, stateNo);
-
-  useEffect(() => {
-    apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${companyNo}`).then((response) => {
-      if (response) setLocationFillValues(response);
-    }).catch(err => console.error('Failed to fetch location fill-values:', err));
-  }, [companyNo]);
+  const [activeMasterType] = useState<'country' | 'state' | 'city'>('country');
 
   useEffect(() => {
     if (!editingId) return;
@@ -78,8 +63,6 @@ export function LocationForm({ id }: LocationFormProps) {
           setParentLocationNo(parentVal.toString());
           const inchargeVal = dl.operLocationIncharge?.loginNo || dl.locationIncharge || dl.inchargeNo || 'none';
           setInchargeNo(inchargeVal.toString());
-          const inchargeName = dl.operLocationIncharge?.printingName || dl.operLocationIncharge?.loginId || dl.locationIncharge || '';
-          setInchargeLabel(inchargeName.toString());
           const addr = dl.address || dl;
           setAddress1(addr.address1 || '');
           setAddress2(addr.address2 || '');
@@ -90,9 +73,6 @@ export function LocationForm({ id }: LocationFormProps) {
           setStateNo(stateVal.toString());
           const cityVal = addr.city?.cityNo || addr.cityNo || '';
           setCityNo(cityVal.toString());
-          if (countryVal) {
-            fetchStatesByCountry(countryVal).then((states) => setLocStatesList(states));
-          }
           setPinCode(addr.pinCode || addr.pincode || '');
           const regionVal = addr.region?.regionNo || addr.regionNo || '';
           setLocationRegion(regionVal.toString());
@@ -101,28 +81,6 @@ export function LocationForm({ id }: LocationFormProps) {
       }
     }).catch(err => console.error('Failed to load location details:', err));
   }, [editingId, companyNo]);
-
-  const handleLocationCountryChange = async (val: string) => {
-    setCountryNo(val);
-    setStateNo('');
-    setCityNo('');
-    setLocStatesList([]);
-    if (errors.countryNo || errors.stateNo || errors.cityNo) {
-      setErrors((prev) => ({ ...prev, countryNo: '', stateNo: '', cityNo: '' }));
-    }
-    if (val) {
-      const states = await fetchStatesByCountry(val);
-      setLocStatesList(states);
-    }
-  };
-
-  const handleLocationStateChange = async (val: string) => {
-    setStateNo(val);
-    setCityNo('');
-    if (errors.stateNo || errors.cityNo) {
-      setErrors((prev) => ({ ...prev, stateNo: '', cityNo: '' }));
-    }
-  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -172,26 +130,6 @@ export function LocationForm({ id }: LocationFormProps) {
       setIsSaving(false);
     }
   };
-
-  const parentOptions = [
-    { label: 'No Parent (Root)', value: 'none' },
-    ...(locationFillValues?.data?.locations || locationFillValues?.locations || [])
-      .filter((l: any) => (l.operLocationNo || l.id || '').toString() !== editingId)
-      .map((l: any) => ({
-        label: l.operLocationName || l.locationName || l.name || '',
-        value: (l.operLocationNo || l.id || '').toString(),
-      })),
-  ];
-
-  const regionOptions = (locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
-    label: r.regionName || '',
-    value: (r.regionNo || '').toString(),
-  }));
-
-  const countryOptions = (locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-    label: c.countryName || '',
-    value: (c.countryNo || '').toString(),
-  }));
 
   return (
     <MasterFormShell
@@ -499,9 +437,6 @@ export function LocationForm({ id }: LocationFormProps) {
           } else if (activeMasterType === 'city') {
             setCityNo(createdId);
           }
-          apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${companyNo}`).then((response) => {
-            if (response) setLocationFillValues(response);
-          }).catch(err => console.error('Failed to fetch location fill-values:', err));
         }}
       />
     </MasterFormShell>

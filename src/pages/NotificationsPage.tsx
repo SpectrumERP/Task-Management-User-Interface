@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
@@ -38,22 +38,6 @@ type NotificationRow = PopUpNotification & {
   status: 'Unread' | 'Read';
 };
 
-/** Lazy pages — 10 rows per request (default + each scroll) */
-const PAGE_SIZE = 10;
-/** Keep “Loading more” visible long enough to notice (API is often instant). */
-const LOAD_MORE_MIN_MS = 750;
-
-function mergeNotifications(
-  prev: PopUpNotification[],
-  next: PopUpNotification[]
-): PopUpNotification[] {
-  if (next.length === 0) return prev;
-  // Dedupe by rowKey — API may repeat the same notificationJobDetailNo
-  const seen = new Set(prev.map((n) => n.rowKey));
-  const appended = next.filter((n) => !seen.has(n.rowKey));
-  return appended.length === 0 ? prev : [...prev, ...appended];
-}
-
 /**
  * Notifications page — self (client) read/unread + delete.
  * Supports `?id=` to scroll/highlight a row opened from the bell popover.
@@ -70,8 +54,6 @@ export default function NotificationsPage() {
     unreadCount,
     readKeys,
     syncUnreadFromApi,
-    markRead,
-    markUnread,
     removeKey,
   } = useNotifications();
 
@@ -84,7 +66,6 @@ export default function NotificationsPage() {
   const [loadError, setLoadError] = useState(false);
   const [deleteKey, setDeleteKey] = useState<string | null>(null);
   const [highlightKey, setHighlightKey] = useState<string | null>(null);
-  const toggleLockRef = useRef(false);
   const scrolledForKeyRef = useRef<string | null>(null);
 
   const loadPage = useCallback(
@@ -192,30 +173,6 @@ export default function NotificationsPage() {
     { defaultKey: null, defaultDesc: false }
   );
 
-  const handleToggleRead = (
-    e: MouseEvent,
-    rowKey: string,
-    currentlyUnread: boolean
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (deleteKey != null || toggleLockRef.current) return;
-    if (!rowKey) return;
-    toggleLockRef.current = true;
-    if (currentlyUnread) markRead(rowKey);
-    else markUnread(rowKey);
-    window.setTimeout(() => {
-      toggleLockRef.current = false;
-    }, 0);
-  };
-
-  const requestDelete = (e: MouseEvent, rowKey: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (deleteKey != null) return;
-    setDeleteKey(rowKey);
-  };
-
   const confirmDelete = () => {
     if (deleteKey == null) return;
     const key = deleteKey;
@@ -314,7 +271,6 @@ export default function NotificationsPage() {
                         const isUnread = row.status === 'Unread';
                         const rowDomId = `notification-row-${encodeURIComponent(row.rowKey)}`;
                         const isFocused = highlightKey === row.rowKey;
-                        const actionsDisabled = deleteKey != null;
 
                         return (
                           <tr
