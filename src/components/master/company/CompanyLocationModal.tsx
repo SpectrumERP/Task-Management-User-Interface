@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 import type { CityComboRow } from '../shared/geo';
 import { useCityComboSearch } from '../shared/useCityComboSearch';
+import { type LocationTimeZone, buildLocationTimeZoneOptions } from './locationTimeZone';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
@@ -69,6 +70,8 @@ interface CompanyLocationModalProps {
   editingIndex: number | null;
   locationTypes: any[];
   countries: any[];
+  /** Selected country's id — narrows the time zone list */
+  countryNo: number | null;
   statesList: any[];
   /** Selected state's id — narrows the city search */
   stateNo?: string | number | null;
@@ -92,6 +95,11 @@ interface CompanyLocationModalProps {
   setLocLatitude: (v: string) => void;
   locLongitude: string;
   setLocLongitude: (v: string) => void;
+  timeZones: LocationTimeZone[];
+  locTimeZoneNo: string;
+  setLocTimeZoneNo: (v: string) => void;
+  /** Name from load-data, shown when the zone is missing from fill-values */
+  locTimeZoneName?: string;
   locErrors: Record<string, string>;
   setLocErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onSave: () => void;
@@ -103,6 +111,7 @@ export function CompanyLocationModal({
   editingIndex,
   locationTypes,
   countries,
+  countryNo,
   statesList,
   stateNo,
   locType,
@@ -125,10 +134,19 @@ export function CompanyLocationModal({
   setLocLatitude,
   locLongitude,
   setLocLongitude,
+  timeZones,
+  locTimeZoneNo,
+  setLocTimeZoneNo,
+  locTimeZoneName,
   locErrors,
   setLocErrors,
   onSave,
 }: CompanyLocationModalProps) {
+  const timeZoneOptions = useMemo(
+    () => buildLocationTimeZoneOptions(timeZones, countryNo, locTimeZoneNo, locTimeZoneName),
+    [timeZones, countryNo, locTimeZoneNo, locTimeZoneName]
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -246,6 +264,19 @@ export function CompanyLocationModal({
                 className={cn(fieldClass, locErrors.pin && 'border-red-400')}
               />
               </FieldControl>
+            </div>
+
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <FieldLabel>Timezone</FieldLabel>
+              <Combobox
+                options={timeZoneOptions}
+                value={locTimeZoneNo}
+                onChange={setLocTimeZoneNo}
+                placeholder="Select timezone"
+                searchPlaceholder="Search timezone..."
+                sortAlphabetically={false}
+                className={cn(fieldClass, 'px-3 min-w-0 w-full')}
+              />
             </div>
 
             <div className="space-y-1.5 min-w-0 sm:col-span-2">

@@ -4,19 +4,18 @@ import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
-import { type TimeZoneOptionLike, formatTimeZoneDisplay } from '@/lib/windowsTimeZones';
 
 import { LocationCityField } from './CompanyLocationModal';
+import { type LocationTimeZone, buildLocationTimeZoneOptions } from './locationTimeZone';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
 interface CompanyPrimaryLocationSectionProps {
-  locationTypes: any[];
   countries: any[];
+  /** Selected country's id — narrows the time zone list */
+  countryNo: number | null;
   statesList: any[];
   stateNo?: string | number | null;
-  locType: string;
-  setLocType: (val: string) => void;
   locAddress: string;
   setLocAddress: (val: string) => void;
   locCountry: string;
@@ -37,20 +36,18 @@ interface CompanyPrimaryLocationSectionProps {
   setLocLongitude: (val: string) => void;
   locErrors: Record<string, string>;
   setLocErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  timeZones: TimeZoneOptionLike[];
-  companyTimeZoneNo: string;
-  setCompanyTimeZoneNo: (val: string) => void;
-  selectedTimeZoneName?: string;
-  setSelectedTimeZoneName?: (val: string) => void;
+  timeZones: LocationTimeZone[];
+  timeZoneNo: string;
+  setTimeZoneNo: (val: string) => void;
+  /** Name from load-data, shown when the zone is missing from fill-values */
+  timeZoneName?: string;
 }
 
 export function CompanyPrimaryLocationSection({
-  locationTypes,
   countries,
+  countryNo,
   statesList,
   stateNo,
-  locType,
-  setLocType,
   locAddress,
   setLocAddress,
   locCountry,
@@ -72,57 +69,21 @@ export function CompanyPrimaryLocationSection({
   locErrors,
   setLocErrors,
   timeZones,
-  companyTimeZoneNo,
-  setCompanyTimeZoneNo,
-  selectedTimeZoneName,
-  setSelectedTimeZoneName,
+  timeZoneNo,
+  setTimeZoneNo,
+  timeZoneName,
 }: CompanyPrimaryLocationSectionProps) {
-  const timeZoneOptions = useMemo(() => {
-    const opts = timeZones.map((tz: any) => ({
-      label: tz.timeZoneName || tz.crmTimeZoneName || tz.name || tz.displayName || '',
-      value: String(tz.timeZoneNo || tz.crmTimeZoneNo || tz.id || ''),
-    }));
-    if (
-      companyTimeZoneNo &&
-      selectedTimeZoneName &&
-      !opts.some((o) => o.value === companyTimeZoneNo)
-    ) {
-      return [
-        ...opts,
-        {
-          value: companyTimeZoneNo,
-          label: formatTimeZoneDisplay(selectedTimeZoneName),
-        },
-      ];
-    }
-    return opts;
-  }, [timeZones, companyTimeZoneNo, selectedTimeZoneName]);
+  const timeZoneOptions = useMemo(
+    () => buildLocationTimeZoneOptions(timeZones, countryNo, timeZoneNo, timeZoneName),
+    [timeZones, countryNo, timeZoneNo, timeZoneName]
+  );
 
   return (
     <div className="pt-6 mt-6 border-t border-[var(--tm-border)]/70">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-3.5">
 
-        <div className="space-y-1.5 min-w-0 sm:col-span-1 lg:col-span-1">
-          <FieldLabel required>Location Type</FieldLabel>
-          <FieldControl error={locErrors.type}>
-            <Combobox
-              options={locationTypes.map((lt: any) => ({
-                label: lt.locationTypeName,
-                value: lt.locationTypeNo.toString(),
-              }))}
-              value={locType}
-              onChange={(val) => {
-                setLocType(val);
-                if (locErrors.type) setLocErrors((prev) => ({ ...prev, type: '' }));
-              }}
-              placeholder="Select Location Type"
-              className={cn(fieldClass, 'px-3 w-full sm:max-w-md', locErrors.type && 'border-red-400')}
-            />
-          </FieldControl>
-        </div>
-
-        <div className="space-y-1.5 min-w-0 sm:col-span-2">
+        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-3">
           <FieldLabel required>Address</FieldLabel>
           <FieldControl error={locErrors.address}>
             <textarea
@@ -208,12 +169,8 @@ export function CompanyPrimaryLocationSection({
           <FieldLabel>Timezone</FieldLabel>
           <Combobox
             options={timeZoneOptions}
-            value={companyTimeZoneNo}
-            onChange={(val) => {
-              setCompanyTimeZoneNo(val);
-              const opt = timeZoneOptions.find((o) => o.value === val);
-              setSelectedTimeZoneName?.(opt?.label || '');
-            }}
+            value={timeZoneNo}
+            onChange={setTimeZoneNo}
             placeholder="Select timezone"
             searchPlaceholder="Search timezone..."
             sortAlphabetically={false}

@@ -50,6 +50,8 @@ interface CompanyHeaderFieldsProps {
   setName: (v: string) => void;
   companyType: string;
   setCompanyType: (v: string) => void;
+  website: string;
+  setWebsite: (v: string) => void;
   businessEntityTypes: BusinessEntityTypeOption[];
   errors: Record<string, string>;
   setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -70,6 +72,8 @@ export function CompanyHeaderFields({
   setName,
   companyType,
   setCompanyType,
+  website,
+  setWebsite,
   businessEntityTypes,
   errors,
   setErrors,
@@ -131,14 +135,22 @@ export function CompanyHeaderFields({
     <CompanyFormSection
       icon={Building}
       title="General Business Entity Information"
-      description="Code, name, type, timezone and tax details"
+      description="Code, name, type, website, primary contact and primary location"
       action={
         <div className="flex items-center gap-3">
+          {errors.attachments ? (
+            <span role="alert" className="text-[10px] font-medium text-red-500">
+              {errors.attachments}
+            </span>
+          ) : null}
           <Button
             type="button"
             variant="outline"
             onClick={onShowAttachments}
-            className="h-8 px-3 rounded-[8px] text-xs font-semibold text-slate-500 border-slate-300 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none"
+            className={cn(
+              'h-8 px-3 rounded-[8px] text-xs font-semibold text-slate-500 border-slate-300 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none',
+              errors.attachments && 'text-red-500 border-red-400'
+            )}
             title="View Attachments"
           >
             <File size={14} />
@@ -156,7 +168,10 @@ export function CompanyHeaderFields({
             <Button
               type="button"
               variant="outline"
-              className="h-8 w-8 p-0 rounded-[8px] text-xs font-semibold text-[#0EA5E9] border-[#0EA5E9]/30 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none"
+              className={cn(
+                'h-8 w-8 p-0 rounded-[8px] text-xs font-semibold text-[#0EA5E9] border-[#0EA5E9]/30 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none',
+                errors.attachments && 'text-red-500 border-red-400'
+              )}
               title="Upload Attachment"
             >
               <Paperclip size={14} />
@@ -314,7 +329,23 @@ export function CompanyHeaderFields({
           </FieldControl>
         </div>
 
-
+        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-3">
+          <FieldLabel htmlFor="businessEntityWebsite">Website</FieldLabel>
+          <FieldControl error={errors.website}>
+            <Input
+              id="businessEntityWebsite"
+              inputMode="url"
+              placeholder="https://www.example.com"
+              value={website}
+              maxLength={2000}
+              onChange={(e) => {
+                setWebsite(e.target.value);
+                if (errors.website) setErrors((prev) => ({ ...prev, website: '' }));
+              }}
+              className={cn(fieldClass, errors.website && 'border-red-400')}
+            />
+          </FieldControl>
+        </div>
       </div>
       {children}
     </CompanyFormSection>

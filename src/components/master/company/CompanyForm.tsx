@@ -27,7 +27,12 @@ import { CompanyLocationModal } from './CompanyLocationModal';
 import { MasterCreateDialog } from '../MasterCreateDialog';
 import { CompanyContactsSection } from './CompanyContactsSection';
 import { CompanyContactModal } from './CompanyContactModal';
-import { guessWindowsTimeZone } from '@/lib/timezoneGuesser';
+import {
+  type LocationTimeZone,
+  countryHasMultipleTimeZones,
+  getLocationTimeZoneLabel,
+  suggestLocationTimeZoneNo,
+} from './locationTimeZone';
 import { CompanyAttachmentsSection } from './CompanyAttachmentsSection';
 import { CompanyNotesSection, FollowUpNote } from './CompanyNotesSection';
 
@@ -73,8 +78,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
   // Header fields
   const [name, setName] = useState('');
   const [companyType, setCompanyType] = useState('');
-  const [companyTimeZoneNo, setCompanyTimeZoneNo] = useState('');
-  const [selectedTimeZoneName, setSelectedTimeZoneName] = useState('');
+  const [website, setWebsite] = useState('');
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
   const [creditInsuranceCompanyName, setCreditInsuranceCompanyName] = useState('');
   const [createdBy, setCreatedBy] = useState<string | null>(null);
@@ -99,6 +103,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [locMapUrl, setLocMapUrl] = useState('');
   const [locLatitude, setLocLatitude] = useState('');
   const [locLongitude, setLocLongitude] = useState('');
+  const [locTimeZoneNo, setLocTimeZoneNo] = useState('');
+  const [locTimeZoneName, setLocTimeZoneName] = useState('');
   const [locErrors, setLocErrors] = useState<Record<string, string>>({});
   const [locStatesList, setLocStatesList] = useState<GeoState[]>([]);
 
@@ -112,10 +118,13 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [primaryLocMapUrl, setPrimaryLocMapUrl] = useState('');
   const [primaryLocLatitude, setPrimaryLocLatitude] = useState('');
   const [primaryLocLongitude, setPrimaryLocLongitude] = useState('');
+  const [primaryLocTimeZoneNo, setPrimaryLocTimeZoneNo] = useState('');
+  const [primaryLocTimeZoneName, setPrimaryLocTimeZoneName] = useState('');
   const [primaryLocStatesList, setPrimaryLocStatesList] = useState<GeoState[]>([]);
 
   // Contacts
   const [companyContacts, setCompanyContacts] = useState<any[]>([]);
+  const [primaryContactNo, setPrimaryContactNo] = useState<number | null>(null);
   const [primaryContactName, setPrimaryContactName] = useState('');
   const [primaryContactDesignation, setPrimaryContactDesignation] = useState('');
   const [primaryContactPhone, setPrimaryContactPhone] = useState('');
@@ -182,14 +191,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
           setGstinTypeNo(dl.gstinTypeNo?.toString() || dl.gstinType?.id?.toString() || dl.gstinType?.gstinTypeNo?.toString() || '');
           setCreditLimit(dl.creditInsuranceLimit ?? null);
           setCreditInsuranceCompanyName(dl.creditInsuranceCompanyName || '');
-          setCompanyTimeZoneNo(dl.timeZone?.timeZoneNo?.toString() || '');
-          setSelectedTimeZoneName(
-            dl.timeZone?.timeZoneName ||
-            dl.timeZone?.crmTimeZoneName ||
-            dl.timeZone?.name ||
-            dl.timeZoneName ||
-            ''
-          );
+          setWebsite(dl.website || '');
           const createdByObj = dl.createdBy;
           const createdByStr = typeof createdByObj === 'object' && createdByObj !== null
             ? (createdByObj.displayName || createdByObj.userName || createdByObj.name || String(createdByObj))
@@ -214,37 +216,34 @@ export function CompanyForm({ id }: CompanyFormProps) {
             mapUrl: l.mapUrl || l.MapUrl || '',
             latitude: l.latitude ?? l.Latitude ?? '',
             longitude: l.longitude ?? l.Longitude ?? '',
+            timeZoneNo: l.timeZone?.timeZoneNo?.toString() || '',
+            timeZoneName: l.timeZone?.timeZoneName || '',
             isPrimary: l.isPrimary
           }));
-          const primaryLocs = mappedLocations.filter((l: any) => l.isPrimary === 'Y' || l.isPrimary === true);
-          const nonPrimaryLocs = mappedLocations.filter((l: any) => l.isPrimary !== 'Y' && l.isPrimary !== true);
+          const primaryLoc =
+            mappedLocations.find((l: any) => l.isPrimary === 'Y' || l.isPrimary === true) ?? mappedLocations[0];
 
-          if (primaryLocs.length > 0) {
-            const p = primaryLocs[0];
-            setPrimaryLocType(p.type);
-            setPrimaryLocAddress(p.address || dl.address || '');
-            setPrimaryLocCountry(p.country);
-            setPrimaryLocState(p.state);
-            setPrimaryLocCity(p.city);
-            setPrimaryLocCityNo(p.cityNo);
-            setPrimaryLocPin(p.pinCode || dl.pinCode || '');
-            setPrimaryLocMapUrl(p.mapUrl);
-            setPrimaryLocLatitude(p.latitude);
-            setPrimaryLocLongitude(p.longitude);
-            setCompanyLocations([...primaryLocs.slice(1), ...nonPrimaryLocs]);
-          } else if (mappedLocations.length > 0) {
-            const p = mappedLocations[0];
-            setPrimaryLocType(p.type);
-            setPrimaryLocAddress(p.address || dl.address || '');
-            setPrimaryLocCountry(p.country);
-            setPrimaryLocState(p.state);
-            setPrimaryLocCity(p.city);
-            setPrimaryLocCityNo(p.cityNo);
-            setPrimaryLocPin(p.pinCode || dl.pinCode || '');
-            setPrimaryLocMapUrl(p.mapUrl);
-            setPrimaryLocLatitude(p.latitude);
-            setPrimaryLocLongitude(p.longitude);
-            setCompanyLocations(mappedLocations.slice(1));
+          // Records saved before time zones moved to locations only have the entity-level zone.
+          setPrimaryLocTimeZoneNo(primaryLoc?.timeZoneNo || dl.timeZone?.timeZoneNo?.toString() || '');
+          setPrimaryLocTimeZoneName(primaryLoc?.timeZoneName || dl.timeZone?.timeZoneName || '');
+
+          if (primaryLoc) {
+            setPrimaryLocType(primaryLoc.type);
+            setPrimaryLocAddress(primaryLoc.address || dl.address || '');
+            setPrimaryLocCountry(primaryLoc.country);
+            setPrimaryLocState(primaryLoc.state);
+            setPrimaryLocCity(primaryLoc.city);
+            setPrimaryLocCityNo(primaryLoc.cityNo != null ? String(primaryLoc.cityNo) : '');
+            setPrimaryLocPin(primaryLoc.pinCode || dl.pinCode || '');
+            setPrimaryLocMapUrl(primaryLoc.mapUrl);
+            setPrimaryLocLatitude(primaryLoc.latitude);
+            setPrimaryLocLongitude(primaryLoc.longitude);
+            setCompanyLocations(mappedLocations.filter((l: any) => l !== primaryLoc));
+            if (primaryLoc.countryNo != null) {
+              fetchStatesByCountry(primaryLoc.countryNo).then((states) => {
+                if (!cancelled) setPrimaryLocStatesList(asGeoList<GeoState>(states));
+              });
+            }
           } else if (dl.address) {
             setPrimaryLocAddress(dl.address);
             setPrimaryLocPin(dl.pinCode || '');
@@ -254,6 +253,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
           }
 
           const mappedContacts = (dl.contactPersons || []).map((c: any) => ({
+            contactPersonNo: c.contactPersonNo ?? null,
             contactName: c.contactPersonName || '',
             name: c.contactPersonName || '',
             phone: c.phoneNo || '',
@@ -267,6 +267,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
           if (primaryContacts.length > 0) {
             const p = primaryContacts[0];
+            setPrimaryContactNo(p.contactPersonNo);
             setPrimaryContactName(p.name);
             setPrimaryContactDesignation(p.designation);
             setPrimaryContactPhone(p.phone);
@@ -274,6 +275,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
             setCompanyContacts([...primaryContacts.slice(1), ...nonPrimaryContacts]);
           } else if (mappedContacts.length > 0) {
             const p = mappedContacts[0];
+            setPrimaryContactNo(p.contactPersonNo);
             setPrimaryContactName(p.name);
             setPrimaryContactDesignation(p.designation);
             setPrimaryContactPhone(p.phone);
@@ -329,8 +331,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
     businessEntityFillValues?.data?.countries || businessEntityFillValues?.countries
   );
   const businessEntityTypes = businessEntityFillValues?.data?.businessEntityTypes || businessEntityFillValues?.businessEntityTypes || [];
-  const timeZones = businessEntityFillValues?.data?.timeZones || businessEntityFillValues?.timeZones || [];
+  const timeZones: LocationTimeZone[] = businessEntityFillValues?.data?.timeZones || businessEntityFillValues?.timeZones || [];
   const locationTypes = businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || [];
+  const defaultLocationTypeNo: string =
+    (locationTypes.find((t: any) => t.isDefault === true) ?? locationTypes[0])?.locationTypeNo?.toString() || '';
   const portsList = (businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || []).map((pt: any) => pt.portName || pt.name || '');
   const gstinTypes = businessEntityFillValues?.data?.gstinTypes || businessEntityFillValues?.gstinTypes || [];
 
@@ -359,6 +363,16 @@ export function CompanyForm({ id }: CompanyFormProps) {
     const found = locationTypes.find((x: any) => x.locationTypeNo?.toString() === no?.toString());
     return found ? found.locationTypeName : (no as string);
   };
+  const getTimeZoneLabel = (timeZoneNo: string, fallbackName?: string) =>
+    getLocationTimeZoneLabel(timeZones, timeZoneNo, fallbackName);
+
+  /** Re-picks a location's time zone after its country, state or city changes. */
+  const nextTimeZoneNo = (current: string, country: string, state: string, city: string, countryChanged: boolean) => {
+    const countryNo = getCountryNo(country);
+    if (!countryChanged && !countryHasMultipleTimeZones(timeZones, countryNo)) return current;
+    return suggestLocationTimeZoneNo(timeZones, countryNo, country, state, city) ?? (countryChanged ? '' : current);
+  };
+
   const getLocationTypeNo = (locName: string) => {
     const found = locationTypes.find((x: any) => x.locationTypeName?.toLowerCase() === locName?.toLowerCase());
     return found ? found.locationTypeNo : null;
@@ -366,11 +380,12 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
   // ---- Location modal ----
   const locStateNo = resolveGeoNo(locStatesList.find((s) => s.stateName === locState), 'stateNo');
+  const primaryLocStateNo = resolveGeoNo(primaryLocStatesList.find((s) => s.stateName === primaryLocState), 'stateNo');
 
   const openAddLocationModal = () => {
     setLocErrors({});
     setEditingLocationIndex(null);
-    setLocType('');
+    setLocType(defaultLocationTypeNo);
     setLocAddress('');
     setLocCountry('');
     setLocState('');
@@ -380,6 +395,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocMapUrl('');
     setLocLatitude('');
     setLocLongitude('');
+    setLocTimeZoneNo('');
+    setLocTimeZoneName('');
     setLocationModalOpen(true);
   };
 
@@ -395,6 +412,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocMapUrl(loc.mapUrl || '');
     setLocLatitude(loc.latitude !== undefined && loc.latitude !== null ? loc.latitude.toString() : '');
     setLocLongitude(loc.longitude !== undefined && loc.longitude !== null ? loc.longitude.toString() : '');
+    setLocTimeZoneNo(loc.timeZoneNo || '');
+    setLocTimeZoneName(loc.timeZoneName || '');
     setLocErrors({});
     setEditingLocationIndex(index);
     setLocationModalOpen(true);
@@ -431,6 +450,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setPrimaryLocCity('');
     setPrimaryLocCityNo('');
     setPrimaryLocStatesList([]);
+    setPrimaryLocTimeZoneNo((cur) => nextTimeZoneNo(cur, val, '', '', true));
     if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
 
     const foundCountry = countries.find((c) => c.countryName === val);
@@ -445,6 +465,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setPrimaryLocState(val);
     setPrimaryLocCity('');
     setPrimaryLocCityNo('');
+    setPrimaryLocTimeZoneNo((cur) => nextTimeZoneNo(cur, primaryLocCountry, val, '', false));
     if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
   };
 
@@ -459,15 +480,21 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setPrimaryLocCityNo((city.cityNo ?? '').toString());
 
     const sameState = (s: GeoState) => String(resolveGeoNo(s, 'stateNo')) === String(city.stateNo);
-    if (city.countryNo != null && toGeoNo(city.countryNo) !== getCountryNo(primaryLocCountry)) {
-      const country = countries.find((c) => String(c.countryNo) === String(city.countryNo));
-      setPrimaryLocCountry(country?.countryName || city.countryName || '');
-      const states = asGeoList<GeoState>(await fetchStatesByCountry(city.countryNo));
+    let country = primaryLocCountry;
+    let state = primaryLocState;
+    const countryChanged = city.countryNo != null && toGeoNo(city.countryNo) !== getCountryNo(primaryLocCountry);
+    if (countryChanged) {
+      country = countries.find((c) => String(c.countryNo) === String(city.countryNo))?.countryName || city.countryName || '';
+      setPrimaryLocCountry(country);
+      const states = asGeoList<GeoState>(await fetchStatesByCountry(city.countryNo!));
       setPrimaryLocStatesList(states);
-      setPrimaryLocState(states.find(sameState)?.stateName || city.stateName || '');
-    } else if (city.stateNo != null && String(city.stateNo) !== String(toGeoNo(primaryLocStatesList.find(s => s.stateName === primaryLocState)?.stateNo))) {
-      setPrimaryLocState(primaryLocStatesList.find(sameState)?.stateName || city.stateName || '');
+      state = states.find(sameState)?.stateName || city.stateName || '';
+      setPrimaryLocState(state);
+    } else if (city.stateNo != null && String(city.stateNo) !== String(toGeoNo(primaryLocStateNo))) {
+      state = primaryLocStatesList.find(sameState)?.stateName || city.stateName || '';
+      setPrimaryLocState(state);
     }
+    setPrimaryLocTimeZoneNo((cur) => nextTimeZoneNo(cur, country, state, city.cityName || '', countryChanged));
   };
 
 
@@ -478,6 +505,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCity('');
     setLocCityNo('');
     setLocStatesList([]);
+    setLocTimeZoneNo((cur) => nextTimeZoneNo(cur, val, '', '', true));
     if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
 
     const foundCountry = countries.find((c) => c.countryName === val);
@@ -492,6 +520,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocState(val);
     setLocCity('');
     setLocCityNo('');
+    setLocTimeZoneNo((cur) => nextTimeZoneNo(cur, locCountry, val, '', false));
     if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
   };
 
@@ -507,15 +536,21 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocCityNo((city.cityNo ?? '').toString());
 
     const sameState = (s: GeoState) => String(resolveGeoNo(s, 'stateNo')) === String(city.stateNo);
-    if (city.countryNo != null && toGeoNo(city.countryNo) !== getCountryNo(locCountry)) {
-      const country = countries.find((c) => String(c.countryNo) === String(city.countryNo));
-      setLocCountry(country?.countryName || city.countryName || '');
-      const states = asGeoList<GeoState>(await fetchStatesByCountry(city.countryNo));
+    let country = locCountry;
+    let state = locState;
+    const countryChanged = city.countryNo != null && toGeoNo(city.countryNo) !== getCountryNo(locCountry);
+    if (countryChanged) {
+      country = countries.find((c) => String(c.countryNo) === String(city.countryNo))?.countryName || city.countryName || '';
+      setLocCountry(country);
+      const states = asGeoList<GeoState>(await fetchStatesByCountry(city.countryNo!));
       setLocStatesList(states);
-      setLocState(states.find(sameState)?.stateName || city.stateName || '');
+      state = states.find(sameState)?.stateName || city.stateName || '';
+      setLocState(state);
     } else if (city.stateNo != null && String(city.stateNo) !== String(locStateNo)) {
-      setLocState(locStatesList.find(sameState)?.stateName || city.stateName || '');
+      state = locStatesList.find(sameState)?.stateName || city.stateName || '';
+      setLocState(state);
     }
+    setLocTimeZoneNo((cur) => nextTimeZoneNo(cur, country, state, city.cityName || '', countryChanged));
   };
 
   const handleLocationCityCreated = async (cityNo: string, cityName: string) => {
@@ -551,7 +586,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
       pinCode: locPin,
       mapUrl: locMapUrl,
       latitude: locLatitude,
-      longitude: locLongitude
+      longitude: locLongitude,
+      timeZoneNo: locTimeZoneNo,
+      timeZoneName: locTimeZoneName
     };
 
     if (editingLocationIndex !== null) {
@@ -565,19 +602,6 @@ export function CompanyForm({ id }: CompanyFormProps) {
       setCompanyLocations(prev => [...prev, newLoc]);
     }
 
-    const guessedTz = guessWindowsTimeZone(locCountry, locState, locCity);
-    if (guessedTz) {
-      const tzRecord = timeZones.find((tz: any) =>
-        (tz.timeZoneName || tz.crmTimeZoneName || tz.name || '') === guessedTz
-      );
-      if (tzRecord) {
-        setSelectedTimeZoneName(guessedTz);
-        setCompanyTimeZoneNo(tzRecord.timeZoneNo?.toString() || '');
-      } else {
-        setSelectedTimeZoneName(guessedTz);
-      }
-    }
-
     setLocType('');
     setLocAddress('');
     setLocCountry('');
@@ -588,6 +612,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setLocMapUrl('');
     setLocLatitude('');
     setLocLongitude('');
+    setLocTimeZoneNo('');
+    setLocTimeZoneName('');
     setLocErrors({});
     setLocationModalOpen(false);
   };
@@ -625,7 +651,24 @@ export function CompanyForm({ id }: CompanyFormProps) {
     deleteConfirm.requestConfirm({
       entityLabel: 'contact',
       recordName: label,
-      onConfirm: () => removeCompanyContact(index),
+      onConfirm: async () => {
+        // Contacts not saved yet only exist in the form; saved ones are deleted on the server.
+        if (c?.contactPersonNo == null) {
+          removeCompanyContact(index);
+          return;
+        }
+        try {
+          const res = await apiService.delete<any>('/api/master/business-entities/delete-contact-person', {
+            params: { businessEntityContactPersonDetailNo: c.contactPersonNo },
+          });
+          if (res?.success === false) throw new Error(res.message || res.error || 'Delete failed');
+        } catch (err: any) {
+          toast.error(parseApiSaveError(err).serverError || err?.message || 'Failed to delete contact');
+          throw err;
+        }
+        setCompanyContacts((prev) => prev.filter((x) => x !== c));
+        toast.success('Contact deleted');
+      },
     });
   };
 
@@ -670,7 +713,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
     if (editingContactIndex !== null) {
       setCompanyContacts(prev => {
         const next = [...prev];
-        next[editingContactIndex] = newContact;
+        next[editingContactIndex] = { ...next[editingContactIndex], ...newContact };
         return next;
       });
       setEditingContactIndex(null);
@@ -874,23 +917,39 @@ export function CompanyForm({ id }: CompanyFormProps) {
     if (!companyType || companyType === '' || companyType === 'none') {
       newErrors.companyType = 'Business Entity Type is required';
     }
-    if (companyLocations.length === 0 && !primaryLocAddress?.trim()) {
-      newErrors.companyLocations = 'At least one location is required';
-    }
+    const contactErrs: Record<string, string> = {};
+    if (!primaryContactName.trim()) contactErrs.name = 'Contact person name is required';
+    if (!primaryContactPhone.trim()) contactErrs.phone = 'Phone number is required';
+    setPrimaryContactErrors(contactErrs);
+
+    const addressError = primaryLocAddress.trim() ? '' : 'Address is required';
+    setLocErrors((prev) => ({ ...prev, address: addressError }));
     if (gstinTypeNo && !companyVatGst.trim()) {
       newErrors.companyVatGst = 'VAT / GST No is required';
     }
-    if (companyAttachments.length === 0) {
-      newErrors.attachments = 'At least one attachment is required';
-    }
+    // if (companyAttachments.length === 0) {
+    //   newErrors.attachments = 'At least one attachment is required';
+    // }
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return [
+      ...Object.values(newErrors),
+      ...Object.values(contactErrs),
+      ...(addressError ? [addressError] : []),
+    ];
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!validate()) {
-      toast.error('Please fill all required fields');
+    const missing = validate();
+    if (missing.length > 0) {
+      // Some errors (e.g. attachments) sit outside the visible fields, so name them.
+      toast.error('Please fill all required fields', {
+        description: (
+          <ul className="list-disc pl-4">
+            {missing.map((msg) => <li key={msg}>{msg}</li>)}
+          </ul>
+        ),
+      });
       return;
     }
     setShowConfirm(true);
@@ -903,6 +962,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
       const allContacts: any[] = [];
       if (primaryContactName) {
         allContacts.push({
+          businessEntityContactPersonDetailNo: primaryContactNo,
           contactPersonName: primaryContactName,
           address: '',
           countryNo: null,
@@ -918,6 +978,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
       }
 
       const computedContacts = allContacts.concat(companyContacts.map(c => ({
+        businessEntityContactPersonDetailNo: c.contactPersonNo ?? null,
         contactPersonName: c.contactName || c.name || '',
         address: c.address || '',
         countryNo: getCountryNo(c.country) || null,
@@ -928,21 +989,23 @@ export function CompanyForm({ id }: CompanyFormProps) {
         email: c.email || '',
         designation: c.designation || '',
         department: c.department || '',
-        isPrimary: c.isPrimary === 'Y' || c.isPrimary === true
+        isPrimary: false
       })));
 
       const allLocations: any[] = [];
       if (primaryLocAddress) {
         allLocations.push({
-          locationTypeNo: getLocationTypeNo(primaryLocType) || parseInt(primaryLocType) || null,
+          // The type field is hidden: keep the loaded type, else use the default type.
+          locationTypeNo: getLocationTypeNo(primaryLocType) || toGeoNo(primaryLocType || defaultLocationTypeNo),
           address: primaryLocAddress || '',
           countryNo: getCountryNo(primaryLocCountry) || null,
-          stateNo: getStateNo(primaryLocState) || null,
-          cityNo: getCityNo(primaryLocCity) || null,
+          stateNo: toGeoNo(primaryLocStateNo),
+          cityNo: toGeoNo(primaryLocCityNo),
           pinCode: primaryLocPin || '',
           mapUrl: primaryLocMapUrl || '',
           latitude: primaryLocLatitude !== '' && primaryLocLatitude != null ? Number(primaryLocLatitude) : null,
           longitude: primaryLocLongitude !== '' && primaryLocLongitude != null ? Number(primaryLocLongitude) : null,
+          crmTimeZoneNo: toGeoNo(primaryLocTimeZoneNo),
           isPrimary: true
         });
       }
@@ -957,7 +1020,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
         mapUrl: l.mapUrl || '',
         latitude: l.latitude !== undefined && l.latitude !== null && l.latitude !== '' ? Number(l.latitude) : null,
         longitude: l.longitude !== undefined && l.longitude !== null && l.longitude !== '' ? Number(l.longitude) : null,
-        isPrimary: l.isPrimary === 'Y' || l.isPrimary === true
+        crmTimeZoneNo: toGeoNo(l.timeZoneNo),
+        isPrimary: false
       })));
 
       const computedPorts = companyPorts.map(p => ({
@@ -971,26 +1035,19 @@ export function CompanyForm({ id }: CompanyFormProps) {
       const payload = {
         businessEntityNo: editingId ? parseInt(editingId) : null,
         businessEntityName: name,
-        aliasName: null,
-        businessEntityAlias: null,
         crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : null,
-        crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : null,
-        vatgstNo: companyVatGst || null,
+        // Kept in sync with the primary location's zone; the list page still reads it.
+        crmTimeZoneNo: toGeoNo(primaryLocTimeZoneNo),
         gstinTypeNo: gstinTypeNo ? parseInt(gstinTypeNo) : null,
+        vatgstNo: companyVatGst || null,
         creditInsuranceLimit: creditLimit ?? null,
         creditInsuranceCompanyName: creditInsuranceCompanyName || null,
-        address: primaryLocAddress || null,
-        countryNo: getCountryNo(primaryLocCountry) || null,
-        stateNo: getStateNo(primaryLocState) || null,
-        cityNo: getCityNo(primaryLocCity) || null,
-        pinCode: primaryLocPin || null,
+        website: website.trim() || null,
         contactPersons: computedContacts,
         locations: computedLocations,
         ports: computedPorts,
         attachment: computedAttachments,
-        followUpDetails: followUpNotes.map(n => ({ followUpNotes: n.note, followUpDate: n.date || null })),
-        createdBy: createdBy || undefined,
-        createdDate: createdDate || undefined
+        followUpDetails: followUpNotes.map(n => ({ followUpNotes: n.note, followUpDate: n.date || null }))
       };
       await apiService.post('/api/master/business-entities/save', payload);
       setShowSuccessAlert(true);
@@ -1029,6 +1086,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
             setName={setName}
             companyType={companyType}
             setCompanyType={setCompanyType}
+            website={website}
+            setWebsite={setWebsite}
             businessEntityTypes={businessEntityTypes}
             errors={errors}
             setErrors={setErrors}
@@ -1060,12 +1119,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
               />
 
               <CompanyPrimaryLocationSection
-                locationTypes={businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []}
                 countries={countries}
+                countryNo={getCountryNo(primaryLocCountry)}
                 statesList={primaryLocStatesList}
-                stateNo={primaryLocStatesList.find(s => s.stateName === primaryLocState)?.stateNo}
-                locType={primaryLocType}
-                setLocType={setPrimaryLocType}
+                stateNo={primaryLocStateNo}
                 locAddress={primaryLocAddress}
                 setLocAddress={setPrimaryLocAddress}
                 locCountry={primaryLocCountry}
@@ -1087,10 +1144,12 @@ export function CompanyForm({ id }: CompanyFormProps) {
                 locErrors={locErrors}
                 setLocErrors={setLocErrors}
                 timeZones={timeZones}
-                companyTimeZoneNo={companyTimeZoneNo}
-                setCompanyTimeZoneNo={setCompanyTimeZoneNo}
-                selectedTimeZoneName={selectedTimeZoneName}
-                setSelectedTimeZoneName={setSelectedTimeZoneName}
+                timeZoneNo={primaryLocTimeZoneNo}
+                setTimeZoneNo={(val) => {
+                  setPrimaryLocTimeZoneNo(val);
+                  setPrimaryLocTimeZoneName('');
+                }}
+                timeZoneName={primaryLocTimeZoneName}
               />
             </div>
           </CompanyHeaderFields>
@@ -1122,6 +1181,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
           <CompanyLocationsSection
             locations={companyLocations}
             getLocationTypeName={getLocationTypeName}
+            getTimeZoneLabel={getTimeZoneLabel}
             onAdd={openAddLocationModal}
             onEdit={handleEditLocation}
             onRemove={requestRemoveCompanyLocation}
@@ -1232,11 +1292,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
                         ]);
                       }
                       if (data.address || data.city || data.state || data.country) {
-                        const defaultLocType = locationTypes.find((t: any) => /office/i.test(t.locationTypeName || ''))?.locationTypeNo ?? locationTypes[0]?.locationTypeNo;
                         setCompanyLocations(prev => [
                           ...prev,
                           {
-                            type: defaultLocType !== undefined ? defaultLocType.toString() : '',
+                            type: defaultLocationTypeNo,
                             address: data.address || '',
                             country: data.country || '',
                             state: data.state || '',
@@ -1244,22 +1303,16 @@ export function CompanyForm({ id }: CompanyFormProps) {
                             pinCode: data.zipCode || data.pinCode || '',
                             mapUrl: '',
                             latitude: '',
-                            longitude: ''
+                            longitude: '',
+                            timeZoneNo: suggestLocationTimeZoneNo(
+                              timeZones,
+                              getCountryNo(data.country || ''),
+                              data.country || '',
+                              data.state || '',
+                              data.city || ''
+                            ) ?? ''
                           }
                         ]);
-
-                        const guessedTz = guessWindowsTimeZone(data.country || '', data.state || '', data.city || '');
-                        if (guessedTz && !selectedTimeZoneName) {
-                          const tzRecord = timeZones.find((tz: any) =>
-                            (tz.timeZoneName || tz.crmTimeZoneName || tz.name || '') === guessedTz
-                          );
-                          if (tzRecord) {
-                            setSelectedTimeZoneName(guessedTz);
-                            setCompanyTimeZoneNo(tzRecord.timeZoneNo?.toString() || '');
-                          } else {
-                            setSelectedTimeZoneName(guessedTz);
-                          }
-                        }
                       }
                     }}
                   />
@@ -1274,6 +1327,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
           editingIndex={editingLocationIndex}
           locationTypes={locationTypes}
           countries={countries}
+          countryNo={getCountryNo(locCountry)}
           statesList={locStatesList}
           stateNo={locStateNo}
           locType={locType}
@@ -1296,6 +1350,13 @@ export function CompanyForm({ id }: CompanyFormProps) {
           setLocLatitude={setLocLatitude}
           locLongitude={locLongitude}
           setLocLongitude={setLocLongitude}
+          timeZones={timeZones}
+          locTimeZoneNo={locTimeZoneNo}
+          setLocTimeZoneNo={(val) => {
+            setLocTimeZoneNo(val);
+            setLocTimeZoneName('');
+          }}
+          locTimeZoneName={locTimeZoneName}
           locErrors={locErrors}
           setLocErrors={setLocErrors}
           onSave={addCompanyLocation}

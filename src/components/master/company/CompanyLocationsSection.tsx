@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { MapPin, Building, Plus, Edit, Trash2 } from 'lucide-react';
+import { MapPin, Building, Plus, Edit, Trash2, Clock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
@@ -8,6 +8,7 @@ import { CompanyFormSection } from './CompanyFormSection';
 interface CompanyLocationsSectionProps {
   locations: any[];
   getLocationTypeName: (no: string | number) => string;
+  getTimeZoneLabel: (timeZoneNo: string, fallbackName?: string) => string;
   onAdd: () => void;
   onEdit: (index: number) => void;
   onRemove: (index: number) => void;
@@ -18,6 +19,7 @@ interface CompanyLocationsSectionProps {
 export function CompanyLocationsSection({
   locations,
   getLocationTypeName,
+  getTimeZoneLabel,
   onAdd,
   onEdit,
   onRemove,
@@ -109,6 +111,12 @@ export function CompanyLocationsSection({
                     <span className="text-slate-300">•</span>
                     <span className="font-mono text-slate-400">{loc.pinCode || loc.pin}</span>
                   </div>
+                  {loc.timeZoneNo ? (
+                    <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 min-w-0">
+                      <Clock size={10} className="shrink-0" />
+                      <span className="truncate">{getTimeZoneLabel(loc.timeZoneNo, loc.timeZoneName)}</span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
