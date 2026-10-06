@@ -13,6 +13,7 @@ interface CompanyPortsSectionProps {
   onSelectedPortNameChange: (val: string) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  standalone?: boolean;
 }
 
 export function CompanyPortsSection({
@@ -22,13 +23,10 @@ export function CompanyPortsSection({
   onSelectedPortNameChange,
   onAdd,
   onRemove,
+  standalone,
 }: CompanyPortsSectionProps) {
-  return (
-    <CompanyFormSection
-      icon={Globe}
-      title="Preferred Ports"
-      description="Assign ports commonly used with this entity"
-    >
+  const content = (
+    <>
       <div className="flex flex-col sm:flex-row gap-2">
         <Combobox
           options={portsList.map((p: string) => ({ label: p, value: p }))}
@@ -73,6 +71,20 @@ export function CompanyPortsSection({
           ))}
         </div>
       )}
+    </>
+  );
+
+  if (standalone) {
+    return <div className="space-y-4">{content}</div>;
+  }
+
+  return (
+    <CompanyFormSection
+      icon={Globe}
+      title="Preferred Ports"
+      description="Assign ports commonly used with this entity"
+    >
+      {content}
     </CompanyFormSection>
   );
 }

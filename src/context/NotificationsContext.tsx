@@ -151,6 +151,6 @@ export function useNotifications() {
 export function formatUnreadBadge(count: number): string {
   const n = Math.max(0, Number.isFinite(count) ? count : 0);
   if (n <= 0) return '0';
-  if (n > 99) return '99+';
+  if (n > 10) return '10+';
   return String(n);
 }

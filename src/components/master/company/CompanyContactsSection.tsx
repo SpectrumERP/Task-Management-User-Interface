@@ -58,7 +58,6 @@ export function CompanyContactsSection({
                     companyCode,
                     name: c.name || c.contactName,
                     designation: c.designation,
-                    department: c.department,
                     phone: c.phone,
                     email: c.email,
                   }}
@@ -99,11 +98,6 @@ export function CompanyContactsSection({
                         {c.designation}
                       </span>
                     ) : null}
-                    {c.department ? (
-                      <span className="px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-surface)] text-slate-300 text-[9px] font-semibold border border-[var(--tm-border)]/80">
-                        {c.department}
-                      </span>
-                    ) : null}
                     <span
                       className={cn(
                         'px-1.5 py-0.5 rounded-[6px] text-[8px] font-semibold border',
@@ -124,11 +118,6 @@ export function CompanyContactsSection({
                       <span className="text-slate-400">Email:</span>{' '}
                       <strong className="text-[#0EA5E9] font-semibold select-all">{c.email}</strong>
                     </p>
-                    {c.address ? (
-                      <p className="text-[9px] text-slate-400 italic line-clamp-1 mt-0.5">
-                        {c.address}, {c.city}, {c.state}, {c.country}
-                      </p>
-                    ) : null}
                   </div>
                 </div>
               </div>

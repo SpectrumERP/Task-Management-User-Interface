@@ -342,6 +342,9 @@ export function CameraComp({
         setPreviewCrop(crop);
         setPreviewCompletedCrop(crop);
         dispatch({ type: 'PREVIEW', file, url, isBusinessCard: true });
+        
+        // Auto-analyze if card was detected
+        analyzeImage(file, url);
       } else {
         // Initialize a centered crop box
         setPreviewCrop({ unit: '%', x: 10, y: 20, width: 80, height: 60 });
@@ -349,7 +352,7 @@ export function CameraComp({
       }
     }, 'image/jpeg', 0.9);
 
-  }, [status, fileNamePrefix, processImage, stopCamera, parseOcrResult]);
+  }, [status, fileNamePrefix, processImage, stopCamera, parseOcrResult, analyzeImage]);
 
   const { isCvReady, detectionResult, isStable } = useBusinessCardDetection(
     videoRef,

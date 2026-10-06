@@ -1,8 +1,8 @@
-import { Button } from '@/components/ui/button';
+
 import { attachmentService } from '@/services/attachmentService';
-import { UploadCloud, Camera as CameraIcon, FileText, X, FileEdit } from 'lucide-react';
+import { FileText, X, FileEdit } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ALLOWED_UPLOAD_HELPER_TEXT, UPLOAD_ACCEPT_ATTR } from '@/lib/allowedUploadFiles';
+
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
 import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
@@ -27,8 +27,6 @@ function isShareableAttachment(att: any): boolean {
 export function CompanyAttachmentsSection({
   attachments,
   companyName,
-  onFileUpload,
-  onOpenCamera,
   onAnalyze,
   onRemove,
   onRename,
@@ -45,8 +43,8 @@ export function CompanyAttachmentsSection({
       }
       description="At least one attachment is required to save"
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-        <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        {/* <div className="flex flex-col gap-2">
           <div
             className={cn(
               'border border-dashed border-[var(--tm-border)] bg-[var(--tm-elevated)] hover:bg-[#eef5f9] rounded-[8px] p-5 text-center cursor-pointer transition-colors relative flex flex-col items-center justify-center min-h-[110px]',
@@ -77,7 +75,7 @@ export function CompanyAttachmentsSection({
             <CameraIcon size={15} />
             Capture
           </Button>
-        </div>
+        </div> */}
 
         <div className="md:col-span-2 space-y-2 min-w-0">
           {attachments.length === 0 ? (
@@ -127,8 +125,8 @@ export function CompanyAttachmentsSection({
                             (att.fileName || '').toLowerCase().endsWith(ext)
                           ) &&
                             (analyzedAttachmentIds.includes(att.id || att.docNo) ||
-                            (att.fileName || '').toLowerCase().includes('capture') ||
-                            (att.fileName || '').toLowerCase().startsWith('logo') ? (
+                              (att.fileName || '').toLowerCase().includes('capture') ||
+                              (att.fileName || '').toLowerCase().startsWith('logo') ? (
                               <span className="text-[9px] font-semibold text-slate-400">Analyzed</span>
                             ) : (
                               <button

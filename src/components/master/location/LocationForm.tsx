@@ -129,9 +129,9 @@ export function LocationForm({ id }: LocationFormProps) {
     if (!name.trim()) {
       newErrors.name = 'Location Name is required';
     }
-    if (!inchargeNo || inchargeNo === 'none' || inchargeNo === '') {
-      newErrors.inchargeNo = 'Incharge Lead is required';
-    }
+    // if (!inchargeNo || inchargeNo === 'none' || inchargeNo === '') {
+    //   newErrors.inchargeNo = 'Incharge Lead is required';
+    // }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -258,7 +258,7 @@ export function LocationForm({ id }: LocationFormProps) {
               </FieldControl>
             </div>
 
-            <div className="space-y-1.5 min-w-0">
+            {/* <div className="space-y-1.5 min-w-0">
               <FieldLabel>Parent Location</FieldLabel>
               <Combobox
                 options={parentOptions}
@@ -301,12 +301,12 @@ export function LocationForm({ id }: LocationFormProps) {
                 searchPlaceholder="Search region..."
                 className={fieldClass}
               />
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
 
-      <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+      {/* <section className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
         <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <Home size={15} strokeWidth={1.75} />
@@ -483,7 +483,7 @@ export function LocationForm({ id }: LocationFormProps) {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       <MasterCreateDialog
         open={isMasterCreateOpen}

@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { format, isValid } from 'date-fns';
 import { apiService } from '@/services/apiService';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/Combobox';
-import { Building, Camera as CameraIcon } from 'lucide-react';
+import { Building, Camera as CameraIcon, File, IdCard, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
-import {
-  buildTimeZoneComboboxOptions,
-  formatTimeZoneDisplay,
-  type TimeZoneOptionLike,
-} from '@/lib/windowsTimeZones';
+import { UPLOAD_ACCEPT_ATTR } from '@/lib/allowedUploadFiles';
+
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CompanyFormSection } from './CompanyFormSection';
 
 const fieldClass = FIELD_CONTROL_CLASS;
@@ -21,14 +20,8 @@ type BusinessEntityTypeOption = {
   operCRMBusinessEntityTypeNo?: string | number;
 };
 
-type GstinTypeOption = {
-  gstinTypeName?: string;
-  gstinTypeNo?: string | number;
-  id?: string | number;
-  name?: string;
-};
 
-type TimeZoneOption = TimeZoneOptionLike;
+
 
 type BeSuggestion = {
   businessEntityName?: string;
@@ -40,35 +33,34 @@ function suggestionLabel(be: BeSuggestion) {
   return be.businessEntityName || be.BusinessEntityName || be.name || '';
 }
 
+function RecordMetaItem({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline gap-1.5 min-w-0">
+      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold shrink-0">{label}</span>
+      <span className="text-xs font-medium text-slate-300 truncate">{children}</span>
+    </div>
+  );
+}
+
 
 interface CompanyHeaderFieldsProps {
   code: string;
   editingId: string | null;
   name: string;
   setName: (v: string) => void;
-  aliasName: string;
-  setAliasName: (v: string) => void;
   companyType: string;
   setCompanyType: (v: string) => void;
-  companyTimeZoneNo: string;
-  setCompanyTimeZoneNo: (v: string) => void;
-  /** Loaded timezone id/name for edit mode until fill-values resolve. */
-  selectedTimeZoneName?: string;
-  setSelectedTimeZoneName?: (v: string) => void;
-  creditLimit: number | null;
-  setCreditLimit: (v: number | null) => void;
-  creditInsuranceCompanyName: string;
-  setCreditInsuranceCompanyName: (v: string) => void;
-  companyVatGst: string;
-  setCompanyVatGst: (v: string) => void;
-  gstinTypeNo: string;
-  setGstinTypeNo: (v: string) => void;
-  gstinTypes: GstinTypeOption[];
   businessEntityTypes: BusinessEntityTypeOption[];
-  timeZones: TimeZoneOption[];
   errors: Record<string, string>;
   setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onOpenCamera: () => void;
+  createdBy?: string | null;
+  createdDate?: string | null;
+  attachmentCount?: number;
+  onShowAttachments?: () => void;
+  onUploadAttachment?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onDirectAnalyze?: (file: File) => void;
+  children?: React.ReactNode;
 }
 
 export function CompanyHeaderFields({
@@ -76,28 +68,19 @@ export function CompanyHeaderFields({
   editingId,
   name,
   setName,
-  aliasName,
-  setAliasName,
   companyType,
   setCompanyType,
-  companyTimeZoneNo,
-  setCompanyTimeZoneNo,
-  selectedTimeZoneName,
-  setSelectedTimeZoneName,
-  creditLimit,
-  setCreditLimit,
-  creditInsuranceCompanyName,
-  setCreditInsuranceCompanyName,
-  companyVatGst,
-  setCompanyVatGst,
-  gstinTypeNo,
-  setGstinTypeNo,
-  gstinTypes,
   businessEntityTypes,
-  timeZones,
   errors,
   setErrors,
   onOpenCamera,
+  createdBy,
+  createdDate,
+  attachmentCount = 0,
+  onShowAttachments,
+  onUploadAttachment,
+  onDirectAnalyze,
+  children,
 }: CompanyHeaderFieldsProps) {
   const [beSuggestions, setBeSuggestions] = useState<BeSuggestion[]>([]);
   const [showBeSuggestions, setShowBeSuggestions] = useState(false);
@@ -107,23 +90,11 @@ export function CompanyHeaderFields({
   const canSearchSuggestions = name.trim().length >= 2;
   const visibleSuggestions = canSearchSuggestions ? beSuggestions : [];
 
-  const timeZoneOptions = useMemo(() => {
-    const opts = buildTimeZoneComboboxOptions(timeZones);
-    if (
-      companyTimeZoneNo &&
-      !opts.some((o) => o.value === companyTimeZoneNo) &&
-      selectedTimeZoneName
-    ) {
-      return [
-        ...opts,
-        {
-          value: companyTimeZoneNo,
-          label: formatTimeZoneDisplay(selectedTimeZoneName),
-        },
-      ];
-    }
-    return opts;
-  }, [timeZones, companyTimeZoneNo, selectedTimeZoneName]);
+  const createdDateObj = createdDate ? new Date(createdDate) : null;
+  const formattedCreatedDate =
+    createdDateObj && isValid(createdDateObj) ? format(createdDateObj, 'd MMM yyyy, h:mm a') : null;
+
+
 
   useEffect(() => {
     if (!canSearchSuggestions) {
@@ -162,30 +133,84 @@ export function CompanyHeaderFields({
       title="General Business Entity Information"
       description="Code, name, type, timezone and tax details"
       action={
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onOpenCamera}
-          className="h-8 px-3 rounded-[8px] text-xs font-semibold text-[#0EA5E9] border-[#0EA5E9]/30 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none"
-        >
-          <CameraIcon size={14} />
-          Capture Attachment
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onShowAttachments}
+            className="h-8 px-3 rounded-[8px] text-xs font-semibold text-slate-500 border-slate-300 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none"
+            title="View Attachments"
+          >
+            <File size={14} />
+            {attachmentCount}
+          </Button>
+
+          <div className="relative">
+            <input
+              type="file"
+              accept={UPLOAD_ACCEPT_ATTR}
+              onChange={onUploadAttachment}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              title="Upload Attachment"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 w-8 p-0 rounded-[8px] text-xs font-semibold text-[#0EA5E9] border-[#0EA5E9]/30 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none"
+              title="Upload Attachment"
+            >
+              <Paperclip size={14} />
+            </Button>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 w-8 p-0 rounded-[8px] text-xs font-semibold text-[#0EA5E9] border-[#0EA5E9]/30 bg-[var(--tm-surface)] hover:bg-[var(--tm-tint)] gap-1.5 shadow-none"
+                title="Analyze Image"
+              >
+                <IdCard size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-[var(--tm-surface)] border-[var(--tm-border)] shadow-md text-slate-700 dark:text-slate-300">
+              <DropdownMenuItem className="cursor-pointer hover:bg-[var(--tm-elevated)]" onSelect={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = UPLOAD_ACCEPT_ATTR;
+                input.onchange = (ev: any) => {
+                  const file = ev.target.files?.[0];
+                  if (file && onDirectAnalyze) {
+                    onDirectAnalyze(file);
+                  }
+                };
+                input.click();
+              }}>
+                <File className="mr-2 h-4 w-4" />
+                <span>Direct Analyze</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer hover:bg-[var(--tm-elevated)]" onSelect={() => {
+                setTimeout(() => onOpenCamera?.(), 150);
+              }}>
+                <CameraIcon className="mr-2 h-4 w-4" />
+                <span>Camera Capture</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       }
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-3.5">
-        <div className="space-y-1.5 min-w-0">
-          <FieldLabel>Code</FieldLabel>
-          <Input
-            readOnly
-            tabIndex={-1}
-            value={editingId ? code || '—' : 'AUTO-GEN-CODE'}
-            className={cn(
-              fieldClass,
-              'bg-[var(--tm-elevated)] text-slate-500 cursor-default select-none focus-visible:ring-0 focus-visible:border-[var(--tm-border)]/80'
-            )}
-          />
+      {editingId && (
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1.5 pb-3 mb-3.5 border-b border-[var(--tm-border)]">
+          <RecordMetaItem label="Code">
+            <span className="font-mono">{code || '—'}</span>
+          </RecordMetaItem>
+          {createdBy && <RecordMetaItem label="Created by">{createdBy}</RecordMetaItem>}
+          {formattedCreatedDate && <RecordMetaItem label="Created on">{formattedCreatedDate}</RecordMetaItem>}
         </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-3.5">
 
         <div className="space-y-1.5 min-w-0 sm:col-span-2 relative">
           <FieldLabel htmlFor="businessEntityName" required>
@@ -264,19 +289,6 @@ export function CompanyHeaderFields({
           </FieldControl>
         </div>
 
-        <div className="space-y-1.5 min-w-0">
-          <FieldLabel htmlFor="businessEntityAlias">Alias</FieldLabel>
-          <FieldControl>
-            <Input
-              id="businessEntityAlias"
-              placeholder="Alternate / short name"
-              value={aliasName}
-              maxLength={100}
-              onChange={(e) => setAliasName(e.target.value)}
-              className={fieldClass}
-            />
-          </FieldControl>
-        </div>
 
         <div className="space-y-1.5 min-w-0">
           <FieldLabel required>Business Entity Type</FieldLabel>
@@ -302,91 +314,9 @@ export function CompanyHeaderFields({
           </FieldControl>
         </div>
 
-        <div className="space-y-1.5 min-w-0">
-          <FieldLabel>Timezone</FieldLabel>
-          <Combobox
-            options={timeZoneOptions}
-            value={companyTimeZoneNo}
-            onChange={(val) => {
-              setCompanyTimeZoneNo(val);
-              const opt = timeZoneOptions.find((o) => o.value === val);
-              setSelectedTimeZoneName?.(opt?.label || '');
-            }}
-            placeholder="Select timezone"
-            searchPlaceholder="Search timezone..."
-            sortAlphabetically={false}
-            className={cn(fieldClass, 'px-3 min-w-0')}
-            contentClassName="min-w-[min(100vw-2rem,28rem)] w-[var(--radix-popover-trigger-width)]"
-          />
-        </div>
 
-        <div className="space-y-1.5 min-w-0">
-          <FieldLabel htmlFor="creditLimit">Credit Insurance Limit</FieldLabel>
-          <Input
-            id="creditLimit"
-            type="number"
-            placeholder="Enter credit insurance limit"
-            value={creditLimit ?? ''}
-            onChange={(e) => setCreditLimit(e.target.value === '' ? null : Number(e.target.value))}
-            className={cn(
-              fieldClass,
-              'text-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-            )}
-          />
-        </div>
-
-        <div className="space-y-1.5 min-w-0">
-          <FieldLabel htmlFor="creditInsuranceCompany">Credit Insurance Company Name</FieldLabel>
-          <Input
-            id="creditInsuranceCompany"
-            placeholder="Enter credit insurance company name"
-            value={creditInsuranceCompanyName}
-            maxLength={100}
-            onChange={(e) => setCreditInsuranceCompanyName(e.target.value)}
-            className={fieldClass}
-          />
-        </div>
-
-        <div className="space-y-1.5 min-w-0">
-          <FieldLabel>Document Type</FieldLabel>
-          <Combobox
-            options={gstinTypes.map((t) => ({
-              label: t.gstinTypeName || t.name || '',
-              value: String(t.gstinTypeNo || t.id || ''),
-            }))}
-            value={gstinTypeNo}
-            onChange={(val) => {
-              setGstinTypeNo(val);
-              if (!val && errors.companyVatGst) setErrors((prev) => ({ ...prev, companyVatGst: '' }));
-            }}
-            placeholder="Select document type"
-            className={cn(fieldClass, 'px-3')}
-          />
-        </div>
-
-        <div className="space-y-1.5 min-w-0 sm:col-span-1 lg:col-span-1">
-          <FieldLabel htmlFor="vatGst" required={!!gstinTypeNo}>
-            VAT / GST No
-          </FieldLabel>
-          <FieldControl error={errors.companyVatGst}>
-            <Input
-              id="vatGst"
-              placeholder="Enter VAT No. / GST No."
-              value={companyVatGst}
-              maxLength={30}
-              onChange={(e) => {
-                setCompanyVatGst(e.target.value);
-                if (errors.companyVatGst) setErrors((prev) => ({ ...prev, companyVatGst: '' }));
-              }}
-              className={cn(
-                fieldClass,
-                errors.companyVatGst &&
-                'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
-              )}
-            />
-          </FieldControl>
-        </div>
       </div>
+      {children}
     </CompanyFormSection>
   );
 }

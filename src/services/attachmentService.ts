@@ -23,6 +23,16 @@ export interface AttachmentResponse<T> {
 }
 
 export const attachmentService = {
+  async getImages(ids: number[]): Promise<{ docNo: number; fileName: string; contentType: string; imageBase64: string }[]> {
+    const response = await apiService.post<AttachmentResponse<{ docNo: number; fileName: string; contentType: string; imageBase64: string }[]>>(
+      '/api/document-attachments/images',
+      ids
+    );
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error(toErrorMessage(response.message ?? response.error, 'Failed to fetch images'));
+  },
   /**
    * 1. POST /api/document-attachments
    * Creates an entry in the database for the given file before uploading.

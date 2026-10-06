@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { MapPin, Building, Plus, Edit, Trash2 } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { CompanyFormSection } from './CompanyFormSection';
@@ -10,6 +11,7 @@ interface CompanyLocationsSectionProps {
   onAdd: () => void;
   onEdit: (index: number) => void;
   onRemove: (index: number) => void;
+  onScanNewCard?: () => void;
   error?: string;
 }
 

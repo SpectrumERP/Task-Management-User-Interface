@@ -15,6 +15,8 @@ interface DateTimePickerProps {
   hideTime?: boolean
   /** When true (default), time uses 24-hour clock (HH:mm) with no AM/PM. */
   hour24?: boolean
+  /** When true, automatically selects today's date when opening the picker if no date is set. */
+  autoSelectTodayOnOpen?: boolean
 }
 
 const MINUTES = [0, 15, 30, 45]
@@ -24,14 +26,27 @@ function CompactStepper({
   value,
   onUp,
   onDown,
+  onChange,
+  max,
 }: {
   label: string
   value: string
   onUp: () => void
   onDown: () => void
+  onChange?: (val: string) => void
+  max?: number
 }) {
+  const [localValue, setLocalValue] = React.useState(value)
+  const [isFocused, setIsFocused] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isFocused) {
+      setLocalValue(value)
+    }
+  }, [value, isFocused])
+
   return (
-    <div className="inline-flex shrink-0 items-center rounded-md border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm">
+    <div className="inline-flex shrink-0 items-center rounded-md border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm focus-within:ring-1 focus-within:ring-brand focus-within:border-brand">
       <button
         type="button"
         onClick={onDown}
@@ -40,9 +55,42 @@ function CompactStepper({
       >
         <ChevronLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
       </button>
-      <span className="h-7 min-w-[1.6rem] px-0.5 inline-flex items-center justify-center text-[12px] font-semibold tabular-nums text-slate-100">
-        {value}
-      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={isFocused ? localValue : value}
+        onFocus={(e) => {
+          setIsFocused(true);
+          e.target.select();
+        }}
+        onChange={(e) => {
+          let val = e.target.value.replace(/\D/g, "");
+          if (val.length > 2) val = val.slice(-2);
+          if (max !== undefined && val !== "") {
+            const parsed = parseInt(val, 10);
+            if (!isNaN(parsed) && parsed > max) {
+              val = String(max).padStart(2, '0');
+            }
+          }
+          setLocalValue(val);
+          onChange?.(val);
+        }}
+        onBlur={(e) => {
+          setIsFocused(false);
+          let finalVal = e.target.value.replace(/\D/g, "");
+          if (finalVal.length === 1) {
+            finalVal = finalVal.padStart(2, '0');
+            setLocalValue(finalVal);
+            onChange?.(finalVal);
+          } else if (finalVal === "") {
+            finalVal = "00";
+            setLocalValue(finalVal);
+            onChange?.(finalVal);
+          }
+        }}
+        className="h-7 w-7 min-w-[1.6rem] bg-transparent p-0 text-center text-[12px] font-semibold tabular-nums text-slate-100 focus:outline-none focus:ring-0"
+        aria-label={label}
+      />
       <button
         type="button"
         onClick={onUp}
@@ -63,6 +111,7 @@ export function DateTimePicker({
   disabled,
   hideTime = false,
   hour24 = true,
+  autoSelectTodayOnOpen = false,
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const rootRef = React.useRef<HTMLDivElement | null>(null)
@@ -318,6 +367,20 @@ export function DateTimePicker({
                   value={String(hour24 ? hour24Value : hour12).padStart(2, "0")}
                   onUp={() => stepHour(1)}
                   onDown={() => stepHour(-1)}
+                  max={hour24 ? 23 : 12}
+                  onChange={(val) => {
+                    const h = parseInt(val, 10);
+                    if (!isNaN(h)) {
+                      let nextH = h;
+                      if (hour24) {
+                        if (nextH > 23) nextH = 23;
+                        applyTime({ hour24: nextH });
+                      } else {
+                        if (nextH > 12) nextH = 12;
+                        applyTime({ hour12: nextH === 0 ? 12 : nextH });
+                      }
+                    }
+                  }}
                 />
                 <span className="text-[11px] font-semibold text-slate-300">:</span>
                 <CompactStepper
@@ -325,6 +388,14 @@ export function DateTimePicker({
                   value={String(minute).padStart(2, "0")}
                   onUp={() => stepMinute(1)}
                   onDown={() => stepMinute(-1)}
+                  max={59}
+                  onChange={(val) => {
+                    let m = parseInt(val, 10);
+                    if (!isNaN(m)) {
+                      if (m > 59) m = 59;
+                      applyTime({ minute: m });
+                    }
+                  }}
                 />
                 {!hour24 && (
                   <div className="inline-flex shrink-0 rounded-[7px] bg-[var(--tm-muted)]/90 p-0.5">
@@ -380,7 +451,19 @@ export function DateTimePicker({
         variant="outline"
         disabled={disabled}
         aria-expanded={isOpen}
-        onClick={() => !disabled && setIsOpen((open) => !open)}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((open) => {
+              const next = !open
+              if (next && !date && autoSelectTodayOnOpen) {
+                const now = new Date()
+                now.setHours(resolveDefaultHours(), 0, 0, 0)
+                onChange?.(now)
+              }
+              return next
+            })
+          }
+        }}
         className={cn(
           "w-full h-10 justify-start text-left font-medium bg-[var(--tm-surface)] text-xs transition-all text-slate-100 hover:bg-[var(--tm-elevated)] hover:border-brand/35 focus-visible:ring-2 focus-visible:ring-brand/15 border shadow-tm-control",
           !date && "text-slate-400",

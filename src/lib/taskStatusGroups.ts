@@ -136,11 +136,11 @@ export function getStatusColorTokens(status?: string | null): StatusColorTokens 
 
 /** Allowed next canonical statuses from the current one (form transitions). */
 export const STATUS_TRANSITIONS: Record<CanonicalStatusPill, CanonicalStatusPill[]> = {
-  Assigned: ['In-Progress', 'Hold', 'Cancelled'],
-  'In-Progress': ['Complete', 'Hold', 'Cancelled'],
-  Hold: ['In-Progress', 'Cancelled'],
-  Complete: ['Cancelled'],
-  Cancelled: [],
+  Assigned: ['In-Progress', 'Hold', 'Complete', 'Cancelled'],
+  'In-Progress': ['In-Progress', 'Hold', 'Complete', 'Cancelled'],
+  Hold: ['Hold', 'In-Progress', 'Complete', 'Cancelled'],
+  Complete: ['Complete', 'Hold', 'In-Progress', 'Cancelled'],
+  Cancelled: ['Cancelled'],
 };
 
 export function getStatusPillAliases(pillName: string): readonly string[] {

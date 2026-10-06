@@ -4,6 +4,7 @@ import { attachmentService } from '@/services/attachmentService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 const CameraComp = lazy(() => import('@/components/ui/CameraComp'));
 import { Camera as CameraIcon } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
@@ -14,16 +15,19 @@ import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { RenameAttachmentDialog } from '../shared/RenameAttachmentDialog';
 import { useConfirmDelete } from '../shared/useConfirmDelete';
-import { fetchStatesByCountry, fetchCitiesByState, fetchCityCombo, type CityComboRow } from '../shared/geo';
+import { fetchStatesByCountry, fetchCityCombo, type CityComboRow } from '../shared/geo';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 import { CompanyHeaderFields } from './CompanyHeaderFields';
+import { CompanyAdditionalDetailsSection } from './CompanyAdditionalDetailsSection';
+import { CompanyPrimaryLocationSection } from './CompanyPrimaryLocationSection';
+import { CompanyPrimaryContactSection } from './CompanyPrimaryContactSection';
 import { CompanyLocationsSection } from './CompanyLocationsSection';
 import { CompanyLocationModal } from './CompanyLocationModal';
 import { MasterCreateDialog } from '../MasterCreateDialog';
 import { CompanyContactsSection } from './CompanyContactsSection';
 import { CompanyContactModal } from './CompanyContactModal';
-import { CompanyPortsSection } from './CompanyPortsSection';
+import { guessWindowsTimeZone } from '@/lib/timezoneGuesser';
 import { CompanyAttachmentsSection } from './CompanyAttachmentsSection';
 import { CompanyNotesSection, FollowUpNote } from './CompanyNotesSection';
 
@@ -36,7 +40,6 @@ const TITLE = 'Business Entity';
 /** Loose shapes returned by master geo / fill-values APIs */
 type GeoCountry = { countryName?: string; countryNo?: string | number };
 type GeoState = { stateName?: string; stateNo?: string | number; id?: string | number };
-type GeoCity = { cityName?: string; cityNo?: string | number; id?: string | number };
 
 const asGeoList = <T,>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
 
@@ -69,12 +72,13 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
   // Header fields
   const [name, setName] = useState('');
-  const [aliasName, setAliasName] = useState('');
   const [companyType, setCompanyType] = useState('');
   const [companyTimeZoneNo, setCompanyTimeZoneNo] = useState('');
   const [selectedTimeZoneName, setSelectedTimeZoneName] = useState('');
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
   const [creditInsuranceCompanyName, setCreditInsuranceCompanyName] = useState('');
+  const [createdBy, setCreatedBy] = useState<string | null>(null);
+  const [createdDate, setCreatedDate] = useState<string | null>(null);
   const [companyVatGst, setCompanyVatGst] = useState('');
   const [gstinTypeNo, setGstinTypeNo] = useState('');
   const [followUpNotes, setFollowUpNotes] = useState<FollowUpNote[]>([]);
@@ -98,24 +102,34 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [locErrors, setLocErrors] = useState<Record<string, string>>({});
   const [locStatesList, setLocStatesList] = useState<GeoState[]>([]);
 
+  const [primaryLocType, setPrimaryLocType] = useState('');
+  const [primaryLocAddress, setPrimaryLocAddress] = useState('');
+  const [primaryLocCountry, setPrimaryLocCountry] = useState('');
+  const [primaryLocState, setPrimaryLocState] = useState('');
+  const [primaryLocCity, setPrimaryLocCity] = useState('');
+  const [primaryLocCityNo, setPrimaryLocCityNo] = useState('');
+  const [primaryLocPin, setPrimaryLocPin] = useState('');
+  const [primaryLocMapUrl, setPrimaryLocMapUrl] = useState('');
+  const [primaryLocLatitude, setPrimaryLocLatitude] = useState('');
+  const [primaryLocLongitude, setPrimaryLocLongitude] = useState('');
+  const [primaryLocStatesList, setPrimaryLocStatesList] = useState<GeoState[]>([]);
+
   // Contacts
   const [companyContacts, setCompanyContacts] = useState<any[]>([]);
+  const [primaryContactName, setPrimaryContactName] = useState('');
+  const [primaryContactDesignation, setPrimaryContactDesignation] = useState('');
+  const [primaryContactPhone, setPrimaryContactPhone] = useState('');
+  const [primaryContactEmail, setPrimaryContactEmail] = useState('');
+  const [primaryContactErrors, setPrimaryContactErrors] = useState<Record<string, string>>({});
+
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [editingContactIndex, setEditingContactIndex] = useState<number | null>(null);
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactDesignation, setContactDesignation] = useState('');
-  const [contactDepartment, setContactDepartment] = useState('');
-  const [contactAddress, setContactAddress] = useState('');
-  const [contactCountry, setContactCountry] = useState('');
-  const [contactState, setContactState] = useState('');
-  const [contactCity, setContactCity] = useState('');
-  const [contactPinCode, setContactPinCode] = useState('');
   const [contactStatus, setContactStatus] = useState('Active');
   const [contactErrors, setContactErrors] = useState<Record<string, string>>({});
-  const [contactStatesList, setContactStatesList] = useState<GeoState[]>([]);
-  const [contactCitiesList, setContactCitiesList] = useState<GeoCity[]>([]);
 
   // Ports
   const [companyPorts, setCompanyPorts] = useState<any[]>([]);
@@ -129,6 +143,8 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [analyzedAttachmentIds, setAnalyzedAttachmentIds] = useState<number[]>([]);
   const [attachmentToRename, setAttachmentToRename] = useState<{ id: number; name: string } | null>(null);
   const [isRenamingAttachment, setIsRenamingAttachment] = useState(false);
+  const [isSelectAttachmentModalOpen, setIsSelectAttachmentModalOpen] = useState(false);
+  const [isAttachmentsModalOpen, setIsAttachmentsModalOpen] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -161,7 +177,6 @@ export function CompanyForm({ id }: CompanyFormProps) {
         const dl = body.data || body;
         if (dl) {
           setName(dl.businessEntityName || '');
-          setAliasName(dl.aliasName || dl.businessEntityAlias || dl.AliasName || '');
           setCompanyType(dl.businessEntityType?.id?.toString() || '');
           setCompanyVatGst(dl.vatgstNo || '');
           setGstinTypeNo(dl.gstinTypeNo?.toString() || dl.gstinType?.id?.toString() || dl.gstinType?.gstinTypeNo?.toString() || '');
@@ -170,11 +185,17 @@ export function CompanyForm({ id }: CompanyFormProps) {
           setCompanyTimeZoneNo(dl.timeZone?.timeZoneNo?.toString() || '');
           setSelectedTimeZoneName(
             dl.timeZone?.timeZoneName ||
-              dl.timeZone?.crmTimeZoneName ||
-              dl.timeZone?.name ||
-              dl.timeZoneName ||
-              ''
+            dl.timeZone?.crmTimeZoneName ||
+            dl.timeZone?.name ||
+            dl.timeZoneName ||
+            ''
           );
+          const createdByObj = dl.createdBy;
+          const createdByStr = typeof createdByObj === 'object' && createdByObj !== null
+            ? (createdByObj.displayName || createdByObj.userName || createdByObj.name || String(createdByObj))
+            : createdByObj;
+          setCreatedBy(createdByStr || null);
+          setCreatedDate(dl.createdDate || dl.createdOn || null);
           const mappedFollowUpNotes: FollowUpNote[] = Array.isArray(dl.followUpDetails)
             ? dl.followUpDetails.map((n: any) => ({ date: n.followUpDate || '', note: n.followUpNotes || '' }))
             : (dl.notes ? [{ date: '', note: dl.notes }] : []);
@@ -192,9 +213,45 @@ export function CompanyForm({ id }: CompanyFormProps) {
             pinCode: l.pinCode || '',
             mapUrl: l.mapUrl || l.MapUrl || '',
             latitude: l.latitude ?? l.Latitude ?? '',
-            longitude: l.longitude ?? l.Longitude ?? ''
+            longitude: l.longitude ?? l.Longitude ?? '',
+            isPrimary: l.isPrimary
           }));
-          setCompanyLocations(mappedLocations);
+          const primaryLocs = mappedLocations.filter((l: any) => l.isPrimary === 'Y' || l.isPrimary === true);
+          const nonPrimaryLocs = mappedLocations.filter((l: any) => l.isPrimary !== 'Y' && l.isPrimary !== true);
+
+          if (primaryLocs.length > 0) {
+            const p = primaryLocs[0];
+            setPrimaryLocType(p.type);
+            setPrimaryLocAddress(p.address || dl.address || '');
+            setPrimaryLocCountry(p.country);
+            setPrimaryLocState(p.state);
+            setPrimaryLocCity(p.city);
+            setPrimaryLocCityNo(p.cityNo);
+            setPrimaryLocPin(p.pinCode || dl.pinCode || '');
+            setPrimaryLocMapUrl(p.mapUrl);
+            setPrimaryLocLatitude(p.latitude);
+            setPrimaryLocLongitude(p.longitude);
+            setCompanyLocations([...primaryLocs.slice(1), ...nonPrimaryLocs]);
+          } else if (mappedLocations.length > 0) {
+            const p = mappedLocations[0];
+            setPrimaryLocType(p.type);
+            setPrimaryLocAddress(p.address || dl.address || '');
+            setPrimaryLocCountry(p.country);
+            setPrimaryLocState(p.state);
+            setPrimaryLocCity(p.city);
+            setPrimaryLocCityNo(p.cityNo);
+            setPrimaryLocPin(p.pinCode || dl.pinCode || '');
+            setPrimaryLocMapUrl(p.mapUrl);
+            setPrimaryLocLatitude(p.latitude);
+            setPrimaryLocLongitude(p.longitude);
+            setCompanyLocations(mappedLocations.slice(1));
+          } else if (dl.address) {
+            setPrimaryLocAddress(dl.address);
+            setPrimaryLocPin(dl.pinCode || '');
+            setCompanyLocations([]);
+          } else {
+            setCompanyLocations([]);
+          }
 
           const mappedContacts = (dl.contactPersons || []).map((c: any) => ({
             contactName: c.contactPersonName || '',
@@ -202,15 +259,29 @@ export function CompanyForm({ id }: CompanyFormProps) {
             phone: c.phoneNo || '',
             email: c.email || '',
             designation: c.designation || '',
-            department: c.department || '',
-            address: c.address || '',
-            country: c.country?.countryName || '',
-            state: c.state?.stateName || '',
-            city: c.city?.cityName || '',
-            pinCode: c.pinCode || '',
-            status: c.status || 'Active'
+            status: c.status || 'Active',
+            isPrimary: c.isPrimary
           }));
-          setCompanyContacts(mappedContacts);
+          const primaryContacts = mappedContacts.filter((c: any) => c.isPrimary === 'Y' || c.isPrimary === true);
+          const nonPrimaryContacts = mappedContacts.filter((c: any) => c.isPrimary !== 'Y' && c.isPrimary !== true);
+
+          if (primaryContacts.length > 0) {
+            const p = primaryContacts[0];
+            setPrimaryContactName(p.name);
+            setPrimaryContactDesignation(p.designation);
+            setPrimaryContactPhone(p.phone);
+            setPrimaryContactEmail(p.email);
+            setCompanyContacts([...primaryContacts.slice(1), ...nonPrimaryContacts]);
+          } else if (mappedContacts.length > 0) {
+            const p = mappedContacts[0];
+            setPrimaryContactName(p.name);
+            setPrimaryContactDesignation(p.designation);
+            setPrimaryContactPhone(p.phone);
+            setPrimaryContactEmail(p.email);
+            setCompanyContacts(mappedContacts.slice(1));
+          } else {
+            setCompanyContacts([]);
+          }
 
           const mappedPorts = (dl.ports || []).map((p: any) => ({
             name: p.port?.portName || '',
@@ -269,15 +340,15 @@ export function CompanyForm({ id }: CompanyFormProps) {
     return no != null ? parseInt(String(no), 10) : null;
   };
   const getStateNo = (stateName: string) => {
-    const list = locStatesList.length ? locStatesList : (contactStatesList.length ? contactStatesList : []);
-    const found = list.find((x) => x.stateName?.toLowerCase() === stateName?.toLowerCase());
+    const list = locStatesList.length ? locStatesList : [];
+    const found = list.find((x: any) => x.stateName?.toLowerCase() === stateName?.toLowerCase());
     const no = resolveGeoNo(found, 'stateNo');
     return no != null ? parseInt(String(no), 10) : null;
   };
-  const getCityNo = (cityName: string) => {
-    const found = contactCitiesList.find((x) => x.cityName?.toLowerCase() === cityName?.toLowerCase());
-    const no = resolveGeoNo(found, 'cityNo');
-    return no != null ? parseInt(String(no), 10) : null;
+  const getCityNo = (_cityName: string) => {
+    // We don't maintain a full city list in CompanyForm anymore.
+    // This function will just return null, and the backend handles name-based matching if possible.
+    return null;
   };
   const getPortNo = (portName: string) => {
     const list = businessEntityFillValues?.data?.ports || businessEntityFillValues?.ports || [];
@@ -353,6 +424,53 @@ export function CompanyForm({ id }: CompanyFormProps) {
       onConfirm: () => removeCompanyLocation(index),
     });
   };
+
+  const handlePrimaryLocationCountryChange = async (val: string) => {
+    setPrimaryLocCountry(val);
+    setPrimaryLocState('');
+    setPrimaryLocCity('');
+    setPrimaryLocCityNo('');
+    setPrimaryLocStatesList([]);
+    if (locErrors.country) setLocErrors(prev => ({ ...prev, country: '' }));
+
+    const foundCountry = countries.find((c) => c.countryName === val);
+    const countryNo = resolveGeoNo(foundCountry, 'countryNo');
+    if (countryNo != null) {
+      const statesData = await fetchStatesByCountry(countryNo);
+      setPrimaryLocStatesList(asGeoList<GeoState>(statesData));
+    }
+  };
+
+  const handlePrimaryLocationStateChange = (val: string) => {
+    setPrimaryLocState(val);
+    setPrimaryLocCity('');
+    setPrimaryLocCityNo('');
+    if (locErrors.state) setLocErrors(prev => ({ ...prev, state: '' }));
+  };
+
+  const handlePrimaryLocationCitySelect = async (city: CityComboRow | null) => {
+    if (locErrors.city) setLocErrors(prev => ({ ...prev, city: '' }));
+    if (!city) {
+      setPrimaryLocCity('');
+      setPrimaryLocCityNo('');
+      return;
+    }
+    setPrimaryLocCity(city.cityName || '');
+    setPrimaryLocCityNo((city.cityNo ?? '').toString());
+
+    const sameState = (s: GeoState) => String(resolveGeoNo(s, 'stateNo')) === String(city.stateNo);
+    if (city.countryNo != null && toGeoNo(city.countryNo) !== getCountryNo(primaryLocCountry)) {
+      const country = countries.find((c) => String(c.countryNo) === String(city.countryNo));
+      setPrimaryLocCountry(country?.countryName || city.countryName || '');
+      const states = asGeoList<GeoState>(await fetchStatesByCountry(city.countryNo));
+      setPrimaryLocStatesList(states);
+      setPrimaryLocState(states.find(sameState)?.stateName || city.stateName || '');
+    } else if (city.stateNo != null && String(city.stateNo) !== String(toGeoNo(primaryLocStatesList.find(s => s.stateName === primaryLocState)?.stateNo))) {
+      setPrimaryLocState(primaryLocStatesList.find(sameState)?.stateName || city.stateName || '');
+    }
+  };
+
+
 
   const handleLocationCountryChange = async (val: string) => {
     setLocCountry(val);
@@ -447,6 +565,19 @@ export function CompanyForm({ id }: CompanyFormProps) {
       setCompanyLocations(prev => [...prev, newLoc]);
     }
 
+    const guessedTz = guessWindowsTimeZone(locCountry, locState, locCity);
+    if (guessedTz) {
+      const tzRecord = timeZones.find((tz: any) =>
+        (tz.timeZoneName || tz.crmTimeZoneName || tz.name || '') === guessedTz
+      );
+      if (tzRecord) {
+        setSelectedTimeZoneName(guessedTz);
+        setCompanyTimeZoneNo(tzRecord.timeZoneNo?.toString() || '');
+      } else {
+        setSelectedTimeZoneName(guessedTz);
+      }
+    }
+
     setLocType('');
     setLocAddress('');
     setLocCountry('');
@@ -468,12 +599,6 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactPhone('');
     setContactEmail('');
     setContactDesignation('');
-    setContactDepartment('');
-    setContactAddress('');
-    setContactCountry('');
-    setContactState('');
-    setContactCity('');
-    setContactPinCode('');
     setContactErrors({});
     setContactModalOpen(true);
   };
@@ -484,34 +609,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactPhone(c.phone || '');
     setContactEmail(c.email || '');
     setContactDesignation(c.designation || '');
-    setContactDepartment(c.department || '');
-    setContactAddress(c.address || '');
-    setContactCountry(c.country || '');
-    setContactState(c.state || '');
-    setContactCity(c.city || '');
-    setContactPinCode(c.pinCode || c.pin || '');
     setContactStatus(c.status || 'Active');
     setContactErrors({});
     setEditingContactIndex(index);
     setContactModalOpen(true);
-
-    if (c.country) {
-      const foundCountry = countries.find((cnt) => cnt.countryName?.toLowerCase() === c.country.toLowerCase());
-      const countryNo = resolveGeoNo(foundCountry, 'countryNo');
-      if (countryNo != null) {
-        fetchStatesByCountry(countryNo).then((states) => {
-          const stateRows = asGeoList<GeoState>(states);
-          setContactStatesList(stateRows);
-          if (c.state) {
-            const foundState = stateRows.find((s) => s.stateName?.toLowerCase() === c.state.toLowerCase());
-            const stateNo = resolveGeoNo(foundState, 'stateNo');
-            if (stateNo != null) {
-              fetchCitiesByState(stateNo).then((cities) => setContactCitiesList(asGeoList<GeoCity>(cities)));
-            }
-          }
-        });
-      }
-    }
   };
 
   const removeCompanyContact = (index: number) => {
@@ -536,36 +637,6 @@ export function CompanyForm({ id }: CompanyFormProps) {
     }
     setContactErrors(prev => ({ ...prev, email: '' }));
     return true;
-  };
-
-  const handleContactCountryChange = async (val: string) => {
-    setContactCountry(val);
-    setContactState('');
-    setContactCity('');
-    setContactStatesList([]);
-    setContactCitiesList([]);
-    if (contactErrors.country) setContactErrors(prev => ({ ...prev, country: '' }));
-
-    const foundCountry = countries.find((c) => c.countryName === val);
-    const countryNo = resolveGeoNo(foundCountry, 'countryNo');
-    if (countryNo != null) {
-      const statesData = await fetchStatesByCountry(countryNo);
-      setContactStatesList(asGeoList<GeoState>(statesData));
-    }
-  };
-
-  const handleContactStateChange = async (val: string) => {
-    setContactState(val);
-    setContactCity('');
-    setContactCitiesList([]);
-    if (contactErrors.state) setContactErrors(prev => ({ ...prev, state: '' }));
-
-    const foundState = contactStatesList.find((s) => s.stateName === val);
-    const stateNo = resolveGeoNo(foundState, 'stateNo');
-    if (stateNo != null) {
-      const citiesData = await fetchCitiesByState(stateNo);
-      setContactCitiesList(asGeoList<GeoCity>(citiesData));
-    }
   };
 
   const addCompanyContact = () => {
@@ -593,12 +664,6 @@ export function CompanyForm({ id }: CompanyFormProps) {
       phone: contactPhone,
       email: contactEmail,
       designation: contactDesignation,
-      department: contactDepartment,
-      address: contactAddress,
-      country: contactCountry,
-      state: contactState,
-      city: contactCity,
-      pinCode: contactPinCode,
       status: contactStatus
     };
 
@@ -617,12 +682,6 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setContactPhone('');
     setContactEmail('');
     setContactDesignation('');
-    setContactDepartment('');
-    setContactAddress('');
-    setContactCountry('');
-    setContactState('');
-    setContactCity('');
-    setContactPinCode('');
     setContactStatus('Active');
     setContactErrors({});
     setContactModalOpen(false);
@@ -778,14 +837,14 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setIsRenamingAttachment(true);
     try {
       await attachmentService.renameAttachment(id, newName, 1550); // 1550 for Company forms
-      
+
       setCompanyAttachments(prev => prev.map(a => {
         if ((a.id === id) || (a.docNo === id)) {
           return { ...a, fileName: newName, name: newName };
         }
         return a;
       }));
-      
+
       toast.success("Attachment renamed successfully.");
       setAttachmentToRename(null);
     } catch (error) {
@@ -815,11 +874,14 @@ export function CompanyForm({ id }: CompanyFormProps) {
     if (!companyType || companyType === '' || companyType === 'none') {
       newErrors.companyType = 'Business Entity Type is required';
     }
-    if (companyLocations.length === 0) {
+    if (companyLocations.length === 0 && !primaryLocAddress?.trim()) {
       newErrors.companyLocations = 'At least one location is required';
     }
     if (gstinTypeNo && !companyVatGst.trim()) {
       newErrors.companyVatGst = 'VAT / GST No is required';
+    }
+    if (companyAttachments.length === 0) {
+      newErrors.attachments = 'At least one attachment is required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -827,7 +889,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+      toast.error('Please fill all required fields');
+      return;
+    }
     setShowConfirm(true);
   };
 
@@ -835,7 +900,24 @@ export function CompanyForm({ id }: CompanyFormProps) {
     setShowConfirm(false);
     setIsSaving(true);
     try {
-      const computedContacts = companyContacts.map(c => ({
+      const allContacts: any[] = [];
+      if (primaryContactName) {
+        allContacts.push({
+          contactPersonName: primaryContactName,
+          address: '',
+          countryNo: null,
+          stateNo: null,
+          cityNo: null,
+          pinCode: '',
+          phoneNo: primaryContactPhone || '',
+          email: primaryContactEmail || '',
+          designation: primaryContactDesignation || '',
+          department: '',
+          isPrimary: true
+        });
+      }
+
+      const computedContacts = allContacts.concat(companyContacts.map(c => ({
         contactPersonName: c.contactName || c.name || '',
         address: c.address || '',
         countryNo: getCountryNo(c.country) || null,
@@ -845,10 +927,27 @@ export function CompanyForm({ id }: CompanyFormProps) {
         phoneNo: c.phone || '',
         email: c.email || '',
         designation: c.designation || '',
-        department: c.department || ''
-      }));
+        department: c.department || '',
+        isPrimary: c.isPrimary === 'Y' || c.isPrimary === true
+      })));
 
-      const computedLocations = companyLocations.map(l => ({
+      const allLocations: any[] = [];
+      if (primaryLocAddress) {
+        allLocations.push({
+          locationTypeNo: getLocationTypeNo(primaryLocType) || parseInt(primaryLocType) || null,
+          address: primaryLocAddress || '',
+          countryNo: getCountryNo(primaryLocCountry) || null,
+          stateNo: getStateNo(primaryLocState) || null,
+          cityNo: getCityNo(primaryLocCity) || null,
+          pinCode: primaryLocPin || '',
+          mapUrl: primaryLocMapUrl || '',
+          latitude: primaryLocLatitude !== '' && primaryLocLatitude != null ? Number(primaryLocLatitude) : null,
+          longitude: primaryLocLongitude !== '' && primaryLocLongitude != null ? Number(primaryLocLongitude) : null,
+          isPrimary: true
+        });
+      }
+
+      const computedLocations = allLocations.concat(companyLocations.map(l => ({
         locationTypeNo: getLocationTypeNo(l.type) || parseInt(l.type) || null,
         address: l.address || '',
         countryNo: l.countryNo || getCountryNo(l.country) || null,
@@ -857,8 +956,9 @@ export function CompanyForm({ id }: CompanyFormProps) {
         pinCode: l.pinCode || l.pin || '',
         mapUrl: l.mapUrl || '',
         latitude: l.latitude !== undefined && l.latitude !== null && l.latitude !== '' ? Number(l.latitude) : null,
-        longitude: l.longitude !== undefined && l.longitude !== null && l.longitude !== '' ? Number(l.longitude) : null
-      }));
+        longitude: l.longitude !== undefined && l.longitude !== null && l.longitude !== '' ? Number(l.longitude) : null,
+        isPrimary: l.isPrimary === 'Y' || l.isPrimary === true
+      })));
 
       const computedPorts = companyPorts.map(p => ({
         portNo: p.portNo || getPortNo(p.name || p.portName) || parseInt(p.portNo) || null
@@ -871,24 +971,26 @@ export function CompanyForm({ id }: CompanyFormProps) {
       const payload = {
         businessEntityNo: editingId ? parseInt(editingId) : null,
         businessEntityName: name,
-        aliasName: aliasName.trim() || null,
-        businessEntityAlias: aliasName.trim() || null,
+        aliasName: null,
+        businessEntityAlias: null,
         crmBusinessEntityTypeNo: companyType ? parseInt(companyType) : null,
         crmTimeZoneNo: companyTimeZoneNo ? parseInt(companyTimeZoneNo) : null,
         vatgstNo: companyVatGst || null,
         gstinTypeNo: gstinTypeNo ? parseInt(gstinTypeNo) : null,
         creditInsuranceLimit: creditLimit ?? null,
         creditInsuranceCompanyName: creditInsuranceCompanyName || null,
-        address: null,
-        countryNo: null,
-        stateNo: null,
-        cityNo: null,
-        pinCode: null,
+        address: primaryLocAddress || null,
+        countryNo: getCountryNo(primaryLocCountry) || null,
+        stateNo: getStateNo(primaryLocState) || null,
+        cityNo: getCityNo(primaryLocCity) || null,
+        pinCode: primaryLocPin || null,
         contactPersons: computedContacts,
         locations: computedLocations,
         ports: computedPorts,
         attachment: computedAttachments,
-        followUpDetails: followUpNotes.map(n => ({ followUpNotes: n.note, followUpDate: n.date || null }))
+        followUpDetails: followUpNotes.map(n => ({ followUpNotes: n.note, followUpDate: n.date || null })),
+        createdBy: createdBy || undefined,
+        createdDate: createdDate || undefined
       };
       await apiService.post('/api/master/business-entities/save', payload);
       setShowSuccessAlert(true);
@@ -925,14 +1027,77 @@ export function CompanyForm({ id }: CompanyFormProps) {
             editingId={editingId}
             name={name}
             setName={setName}
-            aliasName={aliasName}
-            setAliasName={setAliasName}
             companyType={companyType}
             setCompanyType={setCompanyType}
-            companyTimeZoneNo={companyTimeZoneNo}
-            setCompanyTimeZoneNo={setCompanyTimeZoneNo}
-            selectedTimeZoneName={selectedTimeZoneName}
-            setSelectedTimeZoneName={setSelectedTimeZoneName}
+            businessEntityTypes={businessEntityTypes}
+            errors={errors}
+            setErrors={setErrors}
+            onOpenCamera={() => setIsCameraModalOpen(true)}
+            createdBy={createdBy}
+            createdDate={createdDate}
+            attachmentCount={companyAttachments.length}
+            onShowAttachments={() => setIsAttachmentsModalOpen(true)}
+            onUploadAttachment={handleFileUpload}
+            onDirectAnalyze={(file) => {
+              setAnalyzeFile(file);
+              setAnalyzingAttachmentId(null);
+              setIsCameraModalOpen(true);
+            }}
+          >
+            <div className="space-y-0">
+
+              <CompanyPrimaryContactSection
+                contactName={primaryContactName}
+                setContactName={setPrimaryContactName}
+                contactDesignation={primaryContactDesignation}
+                setContactDesignation={setPrimaryContactDesignation}
+                contactPhone={primaryContactPhone}
+                setContactPhone={setPrimaryContactPhone}
+                contactEmail={primaryContactEmail}
+                setContactEmail={setPrimaryContactEmail}
+                contactErrors={primaryContactErrors}
+                setContactErrors={setPrimaryContactErrors}
+              />
+
+              <CompanyPrimaryLocationSection
+                locationTypes={businessEntityFillValues?.data?.locationTypes || businessEntityFillValues?.locationTypes || []}
+                countries={countries}
+                statesList={primaryLocStatesList}
+                stateNo={primaryLocStatesList.find(s => s.stateName === primaryLocState)?.stateNo}
+                locType={primaryLocType}
+                setLocType={setPrimaryLocType}
+                locAddress={primaryLocAddress}
+                setLocAddress={setPrimaryLocAddress}
+                locCountry={primaryLocCountry}
+                onCountryChange={handlePrimaryLocationCountryChange}
+                locState={primaryLocState}
+                onStateChange={handlePrimaryLocationStateChange}
+                locCity={primaryLocCity}
+                locCityNo={primaryLocCityNo}
+                onCitySelect={handlePrimaryLocationCitySelect}
+                onAddNewCity={() => setIsCityCreateOpen(true)}
+                locPin={primaryLocPin}
+                setLocPin={setPrimaryLocPin}
+                locMapUrl={primaryLocMapUrl}
+                setLocMapUrl={setPrimaryLocMapUrl}
+                locLatitude={primaryLocLatitude}
+                setLocLatitude={setPrimaryLocLatitude}
+                locLongitude={primaryLocLongitude}
+                setLocLongitude={setPrimaryLocLongitude}
+                locErrors={locErrors}
+                setLocErrors={setLocErrors}
+                timeZones={timeZones}
+                companyTimeZoneNo={companyTimeZoneNo}
+                setCompanyTimeZoneNo={setCompanyTimeZoneNo}
+                selectedTimeZoneName={selectedTimeZoneName}
+                setSelectedTimeZoneName={setSelectedTimeZoneName}
+              />
+            </div>
+          </CompanyHeaderFields>
+        </div>
+
+        <div data-page-tour="company-additional-details">
+          <CompanyAdditionalDetailsSection
             creditLimit={creditLimit}
             setCreditLimit={setCreditLimit}
             creditInsuranceCompanyName={creditInsuranceCompanyName}
@@ -942,11 +1107,14 @@ export function CompanyForm({ id }: CompanyFormProps) {
             gstinTypeNo={gstinTypeNo}
             setGstinTypeNo={setGstinTypeNo}
             gstinTypes={asGeoList(gstinTypes)}
-            businessEntityTypes={businessEntityTypes}
-            timeZones={timeZones}
             errors={errors}
             setErrors={setErrors}
-            onOpenCamera={() => setIsCameraModalOpen(true)}
+            ports={companyPorts}
+            portsList={portsList}
+            selectedPortName={selectedPortName}
+            onSelectedPortNameChange={setSelectedPortName}
+            onAddPort={addCompanyPort}
+            onRemovePort={requestRemoveCompanyPort}
           />
         </div>
 
@@ -971,37 +1139,32 @@ export function CompanyForm({ id }: CompanyFormProps) {
           />
         </div>
 
-        <CompanyPortsSection
-          ports={companyPorts}
-          portsList={portsList}
-          selectedPortName={selectedPortName}
-          onSelectedPortNameChange={setSelectedPortName}
-          onAdd={addCompanyPort}
-          onRemove={requestRemoveCompanyPort}
-        />
+        <Dialog open={isAttachmentsModalOpen} onOpenChange={setIsAttachmentsModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
+            <div data-page-tour="company-attachments">
+              <CompanyAttachmentsSection
+                attachments={companyAttachments}
+                companyName={name}
+                onFileUpload={handleFileUpload}
+                onOpenCamera={() => setIsCameraModalOpen(true)}
+                onAnalyze={handleAnalyzeAttachment}
+                onRemove={requestRemoveCompanyAttachment}
+                onRename={requestRenameCompanyAttachment}
+                analyzedAttachmentIds={analyzedAttachmentIds}
+                error={errors.attachments}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
-        <div data-page-tour="company-attachments">
-          <CompanyAttachmentsSection
-            attachments={companyAttachments}
-            companyName={name}
-            onFileUpload={handleFileUpload}
-            onOpenCamera={() => setIsCameraModalOpen(true)}
-            onAnalyze={handleAnalyzeAttachment}
-            onRemove={requestRemoveCompanyAttachment}
-            onRename={requestRenameCompanyAttachment}
-            analyzedAttachmentIds={analyzedAttachmentIds}
-            error={errors.attachments}
-          />
-        </div>
         <CompanyNotesSection
           notes={followUpNotes}
           onChange={setFollowUpNotes}
           onRemove={requestRemoveFollowUpNote}
         />
 
-        {isCameraModalOpen && (
-          <Dialog
-            open={isCameraModalOpen}
+        <Dialog
+          open={isCameraModalOpen}
             onOpenChange={(open) => {
               setIsCameraModalOpen(open);
               if (!open) setAnalyzeFile(undefined);
@@ -1068,7 +1231,6 @@ export function CompanyForm({ id }: CompanyFormProps) {
                           }
                         ]);
                       }
-                      /*
                       if (data.address || data.city || data.state || data.country) {
                         const defaultLocType = locationTypes.find((t: any) => /office/i.test(t.locationTypeName || ''))?.locationTypeNo ?? locationTypes[0]?.locationTypeNo;
                         setCompanyLocations(prev => [
@@ -1076,24 +1238,35 @@ export function CompanyForm({ id }: CompanyFormProps) {
                           {
                             type: defaultLocType !== undefined ? defaultLocType.toString() : '',
                             address: data.address || '',
-                            // country: data.country || '',
-                            // state: data.state || '',
-                            // city: data.city || '',
-                            pinCode: '',
+                            country: data.country || '',
+                            state: data.state || '',
+                            city: data.city || '',
+                            pinCode: data.zipCode || data.pinCode || '',
                             mapUrl: '',
                             latitude: '',
                             longitude: ''
                           }
                         ]);
+
+                        const guessedTz = guessWindowsTimeZone(data.country || '', data.state || '', data.city || '');
+                        if (guessedTz && !selectedTimeZoneName) {
+                          const tzRecord = timeZones.find((tz: any) =>
+                            (tz.timeZoneName || tz.crmTimeZoneName || tz.name || '') === guessedTz
+                          );
+                          if (tzRecord) {
+                            setSelectedTimeZoneName(guessedTz);
+                            setCompanyTimeZoneNo(tzRecord.timeZoneNo?.toString() || '');
+                          } else {
+                            setSelectedTimeZoneName(guessedTz);
+                          }
+                        }
                       }
-                      */
                     }}
                   />
                 </Suspense>
               </div>
             </DialogContent>
           </Dialog>
-        )}
 
         <CompanyLocationModal
           open={locationModalOpen}
@@ -1141,30 +1314,15 @@ export function CompanyForm({ id }: CompanyFormProps) {
           open={contactModalOpen}
           onOpenChange={setContactModalOpen}
           editingIndex={editingContactIndex}
-          countries={countries}
-          statesList={contactStatesList}
-          citiesList={contactCitiesList}
           contactName={contactName}
           setContactName={setContactName}
           contactDesignation={contactDesignation}
           setContactDesignation={setContactDesignation}
-          contactDepartment={contactDepartment}
-          setContactDepartment={setContactDepartment}
           contactPhone={contactPhone}
           setContactPhone={setContactPhone}
           contactEmail={contactEmail}
           setContactEmail={setContactEmail}
           onEmailBlur={validateEmailBlur}
-          contactAddress={contactAddress}
-          setContactAddress={setContactAddress}
-          contactCountry={contactCountry}
-          onCountryChange={handleContactCountryChange}
-          contactState={contactState}
-          onStateChange={handleContactStateChange}
-          contactCity={contactCity}
-          setContactCity={setContactCity}
-          contactPinCode={contactPinCode}
-          setContactPinCode={setContactPinCode}
           contactStatus={contactStatus}
           setContactStatus={setContactStatus}
           contactErrors={contactErrors}
@@ -1192,6 +1350,45 @@ export function CompanyForm({ id }: CompanyFormProps) {
             confirming={isRenamingAttachment}
           />
         )}
+
+        <Dialog open={isSelectAttachmentModalOpen} onOpenChange={setIsSelectAttachmentModalOpen}>
+          <DialogContent className="sm:max-w-md w-[90vw] bg-[var(--tm-bg)] p-0 overflow-hidden border border-[var(--tm-border)] flex flex-col max-h-[85vh]">
+            <DialogHeader className="px-4 sm:px-5 py-4 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)] sticky top-0 z-10 shrink-0">
+              <DialogTitle className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+                Select Business Card Attachment
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                Choose an already uploaded document to extract location data.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-4 sm:p-5 overflow-y-auto min-h-[100px]">
+              {companyAttachments.length === 0 ? (
+                <p className="text-center text-xs text-slate-400 py-4">No attachments available to select.</p>
+              ) : (
+                <div className="grid gap-2">
+                  {companyAttachments.map((att: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="p-3 border border-[var(--tm-border)] rounded-md cursor-pointer hover:bg-[var(--tm-muted)] hover:border-[#0EA5E9]/50 transition-colors flex flex-col"
+                      onClick={() => {
+                        setIsSelectAttachmentModalOpen(false);
+                        handleAnalyzeAttachment(att);
+                      }}
+                    >
+                      <span className="text-xs font-semibold text-slate-200">{att.name || att.fileName || 'Document'}</span>
+                      {att.fileSize ? <span className="text-[10px] text-slate-500 mt-1">Size: {(att.fileSize / 1024).toFixed(1)} KB</span> : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-4 py-3 border-t border-[var(--tm-border)] bg-[var(--tm-elevated)] shrink-0 flex justify-end">
+              <Button type="button" variant="outline" className="h-8 text-xs bg-[var(--tm-surface)] border-[var(--tm-border)] text-slate-300" onClick={() => setIsSelectAttachmentModalOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </MasterFormShell>
   );

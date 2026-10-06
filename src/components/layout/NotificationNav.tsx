@@ -9,8 +9,10 @@ import { useNotifications, formatUnreadBadge } from '@/context/NotificationsCont
 import {
   fetchPopUpNotifications,
   resolveLoginNo,
+  openNotificationLink,
   type PopUpNotification,
 } from '@/services/notificationService';
+import { formatUtcDateTime } from '@/lib/dateTime';
 import { cn } from '@/lib/utils';
 
 const ICON_TONES = [
@@ -100,6 +102,10 @@ export function NotificationNav() {
 
   const handleItemClick = (item: PopUpNotification) => {
     if (item.rowKey) markRead(item.rowKey);
+    if (item.link && openNotificationLink(item.link)) {
+      setOpen(false);
+      return;
+    }
     goToNotificationsPage(item.rowKey || undefined);
   };
 
@@ -187,7 +193,7 @@ export function NotificationNav() {
                         >
                           {title}
                         </span>
-                        {(subtitle || item.formNo != null) ? (
+                        {(subtitle || item.generatedDate) ? (
                           <span
                             className={cn(
                               'mt-0.5 block truncate text-[10px] leading-tight',
@@ -195,8 +201,8 @@ export function NotificationNav() {
                             )}
                           >
                             {subtitle}
-                            {subtitle && item.formNo != null ? ' · ' : ''}
-                            {item.formNo != null ? `Form ${item.formNo}` : ''}
+                            {subtitle && item.generatedDate ? ' - ' : ''}
+                            {item.generatedDate ? formatUtcDateTime(item.generatedDate) : ''}
                           </span>
                         ) : null}
                       </span>

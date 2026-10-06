@@ -8,6 +8,7 @@ export type PopUpNotification = {
   subCaption?: string;
   formNo?: number;
   link?: string;
+  generatedDate?: string;
   /**
    * Client-unique row key. The API can repeat the same notificationJobDetailNo
    * across different rows — never use that id alone for read/unread/delete.
@@ -125,6 +126,7 @@ function normalizeNotification(
     subCaption,
     formNo: (row.formNo ?? row.FormNo) as number | undefined,
     link: (row.link ?? row.Link) as string | undefined,
+    generatedDate: (row.generatedDate ?? row.GeneratedDate) as string | undefined,
     rowKey: makeNotificationRowKey(
       { notificationJobDetailNo: id, caption, subCaption },
       pageNo,
@@ -152,8 +154,8 @@ function normalizePayload(raw: unknown, pageNo: number, pageSize: number): PopUp
   const listRaw = payloadRec.notifications ?? payloadRec.Notifications ?? [];
   const list = Array.isArray(listRaw)
     ? listRaw
-        .map((item, index) => normalizeNotification(item, pageNo, index))
-        .filter((n): n is PopUpNotification => n != null)
+      .map((item, index) => normalizeNotification(item, pageNo, index))
+      .filter((n): n is PopUpNotification => n != null)
     : [];
 
   return {

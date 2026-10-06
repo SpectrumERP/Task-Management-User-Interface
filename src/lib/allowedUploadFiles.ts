@@ -6,7 +6,7 @@
  * allowlist on the document-attachments API; the client cannot be the only gate.
  */
 
-export const MAX_UPLOAD_FILE_BYTES = 10 * 1024 * 1024; // existing app limit — do not change lightly
+export const MAX_UPLOAD_FILE_BYTES = 25 * 1024 * 1024; // existing app limit — do not change lightly
 
 /** Canonical extensions (lowercase, no dot). `.tif` accepted as TIFF alias. */
 export const ALLOWED_UPLOAD_EXTENSIONS = [
@@ -83,7 +83,7 @@ export const ALLOWED_UPLOAD_TYPES_LABEL =
 export const ALLOWED_UPLOAD_EXTENSIONS_LABEL =
   '.png, .jpg, .jpeg, .webp, .avif, .tiff, .pdf, .doc, .docx, .xlsx, .csv, .txt';
 
-export const ALLOWED_UPLOAD_HELPER_TEXT = `${ALLOWED_UPLOAD_TYPES_LABEL} · Max 10MB each`;
+export const ALLOWED_UPLOAD_HELPER_TEXT = `${ALLOWED_UPLOAD_TYPES_LABEL} · Max 25MB each`;
 
 export const UNSUPPORTED_UPLOAD_TYPE_MESSAGE =
   `Unsupported file type. Allowed: ${ALLOWED_UPLOAD_TYPES_LABEL}.`;
@@ -112,7 +112,7 @@ export function isAllowedUploadMime(mime: string): boolean {
 
 /**
  * Validate a File before upload.
- * - Always checks size (existing 10MB limit).
+ * - Always checks size (existing 25MB limit).
  * - Requires an allowed extension.
  * - When the browser provides a MIME type, it must also be in the allowlist
  *   (empty MIME is allowed if the extension is valid — common on some OS/browsers).
@@ -125,7 +125,7 @@ export function validateUploadFile(
   }
 
   if (file.size > MAX_UPLOAD_FILE_BYTES) {
-    return { ok: false, reason: 'File size exceeds the 10MB limit.' };
+    return { ok: false, reason: 'File size exceeds the 25MB limit.' };
   }
 
   const ext = getFileExtension(file.name);

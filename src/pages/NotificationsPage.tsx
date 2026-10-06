@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Mail, MailOpen, Trash2 } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Button } from '@/components/ui/button';
 import { BrandLoader } from '@/components/ui/BrandLoader';
@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dialog';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
+import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
+import { formatUtcDateTime } from '@/lib/dateTime';
 import {
   SortableHeader,
   sortHeaderCellProps,
@@ -25,6 +27,7 @@ import { useNotifications, formatUnreadBadge } from '@/context/NotificationsCont
 import {
   fetchPopUpNotifications,
   resolveLoginNo,
+  openNotificationLink,
   type PopUpNotification,
 } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
@@ -74,221 +77,69 @@ export default function NotificationsPage() {
 
   const [items, setItems] = useState<PopUpNotification[]>([]);
   const [pageNo, setPageNo] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [deleteKey, setDeleteKey] = useState<string | null>(null);
   const [highlightKey, setHighlightKey] = useState<string | null>(null);
   const toggleLockRef = useRef(false);
-
   const scrolledForKeyRef = useRef<string | null>(null);
-  const loadingMoreRef = useRef(false);
-  const hasMoreRef = useRef(false);
-  const pageNoRef = useRef(1);
-  const totalRecordsRef = useRef(0);
-  const focusFetchRef = useRef(false);
-  const scrollPortRef = useRef<HTMLDivElement | null>(null);
-  /** scrollTop after each page — next 10 only after user scrolls past this */
-  const lastLoadScrollTopRef = useRef(0);
-
-  hasMoreRef.current = hasMore;
-  pageNoRef.current = pageNo;
-  totalRecordsRef.current = totalRecords;
-
-  /** Lazy-load while pageNo < totalPages (pageSize 10 → 10 rows per scroll). */
-  const computeHasMore = (
-    list: PopUpNotification[],
-    pagination: { totalPages?: number; pageNo?: number; totalRecords?: number } | undefined,
-    requestedPage: number,
-    knownTotal: number
-  ) => {
-    const totalPages = Number(pagination?.totalPages) || 0;
-    const totalRec =
-      Number(pagination?.totalRecords) > 0
-        ? Number(pagination?.totalRecords)
-        : knownTotal;
-
-    // Empty page → stop
-    if (list.length === 0) return false;
-    // Prefer API totalPages (e.g. 21 records / 10 → 3 pages)
-    if (totalPages > 0) return requestedPage < totalPages;
-    if (totalRec > 0) return requestedPage * PAGE_SIZE < totalRec;
-    // No totals: continue only while API keeps returning a full page
-    return list.length >= PAGE_SIZE;
-  };
 
   const loadPage = useCallback(
-    async (requestedPage: number, mode: 'replace' | 'append') => {
-      let loadMoreStartedAt = 0;
-
-      if (mode === 'append') {
-        if (loadingMoreRef.current || !hasMoreRef.current) return;
-        if (totalRecordsRef.current > 0 && totalRecordsRef.current <= PAGE_SIZE) {
-          hasMoreRef.current = false;
-          setHasMore(false);
-          return;
-        }
-        loadingMoreRef.current = true;
-        setLoadingMore(true);
-        loadMoreStartedAt = Date.now();
-      } else {
-        setLoading(true);
-        setLoadError(false);
-        loadingMoreRef.current = false;
-        setLoadingMore(false);
-      }
+    async (requestedPage: number, size: number) => {
+      setLoading(true);
+      setLoadError(false);
 
       try {
         const loginNo = resolveLoginNo(user as Record<string, unknown> | null, token);
         if (loginNo == null) {
-          if (mode === 'replace') {
-            setItems([]);
-            setLoadError(true);
-            setHasMore(false);
-            setTotalRecords(0);
-            hasMoreRef.current = false;
-            totalRecordsRef.current = 0;
-          }
+          setItems([]);
+          setLoadError(true);
+          setTotalRecords(0);
+          setTotalPages(0);
           return;
         }
 
         const result = await fetchPopUpNotifications({
           loginNo,
           pageNo: requestedPage,
-          pageSize: PAGE_SIZE,
+          pageSize: size,
         });
 
-        // Lazy-load: keep loader on screen briefly so it is noticeable
-        if (mode === 'append') {
-          const elapsed = Date.now() - loadMoreStartedAt;
-          const wait = Math.max(0, LOAD_MORE_MIN_MS - elapsed);
-          if (wait > 0) {
-            await new Promise<void>((resolve) => {
-              window.setTimeout(resolve, wait);
-            });
-          }
-        }
-
         const list = Array.isArray(result.data.notifications) ? result.data.notifications : [];
-        const apiTotal = Number(result.data.pagination?.totalRecords);
-        const apiPages = Number(result.data.pagination?.totalPages);
-        const nextTotal =
-          Number.isFinite(apiTotal) && apiTotal > 0
-            ? apiTotal
-            : mode === 'replace'
-              ? list.length
-              : Math.max(totalRecordsRef.current, requestedPage * PAGE_SIZE);
+        const apiTotal = Number(result.data.pagination?.totalRecords) || list.length;
+        const apiPages = Number(result.data.pagination?.totalPages) || 0;
 
-        if (mode === 'replace') {
-          setItems(list);
-        } else {
-          setItems((prev) => mergeNotifications(prev, list));
-        }
-
-        setTotalRecords(nextTotal);
-        totalRecordsRef.current = nextTotal;
-
-        // hasMore from API pagination — do not stop early on a short last page
-        let finalMore = computeHasMore(list, result.data.pagination, requestedPage, nextTotal);
-        if (Number.isFinite(apiPages) && apiPages > 0) {
-          finalMore = requestedPage < apiPages && list.length > 0;
-        }
-        if (nextTotal > 0 && nextTotal <= PAGE_SIZE) {
-          finalMore = false;
-        }
-
+        setItems(list);
+        setTotalRecords(apiTotal);
+        setTotalPages(apiPages > 0 ? apiPages : Math.ceil(apiTotal / size));
         setPageNo(requestedPage);
-        setHasMore(finalMore);
-        hasMoreRef.current = finalMore;
-        pageNoRef.current = requestedPage;
+        setItemsPerPage(size);
 
-        if (mode === 'replace') {
-          const apiUnread = Number(result.data.pagination?.totalUnreadCount);
-          // Seeds once per session; later refreshes keep ±1 read/unread counter
-          syncUnreadFromApi(Number.isFinite(apiUnread) ? apiUnread : list.length);
-        }
+        const apiUnread = Number(result.data.pagination?.totalUnreadCount);
+        syncUnreadFromApi(Number.isFinite(apiUnread) ? apiUnread : list.length);
       } catch {
-        if (mode === 'replace') {
-          setLoadError(true);
-          setItems([]);
-          setHasMore(false);
-          setTotalRecords(0);
-          hasMoreRef.current = false;
-          totalRecordsRef.current = 0;
-        }
+        setLoadError(true);
+        setItems([]);
+        setTotalRecords(0);
+        setTotalPages(0);
       } finally {
-        if (mode === 'append') {
-          if (scrollPortRef.current) {
-            lastLoadScrollTopRef.current = scrollPortRef.current.scrollTop;
-          }
-          loadingMoreRef.current = false;
-          setLoadingMore(false);
-        } else {
-          lastLoadScrollTopRef.current = 0;
-          setLoading(false);
-        }
+        setLoading(false);
       }
     },
     [user, token, syncUnreadFromApi]
   );
 
   const load = useCallback(async () => {
-    // Do not clear session read/unread — only refresh the list
-    hasMoreRef.current = false;
-    pageNoRef.current = 1;
-    totalRecordsRef.current = 0;
-    lastLoadScrollTopRef.current = 0;
-    setHasMore(false);
-    setTotalRecords(0);
-    setPageNo(1);
-    await loadPage(1, 'replace');
-  }, [loadPage]);
-
-  /**
-   * Load exactly one more page (10 rows) per user scroll-to-bottom.
-   * Blocks layout/auto triggers so the first paint stays at 10 rows.
-   */
-  const loadMore = useCallback((opts?: { force?: boolean }) => {
-    if (loadingMoreRef.current || !hasMoreRef.current || loading) return;
-    if (totalRecordsRef.current > 0 && totalRecordsRef.current <= PAGE_SIZE) return;
-
-    if (!opts?.force) {
-      const el = scrollPortRef.current;
-      if (!el) return;
-      // User must have scrolled down since the last page load
-      if (el.scrollTop <= lastLoadScrollTopRef.current + 12) return;
-      lastLoadScrollTopRef.current = el.scrollTop;
-    }
-
-    void loadPage(pageNoRef.current + 1, 'append');
-  }, [loadPage, loading]);
-
-  /** Show bottom lazy-load UI only when there are truly more than PAGE_SIZE records */
-  const showLazyFooter = totalRecords > PAGE_SIZE || (totalRecords === 0 && hasMore);
+    await loadPage(1, itemsPerPage);
+  }, [loadPage, itemsPerPage]);
 
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, token]);
-
-  // Deep-link `?key=`: keep paging until the row is present (only if more than PAGE_SIZE exist)
-  useEffect(() => {
-    if (loading || focusKey == null || focusFetchRef.current) return;
-    const found = items.some((i) => i.rowKey === focusKey);
-    if (found) {
-      focusFetchRef.current = true;
-      return;
-    }
-    if (!showLazyFooter || !hasMore || loadingMore) return;
-    void loadMore();
-  }, [loading, focusKey, items, hasMore, loadingMore, loadMore, showLazyFooter]);
-
-  useEffect(() => {
-    focusFetchRef.current = false;
-    scrolledForKeyRef.current = null;
-  }, [focusKey]);
 
   // Scroll to focused notification from bell popover (`?key=`)
   useEffect(() => {
@@ -313,7 +164,7 @@ export default function NotificationsPage() {
       window.clearTimeout(clearHighlight);
       window.clearTimeout(clearQuery);
     };
-  }, [loading, loadingMore, focusKey, items, setSearchParams]);
+  }, [loading, focusKey, items, setSearchParams]);
 
   const rows: NotificationRow[] = useMemo(
     () =>
@@ -407,9 +258,8 @@ export default function NotificationsPage() {
           <div className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)]">
             <DataTableScroll
               minWidth={640}
-              bodyScrollRef={scrollPortRef}
-              onNearEnd={showLazyFooter && hasMore ? () => loadMore() : undefined}
-              nearEndOffsetPx={180}
+              onNearEnd={undefined}
+              nearEndOffsetPx={undefined}
               header={
                 <table className="tm-data-table w-full table-fixed border-collapse text-left">
                   <colgroup>
@@ -472,10 +322,14 @@ export default function NotificationsPage() {
                             id={rowDomId}
                             className={cn(
                               'transition-colors',
+                              row.link ? 'cursor-pointer hover:bg-[var(--tm-muted)]' : undefined,
                               isFocused
                                 ? 'bg-[#0EA5E9]/15 ring-1 ring-inset ring-[#0EA5E9]/40'
                                 : undefined
                             )}
+                            onClick={() => {
+                              if (row.link) openNotificationLink(row.link);
+                            }}
                           >
                             <td className="tm-col-sr text-center tabular-nums">
                               {row.srNo}
@@ -503,7 +357,7 @@ export default function NotificationsPage() {
                                 >
                                   {row.caption || '—'}
                                 </span>
-                                {row.subCaption ? (
+                                {(row.subCaption || row.generatedDate) ? (
                                   <span
                                     className={cn(
                                       'break-words leading-snug',
@@ -513,6 +367,8 @@ export default function NotificationsPage() {
                                     )}
                                   >
                                     {row.subCaption}
+                                    {row.subCaption && row.generatedDate ? ' - ' : ''}
+                                    {row.generatedDate ? formatUtcDateTime(row.generatedDate) : ''}
                                   </span>
                                 ) : null}
                               </div>
@@ -523,48 +379,20 @@ export default function NotificationsPage() {
                               onMouseDown={(e) => e.stopPropagation()}
                             >
                               <div className="flex items-center justify-center gap-0.5">
-                                {isUnread ? (
-                                  <ActionTip label="Mark read">
+                                {row.link ? (
+                                  <ActionTip label="View link">
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      aria-label="Mark read"
-                                      disabled={actionsDisabled}
-                                      className="h-7 w-7 p-0 text-emerald-400 hover:text-emerald-300 disabled:opacity-40"
-                                      onClick={(e) => handleToggleRead(e, row.rowKey, true)}
+                                      aria-label="View link"
+                                      className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                                      onClick={() => openNotificationLink(row.link!)}
                                     >
-                                      <Mail size={14} />
+                                      <ExternalLink size={14} />
                                     </Button>
                                   </ActionTip>
-                                ) : (
-                                  <ActionTip label="Mark unread">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      aria-label="Mark unread"
-                                      disabled={actionsDisabled}
-                                      className="h-7 w-7 p-0 text-sky-400 hover:text-sky-300 disabled:opacity-40"
-                                      onClick={(e) => handleToggleRead(e, row.rowKey, false)}
-                                    >
-                                      <MailOpen size={14} />
-                                    </Button>
-                                  </ActionTip>
-                                )}
-                                <ActionTip label="Delete">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    aria-label="Delete"
-                                    disabled={actionsDisabled}
-                                    className="h-7 w-7 p-0 text-rose-400 hover:text-rose-300 disabled:opacity-40"
-                                    onClick={(e) => requestDelete(e, row.rowKey)}
-                                  >
-                                    <Trash2 size={14} />
-                                  </Button>
-                                </ActionTip>
+                                ) : null}
                               </div>
                             </td>
                           </tr>
@@ -573,26 +401,18 @@ export default function NotificationsPage() {
                     </tbody>
                   </table>
 
-                  {/* Lazy-load footer — first 10, then +10 per scroll (or Load more) */}
-                  {showLazyFooter ? (
-                    <div className="flex flex-col items-center justify-center py-4 min-h-12 gap-1">
-                      {loadingMore ? (
-                        <BrandLoader size="sm" message="Loading more" />
-                      ) : hasMore ? (
-                        <button
-                          type="button"
-                          onClick={() => loadMore({ force: true })}
-                          className="text-[11px] font-medium text-[#0EA5E9] hover:text-[#38BDF8] transition"
-                        >
-                          Load more
-                        </button>
-                      ) : (
-                        <span className="text-[11px] font-medium text-slate-400">
-                          You&apos;re all caught up
-                        </span>
-                      )}
-                    </div>
-                  ) : null}
+                  {/* Pagination footer */}
+                  <MasterPaginationBar
+                    totalItems={totalRecords}
+                    startIndex={(pageNo - 1) * itemsPerPage}
+                    endIndex={Math.min(pageNo * itemsPerPage, totalRecords)}
+                    itemsPerPage={itemsPerPage}
+                    onItemsPerPageChange={(size) => loadPage(1, size)}
+                    currentPage={pageNo}
+                    totalPages={totalPages}
+                    onPageChange={(page) => loadPage(page, itemsPerPage)}
+                    hideBelow={0}
+                  />
                 </>
               }
             />

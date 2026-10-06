@@ -26,7 +26,7 @@ interface LocationCityFieldProps {
  * keyword search across all cities, narrowed by state when one is chosen.
  * Rendered inside DialogContent so the search resets each time the dialog opens.
  */
-function LocationCityField({ stateNo, cityNo, cityName, error, onSelect, onAddNew }: LocationCityFieldProps) {
+export function LocationCityField({ stateNo, cityNo, cityName, error, onSelect, onAddNew }: LocationCityFieldProps) {
   const [citySearch, setCitySearch] = useState('');
   const cities = useCityComboSearch(citySearch, stateNo);
 
@@ -249,9 +249,9 @@ export function CompanyLocationModal({
             </div>
 
             <div className="space-y-1.5 min-w-0 sm:col-span-2">
-              <FieldLabel>Map URL</FieldLabel>
+              <FieldLabel>Map Location URL</FieldLabel>
               <Input
-                placeholder="Enter Map URL"
+                placeholder="Enter/ Paste Map Location URL"
                 value={locMapUrl}
                 maxLength={2000}
                 onChange={(e) => setLocMapUrl(e.target.value)}

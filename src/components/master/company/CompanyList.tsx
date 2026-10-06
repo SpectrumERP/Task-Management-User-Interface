@@ -9,7 +9,7 @@ import { exportBusinessEntityReportToExcel } from '@/utils/exportToExcel';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText, Download,
+  Edit, Trash2, Layers, List, Building, Users, User, Paperclip, FileText, Download, Eye, Image as ImageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatUtcDateTime } from '@/lib/dateTime';
@@ -24,7 +24,50 @@ import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
+import { useInView } from 'framer-motion';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
+function AttachmentThumbnail({ attachment, onPreview, className }: { attachment: any; onPreview: (url: string) => void; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "200px" });
+  const [imgData, setImgData] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isInView && !imgData && !loading) {
+      setLoading(true);
+      attachmentService.getImages([attachment.id])
+        .then(res => {
+          if (res && res.length > 0 && res[0].imageBase64) {
+            const base64Str = res[0].imageBase64;
+            setImgData(base64Str.startsWith('data:') ? base64Str : `data:${res[0].contentType || 'image/jpeg'};base64,${base64Str}`);
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [isInView, attachment.id]);
+
+  return (
+    <div ref={ref} className={cn("shrink-0 overflow-hidden bg-[var(--tm-muted)] flex items-center justify-center relative group", className || "w-16 h-16 rounded-[8px] border border-[var(--tm-border)]")}>
+      {loading ? (
+        <BrandLoader size="sm" message="" />
+      ) : imgData ? (
+        <>
+          <img src={imgData} alt={attachment.fileName || ''} className="w-full h-full object-cover" />
+          <div 
+            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer"
+            onClick={() => onPreview(imgData)}
+          >
+            <Eye size={16} className="text-white" />
+          </div>
+        </>
+      ) : (
+        <ImageIcon size={18} className="text-slate-500" />
+      )}
+    </div>
+  );
+}
 /* API list payloads are loosely shaped; keep runtime mapping unchanged. */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -119,6 +162,7 @@ export function CompanyList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteTargetLabel, setDeleteTargetLabel] = useState<string | null>(null);
@@ -830,161 +874,161 @@ export function CompanyList() {
                       className="tm-data-table hidden md:table w-full table-fixed border-collapse text-left"
                       style={{ minWidth: `calc(var(--tm-col-id-width) + ${sumWidths(GRID_LIST_WIDTHS, gridResize.widthOf)}px)` }}
                     >
-                    <colgroup>
-                      <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
-                      {/* Name fills the remaining space */}
-                      <col />
-                      {(['alias', 'type', 'address', 'city', 'state', 'country', 'vatGst', 'creditLimit'] as const).map((key) => (
-                        <col key={key} style={{ width: gridResize.widthOf(key, GRID_LIST_WIDTHS[key]) }} />
-                      ))}
-                      <col style={{ width: GRID_LIST_WIDTHS.actions }} />
-                    </colgroup>
-                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
-                      <tr>
-                        <th className="tm-col-id tm-col-sticky-code sticky left-0 z-[45] px-2 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('code', handleSort)}>
-                          <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} className="pr-1" />
-                        </th>
-                        <th className="relative min-w-[140px] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
-                          <SortableHeader label="Business Entity Name" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('name')}
-                        </th>
-                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('alias', handleSort)}>
-                          <SortableHeader label="Alias" sortKey="alias" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('alias')}
-                        </th>
-                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('type', handleSort)}>
-                          <SortableHeader label="Type" sortKey="type" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('type')}
-                        </th>
-                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('address', handleSort)}>
-                          <SortableHeader label="Primary Address" sortKey="address" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('address')}
-                        </th>
-                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('city', handleSort)}>
-                          <SortableHeader label="City" sortKey="city" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('city')}
-                        </th>
-                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('state', handleSort)}>
-                          <SortableHeader label="State" sortKey="state" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('state')}
-                        </th>
-                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('country', handleSort)}>
-                          <SortableHeader label="Country" sortKey="country" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('country')}
-                        </th>
-                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('vatGst', handleSort)}>
-                          <SortableHeader label="VAT/GST No." sortKey="vatGst" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('vatGst')}
-                        </th>
-                        <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('creditLimit', handleSort)}>
-                          <SortableHeader label="Credit Limit" sortKey="creditLimit" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
-                          {gridResize.resizeHandle('creditLimit')}
-                        </th>
-                        <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center font-semibold tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedList.map((company: any) => {
-                        const locStr = [company.address, company.city, company.state, company.country].filter(Boolean).join(', ') || 'N/A';
-                        const creditStr = company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit';
-                        const cityStr = company.city || 'N/A';
-                        const stateStr = company.state || 'N/A';
-                        const countryStr = company.country || 'N/A';
-                        const vatStr = company.vatGst || 'N/A';
-                        const typeStr = company.type || '';
-                        const nameStr = company.name || '';
-                        return (
-                          <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
-                            <td className="tm-col-id tm-col-sticky-code sticky left-0 z-20 px-2 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
-                              <TruncatedText
-                                text={company.code || ''}
-                                className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
-                              />
-                            </td>
-                            <td
-                              className={cn(
-                                'tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-middle min-w-0',
-                                isUpdate && 'hover:text-[#0EA5E9] cursor-pointer'
-                              )}
-                              onClick={() => isUpdate && handleEditClick(company)}
-                            >
-                              <TruncatedText text={nameStr} className="font-medium text-slate-50" />
-                            </td>
-                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={company.aliasName || '—'} className="text-slate-300" />
-                            </td>
-                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                              {typeStr ? (
-                                <span
-                                  className={cn(
-                                    'inline-flex max-w-full truncate px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border leading-none',
-                                    typeStr === 'Buy'
-                                      ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
-                                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                                  )}
-                                  title={typeStr}
-                                >
-                                  {typeStr}
-                                </span>
-                              ) : (
-                                <span className="text-slate-500">—</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={locStr} className="text-slate-300" />
-                            </td>
-                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={cityStr} className="text-slate-300" />
-                            </td>
-                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={stateStr} className="text-slate-300" />
-                            </td>
-                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={countryStr} className="text-slate-300" />
-                            </td>
-                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 font-mono align-middle min-w-0">
-                              <TruncatedText text={vatStr} className="text-slate-300 font-mono" />
-                            </td>
-                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                              <TruncatedText text={creditStr} className="text-slate-300" />
-                            </td>
-                            <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
-                              <div className="inline-flex items-center justify-center gap-0.5">
-                                {isUpdate ? (
-                                  <ActionTip label="Edit">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label="Edit"
-                                      onClick={() => handleEditClick(company)}
-                                      className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
-                                    >
-                                      <Edit size={13} />
-                                    </Button>
-                                  </ActionTip>
-                                ) : null}
-                                {isDelete ? (
-                                  <ActionTip label="Delete">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      aria-label="Delete"
-                                      onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)}
-                                      className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-                                    >
-                                      <Trash2 size={13} />
-                                    </Button>
-                                  </ActionTip>
-                                ) : null}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                      <colgroup>
+                        <col className="tm-col-id-col" style={{ width: 'var(--tm-col-id-width)' }} />
+                        {/* Name fills the remaining space */}
+                        <col />
+                        {(['alias', 'type', 'address', 'city', 'state', 'country', 'vatGst', 'creditLimit'] as const).map((key) => (
+                          <col key={key} style={{ width: gridResize.widthOf(key, GRID_LIST_WIDTHS[key]) }} />
+                        ))}
+                        <col style={{ width: GRID_LIST_WIDTHS.actions }} />
+                      </colgroup>
+                      <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
+                        <tr>
+                          <th className="tm-col-id tm-col-sticky-code sticky left-0 z-[45] px-2 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.28)] cursor-pointer" {...sortHeaderCellProps('code', handleSort)}>
+                            <SortableHeader label="Code" sortKey="code" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} className="pr-1" />
+                          </th>
+                          <th className="relative min-w-[140px] px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('name', handleSort)}>
+                            <SortableHeader label="Business Entity Name" sortKey="name" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('name')}
+                          </th>
+                          <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('alias', handleSort)}>
+                            <SortableHeader label="Alias" sortKey="alias" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('alias')}
+                          </th>
+                          <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('type', handleSort)}>
+                            <SortableHeader label="Type" sortKey="type" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('type')}
+                          </th>
+                          <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('address', handleSort)}>
+                            <SortableHeader label="Primary Address" sortKey="address" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('address')}
+                          </th>
+                          <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('city', handleSort)}>
+                            <SortableHeader label="City" sortKey="city" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('city')}
+                          </th>
+                          <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('state', handleSort)}>
+                            <SortableHeader label="State" sortKey="state" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('state')}
+                          </th>
+                          <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('country', handleSort)}>
+                            <SortableHeader label="Country" sortKey="country" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('country')}
+                          </th>
+                          <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('vatGst', handleSort)}>
+                            <SortableHeader label="VAT/GST No." sortKey="vatGst" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('vatGst')}
+                          </th>
+                          <th className="relative px-3 py-2.5 font-semibold uppercase tracking-wide text-slate-300 whitespace-nowrap border-r border-[var(--tm-border)] cursor-pointer" {...sortHeaderCellProps('creditLimit', handleSort)}>
+                            <SortableHeader label="Credit Limit" sortKey="creditLimit" sortCol={sortCol} sortDesc={sortDesc} onSort={handleSort} />
+                            {gridResize.resizeHandle('creditLimit')}
+                          </th>
+                          <th className="tm-col-actions sticky right-0 z-40 w-[100px] px-1 py-2.5 pr-2 text-center font-semibold tracking-wide text-slate-300 whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.35)]">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedList.map((company: any) => {
+                          const locStr = [company.address, company.city, company.state, company.country].filter(Boolean).join(', ') || 'N/A';
+                          const creditStr = company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit';
+                          const cityStr = company.city || 'N/A';
+                          const stateStr = company.state || 'N/A';
+                          const countryStr = company.country || 'N/A';
+                          const vatStr = company.vatGst || 'N/A';
+                          const typeStr = company.type || '';
+                          const nameStr = company.name || '';
+                          return (
+                            <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
+                              <td className="tm-col-id tm-col-sticky-code sticky left-0 z-20 px-2 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
+                                <TruncatedText
+                                  text={company.code || ''}
+                                  className="text-[11px] font-medium text-[#0EA5E9] tabular-nums"
+                                />
+                              </td>
+                              <td
+                                className={cn(
+                                  'tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-middle min-w-0',
+                                  isUpdate && 'hover:text-[#0EA5E9] cursor-pointer'
+                                )}
+                                onClick={() => isUpdate && handleEditClick(company)}
+                              >
+                                <TruncatedText text={nameStr} className="font-medium text-slate-50" />
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                                <TruncatedText text={company.aliasName || '—'} className="text-slate-300" />
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                                {typeStr ? (
+                                  <span
+                                    className={cn(
+                                      'inline-flex max-w-full truncate px-2 py-0.5 rounded-[6px] text-[9px] font-semibold border leading-none',
+                                      typeStr === 'Buy'
+                                        ? 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+                                        : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                    )}
+                                    title={typeStr}
+                                  >
+                                    {typeStr}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-500">—</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                                <TruncatedText text={locStr} className="text-slate-300" />
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                                <TruncatedText text={cityStr} className="text-slate-300" />
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                                <TruncatedText text={stateStr} className="text-slate-300" />
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                                <TruncatedText text={countryStr} className="text-slate-300" />
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 font-mono align-middle min-w-0">
+                                <TruncatedText text={vatStr} className="text-slate-300 font-mono" />
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
+                                <TruncatedText text={creditStr} className="text-slate-300" />
+                              </td>
+                              <td className="tm-col-actions sticky right-0 z-10 px-1 py-2.5 pr-2 text-center align-middle whitespace-nowrap border-l border-[var(--tm-border)] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                                <div className="inline-flex items-center justify-center gap-0.5">
+                                  {isUpdate ? (
+                                    <ActionTip label="Edit">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label="Edit"
+                                        onClick={() => handleEditClick(company)}
+                                        className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
+                                      >
+                                        <Edit size={13} />
+                                      </Button>
+                                    </ActionTip>
+                                  ) : null}
+                                  {isDelete ? (
+                                    <ActionTip label="Delete">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label="Delete"
+                                        onClick={() => handleDeleteClick(company.id, company.name || company.businessEntityName || company.code)}
+                                        className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                                      >
+                                        <Trash2 size={13} />
+                                      </Button>
+                                    </ActionTip>
+                                  ) : null}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </>
                 ) : companyViewMode === 'album' ? (
                   <div className="space-y-5 p-3">
@@ -1279,6 +1323,124 @@ export function CompanyList() {
                       );
                     })}
                   </div>
+                ) : companyViewMode === 'attachment' ? (
+                  <div className="space-y-5 p-3">
+                    {groupedCompanies.map((group) => {
+                      const mergedMap = new Map<string, any>();
+                      group.items.forEach((c: any) => {
+                        const key = c.name || c.id;
+                        if (mergedMap.has(key)) {
+                          mergedMap.get(key).attachments.push(...(c.attachments || []));
+                        } else {
+                          mergedMap.set(key, { ...c, attachments: [...(c.attachments || [])] });
+                        }
+                      });
+
+                      const mergedItems = Array.from(mergedMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                      const hasAttachments = mergedItems.some(c => c.attachments && c.attachments.length > 0);
+                      if (!hasAttachments) return null;
+
+                      return (
+                        <div key={group.letter} id={`company-group-${group.letter}`} className="space-y-3 relative scroll-mt-2">
+                          <div className="sticky top-0 z-10 py-1.5 px-3 bg-[var(--tm-tint)] rounded-[8px] text-xs font-semibold text-[#0EA5E9] flex items-center justify-between">
+                            <span>Alphabet {group.letter}</span>
+                            <span className="text-[10px] font-medium opacity-70">{mergedItems.length} Entities</span>
+                          </div>
+                          <div className="space-y-3">
+                            {mergedItems.map((company: any) => {
+                              if (!company.attachments || company.attachments.length === 0) return null;
+                              return (
+                                <div key={company.id} className="bg-[var(--tm-elevated)] rounded-[8px] border border-[var(--tm-border)]/70 p-4">
+                                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--tm-border)]/60 mb-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9] flex items-center justify-center font-semibold text-sm uppercase">
+                                        {company.name ? company.name.substring(0, 2) : 'BE'}
+                                      </div>
+                                      <div>
+                                        <h4 className={cn('text-xs font-semibold text-slate-50', isUpdate && 'hover:text-[#0EA5E9] cursor-pointer')} onClick={() => isUpdate && handleEditClick(company)}>{company.name}</h4>
+                                        <p className="text-[9px] font-medium text-slate-400">{company.code} Ã¢ÂÂ¢ {company.type}</p>
+                                      </div>
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 font-semibold bg-[var(--tm-surface)] px-2.5 py-1 rounded-[6px] border border-[var(--tm-border)]/80">
+                                      {company.attachments?.length || 0} Document(s)
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                    {company.attachments.map((att: any, idx: number) => {
+                                      const isPdf = (att.fileName || att.name || '').toLowerCase().endsWith('.pdf');
+                                      const isDoc = (att.fileName || att.name || '').toLowerCase().match(/\.(docx|doc)$/);
+                                      const isSheet = (att.fileName || att.name || '').toLowerCase().match(/\.(xlsx|xls|csv)$/);
+                                      const isImg = (att.fileName || att.name || '').toLowerCase().match(/\.(jpeg|jpg|png|gif|webp)$/);
+
+                                      if (isImg) {
+                                        return (
+                                          <Card key={idx} className="bg-[var(--tm-surface)] rounded-[8px] border border-[var(--tm-border)]/70 overflow-hidden hover:shadow-md hover:border-[#0EA5E9]/30 transition-all group relative h-48">
+                                            <AttachmentThumbnail attachment={att} onPreview={setPreviewImage} className="absolute inset-0 w-full h-full" />
+                                            <div className="absolute bottom-2 right-2 p-2.5 rounded-[8px] bg-black/50 backdrop-blur-md border border-white/20 flex flex-col items-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto z-10">
+                                              <div className="text-right">
+                                                <h5 className="text-[11px] font-semibold text-white truncate max-w-[150px]">{att.fileName || att.name}</h5>
+                                                <p className="text-[9px] text-white/80 font-mono mt-0.5">
+                                                  {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Image'} {att.fileType || ''}
+                                                </p>
+                                              </div>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
+                                                className="h-6 px-2 mt-0.5 rounded-[4px] text-[9px] font-semibold text-white bg-white/10 hover:bg-white/25 border border-white/10"
+                                              >
+                                                <Download size={10} className="mr-1" /> Download
+                                              </Button>
+                                            </div>
+                                          </Card>
+                                        );
+                                      }
+
+                                      return (
+                                        <Card key={idx} className="bg-[var(--tm-surface)] rounded-[8px] border border-[var(--tm-border)]/70 p-3.5 hover:shadow-md hover:border-[#0EA5E9]/30 transition-all flex flex-col justify-between gap-3 group">
+                                          <div className="flex items-start gap-3">
+                                            <div className={cn(
+                                              'p-2 rounded-[8px] shrink-0 flex items-center justify-center',
+                                              isPdf ? 'bg-red-500/10 text-red-500' : isSheet ? 'bg-emerald-500/15 text-emerald-500' : isDoc ? 'bg-blue-500/15 text-blue-500' : 'bg-[var(--tm-muted)] text-slate-500'
+                                            )}>
+                                              <FileText size={18} />
+                                            </div>
+                                            <div className="min-w-0">
+                                              <h5 className="text-xs font-semibold text-slate-200 truncate leading-snug group-hover:text-[#0EA5E9] transition-colors">{att.fileName || att.name}</h5>
+                                              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                                <p className="text-[9px] text-slate-400 font-medium font-mono">
+                                                  {att.fileSize ? `${(att.fileSize / 1024).toFixed(1)} KB` : 'Attached Document'}
+                                                </p>
+                                                {att.fileType ? (
+                                                  <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-[6px] bg-[var(--tm-elevated)] text-slate-500 border border-[var(--tm-border)]/80">{att.fileType}</span>
+                                                ) : null}
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center justify-end pt-2 border-t border-[var(--tm-border)] mt-auto">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => attachmentService.downloadAttachment(att.id, att.fileName || att.name)}
+                                              className="h-7 px-2.5 rounded-[6px] text-[9px] font-semibold text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30"
+                                            >
+                                              Download
+                                            </Button>
+                                          </div>
+                                        </Card>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <table
                     className="tm-data-table w-full table-fixed border-collapse text-left"
@@ -1423,6 +1585,15 @@ export function CompanyList() {
         recordName={deleteTargetLabel}
         entityLabel="business entity"
       />
+
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-4xl bg-transparent border-none p-0 shadow-none [&>button]:text-white [&>button]:bg-black/50 [&>button]:hover:bg-black/80 [&>button]:rounded-full [&>button]:p-2 [&>button]:w-8 [&>button]:h-8 [&>button]:-right-4 [&>button]:-top-4 overflow-visible">
+          <DialogTitle className="sr-only">Image Preview</DialogTitle>
+          {previewImage && (
+            <img src={previewImage} alt="Preview" className="w-full h-auto max-h-[85vh] object-contain rounded-[8px]" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

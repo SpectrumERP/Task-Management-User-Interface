@@ -97,7 +97,7 @@ export function Combobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-medium text-sm h-10 shadow-tm-control transition-all border border-tm-border relative pr-8",
+            "w-full justify-between font-medium text-sm h-10 shadow-tm-control transition-all border border-tm-border pr-2",
             "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-tm-elevated disabled:hover:bg-tm-elevated",
             className,
             FIELD_TEXT_STYLE,
@@ -122,7 +122,7 @@ export function Combobox({
               <span className="truncate">{placeholder}</span>
             )}
           </div>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
+          <div className="flex shrink-0 items-center gap-1.5">
             {value && !disabled && isClearable && (
               <span
                 onClick={(e) => {
