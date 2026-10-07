@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { applyBrandToDocument } from '@/config/brandConfig'
 import { initTheme } from '@/store/useThemeStore'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { BASE_URL, publicUrl } from '@/lib/basePath'
 
 // Theme first (avoids flash), then brand chrome
 initTheme()
@@ -14,7 +15,8 @@ applyBrandToDocument()
 if ('serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      // Scoped to the app's own base so, inside the CRM, it never handles CRM pages.
+      navigator.serviceWorker.register(publicUrl('sw.js'), { scope: BASE_URL })
         .then((registration) => {
           console.log('[PWA] Service Worker registered with scope:', registration.scope);
         })

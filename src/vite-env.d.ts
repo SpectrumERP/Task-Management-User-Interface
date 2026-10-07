@@ -1,6 +1,10 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** Same as the CRM's VITE_COOKIE_SECRET — decrypts the shared CRM sign-in cookie. */
+  readonly VITE_CRM_COOKIE_SECRET?: string;
+  /** 'true' / 'false' forces CRM single sign-on; by default it is on when served under /task. */
+  readonly VITE_CRM_SSO?: string;
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_BRAND_NAME?: string;
   readonly VITE_BRAND_PRODUCT_NAME?: string;

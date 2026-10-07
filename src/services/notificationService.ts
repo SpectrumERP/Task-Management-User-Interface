@@ -1,6 +1,7 @@
 import Cookies from 'js-cookie';
 import { apiService } from './apiService';
 import { getCurrentLoginNo } from '@/lib/taskAccess';
+import { withBase } from '@/lib/basePath';
 
 export type PopUpNotification = {
   notificationJobDetailNo: number;
@@ -216,9 +217,9 @@ export function openNotificationLink(link: string) {
     window.open(href, '_blank', 'noopener,noreferrer');
     return true;
   }
-  // In-app relative path (e.g. /task/74)
+  // In-app relative path (e.g. /task/74) — under the app's base when hosted inside the CRM.
   if (href.startsWith('/')) {
-    window.location.assign(href);
+    window.location.assign(withBase(href));
     return true;
   }
   return false;

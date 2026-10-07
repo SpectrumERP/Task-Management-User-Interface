@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, X, Share, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { publicUrl } from '@/lib/basePath';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -113,7 +114,7 @@ export function PWAInstallBanner() {
           <div className="flex items-center gap-3">
             {/* App Icon Container */}
             <img
-              src="/pwa-192x192.png"
+              src={publicUrl('pwa-192x192.png')}
               alt="Steel Mont"
               className="h-11 w-11 rounded-xl object-cover border border-slate-700/50 shadow-md shadow-[#0EA5E9]/10 shrink-0"
             />

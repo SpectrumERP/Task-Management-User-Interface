@@ -1,23 +1,24 @@
 {
   "name": "SteelMont - Spectrum",
   "short_name": "Spectrum",
-  "description": "SteelMont — Spectrum Task & Planner",
-  "start_url": "/",
+  "description": "SteelMont \u2014 Spectrum Task & Planner",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0B1220",
   "theme_color": "#0B1220",
   "icons": [
     {
-      "src": "/pwa-192x192.png",
+      "src": "pwa-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/pwa-512x512.png",
+      "src": "pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "scope": "./"
 }

@@ -21,7 +21,8 @@ import {
   CalendarDays,
   FileText,
   Shield,
-  UserRound
+  UserRound,
+  Handshake
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -29,13 +30,14 @@ import { BrandLogo } from '@/components/ui/BrandLogo';
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserType } from '@/types/enums';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { CRM_SSO_ENABLED, crmHomeUrl } from '@/lib/crmSso';
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
   // { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
   { icon: Monitor, label: 'Deal Monitor', id: 'deal-monitor', formNo: 1548 },
   { icon: Calendar, label: 'Meeting Notes', id: 'meeting-notes', formNo: 1559 },
   { icon: FileText, label: 'MIS Task Report', id: 'reports', formNo: 930 },
-  { icon: FileText, label: 'MIS Meeting Report', id: 'meeting-reports', formNo: 934 },
+  { icon: FileText, label: 'MIS Meeting Report', id: 'meeting-reports', formNo: 934 }
 ];
 
 export const masterItems = [
@@ -60,6 +62,9 @@ export const menuMasterItems = [
   { icon: Calendar, label: 'Meeting Category', id: 'master-meeting-category', formNo: 1561 },
   { icon: CalendarDays, label: 'Meeting Types', id: 'master-meeting-type', formNo: 1560 }
 ];
+
+/** Inside the CRM (shared sign-in): switches back to the CRM, a separate app, so it is not a tab of this one. */
+const crmModuleItem = { icon: Handshake, label: 'CRM', id: 'crm-module' };
 
 export const bottomItems: { icon: any; label: string; id: string }[] = [];
 
@@ -177,14 +182,14 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
   const navBtnBase =
     "w-full flex items-center text-left relative group transition-[background-color,color,box-shadow,transform] duration-200 ease-out";
 
-  const renderNavItem = (item: { icon: typeof LayoutGrid; label: string; id: string }) => {
+  const renderNavItem = (item: { icon: typeof LayoutGrid; label: string; id: string }, onClick?: () => void) => {
     const isActive = activeTab === item.id;
 
     return (
       <button
         key={item.id}
         data-tour={`nav-${item.id}`}
-        onClick={() => onTabChange(item.id)}
+        onClick={onClick ?? (() => onTabChange(item.id))}
         className={cn(
           navBtnBase,
           isCollapsed
@@ -485,6 +490,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             })
           )
         )}
+        {CRM_SSO_ENABLED && renderNavItem(crmModuleItem, () => window.location.assign(crmHomeUrl))}
       </nav>
 
       {bottomItems.length > 0 && (

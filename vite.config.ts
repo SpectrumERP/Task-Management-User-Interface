@@ -3,12 +3,17 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
 
-const generateVersionFile = () => {
+const generateVersionFile = (): Plugin => {
+  let outDir = path.resolve(import.meta.dirname, 'dist');
   return {
     name: 'generate-version-file',
+    configResolved(config) {
+      // Honour --outDir (e.g. when the CRM builds this app into its own dist/task).
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
     writeBundle() {
       const version = new Date().getTime();
-      const dir = path.resolve(import.meta.dirname, 'dist');
+      const dir = outDir;
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }

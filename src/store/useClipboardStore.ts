@@ -33,7 +33,10 @@ export const useClipboardStore = create<ClipboardStoreState>()(
       addEntry: (entry) => set((state) => {
         const newEntry: ClipboardEntry = {
           ...entry,
-          id: crypto.randomUUID(),
+          // randomUUID needs a secure context (HTTPS / localhost); plain-HTTP hosts fall back.
+          id: typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
           timestamp: new Date().toISOString(),
         };
         // Keep the last 50 entries to prevent local storage bloat

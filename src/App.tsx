@@ -14,6 +14,8 @@ import DealMonitorPage from '@/pages/DealMonitorPage';
 import UserProfilePage from '@/pages/UserProfilePage';
 import NotificationsPage from '@/pages/NotificationsPage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
+import { CrmLoginRedirect } from '@/components/auth/CrmLoginRedirect';
+import { CRM_SSO_ENABLED } from '@/lib/crmSso';
 import { NotificationsProvider } from '@/context/NotificationsContext';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/authService';
@@ -44,6 +46,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AppErrorListeners } from '@/components/ui/AppErrorListeners';
 import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
 import { exportReportToExcel } from '@/utils/exportToExcel';
+import { ROUTER_BASENAME, publicUrl } from '@/lib/basePath';
 
 function Dashboard() {
   const { isSave } = useFormRights(1547);
@@ -350,6 +353,7 @@ function Dashboard() {
 function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
   const { isSessionTimeoutOpen, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Check every 10 seconds in the background for active token expiration
@@ -386,6 +390,11 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={async () => {
                 useAuthStore.setState({ isSessionTimeoutOpen: false });
+                if (CRM_SSO_ENABLED) {
+                  // Opens the CRM login, which brings the user back to this page.
+                  await logout({ returnTo: `${location.pathname}${location.search}` });
+                  return;
+                }
                 await logout();
                 navigate('/login');
               }}
@@ -624,7 +633,8 @@ const router = createBrowserRouter([
     ),
     errorElement: <RouteErrorFallback />,
     children: [
-      { path: "/login", element: <Login /> },
+      // Inside the CRM there is no separate login: the CRM's sign-in is shared.
+      { path: "/login", element: CRM_SSO_ENABLED ? <CrmLoginRedirect /> : <Login /> },
       {
         path: "/",
         element: (
@@ -753,7 +763,7 @@ const router = createBrowserRouter([
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
-]);
+], { basename: ROUTER_BASENAME });
 
 /** Prevent StrictMode remount from hitting version.json twice in the same tick window. */
 let lastAppVersionCheckAt = 0;
@@ -784,7 +794,7 @@ function App() {
       lastAppVersionCheckAt = now;
 
       try {
-        const response = await fetch('/version.json?t=' + now);
+        const response = await fetch(publicUrl('version.json') + '?t=' + now);
         if (response.ok) {
           const data = await response.json();
           const currentVersion = localStorage.getItem('app_version');

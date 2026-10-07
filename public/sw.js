@@ -1,9 +1,10 @@
 const CACHE_NAME = 'taskflow-cache-v1';
+// Relative to this script, so they resolve under the app's base ('/' or '/task/').
 const ASSETS_TO_CACHE = [
-  '/favicon.svg',
-  '/apple-touch-icon.png',
-  '/pwa-192x192.png',
-  '/pwa-512x512.png'
+  './favicon.svg',
+  './apple-touch-icon.png',
+  './pwa-192x192.png',
+  './pwa-512x512.png'
 ];
 
 // Install Event - Pre-cache core assets
