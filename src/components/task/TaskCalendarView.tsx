@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Task, TaskStatus } from '@/types/task';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/dateTime';
 import { getPriorityBadgeClass } from '@/lib/priorityStyles';
 import { getStatusTextClass, resolveCanonicalStatus } from '@/lib/taskStatusGroups';
 import { BrandLoader } from '@/components/ui/BrandLoader';
@@ -133,7 +134,7 @@ export function TaskCalendarView({
       return `${startOfWeek.toLocaleDateString('en-US', { month: 'short' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short' })} ${currentDate.getFullYear()}`;
     }
     if (viewMode === 'day') {
-      return currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      return `${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}, ${formatDate(currentDate)}`;
     }
     return 'Agenda Timeline';
   };
@@ -1068,7 +1069,7 @@ export function TaskCalendarView({
               </DialogTitle>
               {selectedDayTasks && (
                 <p className="text-[12px] text-slate-500 font-medium mt-0.5">
-                  {selectedDayTasks.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  {selectedDayTasks.date.toLocaleDateString('en-US', { weekday: 'long' })}, {formatDate(selectedDayTasks.date)}
                 </p>
               )}
             </div>

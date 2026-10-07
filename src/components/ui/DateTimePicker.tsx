@@ -3,6 +3,13 @@ import { createPortal } from "react-dom"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  DATE_FORMAT,
+  DATE_TIME_FORMAT,
+  DATE_TIME_FORMAT_12H,
+  TIME_FORMAT,
+  TIME_FORMAT_12H,
+} from "@/lib/dateTime"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 
@@ -126,15 +133,15 @@ export function DateTimePicker({
   const period = date && date.getHours() >= 12 ? "PM" : "AM"
 
   const displayFormat = hideTime
-    ? "MMM dd, yyyy"
+    ? DATE_FORMAT
     : hour24
-      ? "MMM dd, yyyy HH:mm"
-      : "MMM dd, yyyy h:mm a"
+      ? DATE_TIME_FORMAT
+      : DATE_TIME_FORMAT_12H
   const panelTitleFormat = hideTime
-    ? "MMM dd, yyyy"
+    ? DATE_FORMAT
     : hour24
-      ? "EEE, MMM d · HH:mm"
-      : "EEE, MMM d · h:mm a"
+      ? `EEE, ${DATE_FORMAT} · ${TIME_FORMAT}`
+      : `EEE, ${DATE_FORMAT} · ${TIME_FORMAT_12H}`
 
   const getPortalTarget = React.useCallback(() => {
     const trigger = rootRef.current

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/Combobox';
 import { Building, Camera as CameraIcon, File, IdCard, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DATE_TIME_FORMAT } from '@/lib/dateTime';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/allowedUploadFiles';
@@ -96,7 +97,7 @@ export function CompanyHeaderFields({
 
   const createdDateObj = createdDate ? new Date(createdDate) : null;
   const formattedCreatedDate =
-    createdDateObj && isValid(createdDateObj) ? format(createdDateObj, 'd MMM yyyy, h:mm a') : null;
+    createdDateObj && isValid(createdDateObj) ? format(createdDateObj, DATE_TIME_FORMAT) : null;
 
 
 
