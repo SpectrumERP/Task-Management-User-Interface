@@ -2,6 +2,7 @@ import { useState } from "react"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { DATE_FORMAT } from "@/lib/dateTime"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -36,7 +37,7 @@ export function DatePicker({ date, onChange, placeholder = "Pick a date", classN
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-slate-400 shrink-0" />
           {date ? (
-            <span className="text-slate-200 font-bold text-xs flex-1 truncate">{format(date, "MMM dd, yyyy")}</span>
+            <span className="text-slate-200 font-bold text-xs flex-1 truncate">{format(date, DATE_FORMAT)}</span>
           ) : (
             <span className="text-slate-400 font-medium text-xs flex-1">{placeholder}</span>
           )}

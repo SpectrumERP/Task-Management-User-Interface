@@ -14,6 +14,7 @@ import { Calendar as CalendarIcon, Check } from "lucide-react"
 import { DateRange } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
+import { DATE_FORMAT } from "@/lib/dateTime"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -183,11 +184,11 @@ export function DateRangePicker({
             {range?.from ? (
               range.to ? (
                 <span className="truncate text-slate-100 text-xs">
-                  {format(range.from, "LLL dd, yyyy")} – {format(range.to, "LLL dd, yyyy")}
+                  {format(range.from, DATE_FORMAT)} – {format(range.to, DATE_FORMAT)}
                 </span>
               ) : (
                 <span className="truncate text-slate-100 text-xs">
-                  {format(range.from, "LLL dd, yyyy")}
+                  {format(range.from, DATE_FORMAT)}
                 </span>
               )
             ) : (

@@ -28,12 +28,11 @@ export function CompanyLocationsSection({
   return (
     <CompanyFormSection
       icon={MapPin}
-      title={
-        <>
-          Locations <span className="text-red-500">*</span>
-        </>
-      }
-      description="At least one office or site address is required"
+      title="Locations"
+      description="Other offices, sites or warehouses"
+      collapsible
+      count={locations.length}
+      autoOpen={locations.length > 0 || !!error}
       action={
         <Button
           type="button"
@@ -55,7 +54,7 @@ export function CompanyLocationsSection({
           No locations added yet. Click Add Location to create one.
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-3">
           {locations.map((loc, idx) => (
             <div
               key={idx}

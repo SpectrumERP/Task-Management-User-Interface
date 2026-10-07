@@ -6,13 +6,21 @@
  * - Calendar dates (date-only, no time-of-day): use toDateOnlyLocal() / formatDateOnly() so the
  *   picked calendar day does not shift across timezones.
  * - Pickers stay local wall-clock; callers convert to UTC ISO at API boundaries.
+ * - Display format is controlled only by DATE_FORMAT / TIME_FORMAT below (date-fns tokens).
  */
 
-import { format, isValid } from 'date-fns';
+import { format, isValid, parse } from 'date-fns';
 
 export type DateInput = Date | string | number | null | undefined;
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+/** App-wide date display format (date-fns tokens). Change here to change it everywhere. */
+export const DATE_FORMAT = 'dd/MM/yyyy';
+/** App-wide 24h time display format. */
+export const TIME_FORMAT = 'HH:mm';
+/** App-wide 12h time display format (pickers / readbacks that show AM/PM). */
+export const TIME_FORMAT_12H = 'h:mm a';
+export const DATE_TIME_FORMAT = `${DATE_FORMAT} ${TIME_FORMAT}`;
+export const DATE_TIME_FORMAT_12H = `${DATE_FORMAT} ${TIME_FORMAT_12H}`;
 
 function pad2(n: number) {
   return String(n).padStart(2, '0');
@@ -38,8 +46,36 @@ function asDate(value: DateInput): Date | null {
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
+  // Our own display format (DATE_FORMAT, optionally + time) — Date() would misread it as US.
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(raw)) {
+    for (const fmt of [DATE_TIME_FORMAT_12H, DATE_TIME_FORMAT, DATE_FORMAT]) {
+      const d = parse(raw, fmt, new Date());
+      if (isValid(d)) return d;
+    }
+    return null;
+  }
+
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Local Date carrying the UTC wall-clock of `d`, so date-fns format() prints UTC components. */
+function utcWallClock(d: Date): Date {
+  return new Date(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    d.getUTCHours(),
+    d.getUTCMinutes(),
+    d.getUTCSeconds()
+  );
+}
+
+/** Format a local Date with DATE_FORMAT (for pickers and other already-local dates). */
+export function formatDate(value: DateInput, empty = '—'): string {
+  const d = asDate(value);
+  if (!d) return empty;
+  return format(d, DATE_FORMAT);
 }
 
 /** Parse any API/UI date into a Date, or null if invalid. */
@@ -103,18 +139,18 @@ export function looksLikeDateValue(value: unknown): boolean {
   );
 }
 
-/** Format instant using UTC components: "Sep 14, 2026 09:30" */
+/** Format instant using UTC components: "14/09/2026 09:30" */
 export function formatUtcDateTime(value: DateInput, empty = '—'): string {
   const d = asDate(value);
   if (!d) return empty;
-  return `${MONTHS[d.getUTCMonth()]} ${pad2(d.getUTCDate())}, ${d.getUTCFullYear()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+  return format(utcWallClock(d), DATE_TIME_FORMAT);
 }
 
-/** Format instant UTC date only: "Sep 14, 2026" */
+/** Format instant UTC date only: "14/09/2026" */
 export function formatUtcDate(value: DateInput, empty = '—'): string {
   const d = asDate(value);
   if (!d) return empty;
-  return `${MONTHS[d.getUTCMonth()]} ${pad2(d.getUTCDate())}, ${d.getUTCFullYear()}`;
+  return format(utcWallClock(d), DATE_FORMAT);
 }
 
 /**
@@ -127,23 +163,22 @@ export function formatDateOnly(value: DateInput, empty = '—'): string {
   const raw = String(value).trim();
   const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m && !/[T ]\d{2}:\d{2}/.test(raw)) {
-    const monthIdx = Number(m[2]) - 1;
-    if (monthIdx >= 0 && monthIdx < 12) {
-      return `${MONTHS[monthIdx]} ${m[3]}, ${m[1]}`;
-    }
+    const day = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (isValid(day)) return format(day, DATE_FORMAT);
   }
   const d = asDate(value);
   if (!d) return empty;
-  return `${MONTHS[d.getMonth()]} ${pad2(d.getDate())}, ${d.getFullYear()}`;
+  return format(d, DATE_FORMAT);
 }
 
 /** Split schedule line for tables: date + time (UTC components, no suffix). */
 export function formatUtcScheduleLine(value: DateInput): { date: string; time: string } {
   const d = asDate(value);
   if (!d) return { date: '—', time: '' };
+  const wall = utcWallClock(d);
   return {
-    date: `${MONTHS[d.getUTCMonth()]} ${pad2(d.getUTCDate())}, ${d.getUTCFullYear()}`,
-    time: `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`,
+    date: format(wall, DATE_FORMAT),
+    time: format(wall, TIME_FORMAT),
   };
 }
 
@@ -159,7 +194,7 @@ export function formatLocalDateTimeWithOffset(value: DateInput, empty = '—'): 
   const abs = Math.abs(offsetMin);
   const oh = pad2(Math.floor(abs / 60));
   const om = pad2(abs % 60);
-  return `${format(d, 'MMM dd, yyyy h:mm a')} (UTC${sign}${oh}:${om})`;
+  return `${format(d, DATE_TIME_FORMAT_12H)} (UTC${sign}${oh}:${om})`;
 }
 
 /** Sort helper: blank → sink; otherwise compare UTC ms. */

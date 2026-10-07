@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/Combobox';
 import { Building, Camera as CameraIcon, File, IdCard, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DATE_TIME_FORMAT } from '@/lib/dateTime';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/allowedUploadFiles';
@@ -96,7 +97,7 @@ export function CompanyHeaderFields({
 
   const createdDateObj = createdDate ? new Date(createdDate) : null;
   const formattedCreatedDate =
-    createdDateObj && isValid(createdDateObj) ? format(createdDateObj, 'd MMM yyyy, h:mm a') : null;
+    createdDateObj && isValid(createdDateObj) ? format(createdDateObj, DATE_TIME_FORMAT) : null;
 
 
 
@@ -134,8 +135,8 @@ export function CompanyHeaderFields({
   return (
     <CompanyFormSection
       icon={Building}
-      title="General Business Entity Information"
-      description="Code, name, type, website, primary contact and primary location"
+      title="Business Entity"
+      description="Required details, primary contact and address"
       action={
         <div className="flex items-center gap-3">
           {errors.attachments ? (
@@ -328,26 +329,25 @@ export function CompanyHeaderFields({
             />
           </FieldControl>
         </div>
-
-        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-3">
-          <FieldLabel htmlFor="businessEntityWebsite">Website</FieldLabel>
-          <FieldControl error={errors.website}>
-            <Input
-              id="businessEntityWebsite"
-              inputMode="url"
-              placeholder="https://www.example.com"
-              value={website}
-              maxLength={2000}
-              onChange={(e) => {
-                setWebsite(e.target.value);
-                if (errors.website) setErrors((prev) => ({ ...prev, website: '' }));
-              }}
-              className={cn(fieldClass, errors.website && 'border-red-400')}
-            />
-          </FieldControl>
-        </div>
       </div>
       {children}
+      <div className="space-y-1.5 min-w-0 mt-3.5">
+        <FieldLabel htmlFor="businessEntityWebsite">Website</FieldLabel>
+        <FieldControl error={errors.website}>
+          <Input
+            id="businessEntityWebsite"
+            inputMode="url"
+            placeholder="https://www.example.com"
+            value={website}
+            maxLength={2000}
+            onChange={(e) => {
+              setWebsite(e.target.value);
+              if (errors.website) setErrors((prev) => ({ ...prev, website: '' }));
+            }}
+            className={cn(fieldClass, errors.website && 'border-red-400')}
+          />
+        </FieldControl>
+      </div>
     </CompanyFormSection>
   );
 }

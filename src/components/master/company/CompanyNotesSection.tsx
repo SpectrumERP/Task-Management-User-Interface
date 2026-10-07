@@ -48,6 +48,9 @@ export function CompanyNotesSection({ notes, onChange, onRemove }: CompanyNotesS
       icon={StickyNote}
       title="Follow-up Notes"
       description="Add dated remarks for this business entity"
+      collapsible
+      count={notes.length}
+      autoOpen={notes.length > 0}
     >
       <div className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-[minmax(140px,180px)_minmax(0,1fr)_auto] gap-x-3 gap-y-2.5 items-end">
