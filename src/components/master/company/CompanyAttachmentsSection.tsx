@@ -4,6 +4,7 @@ import { FileText, X, FileEdit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
+import { InlineAttachmentRename } from '@/components/master/shared/InlineAttachmentRename';
 import { CompanyFormSection } from './CompanyFormSection';
 import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 
@@ -15,6 +16,11 @@ interface CompanyAttachmentsSectionProps {
   onAnalyze: (att: any) => void;
   onRemove: (index: number) => void;
   onRename?: (index: number) => void;
+  /** Attachment id currently being renamed inline. */
+  renamingId?: number | null;
+  renameSaving?: boolean;
+  onRenameSave?: (newName: string) => void;
+  onRenameCancel?: () => void;
   analyzedAttachmentIds: number[];
   error?: string;
 }
@@ -30,6 +36,10 @@ export function CompanyAttachmentsSection({
   onAnalyze,
   onRemove,
   onRename,
+  renamingId,
+  renameSaving,
+  onRenameSave,
+  onRenameCancel,
   analyzedAttachmentIds,
   error,
 }: CompanyAttachmentsSectionProps) {
@@ -89,11 +99,30 @@ export function CompanyAttachmentsSection({
             </div>
           ) : (
             <div className="max-h-[158px] overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
-              {attachments.map((att, idx) => (
+              {attachments.map((att, idx) => {
+                const isRenaming = renamingId != null && (att.id || att.docNo) === renamingId;
+                return (
                 <div
                   key={idx}
-                  className="bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-[8px] p-3 flex items-center justify-between gap-3 hover:border-[#0EA5E9]/30 transition-colors"
+                  className={cn(
+                    'bg-[var(--tm-surface)] border rounded-[8px] p-3 flex items-center justify-between gap-3 transition-colors',
+                    isRenaming ? 'border-[#0EA5E9]/50' : 'border-[var(--tm-border)]/70 hover:border-[#0EA5E9]/30'
+                  )}
                 >
+                  {isRenaming && onRenameSave && onRenameCancel ? (
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="p-2 bg-[var(--tm-elevated)] border border-[var(--tm-border)]/80 rounded-[8px] text-[#0EA5E9] shrink-0">
+                        <FileText size={15} strokeWidth={1.75} />
+                      </div>
+                      <InlineAttachmentRename
+                        originalName={att.fileName || att.name || 'document'}
+                        saving={renameSaving}
+                        onSave={onRenameSave}
+                        onCancel={onRenameCancel}
+                      />
+                    </div>
+                  ) : (
+                  <>
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="p-2 bg-[var(--tm-elevated)] border border-[var(--tm-border)]/80 rounded-[8px] text-[#0EA5E9] shrink-0">
                       <FileText size={15} strokeWidth={1.75} />
@@ -156,6 +185,7 @@ export function CompanyAttachmentsSection({
                           <button
                             type="button"
                             onClick={() => onRename(idx)}
+                            disabled={renamingId != null}
                             aria-label="Rename Attachment"
                             className="p-1.5 rounded-[6px] text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
                           >
@@ -175,8 +205,11 @@ export function CompanyAttachmentsSection({
                       </ActionTip>
                     </div>
                   </div>
+                  </>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
           {error ? <p className="text-[10px] text-red-500 font-medium">{error}</p> : null}

@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { getUserErrorMessage, shouldToastCaughtError } from '@/lib/errorFeedback';
 import { useTaskStore } from '@/store/useTaskStore';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
-import { RenameAttachmentDialog } from '@/components/master/shared/RenameAttachmentDialog';
+import { InlineAttachmentRename } from '@/components/master/shared/InlineAttachmentRename';
 import { useConfirmDelete } from '@/components/master/shared/useConfirmDelete';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
@@ -3111,48 +3111,61 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               >
                                 {isPdf ? <FileText size={14} /> : <Image size={14} />}
                               </span>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
-                                    {file.name}
-                                  </p>
-                                  {file.size ? (
-                                    <span className="shrink-0 text-[10px] font-medium text-slate-400 tabular-nums">
-                                      {formatFileSize(file.size)}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    attachmentService.downloadAttachment(file.id, file.name)
-                                  }
-                                  className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
-                                >
-                                  View
-                                </button>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="ghost"
-                                  title='Rename'
-                                  onClick={() => setAttachmentToRename({ id: file.id, name: file.name })}
-                                  className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-sky-400 hover:bg-sky-500/10 transition-all"
-                                >
-                                  <FileEdit size={12} />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => handleRemoveAttachment(file.id, file.name)}
-                                  className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                >
-                                  <Trash size={12} />
-                                </Button>
-                              </div>
+                              {attachmentToRename?.id === file.id ? (
+                                <InlineAttachmentRename
+                                  originalName={file.name || 'document'}
+                                  saving={isRenamingAttachment}
+                                  onSave={confirmRenameAttachment}
+                                  onCancel={() => setAttachmentToRename(null)}
+                                />
+                              ) : (
+                                <>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
+                                        {file.name}
+                                      </p>
+                                      {file.size ? (
+                                        <span className="shrink-0 text-[10px] font-medium text-slate-400 tabular-nums">
+                                          {formatFileSize(file.size)}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        attachmentService.downloadAttachment(file.id, file.name)
+                                      }
+                                      className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
+                                    >
+                                      View
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      title="Rename"
+                                      aria-label="Rename attachment"
+                                      disabled={attachmentToRename != null}
+                                      onClick={() => setAttachmentToRename({ id: file.id, name: file.name })}
+                                      className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-sky-400 hover:bg-sky-500/10 transition-all"
+                                    >
+                                      <FileEdit size={12} />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={() => handleRemoveAttachment(file.id, file.name)}
+                                      className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                    >
+                                      <Trash size={12} />
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
                             </motion.div>
                           );
                         })}
@@ -3754,17 +3767,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         confirming={isDeletingAttachment}
       />
 
-      {attachmentToRename && (
-        <RenameAttachmentDialog
-          open={!!attachmentToRename}
-          onOpenChange={(open) => {
-            if (!open && !isRenamingAttachment) setAttachmentToRename(null);
-          }}
-          onConfirm={confirmRenameAttachment}
-          originalName={attachmentToRename.name}
-          confirming={isRenamingAttachment}
-        />
-      )}
 
       {/* Success feedback is toast + onComplete (see save handler) */}
 

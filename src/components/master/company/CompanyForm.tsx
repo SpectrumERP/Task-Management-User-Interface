@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 import { validateUploadFile } from '@/lib/allowedUploadFiles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
-import { RenameAttachmentDialog } from '../shared/RenameAttachmentDialog';
 import { useConfirmDelete } from '../shared/useConfirmDelete';
 import { fetchStatesByCountry, fetchCityCombo, type CityComboRow } from '../shared/geo';
 import type { BusinessCardData } from '@/components/ui/camera/models/BusinessCardData';
@@ -1314,8 +1313,21 @@ export function CompanyForm({ id }: CompanyFormProps) {
           </div>
         </div>
 
-        <Dialog open={isAttachmentsModalOpen} onOpenChange={setIsAttachmentsModalOpen}>
-          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
+        <Dialog
+          open={isAttachmentsModalOpen}
+          onOpenChange={(open) => {
+            if (!open && isRenamingAttachment) return;
+            setIsAttachmentsModalOpen(open);
+            if (!open) setAttachmentToRename(null);
+          }}
+        >
+          <DialogContent
+            className="max-w-4xl max-h-[85vh] overflow-y-auto p-0 border-none bg-transparent shadow-none"
+            // Esc while renaming cancels the rename (handled by the input), not the modal
+            onEscapeKeyDown={(e) => {
+              if (attachmentToRename) e.preventDefault();
+            }}
+          >
             <div data-page-tour="company-attachments">
               <CompanyAttachmentsSection
                 attachments={companyAttachments}
@@ -1325,6 +1337,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
                 onAnalyze={handleAnalyzeAttachment}
                 onRemove={requestRemoveCompanyAttachment}
                 onRename={requestRenameCompanyAttachment}
+                renamingId={attachmentToRename?.id ?? null}
+                renameSaving={isRenamingAttachment}
+                onRenameSave={confirmRenameCompanyAttachment}
+                onRenameCancel={() => setAttachmentToRename(null)}
                 analyzedAttachmentIds={analyzedAttachmentIds}
                 error={errors.attachments}
               />
@@ -1469,17 +1485,6 @@ export function CompanyForm({ id }: CompanyFormProps) {
           confirming={deleteConfirm.confirming}
         />
 
-        {attachmentToRename && (
-          <RenameAttachmentDialog
-            open={!!attachmentToRename}
-            onOpenChange={(open) => {
-              if (!open && !isRenamingAttachment) setAttachmentToRename(null);
-            }}
-            onConfirm={confirmRenameCompanyAttachment}
-            originalName={attachmentToRename.name}
-            confirming={isRenamingAttachment}
-          />
-        )}
 
         <Dialog open={isSelectAttachmentModalOpen} onOpenChange={setIsSelectAttachmentModalOpen}>
           <DialogContent className="sm:max-w-md w-[90vw] bg-[var(--tm-bg)] p-0 overflow-hidden border border-[var(--tm-border)] flex flex-col max-h-[85vh]">
