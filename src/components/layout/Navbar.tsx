@@ -183,7 +183,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
 
         <DropdownMenuItem
           className="group/logout flex cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2.5 text-[13px] font-semibold text-slate-300 outline-none focus:bg-red-500/10 focus:text-red-400 data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-400"
-          onClick={logout}
+          onClick={() => logout()}
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--tm-muted)] text-slate-500 transition-colors group-hover/logout:bg-red-100 group-hover/logout:text-red-400 group-focus/logout:bg-red-100 group-focus/logout:text-red-400 data-[highlighted]:bg-red-100">
             <LogOut size={15} strokeWidth={2} />

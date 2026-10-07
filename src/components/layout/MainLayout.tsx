@@ -113,7 +113,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
           You do not have access to any modules in the Task Management system. Please contact your
           system administrator for assistance.
         </p>
-        <Button onClick={logout} className="gap-2 bg-[#0EA5E9] hover:bg-[#0284C7]">
+        <Button onClick={() => logout()} className="gap-2 bg-[#0EA5E9] hover:bg-[#0284C7]">
           <LogOut size={16} />
           Logout
         </Button>

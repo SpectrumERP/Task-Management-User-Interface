@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { authService } from '@/services/authService';
 import { apiService } from '@/services/apiService';
+import {
+  CRM_SSO_ENABLED,
+  clearCrmRedirectMark,
+  endCrmSession,
+  onCrmSessionEnd,
+  readCrmSession,
+  redirectToCrmLogin,
+} from '@/lib/crmSso';
 
 interface User {
   id: string;
@@ -30,7 +38,8 @@ interface AuthState {
   isLoading: boolean;
   isSessionTimeoutOpen: boolean;
   login: (loginId: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  /** Inside the CRM this also signs out of the CRM and opens its login (`returnTo`: come back here after). */
+  logout: (options?: { returnTo?: string }) => Promise<void>;
   checkAuth: () => Promise<void>;
   accessibleForms: number[] | null;
   formRights: Record<number, FormRight> | null;
@@ -102,7 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  logout: async () => {
+  logout: async (options) => {
     await authService.clearSession();
     set({
       user: null,
@@ -112,11 +121,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       accessibleForms: null,
       formRights: null,
     });
+    if (CRM_SSO_ENABLED) {
+      endCrmSession();
+      redirectToCrmLogin(options?.returnTo);
+    }
   },
 
   checkAuth: async () => {
     set({ isLoading: true });
     try {
+      if (CRM_SSO_ENABLED) {
+        await adoptCrmSession(set, get);
+        return;
+      }
       const session = await authService.getSession();
       if (session) {
         if (authService.isTokenExpired(session.token)) {
@@ -140,3 +157,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+type SetState = (partial: Partial<AuthState>) => void;
+
+/** Single sign-on: the CRM's session is the only source; this app's stored copy just follows it. */
+async function adoptCrmSession(set: SetState, get: () => AuthState) {
+  const crm = await readCrmSession();
+  if (!crm) {
+    if (get().token || (await authService.getSession())) await authService.clearSession();
+    set({ user: null, company: null, token: null, isAuthenticated: false, accessibleForms: null, formRights: null });
+    return;
+  }
+  clearCrmRedirectMark();
+  const stored = await authService.getSession();
+  if (stored?.token !== crm.token) await authService.setSession(crm);
+  // A different sign-in (another user / company) has different menu rights.
+  const switched = get().token !== null && get().token !== crm.token;
+  set({
+    user: crm.user as unknown as User,
+    company: crm.company,
+    token: crm.token,
+    isAuthenticated: true,
+    ...(switched ? { accessibleForms: null, formRights: null } : {}),
+  });
+}
+
+// Signed out (or expired) in a CRM tab: this app's session ended with it.
+if (CRM_SSO_ENABLED) {
+  onCrmSessionEnd(() => {
+    if (useAuthStore.getState().isAuthenticated) useAuthStore.setState({ isSessionTimeoutOpen: true });
+  });
+}
