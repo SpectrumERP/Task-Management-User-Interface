@@ -14,6 +14,7 @@ const CHANNEL_NAME = 'fi-crm-session';
 const DEFAULT_SECRET = 'fi-crm-cookie-v1';
 const KEY_SALT = 'fi-crm-cookie-salt';
 const MAX_CHUNKS = 10;
+const PLAIN_PREFIX = 'p.';
 const REDIRECT_MARK = 'fi-task-sso-redirect';
 /** Back here without a session this soon after sending the user to sign in → a loop, not a sign-in. */
 const LOOP_WINDOW_MS = 10_000;
@@ -97,6 +98,10 @@ async function readVault<T>(name: string): Promise<T | null> {
     encoded += chunk;
   }
   try {
+    // Plain-HTTP hosts have no Web Crypto: the CRM then stores `p.` + base64url JSON (not encrypted).
+    if (encoded.startsWith(PLAIN_PREFIX)) {
+      return JSON.parse(new TextDecoder().decode(fromBase64Url(encoded.slice(PLAIN_PREFIX.length)))) as T;
+    }
     const packed = fromBase64Url(encoded);
     const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: packed.slice(0, 12) }, await cryptoKey(), packed.slice(12));
     return JSON.parse(new TextDecoder().decode(plain)) as T;
