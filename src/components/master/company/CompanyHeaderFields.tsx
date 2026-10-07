@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils';
 import { DATE_TIME_FORMAT } from '@/lib/dateTime';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
-import { UPLOAD_ACCEPT_ATTR } from '@/lib/allowedUploadFiles';
+import { toast } from 'sonner';
+import { ANALYZE_IMAGE_ACCEPT_ATTR, UPLOAD_ACCEPT_ATTR, validateAnalyzeImageFile } from '@/lib/allowedUploadFiles';
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CompanyFormSection } from './CompanyFormSection';
@@ -194,10 +195,16 @@ export function CompanyHeaderFields({
               <DropdownMenuItem className="cursor-pointer hover:bg-[var(--tm-elevated)]" onSelect={() => {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = UPLOAD_ACCEPT_ATTR;
+                input.accept = ANALYZE_IMAGE_ACCEPT_ATTR;
                 input.onchange = (ev: any) => {
                   const file = ev.target.files?.[0];
-                  if (file && onDirectAnalyze) {
+                  if (!file) return;
+                  const check = validateAnalyzeImageFile(file);
+                  if (!check.ok) {
+                    toast.error(check.reason);
+                    return;
+                  }
+                  if (onDirectAnalyze) {
                     onDirectAnalyze(file);
                   }
                 };

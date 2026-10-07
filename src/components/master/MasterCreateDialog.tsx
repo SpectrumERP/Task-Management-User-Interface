@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/Combobox';
 import { MultiSelect } from '@/components/ui/MultiSelect';
-import { UserCombobox } from '@/components/ui/UserCombobox';
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
 import {
   Dialog,
@@ -77,9 +76,6 @@ export function MasterCreateDialog({
   const [folderFillValues, setFolderFillValues] = useState<any>(null);
 
   // Location State
-  const [parentLocationNo, setParentLocationNo] = useState('');
-  const [inchargeNo, setInchargeNo] = useState('');
-  const [inchargeLabel, setInchargeLabel] = useState('');
   const [address1, setAddress1] = useState('');
   const [address2, setAddress2] = useState('');
   const [address3, setAddress3] = useState('');
@@ -87,7 +83,6 @@ export function MasterCreateDialog({
   const [stateNo, setStateNo] = useState('');
   const [cityNo, setCityNo] = useState('');
   const [pinCode, setPinCode] = useState('');
-  const [locationRegion, setLocationRegion] = useState('');
   const [availableCityStates, setAvailableCityStates] = useState<any[]>([]);
   const [locationFillValues, setLocationFillValues] = useState<any>(null);
 
@@ -128,9 +123,6 @@ export function MasterCreateDialog({
     setParentFolderNo('');
 
     // Reset Location
-    setParentLocationNo('');
-    setInchargeNo('');
-    setInchargeLabel('');
     setAddress1('');
     setAddress2('');
     setAddress3('');
@@ -138,7 +130,6 @@ export function MasterCreateDialog({
     setStateNo('');
     setCityNo('');
     setPinCode('');
-    setLocationRegion('');
     
     // Reset Task Company
     setAliasName('');
@@ -154,7 +145,7 @@ export function MasterCreateDialog({
       apiService.get<any>(`/api/master/task-folders/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setFolderFillValues(response.data || response);
       }).catch(err => console.error("Failed to load folder fill values:", err));
-    } else if (type === 'location' || type === 'task-company' || type === 'state' || type === 'city') {
+    } else if (type === 'task-company' || type === 'state' || type === 'city') {
       apiService.get<any>(`/api/master/task-locations/fill-values?companyNo=${activeCompanyNo}`).then((response) => {
         setLocationFillValues(response);
       }).catch(err => console.error("Failed to load location fill values:", err));
@@ -189,25 +180,6 @@ export function MasterCreateDialog({
     } else if (type === 'folder') {
       if (!description.trim()) {
         newErrors.description = 'Description is required';
-      }
-    } else if (type === 'location') {
-      if (!address1.trim()) {
-        newErrors.address1 = 'Address Line 1 is required';
-      }
-      if (!pinCode.trim()) {
-        newErrors.pinCode = 'PIN/ZIP is required';
-      }
-      if (!countryNo || countryNo === 'none' || countryNo === '') {
-        newErrors.countryNo = 'Country is required';
-      }
-      if (!stateNo || stateNo === 'none' || stateNo === '') {
-        newErrors.stateNo = 'State is required';
-      }
-      if (!cityNo || cityNo === 'none' || cityNo === '') {
-        newErrors.cityNo = 'City is required';
-      }
-      if (!inchargeNo || inchargeNo === 'none' || inchargeNo === '') {
-        newErrors.inchargeNo = 'Incharge is required';
       }
     } else if (type === 'state') {
       if (!countryNo || countryNo === 'none' || countryNo === '') {
@@ -282,21 +254,20 @@ export function MasterCreateDialog({
         };
         response = await apiService.post('/api/master/task-folders/save', payload);
       } else if (type === 'location') {
-        const cleanParent = parentLocationNo === 'none' ? '' : parentLocationNo;
-        const cleanIncharge = inchargeNo === 'none' ? '' : inchargeNo;
+        // Location master only manages the name (see LocationForm)
         const payload = {
           operLocationNo: null,
           operLocationName: name,
-          operLocationInchargeNo: cleanIncharge ? parseInt(cleanIncharge) || null : null,
-          operLocationParentNo: cleanParent ? parseInt(cleanParent) || null : null,
-          address1,
-          address2,
-          address3,
-          cityNo: parseInt(cityNo) || null,
-          pinCode,
-          stateNo: parseInt(stateNo) || null,
-          countryNo: parseInt(countryNo) || null,
-          regionNo: parseInt(locationRegion) || null
+          operLocationInchargeNo: null,
+          operLocationParentNo: null,
+          address1: '',
+          address2: '',
+          address3: '',
+          cityNo: null,
+          pinCode: '',
+          stateNo: null,
+          countryNo: null,
+          regionNo: null
         };
         response = await apiService.post('/api/master/task-locations/save', payload);
       } else if (type === 'task-company') {
@@ -450,7 +421,7 @@ export function MasterCreateDialog({
               {`${getMasterTitle().replace(' Master', '')} Name`}
             </FieldLabel>
             <FieldControl error={errors.name}>
-              <Input placeholder={`Enter new ${getMasterTitle().replace(' Master', '').toLowerCase()} name...`} value={name} onChange={(e) => {
+              <Input placeholder={`Enter new ${getMasterTitle().replace(' Master', '').toLowerCase()} name...`} value={name} maxLength={type === 'location' ? 50 : undefined} onChange={(e) => {
                   setName(e.target.value);
                   if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
                 }}
@@ -737,154 +708,6 @@ export function MasterCreateDialog({
                   placeholder="Select Parent Folder..."
                   className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
                 />
-              </div>
-            </div>
-          )}
-
-          {type === 'location' && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-0">
-                  <Label  className="text-[10px] font-medium text-slate-200 ml-1">Parent Location</Label>
-                  <Combobox options={[ { label: "No Parent (Root)", value: "none" }, ...(locationFillValues?.data?.locations || locationFillValues?.locations || []).map((l: any) => ({
-                        label: l.operLocationName || l.locationName || l.name || '',
-                        value: (l.operLocationNo || l.id || '').toString()
-                      }))
-                    ]}
-                    value={parentLocationNo}
-                    onChange={setParentLocationNo}
-                    placeholder="Select Parent"
-                    className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                  />
-                </div>
-
-                <div className="space-y-0">
-                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">Incharge Lead</FieldLabel>
-                  <FieldControl error={errors.inchargeNo}>
-                    <UserCombobox value={inchargeNo} onChange={(user) => {
-                        setInchargeNo(user.loginNo.toString());
-                        setInchargeLabel(user.printingName);
-                        if (errors.inchargeNo) setErrors(prev => ({ ...prev, inchargeNo: '' }));
-                      }}
-                      initialLabel={inchargeLabel}
-                      placeholder="Search Incharge..."
-                      className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                    />
-                  </FieldControl>
-                </div>
-              </div>
-
-              <div className="space-y-0">
-                <Label  className="text-[10px] font-medium text-slate-200 ml-1">Location Region</Label>
-                <Combobox options={(locationFillValues?.data?.regions || locationFillValues?.regions || []).map((r: any) => ({
-                    label: r.regionName || '',
-                    value: (r.regionNo || '').toString()
-                  }))}
-                  value={locationRegion}
-                  onChange={setLocationRegion}
-                  placeholder="Select Region"
-                  className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                />
-              </div>
-
-              <div className="space-y-0">
-                <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1 block">Address</FieldLabel>
-                <div className="space-y-0">
-                  <FieldControl error={errors.address1}>
-                    <Input placeholder="Address Line 1" value={address1} onChange={(e) => {
-                        setAddress1(e.target.value);
-                        if (errors.address1) setErrors(prev => ({ ...prev, address1: '' }));
-                      }}
-                      className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                    />
-                  </FieldControl>
-                  <Input placeholder="Address Line 2 (Optional)" value={address2} onChange={(e) => setAddress2(e.target.value)}
-                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                  />
-                  <Input placeholder="Address Line 3 (Optional)" value={address3} onChange={(e) => setAddress3(e.target.value)}
-                    className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-0">
-                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">Country</FieldLabel>
-                  <FieldControl error={errors.countryNo}>
-                    <Combobox options={(locationFillValues?.data?.countries || locationFillValues?.countries || []).map((c: any) => ({
-                        label: c.countryName || '',
-                        value: (c.countryNo || '').toString()
-                      }))}
-                      value={countryNo}
-                      onChange={(val) => {
-                        setCountryNo(val);
-                        if (errors.countryNo) setErrors(prev => ({ ...prev, countryNo: '' }));
-                      }}
-                      placeholder="Select Country"
-                      className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                      onAddNew={() => {
-                        setNestedMasterType('country');
-                        setIsNestedMasterOpen(true);
-                      }}
-                    />
-                  </FieldControl>
-                </div>
-                <div className="space-y-0">
-                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">State / Province</FieldLabel>
-                  <FieldControl error={errors.stateNo}>
-                    <Combobox options={(locationFillValues?.data?.states || locationFillValues?.states || []).map((s: any) => ({
-                        label: s.stateName || '',
-                        value: (s.stateNo || '').toString()
-                      }))}
-                      value={stateNo}
-                      onChange={(val) => {
-                        setStateNo(val);
-                        if (errors.stateNo) setErrors(prev => ({ ...prev, stateNo: '' }));
-                      }}
-                      placeholder="Select State"
-                      className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                      onAddNew={() => {
-                        setNestedMasterType('state');
-                        setIsNestedMasterOpen(true);
-                      }}
-                    />
-                  </FieldControl>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-0.5.5">
-                <div className="space-y-0 col-span-2">
-                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">City</FieldLabel>
-                  <FieldControl error={errors.cityNo}>
-                    <Combobox options={(locationFillValues?.data?.cities || locationFillValues?.cities || []).map((c: any) => ({
-                        label: c.cityName || '',
-                        value: (c.cityNo || '').toString()
-                      }))}
-                      value={cityNo}
-                      onChange={(val) => {
-                        setCityNo(val);
-                        if (errors.cityNo) setErrors(prev => ({ ...prev, cityNo: '' }));
-                      }}
-                      placeholder="Select City"
-                      className="h-10 rounded-[8px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full"
-                      onAddNew={() => {
-                        setNestedMasterType('city');
-                        setIsNestedMasterOpen(true);
-                      }}
-                    />
-                  </FieldControl>
-                </div>
-                <div className="space-y-0">
-                  <FieldLabel required className="text-[10px] font-medium text-slate-200 ml-1">PIN / ZIP Code</FieldLabel>
-                  <FieldControl error={errors.pinCode}>
-                    <Input placeholder="ZIP" value={pinCode} onChange={(e) => {
-                        setPinCode(e.target.value);
-                        if (errors.pinCode) setErrors(prev => ({ ...prev, pinCode: '' }));
-                      }}
-                      className="bg-[var(--tm-surface)] border-[var(--tm-border)] h-10 rounded-[8px]"
-                    />
-                  </FieldControl>
-                </div>
               </div>
             </div>
           )}

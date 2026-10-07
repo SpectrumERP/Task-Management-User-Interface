@@ -19,30 +19,9 @@ interface ApiResponse<T> {
   data: T;
 }
 
-/** Closed-field label: Location · City, State (Country optional). */
-export function formatLocationDisplayLabel(
-  loc: Partial<LocationResponse> | null | undefined,
-  opts?: { includeCountry?: boolean }
-): string {
-  if (!loc) return '';
-  const name = String(loc.operLocationName || '').trim();
-  const city = String(loc.cityName || '').trim();
-  const state = String(loc.stateName || '').trim();
-  const country = String(loc.countryName || '').trim();
-
-  const cityState = [city, state].filter(Boolean).join(', ');
-  const parts: string[] = [];
-  if (name) parts.push(name);
-  if (cityState && cityState.toLowerCase() !== name.toLowerCase()) {
-    parts.push(cityState);
-  } else if (!name && cityState) {
-    parts.push(cityState);
-  }
-  if (opts?.includeCountry && country) {
-    const already = parts.join(' ').toLowerCase();
-    if (!already.includes(country.toLowerCase())) parts.push(country);
-  }
-  return parts.join(' · ');
+/** Display label for a task location — the location master only manages the name. */
+export function formatLocationDisplayLabel(loc: Partial<LocationResponse> | null | undefined): string {
+  return String(loc?.operLocationName || '').trim();
 }
 
 export const locationService = {

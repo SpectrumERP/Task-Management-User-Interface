@@ -112,6 +112,8 @@ export interface CameraCompProps {
   onCancel?: () => void;
   onCardScanned?: (data: BusinessCardData) => void;
   initialAnalyzeFile?: File;
+  /** Upload initialAnalyzeFile on confirm (a new local file, not an existing attachment). */
+  uploadAnalyzeFile?: boolean;
 }
 
 const buildCameraFileName = (prefix: string) => {
@@ -139,7 +141,8 @@ export function CameraComp({
   onUploaded,
   onCancel,
   onCardScanned,
-  initialAnalyzeFile
+  initialAnalyzeFile,
+  uploadAnalyzeFile = false
 }: CameraCompProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -374,10 +377,16 @@ export function CameraComp({
 
       let uploadedAttachment: any = null;
 
-      // Upload Card only if it's a newly captured image
-      if (!initialAnalyzeFile) {
-        const finalBlob = status === 'preview' ? await getCroppedBlob(capturedFile, capturedUrl) : capturedFile;
-        const finalFileToUpload = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+      // Upload the card unless it is an existing attachment being re-analyzed
+      if (!initialAnalyzeFile || uploadAnalyzeFile) {
+        let finalFileToUpload: File;
+        if (initialAnalyzeFile) {
+          // Direct analyze: keep the user's original file as picked
+          finalFileToUpload = initialAnalyzeFile;
+        } else {
+          const finalBlob = status === 'preview' ? await getCroppedBlob(capturedFile, capturedUrl) : capturedFile;
+          finalFileToUpload = new File([finalBlob], buildCameraFileName(fileNamePrefix), { type: 'image/jpeg' });
+        }
 
         const entry = await attachmentService.createEntry(finalFileToUpload.name, companyNo, formNo);
         await attachmentService.uploadFile(entry.id, finalFileToUpload);
@@ -387,8 +396,8 @@ export function CameraComp({
 
         uploadedAttachment = {
           id: entry.id,
-          name: (entry as any).docName || entry.name || capturedFile.name,
-          size: (entry as any).docSize || entry.size || capturedFile.size,
+          name: (entry as any).docName || entry.name || finalFileToUpload.name,
+          size: (entry as any).docSize || entry.size || finalFileToUpload.size,
           storedFileName: entry.storedFileName,
           storedFilePath: entry.storedFilePath,
           relativePath: entry.relativePath
@@ -421,7 +430,11 @@ export function CameraComp({
       }
 
       // In analyze mode we just confirm details, otherwise we actually scanned it
-      toast.success(initialAnalyzeFile ? `Details confirmed!` : `Business card scanned successfully!`);
+      toast.success(
+        uploadedAttachment && initialAnalyzeFile
+          ? `Details confirmed and image uploaded!`
+          : initialAnalyzeFile ? `Details confirmed!` : `Business card scanned successfully!`
+      );
       dispatch({ type: 'UPLOAD_SUCCESS' });
     } catch (error: any) {
       console.error('Camera image upload failed:', error);
@@ -429,7 +442,7 @@ export function CameraComp({
       dispatch({ type: 'ERROR', error: message });
       toast.error(message);
     }
-  }, [capturedFile, capturedUrl, status, logoFile, companyNo, formNo, onUploaded, onCardScanned, parsedData, previewCompletedCrop, fileNamePrefix, initialAnalyzeFile]);
+  }, [capturedFile, capturedUrl, status, logoFile, companyNo, formNo, onUploaded, onCardScanned, parsedData, previewCompletedCrop, fileNamePrefix, initialAnalyzeFile, uploadAnalyzeFile]);
 
   const cancel = useCallback(() => {
     stopCamera();

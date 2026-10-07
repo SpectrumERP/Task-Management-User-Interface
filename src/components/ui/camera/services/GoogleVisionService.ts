@@ -124,6 +124,7 @@ export class GoogleVisionService {
         city: asText(parsed.city),
         state: asText(parsed.state),
         country: asText(parsed.country),
+        zipCode: asText(parsed.postal_code),
       };
     } catch (error) {
       console.error('Failed to parse Google Vision card JSON:', error);

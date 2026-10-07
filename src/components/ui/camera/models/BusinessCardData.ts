@@ -10,5 +10,6 @@ export interface BusinessCardData {
   city?: string;
   state?: string;
   country?: string;
+  zipCode?: string;
   logo?: string;
 }

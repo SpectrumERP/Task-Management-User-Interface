@@ -195,3 +195,37 @@ export function mimeFromFileName(fileName: string): string {
       return '';
   }
 }
+
+/**
+ * Images the business card analyzer can read — browser-decodable subset of the
+ * upload allowlist (TIFF/AVIF are not reliably drawable on a canvas).
+ */
+export const ANALYZE_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp'] as const;
+
+export const ANALYZE_IMAGE_ACCEPT_ATTR = [
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+].join(',');
+
+export const ANALYZE_IMAGE_TYPES_LABEL = 'PNG, JPG, JPEG, WebP';
+
+const ANALYZE_IMAGE_EXT_SET = new Set<string>(ANALYZE_IMAGE_EXTENSIONS);
+
+/** Upload rules + image-only check for Direct Analyze. */
+export function validateAnalyzeImageFile(
+  file: File
+): { ok: true } | { ok: false; reason: string } {
+  const base = validateUploadFile(file);
+  if (!base.ok) return base;
+
+  const mime = (file.type || '').trim().toLowerCase();
+  if (!ANALYZE_IMAGE_EXT_SET.has(getFileExtension(file.name)) || (mime && !mime.startsWith('image/'))) {
+    return { ok: false, reason: `Only images can be analyzed. Allowed: ${ANALYZE_IMAGE_TYPES_LABEL}.` };
+  }
+  return { ok: true };
+}

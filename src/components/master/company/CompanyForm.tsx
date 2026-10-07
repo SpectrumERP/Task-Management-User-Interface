@@ -16,6 +16,7 @@ import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { RenameAttachmentDialog } from '../shared/RenameAttachmentDialog';
 import { useConfirmDelete } from '../shared/useConfirmDelete';
 import { fetchStatesByCountry, fetchCityCombo, type CityComboRow } from '../shared/geo';
+import type { BusinessCardData } from '@/components/ui/camera/models/BusinessCardData';
 import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 import { CompanyHeaderFields } from './CompanyHeaderFields';
@@ -455,10 +456,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
 
     const foundCountry = countries.find((c) => c.countryName === val);
     const countryNo = resolveGeoNo(foundCountry, 'countryNo');
-    if (countryNo != null) {
-      const statesData = await fetchStatesByCountry(countryNo);
-      setPrimaryLocStatesList(asGeoList<GeoState>(statesData));
-    }
+    if (countryNo == null) return [];
+    const states = asGeoList<GeoState>(await fetchStatesByCountry(countryNo));
+    setPrimaryLocStatesList(states);
+    return states;
   };
 
   const handlePrimaryLocationStateChange = (val: string) => {
@@ -551,6 +552,118 @@ export function CompanyForm({ id }: CompanyFormProps) {
       setLocState(state);
     }
     setLocTimeZoneNo((cur) => nextTimeZoneNo(cur, country, state, city.cityName || '', countryChanged));
+  };
+
+  /** Scanned card city/state/country → primary address dropdowns (only when none picked yet). */
+  const applyScannedGeoToPrimary = async (city: string, state: string, country: string) => {
+    if (primaryLocCityNo || primaryLocCountry) return;
+    const same = (a?: string, b?: string) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+    // A matched city also fills its state and country
+    if (city) {
+      const rows = await fetchCityCombo(city);
+      const match =
+        rows.find((r) => same(r.cityName, city) && same(r.stateName, state)) ||
+        rows.find((r) => same(r.cityName, city) && same(r.countryName, country)) ||
+        (!state && !country ? rows.find((r) => same(r.cityName, city)) : undefined);
+      if (match) {
+        await handlePrimaryLocationCitySelect(match);
+        return;
+      }
+    }
+
+    const countryName = countries.find((c) => same(c.countryName, country))?.countryName;
+    if (!countryName) return;
+    const states = await handlePrimaryLocationCountryChange(countryName);
+    const stateName = states.find((st) => same(st.stateName, state))?.stateName;
+    if (stateName) {
+      setPrimaryLocState(stateName);
+      setPrimaryLocTimeZoneNo((cur) => nextTimeZoneNo(cur, countryName, stateName, '', false));
+    }
+  };
+
+  /**
+   * Business card scan → fill empty fields only. A card for a different person / address
+   * than the one already entered is kept as an additional contact / location.
+   */
+  const handleCardScanned = async (data: BusinessCardData) => {
+    const val = (v?: string) => (v || '').trim();
+    const same = (a: string, b: string) => !!a && a.toLowerCase() === b.trim().toLowerCase();
+
+    if (val(data.company) && !name.trim()) {
+      setName(val(data.company));
+      if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+    }
+    // Cards often list several sites ("a.org, b.in") — keep the first
+    const scannedWebsite = val(data.website).split(/[,\s]+/)[0];
+    if (scannedWebsite && !website.trim()) setWebsite(scannedWebsite);
+
+    const cName = val(data.name);
+    const cDesignation = val(data.designation);
+    const cPhone = val(data.phone || data.mobile);
+    const cEmail = val(data.email);
+    if (cName || cDesignation || cPhone || cEmail) {
+      if (!primaryContactName.trim() || same(cName, primaryContactName)) {
+        if (cName && !primaryContactName.trim()) setPrimaryContactName(cName);
+        if (cDesignation && !primaryContactDesignation.trim()) setPrimaryContactDesignation(cDesignation);
+        if (cPhone && !primaryContactPhone.trim()) setPrimaryContactPhone(cPhone);
+        if (cEmail && !primaryContactEmail.trim()) setPrimaryContactEmail(cEmail);
+        setPrimaryContactErrors((prev) => ({
+          ...prev,
+          ...(cName ? { name: '' } : {}),
+          ...(cPhone ? { phone: '' } : {}),
+          ...(cEmail ? { email: '' } : {}),
+        }));
+      } else {
+        setCompanyContacts((prev) => [
+          ...prev,
+          {
+            contactName: cName,
+            name: cName,
+            contactPersonName: cName,
+            designation: cDesignation,
+            department: '',
+            phone: cPhone,
+            phoneNo: cPhone,
+            email: cEmail,
+            address: val(data.address),
+            status: 'Active',
+          },
+        ]);
+      }
+    }
+
+    const address = val(data.address);
+    const city = val(data.city);
+    const state = val(data.state);
+    const country = val(data.country);
+    const pin = val(data.zipCode);
+    if (address || city || state || country) {
+      if (!primaryLocAddress.trim() || same(address, primaryLocAddress)) {
+        if (address && !primaryLocAddress.trim()) {
+          setPrimaryLocAddress(address);
+          if (locErrors.address) setLocErrors((prev) => ({ ...prev, address: '' }));
+        }
+        if (pin && !primaryLocPin.trim()) setPrimaryLocPin(pin);
+        await applyScannedGeoToPrimary(city, state, country);
+      } else {
+        setCompanyLocations((prev) => [
+          ...prev,
+          {
+            type: defaultLocationTypeNo,
+            address,
+            country,
+            state,
+            city,
+            pinCode: pin,
+            mapUrl: '',
+            latitude: '',
+            longitude: '',
+            timeZoneNo: suggestLocationTimeZoneNo(timeZones, getCountryNo(country), country, state, city) ?? '',
+          },
+        ]);
+      }
+    }
   };
 
   const handleLocationCityCreated = async (cityNo: string, cityName: string) => {
@@ -1264,59 +1377,13 @@ export function CompanyForm({ id }: CompanyFormProps) {
                     fileNamePrefix="business-entity-capture"
                     className="border-0 shadow-none rounded-none flex-1 min-h-0"
                     initialAnalyzeFile={analyzeFile}
+                    uploadAnalyzeFile={analyzeFile != null && analyzingAttachmentId == null}
                     onUploaded={handleCameraAttachmentUploaded}
                     onCancel={() => {
                       setIsCameraModalOpen(false);
                       setAnalyzeFile(undefined);
                     }}
-                    onCardScanned={(data: any) => {
-                      if (data.company && !name?.trim()) {
-                        setName(data.company);
-                      }
-                      if (data.name || data.email || data.phone || data.mobile || data.designation) {
-                        setCompanyContacts(prev => [
-                          ...prev,
-                          {
-                            contactName: data.name || '',
-                            name: data.name || '',
-                            contactPersonName: data.name || '',
-                            designation: data.designation || '',
-                            department: '',
-                            phone: data.phone || data.mobile || '',
-                            phoneNo: data.phone || data.mobile || '',
-                            email: data.email || '',
-                            address: data.address || '',
-                            // country: data.country || '',
-                            // state: data.state || '',
-                            // city: data.city || '',
-                            status: 'Active'
-                          }
-                        ]);
-                      }
-                      if (data.address || data.city || data.state || data.country) {
-                        setCompanyLocations(prev => [
-                          ...prev,
-                          {
-                            type: defaultLocationTypeNo,
-                            address: data.address || '',
-                            country: data.country || '',
-                            state: data.state || '',
-                            city: data.city || '',
-                            pinCode: data.zipCode || data.pinCode || '',
-                            mapUrl: '',
-                            latitude: '',
-                            longitude: '',
-                            timeZoneNo: suggestLocationTimeZoneNo(
-                              timeZones,
-                              getCountryNo(data.country || ''),
-                              data.country || '',
-                              data.state || '',
-                              data.city || ''
-                            ) ?? ''
-                          }
-                        ]);
-                      }
-                    }}
+                    onCardScanned={handleCardScanned}
                   />
                 </Suspense>
               </div>

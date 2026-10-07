@@ -200,7 +200,7 @@ export function LocationCombobox({
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
-          style={{ width: "max(var(--radix-popover-trigger-width), 650px)" }}
+          style={{ width: "max(var(--radix-popover-trigger-width), 260px)" }}
           align="start"
           sideOffset={4}
           collisionPadding={16}
@@ -209,19 +209,10 @@ export function LocationCombobox({
           <Command className="w-full bg-transparent" shouldFilter={false}>
             <div className="shrink-0 border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
               <CommandInput
-                placeholder="Search city, state, location or country..."
+                placeholder="Search location..."
                 className="h-10 border-none focus:ring-0 bg-transparent"
                 onValueChange={setSearch}
               />
-            </div>
-
-            <div className="grid grid-cols-[minmax(140px,2fr)_minmax(140px,2fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(90px,1fr)_20px] gap-3 px-3 py-2 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] font-semibold text-slate-400 uppercase tracking-wider items-center shrink-0">
-              <div>Location Name</div>
-              <div>Address</div>
-              <div>City</div>
-              <div>State</div>
-              <div>Country</div>
-              <div></div>
             </div>
 
             <CommandList className="max-h-64 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
@@ -239,7 +230,7 @@ export function LocationCombobox({
               {!isLoading && options.length > 0 && (
                 <CommandGroup className="overflow-visible p-1">
                   {sortByLabel(options, {
-                    getLabel: (loc) => formatLocationDisplayLabel(loc) || loc.operLocationName || '',
+                    getLabel: (loc) => formatLocationDisplayLabel(loc),
                     getValue: (loc) => String(loc.operLocationNo),
                   }).map((location) => {
                     const isSelected = value === location.operLocationNo.toString()
@@ -247,7 +238,7 @@ export function LocationCombobox({
                     return (
                       <CommandItem
                         key={location.operLocationNo}
-                        value={`${location.operLocationName} ${location.address} ${location.cityName} ${location.stateName} ${location.countryName}`}
+                        value={String(location.operLocationNo)}
                         onSelect={() => {
                           onChange(location)
                           setSelectedLabel(formatLocationDisplayLabel(location))
@@ -258,27 +249,13 @@ export function LocationCombobox({
                           "aria-selected:bg-[var(--tm-tint)] data-[selected=true]:bg-[var(--tm-tint)]"
                         )}
                       >
-                        <div className="grid grid-cols-[minmax(140px,2fr)_minmax(140px,2fr)_minmax(90px,1fr)_minmax(90px,1fr)_minmax(90px,1fr)_20px] gap-3 w-full items-center">
-                          <div className="truncate text-[12px] font-semibold text-slate-50" title={location.operLocationName || "—"}>
+                        <div className="flex w-full items-center gap-2">
+                          <span className="flex-1 truncate text-[12px] font-semibold text-slate-50" title={location.operLocationName || "—"}>
                             {location.operLocationName || "—"}
-                          </div>
-                          <div className="truncate text-[11px] text-slate-300" title={location.address || "—"}>
-                            {location.address || "—"}
-                          </div>
-                          <div className="truncate text-[11px] text-slate-300" title={location.cityName || "—"}>
-                            {location.cityName || "—"}
-                          </div>
-                          <div className="truncate text-[11px] text-slate-300" title={location.stateName || "—"}>
-                            {location.stateName || "—"}
-                          </div>
-                          <div className="truncate text-[11px] text-slate-300" title={location.countryName || "—"}>
-                            {location.countryName || "—"}
-                          </div>
-                          <div className="flex justify-end">
-                            {isSelected ? (
-                              <Check className="h-3.5 w-3.5 shrink-0 text-[#0EA5E9]" />
-                            ) : <span className="w-3.5" />}
-                          </div>
+                          </span>
+                          {isSelected ? (
+                            <Check className="h-3.5 w-3.5 shrink-0 text-[#0EA5E9]" />
+                          ) : <span className="w-3.5" />}
                         </div>
                       </CommandItem>
                     )

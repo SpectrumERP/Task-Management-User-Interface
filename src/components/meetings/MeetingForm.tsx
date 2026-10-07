@@ -151,9 +151,6 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         initialData?.locationName ||
         initialData?.operLocationName ||
         '',
-      cityName: initialData?.cityName || initialData?.location?.cityName || '',
-      stateName: initialData?.stateName || initialData?.location?.stateName || '',
-      countryName: initialData?.countryName || initialData?.location?.countryName || '',
     })
   );
 
@@ -215,18 +212,6 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   res.data.operLocationName ||
                   res.data.location?.name ||
                   res.data.location?.operLocationName ||
-                  '',
-                cityName:
-                  res.data.cityName ||
-                  res.data.location?.cityName ||
-                  '',
-                stateName:
-                  res.data.stateName ||
-                  res.data.location?.stateName ||
-                  '',
-                countryName:
-                  res.data.countryName ||
-                  res.data.location?.countryName ||
                   '',
               })
             );
@@ -850,15 +835,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             );
                           }}
                           initialLabel={locationLabel || undefined}
-                          placeholder="Search city, state or location..."
+                          placeholder="Select location"
                           error={!!form.formState.errors.operLocationNo}
                         />
                       </FieldControl>
                     )}
                   />
-                  <p className="text-[10px] text-slate-500 leading-snug pt-0.5">
-                    City and state show with the location so international places are easier to pick.
-                  </p>
                 </div>
 
                 <div id="form-group-meetingModeNo" className="space-y-1.5">
