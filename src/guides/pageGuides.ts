@@ -144,9 +144,9 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
     title: 'Company Form Guide',
     steps: [
       S('master-form-actions', 'Save / Cancel', 'Save entity or return to the list.'),
-      S('company-header', 'Header fields', 'Name, type, VAT/GST, and primary identity.', 'top'),
-      S('company-locations', 'Locations', 'Add or edit addresses and locations (opens a modal).'),
-      S('company-contacts', 'Contacts', 'Manage contact persons.'),
+      S('company-header', 'Business entity', 'Name, type and website, plus the primary contact and address.', 'top'),
+      S('company-locations', 'Additional locations', 'Other offices or sites. Click the header to expand; Add opens a modal.'),
+      S('company-contacts', 'Contact persons', 'Other people at this business entity. Click the header to expand.'),
       S('company-attachments', 'Attachments', 'Files or card scans go here.'),
     ],
   },

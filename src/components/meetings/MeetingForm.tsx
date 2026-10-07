@@ -165,7 +165,10 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       meetingTypeNo: initialData?.meetingTypeNo?.toString() || '',
       meetingCategoryNo: initialData?.meetingCategoryNo?.toString() || '',
       companyNo: initialData?.companyNo?.toString() || companyNoStr,
-      meetingStartDateTime: initialData?.meetingStartDateTime || '',
+      // New meeting: default start to now (minute precision, matches the picker)
+      meetingStartDateTime:
+        initialData?.meetingStartDateTime ||
+        (!initialData && !meetingNotesNo ? toUtcIsoOrEmpty(new Date(new Date().setSeconds(0, 0))) : ''),
       meetingEndDateTime: initialData?.meetingEndDateTime || '',
       durationMinutes: initialData?.durationMinutes || 0,
       meetingModeNo: initialData?.meetingModeNo?.toString() || initialData?.meetingMode?.id?.toString() || initialData?.meetingMode?.toString() || '1',

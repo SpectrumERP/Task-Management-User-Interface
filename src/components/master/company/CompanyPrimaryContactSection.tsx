@@ -32,9 +32,9 @@ export function CompanyPrimaryContactSection({
   setContactErrors,
 }: CompanyPrimaryContactSectionProps) {
   return (
-    <div className="pt-6 mt-6 border-t border-[var(--tm-border)]/70">
+    <div className="mt-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
-        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-2 relative">
+        <div className="space-y-1.5 min-w-0 relative">
           <FieldLabel required>Contact Person Name</FieldLabel>
           <FieldControl error={contactErrors.name}>
             <Input
@@ -50,7 +50,7 @@ export function CompanyPrimaryContactSection({
           </FieldControl>
         </div>
 
-        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-2">
+        <div className="space-y-1.5 min-w-0">
           <FieldLabel>Designation</FieldLabel>
           <Input
             placeholder="Enter designation"
@@ -61,7 +61,7 @@ export function CompanyPrimaryContactSection({
           />
         </div>
 
-        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-2">
+        <div className="space-y-1.5 min-w-0">
           <FieldLabel required>Phone Number</FieldLabel>
           <FieldControl error={contactErrors.phone}>
             <Input
@@ -77,7 +77,7 @@ export function CompanyPrimaryContactSection({
           </FieldControl>
         </div>
 
-        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-2">
+        <div className="space-y-1.5 min-w-0">
           <FieldLabel>Email Address</FieldLabel>
           <FieldControl error={contactErrors.email}>
             <Input

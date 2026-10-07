@@ -26,7 +26,10 @@ export function CompanyContactsSection({
     <CompanyFormSection
       icon={User}
       title="Contact Persons"
-      description="People associated with this business entity"
+      description="Other people at this business entity"
+      collapsible
+      count={contacts.length}
+      autoOpen={contacts.length > 0}
       action={
         <Button
           type="button"
@@ -44,7 +47,7 @@ export function CompanyContactsSection({
           No contact persons added yet.
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-3">
           {contacts.map((c, idx) => (
             <div
               key={idx}

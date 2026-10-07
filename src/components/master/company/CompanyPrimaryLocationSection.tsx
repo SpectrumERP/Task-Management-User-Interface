@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/Combobox';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { MapPinned } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
@@ -78,12 +79,15 @@ export function CompanyPrimaryLocationSection({
     [timeZones, countryNo, timeZoneNo, timeZoneName]
   );
 
+  const [showMapFields, setShowMapFields] = useState(false);
+  // Rarely used — keep hidden until asked for, but always show when a value exists
+  const mapFieldsVisible = showMapFields || !!(locMapUrl || locLatitude || locLongitude);
+
   return (
-    <div className="pt-6 mt-6 border-t border-[var(--tm-border)]/70">
+    <div className="mt-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-3.5">
-
-        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-3">
+        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-4">
           <FieldLabel required>Address</FieldLabel>
           <FieldControl error={locErrors.address}>
             <textarea
@@ -165,7 +169,7 @@ export function CompanyPrimaryLocationSection({
           </FieldControl>
         </div>
 
-        <div className="space-y-1.5 min-w-0 sm:col-span-1 lg:col-span-1">
+        <div className="space-y-1.5 min-w-0 sm:col-span-2">
           <FieldLabel>Timezone</FieldLabel>
           <Combobox
             options={timeZoneOptions}
@@ -179,38 +183,53 @@ export function CompanyPrimaryLocationSection({
           />
         </div>
 
-        <div className="space-y-1.5 min-w-0 sm:col-span-3">
-          <FieldLabel>Map Location URL</FieldLabel>
-          <Input
-            placeholder="Enter/Paste Map Location URL"
-            value={locMapUrl}
-            maxLength={2000}
-            onChange={(e) => setLocMapUrl(e.target.value)}
-            className={fieldClass}
-          />
-        </div>
+        {!mapFieldsVisible ? (
+          <div className="flex items-end min-w-0 sm:col-span-2">
+            <button
+              type="button"
+              onClick={() => setShowMapFields(true)}
+              className="inline-flex h-10 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-[#0EA5E9] hover:bg-[var(--tm-tint)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
+            >
+              <MapPinned size={14} />
+              Add map location
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
+              <FieldLabel>Map Location URL</FieldLabel>
+              <Input
+                placeholder="Enter/Paste Map Location URL"
+                value={locMapUrl}
+                maxLength={2000}
+                onChange={(e) => setLocMapUrl(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
 
-        <div className="space-y-1.5 min-w-0">
-          <FieldLabel>Latitude</FieldLabel>
-          <Input
-            placeholder="Enter Latitude"
-            value={locLatitude}
-            maxLength={15}
-            onChange={(e) => setLocLatitude(e.target.value)}
-            className={fieldClass}
-          />
-        </div>
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel>Latitude</FieldLabel>
+              <Input
+                placeholder="Enter Latitude"
+                value={locLatitude}
+                maxLength={15}
+                onChange={(e) => setLocLatitude(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
 
-        <div className="space-y-1.5 min-w-0">
-          <FieldLabel>Longitude</FieldLabel>
-          <Input
-            placeholder="Enter Longitude"
-            value={locLongitude}
-            maxLength={15}
-            onChange={(e) => setLocLongitude(e.target.value)}
-            className={fieldClass}
-          />
-        </div>
+            <div className="space-y-1.5 min-w-0">
+              <FieldLabel>Longitude</FieldLabel>
+              <Input
+                placeholder="Enter Longitude"
+                value={locLongitude}
+                maxLength={15}
+                onChange={(e) => setLocLongitude(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

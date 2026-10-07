@@ -135,8 +135,8 @@ export function CompanyHeaderFields({
   return (
     <CompanyFormSection
       icon={Building}
-      title="General Business Entity Information"
-      description="Code, name, type, website, primary contact and primary location"
+      title="Business Entity"
+      description="Required details, primary contact and address"
       action={
         <div className="flex items-center gap-3">
           {errors.attachments ? (
@@ -329,26 +329,25 @@ export function CompanyHeaderFields({
             />
           </FieldControl>
         </div>
-
-        <div className="space-y-1.5 min-w-0 sm:col-span-2 lg:col-span-3">
-          <FieldLabel htmlFor="businessEntityWebsite">Website</FieldLabel>
-          <FieldControl error={errors.website}>
-            <Input
-              id="businessEntityWebsite"
-              inputMode="url"
-              placeholder="https://www.example.com"
-              value={website}
-              maxLength={2000}
-              onChange={(e) => {
-                setWebsite(e.target.value);
-                if (errors.website) setErrors((prev) => ({ ...prev, website: '' }));
-              }}
-              className={cn(fieldClass, errors.website && 'border-red-400')}
-            />
-          </FieldControl>
-        </div>
       </div>
       {children}
+      <div className="space-y-1.5 min-w-0 mt-3.5">
+        <FieldLabel htmlFor="businessEntityWebsite">Website</FieldLabel>
+        <FieldControl error={errors.website}>
+          <Input
+            id="businessEntityWebsite"
+            inputMode="url"
+            placeholder="https://www.example.com"
+            value={website}
+            maxLength={2000}
+            onChange={(e) => {
+              setWebsite(e.target.value);
+              if (errors.website) setErrors((prev) => ({ ...prev, website: '' }));
+            }}
+            className={cn(fieldClass, errors.website && 'border-red-400')}
+          />
+        </FieldControl>
+      </div>
     </CompanyFormSection>
   );
 }

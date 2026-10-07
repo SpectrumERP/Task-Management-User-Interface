@@ -1177,26 +1177,28 @@ export function CompanyForm({ id }: CompanyFormProps) {
           />
         </div>
 
-        <div data-page-tour="company-locations">
-          <CompanyLocationsSection
-            locations={companyLocations}
-            getLocationTypeName={getLocationTypeName}
-            getTimeZoneLabel={getTimeZoneLabel}
-            onAdd={openAddLocationModal}
-            onEdit={handleEditLocation}
-            onRemove={requestRemoveCompanyLocation}
-            error={errors.companyLocations}
-          />
-        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+          <div data-page-tour="company-locations">
+            <CompanyLocationsSection
+              locations={companyLocations}
+              getLocationTypeName={getLocationTypeName}
+              getTimeZoneLabel={getTimeZoneLabel}
+              onAdd={openAddLocationModal}
+              onEdit={handleEditLocation}
+              onRemove={requestRemoveCompanyLocation}
+              error={errors.companyLocations}
+            />
+          </div>
 
-        <div data-page-tour="company-contacts">
-          <CompanyContactsSection
-            contacts={companyContacts}
-            companyName={name}
-            onAdd={openAddContactModal}
-            onEdit={handleEditContact}
-            onRemove={requestRemoveCompanyContact}
-          />
+          <div data-page-tour="company-contacts">
+            <CompanyContactsSection
+              contacts={companyContacts}
+              companyName={name}
+              onAdd={openAddContactModal}
+              onEdit={handleEditContact}
+              onRemove={requestRemoveCompanyContact}
+            />
+          </div>
         </div>
 
         <Dialog open={isAttachmentsModalOpen} onOpenChange={setIsAttachmentsModalOpen}>

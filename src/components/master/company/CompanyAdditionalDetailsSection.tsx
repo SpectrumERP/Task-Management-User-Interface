@@ -4,9 +4,8 @@ import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_CONTROL_CLASS } from '@/lib/fieldStyles';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
-import { CompanyFormSection } from './CompanyFormSection';
+import { CompanyFormSection, CompanyFormSubheading } from './CompanyFormSection';
 import { CompanyPortsSection } from './CompanyPortsSection';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type GstinTypeOption = {
   gstinTypeName?: string;
@@ -58,115 +57,102 @@ export function CompanyAdditionalDetailsSection({
   onAddPort,
   onRemovePort,
 }: CompanyAdditionalDetailsSectionProps) {
+  const hasData =
+    !!gstinTypeNo ||
+    !!companyVatGst ||
+    !!creditLimit ||
+    !!creditInsuranceCompanyName ||
+    ports.length > 0 ||
+    !!errors.companyVatGst;
+
   return (
     <CompanyFormSection
       icon={Info}
       title="Other Details"
-      description="VAT / GST, Insurance, Port and other details"
+      description="VAT / GST, credit insurance and preferred ports"
+      collapsible
+      autoOpen={hasData}
     >
-      <Accordion type="multiple" className="w-full space-y-2">
-        <AccordionItem value="vat-gst" className="border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)] rounded-[8px] px-4">
-          <AccordionTrigger className="hover:no-underline py-3 text-sm font-semibold text-slate-200">
-            VAT / GST Details
-          </AccordionTrigger>
-          <AccordionContent className="pt-1 pb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-3.5">
-              <div className="space-y-1.5 min-w-0">
-                <FieldLabel>Document Type</FieldLabel>
-                <Combobox
-                  options={gstinTypes.map((t) => ({
-                    label: t.gstinTypeName || t.name || '',
-                    value: String(t.gstinTypeNo || t.id || ''),
-                  }))}
-                  value={gstinTypeNo}
-                  onChange={(val) => {
-                    setGstinTypeNo(val);
-                    if (!val && errors.companyVatGst) setErrors((prev) => ({ ...prev, companyVatGst: '' }));
-                  }}
-                  placeholder="Select document type"
-                  className={cn(fieldClass, 'px-3')}
-                />
-              </div>
+      <CompanyFormSubheading>Tax &amp; Credit Insurance</CompanyFormSubheading>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-3.5">
+        <div className="space-y-1.5 min-w-0">
+          <FieldLabel>Document Type</FieldLabel>
+          <Combobox
+            options={gstinTypes.map((t) => ({
+              label: t.gstinTypeName || t.name || '',
+              value: String(t.gstinTypeNo || t.id || ''),
+            }))}
+            value={gstinTypeNo}
+            onChange={(val) => {
+              setGstinTypeNo(val);
+              if (!val && errors.companyVatGst) setErrors((prev) => ({ ...prev, companyVatGst: '' }));
+            }}
+            placeholder="Select document type"
+            className={cn(fieldClass, 'px-3')}
+          />
+        </div>
 
-              <div className="space-y-1.5 min-w-0 sm:col-span-1 lg:col-span-1">
-                <FieldLabel htmlFor="vatGst" required={!!gstinTypeNo}>
-                  VAT / GST No
-                </FieldLabel>
-                <FieldControl error={errors.companyVatGst}>
-                  <Input
-                    id="vatGst"
-                    placeholder="Enter VAT No. / GST No."
-                    value={companyVatGst}
-                    maxLength={30}
-                    onChange={(e) => {
-                      setCompanyVatGst(e.target.value);
-                      if (errors.companyVatGst) setErrors((prev) => ({ ...prev, companyVatGst: '' }));
-                    }}
-                    className={cn(
-                      fieldClass,
-                      errors.companyVatGst &&
-                      'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
-                    )}
-                  />
-                </FieldControl>
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="insurance" className="border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)] rounded-[8px] px-4">
-          <AccordionTrigger className="hover:no-underline py-3 text-sm font-semibold text-slate-200">
-            Insurance Details
-          </AccordionTrigger>
-          <AccordionContent className="pt-1 pb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3.5">
-              <div className="space-y-1.5 min-w-0">
-                <FieldLabel htmlFor="creditLimit">Credit Insurance Limit</FieldLabel>
-                <Input
-                  id="creditLimit"
-                  type="number"
-                  placeholder="Enter credit insurance limit"
-                  value={creditLimit ?? ''}
-                  onChange={(e) => setCreditLimit(e.target.value === '' ? null : Number(e.target.value))}
-                  className={cn(
-                    fieldClass,
-                    'text-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-                  )}
-                />
-              </div>
-
-              <div className="space-y-1.5 min-w-0">
-                <FieldLabel htmlFor="creditInsuranceCompany">Credit Insurance Company Name</FieldLabel>
-                <Input
-                  id="creditInsuranceCompany"
-                  placeholder="Enter credit insurance company name"
-                  value={creditInsuranceCompanyName}
-                  maxLength={100}
-                  onChange={(e) => setCreditInsuranceCompanyName(e.target.value)}
-                  className={fieldClass}
-                />
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="port" className="border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)] rounded-[8px] px-4">
-          <AccordionTrigger className="hover:no-underline py-3 text-sm font-semibold text-slate-200">
-            Port Details
-          </AccordionTrigger>
-          <AccordionContent className="pt-1 pb-4">
-            <CompanyPortsSection
-              ports={ports}
-              portsList={portsList}
-              selectedPortName={selectedPortName}
-              onSelectedPortNameChange={onSelectedPortNameChange}
-              onAdd={onAddPort}
-              onRemove={onRemovePort}
-              standalone={true}
+        <div className="space-y-1.5 min-w-0">
+          <FieldLabel htmlFor="vatGst" required={!!gstinTypeNo}>
+            VAT / GST No
+          </FieldLabel>
+          <FieldControl error={errors.companyVatGst}>
+            <Input
+              id="vatGst"
+              placeholder="Enter VAT No. / GST No."
+              value={companyVatGst}
+              maxLength={30}
+              onChange={(e) => {
+                setCompanyVatGst(e.target.value);
+                if (errors.companyVatGst) setErrors((prev) => ({ ...prev, companyVatGst: '' }));
+              }}
+              className={cn(
+                fieldClass,
+                errors.companyVatGst &&
+                'border-red-400 focus-visible:ring-red-500/10 focus-visible:border-red-400'
+              )}
             />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+          </FieldControl>
+        </div>
+
+        <div className="space-y-1.5 min-w-0">
+          <FieldLabel htmlFor="creditLimit">Credit Insurance Limit</FieldLabel>
+          <Input
+            id="creditLimit"
+            type="number"
+            placeholder="Enter credit insurance limit"
+            value={creditLimit ?? ''}
+            onChange={(e) => setCreditLimit(e.target.value === '' ? null : Number(e.target.value))}
+            className={cn(
+              fieldClass,
+              'text-left [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+            )}
+          />
+        </div>
+
+        <div className="space-y-1.5 min-w-0">
+          <FieldLabel htmlFor="creditInsuranceCompany">Credit Insurance Company</FieldLabel>
+          <Input
+            id="creditInsuranceCompany"
+            placeholder="Enter credit insurance company name"
+            value={creditInsuranceCompanyName}
+            maxLength={100}
+            onChange={(e) => setCreditInsuranceCompanyName(e.target.value)}
+            className={fieldClass}
+          />
+        </div>
+      </div>
+
+      <CompanyFormSubheading className="mt-5">Preferred Ports</CompanyFormSubheading>
+      <CompanyPortsSection
+        ports={ports}
+        portsList={portsList}
+        selectedPortName={selectedPortName}
+        onSelectedPortNameChange={onSelectedPortNameChange}
+        onAdd={onAddPort}
+        onRemove={onRemovePort}
+        standalone={true}
+      />
     </CompanyFormSection>
   );
 }
