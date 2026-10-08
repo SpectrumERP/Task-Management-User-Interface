@@ -16,3 +16,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const taskFieldStyles = "text-xs font-semibold text-slate-200 placeholder:text-slate-400 placeholder:font-medium";
+
+/** A dropdown opens from its own control only — clicking its label does not open it. */
+export function keepDropdownClosed(event: { currentTarget: HTMLLabelElement; preventDefault: () => void }) {
+  const control = event.currentTarget.control
+  if (control?.matches('[aria-haspopup], [role="combobox"]')) event.preventDefault()
+}

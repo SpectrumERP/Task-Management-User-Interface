@@ -2111,7 +2111,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           }}
                           placeholder="Select category"
                           className={form.formState.errors.category_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                          isClearable={false}
                           onAddNew={formRights[1561]?.isSave ? () => {
                             setActiveMasterType('category');
                             setIsMasterCreateOpen(true);
@@ -2162,7 +2161,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             onChange={field.onChange}
                             placeholder="Select folder"
                             className={form.formState.errors.folder_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                            isClearable={false}
                             onAddNew={formRights[1542]?.isSave ? () => {
                               setActiveMasterType('folder');
                               setIsMasterCreateOpen(true);
@@ -2454,7 +2452,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             placeholder="Select Assign By"
                             initialLabel={initialData ? (initialData.originatorDisplayName || undefined) : (authUser?.PrintingName || authUser?.name || undefined)}
                             className={form.formState.errors.originator_user_No ? "!border-red-500 focus:!border-red-500 hover:!border-red-500 focus:ring-red-500/10" : ""}
-                            isClearable={false}
                           />
                         )}
                       />

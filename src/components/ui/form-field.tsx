@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, keepDropdownClosed } from '@/lib/utils';
 
 /**
  * Shared form field primitives — visual match to existing master/task/meeting forms.
@@ -73,6 +73,7 @@ export function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
+      onClick={keepDropdownClosed}
       className={cn(
         'inline-flex items-start gap-0.5 text-[12.5px] font-bold text-[#4a5d82] dark:text-slate-300',
         disabled && 'opacity-60 pointer-events-none',

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,12 +9,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterListPath, MasterType } from './masterRoutes';
-import { PageGuideButton } from '@/components/layout/PageGuideButton';
+import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 
 interface MasterFormShellProps {
   type: MasterType | string;
@@ -56,6 +55,7 @@ export function MasterFormShell({
   const goToList = () => navigate(toMasterListPath(type));
   const handledSuccessRef = useRef(false);
   const blockSave = isSaving || isLoadingRecord || loadError;
+  const formId = useId();
 
   // Success policy: toast + navigate (same as MeetingForm). Keep showSuccessAlert prop
   // so existing master forms do not need API changes.
@@ -70,24 +70,58 @@ export function MasterFormShell({
     onSuccessOk();
   }, [showSuccessAlert, onSuccessOk]);
 
+  // Cancel / Save sit in the breadcrumb bar (as on the Meeting form); Save submits the form below by id.
+  const actions = (
+    <div className="flex items-center gap-2" data-page-tour="master-form-actions">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={goToList}
+        disabled={isSaving}
+        className="h-9 px-4 rounded-[7px] text-[13px] font-semibold border-[#E2E8F0] bg-white text-[#7a8494] hover:bg-[#F1F5F9] shadow-none disabled:opacity-40 dark:border-[var(--tm-border)] dark:bg-[var(--tm-surface)] dark:text-slate-300"
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        form={formId}
+        disabled={blockSave}
+        className="h-9 px-4 rounded-[7px] text-[13px] font-semibold bg-[#1E56A0] hover:bg-[#17457F] text-white gap-1.5 disabled:opacity-50"
+      >
+        {isSaving ? (
+          <>
+            <InlineLoader size={14} />
+            Saving…
+          </>
+        ) : editingId ? (
+          'Save Changes'
+        ) : (
+          `Save ${title.replace(/ Master$/, '')}`
+        )}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--tm-page)]">
-      {/* Spectrum CRM form page (CreateLead): back link + title on top, sections, Cancel / Save below. */}
+      {/* Breadcrumb bar with Cancel / Save on top (stays in view); title and sections scroll below. */}
+      <AppBreadcrumbBar
+        className="sticky top-0 z-30"
+        items={[
+          { label: title, href: toMasterListPath(type) },
+          { label: editingId ? `Edit ${title}` : `New ${title}`, current: true },
+        ]}
+        guideKey={type === 'company' ? 'company-form' : 'master-form'}
+        actions={actions}
+      />
       <form
+        id={formId}
         onSubmit={onSubmit}
         className="flex-1 min-h-0 overflow-y-auto px-5 py-4"
         data-page-tour="master-form-fields"
       >
         <div className="mb-5 flex items-start justify-between gap-3" data-page-tour="master-form-breadcrumb">
           <div className="min-w-0">
-            <button
-              type="button"
-              onClick={goToList}
-              className="mb-3 flex items-center gap-1.5 text-xs font-medium text-[#7a8494] transition-colors hover:text-[#0c1a3a] dark:hover:text-slate-100"
-            >
-              <ChevronLeft size={13} strokeWidth={2} />
-              Back to {title}
-            </button>
             <h1 className="text-xl font-bold text-[#0c1a3a] dark:text-slate-50">
               {editingId ? `Edit ${title}` : `New ${title}`}
             </h1>
@@ -95,7 +129,6 @@ export function MasterFormShell({
               {editingId ? `Editing record ${editingId}` : `Add a new record to ${title}`}
             </p>
           </div>
-          <PageGuideButton guideKey={type === 'company' ? 'company-form' : 'master-form'} />
         </div>
 
         <div className="space-y-5">
@@ -120,33 +153,6 @@ export function MasterFormShell({
             </div>
           ) : null}
 
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1" data-page-tour="master-form-actions">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={goToList}
-              disabled={isSaving}
-              className="h-9 px-4 rounded-[7px] text-[13px] font-semibold border-[#E2E8F0] bg-white text-[#7a8494] hover:bg-[#F1F5F9] shadow-none disabled:opacity-40 dark:border-[var(--tm-border)] dark:bg-[var(--tm-surface)] dark:text-slate-300"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={blockSave}
-              className="h-9 px-4 rounded-[7px] text-[13px] font-semibold bg-[#1E56A0] hover:bg-[#17457F] text-white gap-1.5 disabled:opacity-50"
-            >
-              {isSaving ? (
-                <>
-                  <InlineLoader size={14} />
-                  Saving…
-                </>
-              ) : editingId ? (
-                'Save Changes'
-              ) : (
-                `Save ${title.replace(/ Master$/, '')}`
-              )}
-            </Button>
-          </div>
         </div>
       </form>
 

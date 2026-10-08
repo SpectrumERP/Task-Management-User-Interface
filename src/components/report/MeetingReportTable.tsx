@@ -295,13 +295,14 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
               })}
             </div>
           }
-          header={
+          // One table with a sticky header (as in the CRM lead grid): header and cells share column widths.
+          body={
             <table
-              className="tm-data-table w-full text-left relative border-collapse"
+              className="tm-data-table w-full text-left relative border-separate border-spacing-0"
               style={{ tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto' }}
             >
               {tableColgroup}
-              <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
+              <thead className="sticky top-0 z-[3] bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
                 <tr>
                   {visibleCols.map((col) => (
                     <th
@@ -334,14 +335,6 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                   ))}
                 </tr>
               </thead>
-            </table>
-          }
-          body={
-            <table
-              className="tm-data-table w-full text-left relative border-collapse"
-              style={{ tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto' }}
-            >
-              {tableColgroup}
               <tbody>
                 {pageRows.map((meeting, index) => (
                   <tr

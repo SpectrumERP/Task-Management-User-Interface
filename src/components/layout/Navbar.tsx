@@ -251,6 +251,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
                     className={cn(
                       "group h-9 gap-2 rounded-lg border-0 bg-transparent px-2 py-1",
                       "hover:bg-[#F1F5F9] data-[state=open]:bg-[#F1F5F9]",
+                      "dark:!bg-slate-800 dark:hover:!bg-slate-700 dark:data-[state=open]:!bg-slate-700",
                       "transition-colors shadow-none"
                     )}
                   >
@@ -260,7 +261,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden sm:flex items-center gap-1.5 min-w-0 text-left">
-                    <span className="text-[13px] font-semibold text-[#0c1a3a] dark:text-[#E2E8F0] truncate max-w-[140px]">
+                    <span className="text-[13px] font-semibold text-[#0c1a3a] dark:!text-white truncate max-w-[140px]">
                       {printingName}
                     </span>
                   </div>
@@ -480,6 +481,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
                     className={cn(
                       "group h-9 gap-2 rounded-lg border-0 bg-transparent px-2 py-1",
                       "hover:bg-[#F1F5F9] data-[state=open]:bg-[#F1F5F9]",
+                      "dark:!bg-slate-800 dark:hover:!bg-slate-700 dark:data-[state=open]:!bg-slate-700",
                       "transition-colors shadow-none"
                     )}
                   >
@@ -489,7 +491,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
                       </AvatarFallback>
                     </Avatar>
                     <div className="hidden sm:flex items-center gap-1.5 min-w-0 text-left">
-                      <span className="text-[13px] font-semibold text-[#0c1a3a] dark:text-[#E2E8F0] truncate max-w-[140px]">
+                      <span className="text-[13px] font-semibold text-[#0c1a3a] dark:!text-white truncate max-w-[140px]">
                         {printingName}
                       </span>
                     </div>

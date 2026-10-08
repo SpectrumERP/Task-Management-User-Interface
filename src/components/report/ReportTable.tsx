@@ -505,9 +505,10 @@ export function ReportTable({ data }: ReportTableProps) {
               })}
             </div>
           }
-          header={
+          // One table with a sticky header (as in the CRM lead grid): header and cells share column widths.
+          body={
             <table
-              className="tm-data-table w-max text-left relative border-collapse"
+              className="tm-data-table w-max min-w-full text-left relative border-separate border-spacing-0"
               style={{ tableLayout: 'auto' }}
             >
               <colgroup>
@@ -515,7 +516,7 @@ export function ReportTable({ data }: ReportTableProps) {
                   <col key={col.id} style={getColStyle(col.id)} />
                 ))}
               </colgroup>
-              <thead className="bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
+              <thead className="sticky top-0 z-[3] bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-slate-300 font-semibold uppercase tracking-wide">
                 <tr>
                   {activeColumns.map((col) => (
                     <th
@@ -548,18 +549,6 @@ export function ReportTable({ data }: ReportTableProps) {
                   ))}
                 </tr>
               </thead>
-            </table>
-          }
-          body={
-            <table
-              className="tm-data-table w-max text-left relative border-collapse"
-              style={{ tableLayout: 'auto' }}
-            >
-              <colgroup>
-                {activeColumns.map((col) => (
-                  <col key={col.id} style={getColStyle(col.id)} />
-                ))}
-              </colgroup>
               <tbody>
                 {pageRows.map((task, index) => (
                   <tr

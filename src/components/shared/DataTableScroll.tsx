@@ -10,8 +10,11 @@ import {
 import { cn } from '@/lib/utils';
 
 interface DataTableScrollProps {
-  /** Header table (thead only) — fixed above data; no vertical scrollbar beside it */
-  header: ReactNode;
+  /**
+   * Header table (thead only) — fixed above data; no vertical scrollbar beside it. Leave it out when
+   * `body` is one table with a sticky thead (auto-width columns: header and cells then size together).
+   */
+  header?: ReactNode;
   /** Body table (tbody only) — vertical scrollbar lives only here */
   body: ReactNode;
   /** Optional mobile / non-table content shown instead on small screens */
@@ -147,6 +150,7 @@ export function DataTableScroll({
         )}
       >
         {/* Header — no vertical scrollbar; spacer matches body scrollbar width */}
+        {header ? (
         <div className="tm-data-table-scroll-header flex shrink-0 bg-[var(--tm-elevated)]">
           <div
             ref={headerPortRef}
@@ -164,6 +168,7 @@ export function DataTableScroll({
             />
           ) : null}
         </div>
+        ) : null}
 
         {/* Body — vertical (+ horizontal) scrollbar only here */}
         <div

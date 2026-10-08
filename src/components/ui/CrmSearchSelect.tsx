@@ -249,7 +249,7 @@ export function CrmSearchSelect<T>({
               tabIndex={-1}
               aria-label="Clear"
               title="Clear"
-              className="crm-select-clear grid h-5 w-5 shrink-0 place-items-center rounded text-base leading-none text-[#94a3b8] hover:bg-[var(--tm-muted)] hover:text-slate-300"
+              className="crm-select-clear grid h-5 w-5 shrink-0 cursor-pointer place-items-center rounded text-base leading-none text-[#94a3b8] hover:bg-[var(--tm-muted)] hover:text-slate-300"
               onClick={(event) => {
                 event.stopPropagation();
                 onClear();
