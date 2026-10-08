@@ -883,6 +883,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     name: "informed_to"
   });
 
+  const { fields: executionLogFields, append: appendExecutionLog, remove: removeExecutionLog } = useFieldArray({
+    control: form.control,
+    name: "execution_logs"
+  });
+
   const [collabSortCol, setCollabSortCol] = useState<string | null>('userName');
   const [collabSortDesc, setCollabSortDesc] = useState(false);
   const [informSortCol, setInformSortCol] = useState<string | null>('userName');
@@ -932,11 +937,6 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const { fields: subtaskFields, append: appendSubtask, remove: removeSubtask, replace: replaceSubtask } = useFieldArray({
     control: form.control,
     name: "sub_tasks"
-  });
-
-  const { fields: executionLogFields } = useFieldArray({
-    control: form.control,
-    name: "execution_logs"
   });
 
   const { fields: roadBlockFields, append: appendRoadBlock, remove: removeRoadBlock } = useFieldArray({
@@ -1482,7 +1482,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
         failed.push({
           name: file.name,
           size: file.size,
-          reason: result.reason,
+          reason: result?.reason,
         });
         return;
       }
@@ -1917,7 +1917,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   // Company options from fillValues taskCompany, fallback to auth data
   const companyOptions = (fillValues?.taskCompany && fillValues.taskCompany.length > 0)
     ? fillValues.taskCompany.map(c => ({
-      label: c.AliasName || c.CompanyName || c.Code || 'Unknown Company',
+      label: c.CompanyName || c.AliasName || c.Code || 'Unknown Company',
       value: (c.OperTaskCompanyNo || '').toString()
     }))
     : authCompanies?.map(c => ({
@@ -1930,6 +1930,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   const informError = form.formState.errors.informed_to;
   const hasInformError = informError && !Array.isArray(informError) && (informError as any).message;
+
+  const executionLogError = form.formState.errors.execution_logs;
+  const hasExecutionLogError = executionLogError && !Array.isArray(executionLogError) && (executionLogError as any).message;
 
   return (
     <Card className="border-none shadow-none bg-transparent relative">
@@ -3418,7 +3421,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               {/* 6. Task Execution Log */}
               {!hiddenSections.includes('execution_note') && (
                 <FormSection
-                  title="Task Completion Log"
+                  title="Task Execution Log"
                   icon={FileText}
                   headerAction={
                     <div className="flex flex-wrap items-center gap-2">
@@ -3427,10 +3430,125 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           {executionLogFields.length}
                         </span>
                       )}
+                       <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => appendExecutionLog({ id: Date.now().toString(), date: new Date().toISOString(), remark: '' })}
+                        className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
+                      >
+                      <Plus size={12} className="text-[#0EA5E9]" /> Add Log
+                    </Button>
                     </div>
                   }
                 >
                   <div className="space-y-3">
+
+                    {/* Log entries panel */}
+                  <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-elevated)]/50 overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-[var(--tm-tint)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                          <History size={12} strokeWidth={1.75} />
+                        </span>
+                        <p className="text-[11px] font-semibold text-slate-200 truncate">Log entries</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 space-y-2.5">
+                      {executionLogFields.length === 0 ? (
+                        <FieldControl
+                          className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center gap-1"
+                          error={hasExecutionLogError ? (executionLogError as any).message : undefined}
+                        >
+                          <p className="text-xs text-slate-500 font-medium">No execution logs yet.</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Add a log entry with date and remark.</p>
+                        </FieldControl>
+                      ) : (
+                        <FieldControl error={hasExecutionLogError ? (executionLogError as any).message : undefined} className="space-y-2.5 max-h-[340px] overflow-y-auto scrollbar-hide">
+                          {executionLogFields.map((field, index) => {
+                            const dateErr = form.formState.errors.execution_logs?.[index]?.date?.message;
+                            const remarkErr = form.formState.errors.execution_logs?.[index]?.remark?.message;
+                            const logDate = form.watch(`execution_logs.${index}.date`);
+                            const logRemark = form.watch(`execution_logs.${index}.remark`);
+                            return (
+                              <div
+                                key={field.id}
+                                className={cn(
+                                  "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
+                                  "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
+                                  (dateErr || remarkErr) && "border-red-300"
+                                )}
+                              >
+                                <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
+                                    {index + 1}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[12px] font-semibold text-slate-100 leading-snug">
+                                      {logDate ? new Date(logDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : `Log entry ${index + 1}`}
+                                    </p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
+                                      {logRemark?.trim() || 'Add date and remark'}
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeExecutionLog(index)}
+                                    className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
+                                    title="Remove log"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+
+                                <div className="p-3.5 grid grid-cols-1 md:grid-cols-5 gap-2">
+                                  <div className="space-y-1">
+                                    <FieldLabel required>Date</FieldLabel>
+                                    <Controller
+                                      name={`execution_logs.${index}.date`}
+                                      control={form.control}
+                                      render={({ field: dateField }) => (
+                                        <FieldControl error={dateErr}>
+                                          <DateTimePicker
+                                            date={dateField.value ? new Date(dateField.value) : undefined}
+                                            onChange={(date) => {
+                                              dateField.onChange(date ? date.toISOString() : '');
+                                              form.clearErrors(`execution_logs.${index}.date`);
+                                            }}
+                                            placeholder="Select date"
+                                            hideTime
+                                            className={cn(
+                                              "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
+                                              dateErr && "border-red-400"
+                                            )}
+                                          />
+                                        </FieldControl>
+                                      )}
+                                    />
+                                  </div>
+                                  <div className="space-y-1 col-span-4">
+                                    <FieldLabel required>Remark</FieldLabel>
+                                    <FieldControl error={remarkErr}>
+                                      <Textarea
+                                        {...form.register(`execution_logs.${index}.remark`)}
+                                        placeholder="Enter remark"
+                                        rows={1}
+                                        className={cn(
+                                          "min-h-[20px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                                          remarkErr && "border-red-400"
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </FieldControl>
+                      )}
+                    </div>
+                  </div>
 
                     {/* Completion panel */}
                     <div className="rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
@@ -3440,7 +3558,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         </span>
                         <p className="text-[11px] font-semibold text-slate-200">Completion</p>
                       </div>
-                      <div className="p-3.5 space-y-3.5">
+                      <div className="p-3.5 grid grid-cols-1 md:grid-cols-5 gap-2">
                         <div className="space-y-1" id="form-group-completionDate">
                           <FieldLabel>Completion Date</FieldLabel>
                           <FieldControl error={form.formState.errors.completionDate?.message}>
@@ -3463,16 +3581,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           </FieldControl>
                         </div>
 
-                        <div className="space-y-1" id="form-group-completionRemark">
+                        <div className="space-y-1 col-span-4" id="form-group-completionRemark">
                           <FieldLabel>Completion Remark</FieldLabel>
                           <FieldControl error={form.formState.errors.completionRemark?.message}>
                             <Textarea
                               placeholder="Enter completion remark"
                               {...form.register('completionRemark')}
                               maxLength={500}
-                              rows={4}
+                              rows={1}
                               className={cn(
-                                "min-h-[100px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                                "min-h-[20px] resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
                                 form.formState.errors.completionRemark && "border-red-400"
                               )}
                             />
