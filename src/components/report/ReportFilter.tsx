@@ -263,7 +263,7 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
                   onChange={field.onChange}
                   options={(fillValues?.taskCompany || []).map((c) => ({
                     value: c.OperTaskCompanyNo.toString(),
-                    label: c.AliasName || c.CompanyName || '',
+                    label:  c.CompanyName || c.AliasName || '',
                   }))}
                   placeholder="Select Company"
                   className={fieldClass}

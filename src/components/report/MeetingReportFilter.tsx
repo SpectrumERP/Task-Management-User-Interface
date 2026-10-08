@@ -261,8 +261,8 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
                         c.OperTaskCompanyNo?.toString() ||
                         '',
                       label:
-                        c.AliasName ||
-                        c.companyName ||
+                      c.CompanyName ||
+                      c.AliasName ||
                         c.name ||
                         c.AliasName ||
                         c.Code ||
