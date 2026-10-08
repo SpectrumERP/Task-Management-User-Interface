@@ -5,7 +5,6 @@ import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
 import { Clock, Download, Plus } from 'lucide-react';
-import Login from '@/pages/Login';
 import TaskDetail from '@/pages/TaskDetail';
 import MeetingNotesPage from '@/pages/MeetingNotesPage';
 import ReportPage from '@/pages/ReportPage';
@@ -15,7 +14,6 @@ import UserProfilePage from '@/pages/UserProfilePage';
 import NotificationsPage from '@/pages/NotificationsPage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
 import { CrmLoginRedirect } from '@/components/auth/CrmLoginRedirect';
-import { CRM_SSO_ENABLED } from '@/lib/crmSso';
 import { NotificationsProvider } from '@/context/NotificationsContext';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/authService';
@@ -364,7 +362,6 @@ function Dashboard() {
 
 function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
   const { isSessionTimeoutOpen, logout } = useAuthStore();
-  const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
@@ -402,13 +399,8 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={async () => {
                 useAuthStore.setState({ isSessionTimeoutOpen: false });
-                if (CRM_SSO_ENABLED) {
-                  // Opens the CRM login, which brings the user back to this page.
-                  await logout({ returnTo: `${location.pathname}${location.search}` });
-                  return;
-                }
-                await logout();
-                navigate('/login');
+                // Opens the Spectrum ERP login, which brings the user back to this page.
+                await logout({ returnTo: `${location.pathname}${location.search}` });
               }}
               className="w-full rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white shadow-lg shadow-red-600/20 text-xs h-9 transition-all"
             >
@@ -636,7 +628,9 @@ function NotificationsRoute() {
   );
 }
 
-const router = createBrowserRouter([
+/** Exported for src/SpectrumApp.tsx, which keeps it in step with the Spectrum ERP shell's navigation. */
+// eslint-disable-next-line react-refresh/only-export-components
+export const router = createBrowserRouter([
   {
     element: (
       <SessionTimeoutGuard>
@@ -646,7 +640,8 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorFallback />,
     children: [
       // Inside the CRM there is no separate login: the CRM's sign-in is shared.
-      { path: "/login", element: CRM_SSO_ENABLED ? <CrmLoginRedirect /> : <Login /> },
+      // No login page here: the Spectrum ERP login signs in to every app.
+      { path: "/login", element: <CrmLoginRedirect /> },
       {
         path: "/",
         element: (

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { federation } from '@module-federation/vite'
 import path from 'path'
 import fs from 'fs'
 
@@ -41,29 +42,84 @@ const opencvNodeStubs = (): Plugin => {
   };
 };
 
+/**
+ * `vite --mode spectrum` (npm run dev:spectrum / build:spectrum): this app as a Module Federation remote
+ * of the Spectrum ERP shell (SpectrumERP-Web), mounted at /task. The shell signs the user in and writes
+ * the CRM auth cookie that src/lib/crmSso.ts reads.
+ */
+const SPECTRUM_MODE = 'spectrum';
+const SPECTRUM_PORT = 5178;
+
+/**
+ * As a remote this server only feeds the shell. A page opened on it directly goes to the same page in the
+ * shell, which has the one Spectrum ERP login. Module requests (Accept without text/html) pass through.
+ */
+function redirectPagesToShell(routeBase: string): Plugin {
+  const shellUrl = (process.env.SPECTRUM_SHELL_URL ?? 'http://localhost:5173').replace(/\/+$/, '');
+  return {
+    name: 'redirect-pages-to-spectrum-shell',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' || !req.headers.accept?.includes('text/html')) return next();
+        res.writeHead(302, { Location: `${shellUrl}${routeBase}${req.url === '/' ? '/' : req.url}` });
+        res.end();
+      });
+    },
+  };
+}
+
+function spectrumFederation(): Plugin[] {
+  return federation({
+    name: 'task',
+    filename: 'remoteEntry.js',
+    exposes: { './App': './src/SpectrumApp.tsx' },
+    // One React with the shell. React Router stays this app's own copy: it runs its own data router,
+    // which cannot sit inside the shell's router.
+    shared: {
+      react: { singleton: true },
+      'react-dom': { singleton: true },
+    },
+    dts: false,
+  }) as Plugin[];
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
+  const spectrum = mode === SPECTRUM_MODE;
+  if (spectrum) {
+    // Routes under the shell's /task, sign-in through the shell (src/lib/basePath.ts, crmSso.ts).
+    process.env.VITE_TASK_ROUTE_BASE ??= '/task';
+    process.env.VITE_CRM_SSO ??= 'true';
+    // tailwind.config.js: scope utilities to the app so Tailwind 3 never restyles the shell.
+    process.env.TASK_EMBED = '1';
+  }
   const env = loadEnv(mode, process.cwd(), '');
+  // Assets must load from this server when the shell, on another origin, imports the remote.
+  const spectrumUrl = env.TASK_PUBLIC_URL || `http://localhost:${SPECTRUM_PORT}/`;
 
   return {
+    ...(spectrum && { base: spectrumUrl }),
     plugins: [
       react(),
       generateVersionFile(),
       opencvNodeStubs(),
+      ...(spectrum ? [redirectPagesToShell(process.env.VITE_TASK_ROUTE_BASE ?? '/task'), ...spectrumFederation()] : []),
     ],
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "./src"),
       },
     },
-    server: {
-      proxy: {
-        '/api': {
-          target: env.VITE_API_BASE_URL,
-          changeOrigin: true,
+    server: spectrum
+      ? { port: SPECTRUM_PORT, strictPort: true, origin: `http://localhost:${SPECTRUM_PORT}` }
+      : {
+          proxy: {
+            '/api': {
+              target: env.VITE_API_BASE_URL,
+              changeOrigin: true,
+            },
+          },
         },
-      },
-    },
     build: {
       // OpenCV alone is ~10MB and is lazy-loaded via CameraComp
       chunkSizeWarningLimit: 11000,

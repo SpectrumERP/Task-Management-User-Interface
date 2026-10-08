@@ -128,7 +128,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   checkAuth: async () => {
-    set({ isLoading: true });
+    // Signed in already (a remount, e.g. reopening the app inside Spectrum ERP): re-check silently,
+    // keeping the workspace on screen instead of swapping it for the "Verifying session" loader.
+    if (!get().isAuthenticated) set({ isLoading: true });
     try {
       if (CRM_SSO_ENABLED) {
         await adoptCrmSession(set, get);

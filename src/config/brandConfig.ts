@@ -139,6 +139,17 @@ export function getBrand(): BrandConfig {
   return cachedBrand;
 }
 
+/** Brand CSS vars only — what the app needs when a host page (Spectrum ERP shell) owns the title and favicon. */
+export function applyBrandTokens(brand: BrandConfig = getBrand()): void {
+  if (typeof document === 'undefined') return;
+  // Drive design tokens from brand config (single source for --brand / accent-warm)
+  const root = document.documentElement.style;
+  root.setProperty('--brand', brand.primaryColor);
+  root.setProperty('--accent-warm', brand.accentColor);
+  // Keep focus ring aligned with brand; hover stays theme CSS default unless brand supplies one later
+  root.setProperty('--focus-ring', brand.primaryColor);
+}
+
 /** Apply document title + favicon + brand CSS vars (call once at app start). */
 export function applyBrandToDocument(brand: BrandConfig = getBrand()): void {
   if (typeof document === 'undefined') return;
@@ -146,12 +157,7 @@ export function applyBrandToDocument(brand: BrandConfig = getBrand()): void {
   document.title = brand.documentTitle;
   document.documentElement.setAttribute('data-brand-name', brand.brandName);
 
-  // Drive design tokens from brand config (single source for --brand / accent-warm)
-  const root = document.documentElement.style;
-  root.setProperty('--brand', brand.primaryColor);
-  root.setProperty('--accent-warm', brand.accentColor);
-  // Keep focus ring aligned with brand; hover stays theme CSS default unless brand supplies one later
-  root.setProperty('--focus-ring', brand.primaryColor);
+  applyBrandTokens(brand);
 
   let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
   if (!link) {

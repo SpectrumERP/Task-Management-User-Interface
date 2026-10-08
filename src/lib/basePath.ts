@@ -5,8 +5,12 @@
  */
 export const BASE_URL: string = import.meta.env.BASE_URL || '/';
 
-/** Router basename: the base without its trailing slash ('/' stays '/'). */
-export const ROUTER_BASENAME: string = BASE_URL.replace(/\/+$/, '') || '/';
+/**
+ * Router basename: the base without its trailing slash ('/' stays '/'). Inside the Spectrum ERP shell
+ * the base is this server's own origin (for assets), so the route prefix comes from VITE_TASK_ROUTE_BASE.
+ */
+export const ROUTER_BASENAME: string =
+  (import.meta.env.VITE_TASK_ROUTE_BASE || BASE_URL).replace(/\/+$/, '') || '/';
 
 /** An in-app route ('/task/74') → its URL under the base ('/task/task/74' inside the CRM). */
 export function withBase(path: string): string {

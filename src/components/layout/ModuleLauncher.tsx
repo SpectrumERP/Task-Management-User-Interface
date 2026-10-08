@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Reac
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip'
-import { CRM_SSO_ENABLED, crmHomeUrl } from '@/lib/crmSso'
+import { CRM_SSO_ENABLED, crmHomeUrl, IN_SPECTRUM, openInSpectrum } from '@/lib/crmSso'
 import { prerenderApp } from '@/lib/prerenderApp'
 
 /**
@@ -41,7 +41,8 @@ const MODULES: ErpModule[] = [
     label: 'Dashboard',
     description: 'Overview and KPIs',
     color: '#1E56A0',
-    to: crmHomeUrl,
+    // Inside Spectrum ERP: the shell's home. On its own: the CRM dashboard.
+    to: IN_SPECTRUM ? '/' : crmHomeUrl,
     external: true,
     icon: (
       <svg {...glyph}>
@@ -57,7 +58,8 @@ const MODULES: ErpModule[] = [
     label: 'CRM',
     description: 'Leads, opportunities, contacts',
     color: '#0e7490',
-    to: `${crmHomeUrl}leads`,
+    // Inside Spectrum ERP the CRM opens on its Sales Dashboard (the Dashboard tile is the shell's home).
+    to: IN_SPECTRUM ? crmHomeUrl : `${crmHomeUrl}leads`,
     external: true,
     icon: (
       <svg {...glyph}>
@@ -153,7 +155,8 @@ export function ModuleLauncher() {
     setOpen(false)
     setQuery('')
     if (m.external) {
-      window.location.assign(m.to)
+      if (IN_SPECTRUM) openInSpectrum(m.to)
+      else window.location.assign(m.to)
       return
     }
     navigate(m.to)
@@ -221,8 +224,8 @@ export function ModuleLauncher() {
                       <button
                         type="button"
                         onClick={() => openModule(m)}
-                        onPointerEnter={m.external ? () => prerenderApp(m.to) : undefined}
-                        onFocus={m.external ? () => prerenderApp(m.to) : undefined}
+                        onPointerEnter={m.external && !IN_SPECTRUM ? () => prerenderApp(m.to) : undefined}
+                        onFocus={m.external && !IN_SPECTRUM ? () => prerenderApp(m.to) : undefined}
                         aria-current={current ? 'page' : undefined}
                         title={m.description}
                         className={`flex w-full flex-col items-center gap-2 rounded-lg px-2 py-3 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E56A0] ${

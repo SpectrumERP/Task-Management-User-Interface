@@ -6,6 +6,10 @@ interface ImportMetaEnv {
   /** 'true' / 'false' forces CRM single sign-on; by default it is on when served under /task. */
   readonly VITE_CRM_SSO?: string;
   readonly VITE_API_BASE_URL?: string;
+  /** Route prefix inside the Spectrum ERP shell ('/task'); set by `vite --mode spectrum`. */
+  readonly VITE_TASK_ROUTE_BASE?: string;
+  /** Spectrum ERP shell, whose login is used when this app runs on its own. */
+  readonly VITE_SPECTRUM_URL?: string;
   readonly VITE_BRAND_NAME?: string;
   readonly VITE_BRAND_PRODUCT_NAME?: string;
   readonly VITE_BRAND_LOGO_URL?: string;

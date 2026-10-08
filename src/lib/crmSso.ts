@@ -19,19 +19,31 @@ const REDIRECT_MARK = 'fi-task-sso-redirect';
 /** Back here without a session this soon after sending the user to sign in → a loop, not a sign-in. */
 const LOOP_WINDOW_MS = 10_000;
 
-/** On whenever the app runs under a sub-path (inside the CRM); `VITE_CRM_SSO` can force it either way. */
-export const CRM_SSO_ENABLED: boolean = (() => {
-  const flag = String(import.meta.env.VITE_CRM_SSO ?? '').trim().toLowerCase();
-  if (flag === 'true') return true;
-  if (flag === 'false') return false;
-  return ROUTER_BASENAME !== '/';
-})();
+/**
+ * Always on: Task Management has no login page. The Spectrum ERP shell's login signs in to every app
+ * and writes the session cookie read below.
+ */
+export const CRM_SSO_ENABLED = true;
+
+/** The Spectrum ERP shell, whose login is used when this app runs on its own. */
+const SPECTRUM_URL = String(import.meta.env.VITE_SPECTRUM_URL || 'http://localhost:5173').replace(/\/+$/, '');
 
 /** The CRM's root path: this app's base without its trailing `/task`. */
 const CRM_ROOT = ROUTER_BASENAME.replace(/\/task$/, '');
 
+/**
+ * Inside the Spectrum ERP shell (vite --mode spectrum) the shell hosts every module on its own router:
+ * its home at `/`, the CRM at `/crm/` (which opens on the CRM's Sales Dashboard).
+ */
+export const IN_SPECTRUM = Boolean(import.meta.env.VITE_TASK_ROUTE_BASE);
+
 /** The CRM home page (its dashboard), opened with a full page load: it is a separate app. */
-export const crmHomeUrl = `${CRM_ROOT}/`;
+export const crmHomeUrl = IN_SPECTRUM ? '/crm/' : `${CRM_ROOT}/`;
+
+/** Asks the Spectrum ERP shell to open one of its paths with its router (no page load). */
+export function openInSpectrum(path: string): void {
+  window.dispatchEvent(new CustomEvent('spectrum:open', { detail: { path } }));
+}
 
 type Row = Record<string, unknown>;
 
@@ -156,8 +168,9 @@ export function onCrmSessionEnd(listener: () => void): () => void {
 
 /** `returnTo` is a path inside this app (e.g. `/task/12`); the CRM login sends the user back to it. */
 export function crmLoginUrl(returnTo?: string): string {
-  const login = `${CRM_ROOT}/login`;
-  return returnTo ? `${login}?next=${encodeURIComponent(withBase(returnTo))}` : login;
+  // On its own the app is on another origin, which the shell does not return to.
+  if (!IN_SPECTRUM) return `${SPECTRUM_URL}/login`;
+  return returnTo ? `/login?next=${encodeURIComponent(withBase(returnTo))}` : '/login';
 }
 
 /**

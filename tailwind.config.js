@@ -1,6 +1,13 @@
+// Inside the Spectrum ERP shell (vite --mode spectrum sets TASK_EMBED), utilities only apply under
+// `.task-app` (src/SpectrumApp.tsx puts it on <body> while mounted, so Radix portals match too), and the
+// shell's Tailwind 4 preflight is used instead of this one.
+const embedded = process.env.TASK_EMBED === '1';
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
 	darkMode: ["class"],
+	important: embedded ? '.task-app' : false,
+	corePlugins: { preflight: !embedded },
 	content: [
 		'./pages/**/*.{ts,tsx}',
 		'./components/**/*.{ts,tsx}',

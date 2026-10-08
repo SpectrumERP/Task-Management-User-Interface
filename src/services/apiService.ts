@@ -4,8 +4,10 @@ import { toast } from 'sonner';
 import { toErrorMessage } from '@/lib/toErrorMessage';
 
 // In local development route API calls through Vite so the browser does not need
-// cross-origin permission from the UAT API. Production keeps the configured API URL.
-const BASE_URL = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL;
+// cross-origin permission from the UAT API. Production keeps the configured API URL. Inside the Spectrum
+// ERP shell the page is on the shell's origin, whose /api is SpectrumERP-API, so call this API directly.
+const BASE_URL =
+  import.meta.env.DEV && !import.meta.env.VITE_TASK_ROUTE_BASE ? '' : import.meta.env.VITE_API_BASE_URL;
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
