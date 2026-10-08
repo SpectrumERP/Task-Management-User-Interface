@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useReducer } from 'react';
-import { Camera, Check, Loader2, RotateCcw, X, ImagePlus, ScanText, FlipHorizontal } from 'lucide-react';
+import { Camera, Check, RotateCcw, X, ImagePlus, ScanText, FlipHorizontal } from 'lucide-react';
 import ReactCrop, { Crop, PercentCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ import { useClipboardStore } from '@/store/useClipboardStore';
 import { getUserErrorMessage, toErrorMessage } from '@/lib/errorFeedback';
 import { LogoCropperModal } from './camera/components/LogoCropperModal';
 import { BusinessCardData } from './camera/models/BusinessCardData';
+import { InlineLoader } from '@/components/ui/BrandLoader';
 
 type CameraStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'capturing' | 'preview' | 'processing' | 'parsed' | 'uploading' | 'error';
 
@@ -593,7 +594,7 @@ export function CameraComp({
           {(status === 'processing' || status === 'uploading') && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50 text-white backdrop-blur-[2px]">
               <div className="flex flex-col items-center gap-2 rounded-[10px] bg-slate-900/80 px-5 py-4 border border-white/10">
-                <Loader2 className="h-7 w-7 animate-spin text-white" />
+                <InlineLoader size={28} className="text-white" />
                 <span className="text-xs font-medium">
                   {status === 'uploading'
                     ? 'Uploading…'
@@ -661,7 +662,7 @@ export function CameraComp({
             className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
           >
             {!isCvReady ? (
-              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              <InlineLoader size={16} className="mr-1.5" />
             ) : (
               <Camera className="mr-1.5 h-4 w-4" />
             )}
@@ -671,7 +672,7 @@ export function CameraComp({
 
         {status === 'requesting' && (
           <Button type="button" disabled className="rounded-[8px]">
-            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            <InlineLoader size={16} className="mr-1.5" />
             Requesting Permission
           </Button>
         )}
@@ -750,7 +751,7 @@ export function CameraComp({
               className="bg-[#0EA5E9] hover:bg-[#0284C7] text-white rounded-[8px]"
             >
               {status === 'uploading' ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                <InlineLoader size={16} className="mr-1.5" />
               ) : (
                 <Check className="mr-1.5 h-4 w-4" />
               )}

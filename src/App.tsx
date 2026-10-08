@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
-import { Clock, Download } from 'lucide-react';
+import { Clock, Download, Plus } from 'lucide-react';
 import Login from '@/pages/Login';
 import TaskDetail from '@/pages/TaskDetail';
 import MeetingNotesPage from '@/pages/MeetingNotesPage';
@@ -231,13 +231,40 @@ function Dashboard() {
           data-page-tour="tasks-breadcrumb"
         />
 
-        {/* Unified Top Control Bar */}
-        <div className="shrink-0">
+        {/* CRM page header + toolbar: white band, edge to edge, line below (Spectrum CRM "Leads - 5" look) */}
+        <div className="crm-page-band shrink-0 -ml-[var(--page-pad-x)] -mr-[calc(var(--page-pad-x)+var(--tm-filters-drawer-width,0px))] -mt-[var(--page-pad)] px-[var(--page-pad-x)] pt-4 pb-3 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h1 className="text-[22px] font-bold tracking-tight text-slate-50">
+              Tasks - {totalItems}
+            </h1>
+            <div className="flex items-center gap-2 shrink-0">
+              {viewMode === 'list' && tasks.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => exportReportToExcel(filteredTasks, false, 'Tasks.csv')}
+                  className="h-9 px-3.5 text-[13px] font-semibold gap-1.5 rounded-[7px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-500 hover:bg-[var(--tm-muted)]"
+                >
+                  <Download size={14} />
+                  Export CSV
+                </Button>
+              )}
+              {isSave && (
+                <Button
+                  type="button"
+                  onClick={handleCreateTask}
+                  data-page-tour="task-create"
+                  className="h-9 px-4 rounded-[7px] bg-[#1E56A0] hover:bg-[#17457F] text-white text-[13px] font-semibold gap-1.5"
+                >
+                  <Plus size={15} strokeWidth={2.4} />
+                  Create Task
+                </Button>
+              )}
+            </div>
+          </div>
           <TaskFilter
             onFilter={handleFilter}
             viewMode={viewMode}
             onViewModeChange={setViewModeAndStore}
-            onCreateTask={isSave ? handleCreateTask : undefined}
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters(!showFilters)}
             clearNonce={filterClearNonce}
@@ -246,24 +273,8 @@ function Dashboard() {
 
         {/* Content Area */}
         {viewMode === 'list' ? (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
-            {tasks.length > 0 && (
-              <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
-                <span className="text-[11px] font-semibold text-slate-400">
-                  {totalItems === 1 ? '1 task' : `${totalItems} tasks`}
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => exportReportToExcel(filteredTasks, false, 'Tasks.csv')}
-                  className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
-                >
-                  <Download size={12} />
-                  Export CSV
-                </Button>
-              </div>
-            )}
-            <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="crm-list-page flex-1 min-h-0 flex flex-col overflow-hidden pt-3 -mb-[var(--page-pad)] -ml-[var(--page-pad-x)] -mr-[calc(var(--page-pad-x)+var(--tm-filters-drawer-width,0px))]">
+            <div className="flex-1 min-h-0 overflow-hidden pl-[var(--page-pad-x)] pr-[calc(var(--page-pad-x)+var(--tm-filters-drawer-width,0px))]">
               <TaskListView
                 tasks={pagedTasks}
                 isLoading={isLoading}
@@ -292,21 +303,22 @@ function Dashboard() {
             </div>
 
             {totalItems > 0 ? (
-              <MasterPaginationBar
-                totalItems={totalItems}
-                startIndex={startIndex}
-                endIndex={endIndex}
-                itemsPerPage={pageSize}
-                onItemsPerPageChange={(size) => {
-                  setPageSize(size);
-                  setPageNo(1);
-                }}
-                currentPage={safePageNo}
-                totalPages={totalPages}
-                onPageChange={setPageNo}
-                hideBelow={0}
-                pageSizeOptions={[10, 25, 50, 100]}
-              />
+              <div className="mt-3">
+                <MasterPaginationBar
+                  totalItems={totalItems}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  itemsPerPage={pageSize}
+                  onItemsPerPageChange={(size) => {
+                    setPageSize(size);
+                    setPageNo(1);
+                  }}
+                  currentPage={safePageNo}
+                  totalPages={totalPages}
+                  onPageChange={setPageNo}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                />
+              </div>
             ) : null}
           </div>
         ) : (

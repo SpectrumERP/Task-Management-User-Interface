@@ -116,53 +116,53 @@ export function FolderList() {
   return (
     <div className="page-shell">
       <MasterListHeader
+        count={totalItems}
         title={TITLE}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAddClick={() => navigate(toMasterNewPath('folder'))}
         canAdd={isSave}
       />
-
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Folder Name"
-          columns={[
-            { header: 'Sequence', sortKey: 'sequence', render: (item) => item.sequence },
-            {
-              header: 'Description',
-              sortKey: 'description',
-              render: (item) =>
-                item.description || (
-                  <span className="italic text-slate-300 font-medium">No description</span>
-                ),
-            },
-            { header: 'Parent Folder', sortKey: 'parentFolderNo', render: (item) => item.parentFolderNo || 'Root' },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('folder', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-        loadError={loadError}
-        onRetryLoad={fetchFolders}
-          emptyIcon={Folder}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Folder Name"
+        columns={[
+          { header: 'Sequence', sortKey: 'sequence', render: (item) => item.sequence },
+          {
+            header: 'Description',
+            sortKey: 'description',
+            render: (item) =>
+              item.description || (
+                <span className="italic text-slate-300 font-medium">No description</span>
+              ),
+          },
+          { header: 'Parent Folder', sortKey: 'parentFolderNo', render: (item) => item.parentFolderNo || 'Root' },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('folder', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+      loadError={loadError}
+      onRetryLoad={fetchFolders}
+        emptyIcon={Folder}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

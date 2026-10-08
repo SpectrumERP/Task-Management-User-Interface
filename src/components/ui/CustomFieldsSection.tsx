@@ -4,9 +4,8 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Plus, Trash2, Loader2, Check, ChevronsUpDown, X, Sparkles } from 'lucide-react';
+import { CrmSearchSelect } from '@/components/ui/CrmSearchSelect';
+import { Plus, Trash2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sortByLabel } from '@/lib/sortOptions';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
@@ -161,123 +160,58 @@ export function AsyncAutoCompleteList({
   return (
     <div className="w-full flex flex-wrap items-center gap-1.5">
       <div className="flex-1 min-w-[150px]">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className={cn(
-                "w-full justify-between transition-all border shadow-sm relative pr-8 bg-transparent text-[11px] font-medium text-slate-200 hover:bg-[var(--tm-muted)]/50 h-7 px-2",
-                className,
-                "rounded-[8px] border-[var(--tm-border)]"
-              )}
-            >
-              <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium")}>
-                {selectedLabel || placeholder}
-              </span>
-              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
-                {value && (
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onChange("");
-                      setSelectedLabel("");
-                    }}
-                    className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
-                  >
-                    <X className="h-3 w-3" />
+        <CrmSearchSelect<any>
+          items={sortByLabel(options, {
+            getLabel: (opt) => getOptionLabel(opt),
+            getValue: (opt) => String(getOptionValue(opt) ?? ''),
+          })}
+          getKey={(opt) => String(getOptionValue(opt) ?? getOptionLabel(opt))}
+          getLabel={(opt) => getOptionLabel(opt)}
+          selectedKeys={value ? [String(value)] : []}
+          onSelect={(opt) => {
+            onChange(getOptionValue(opt));
+            setSelectedLabel(getTriggerLabel(opt));
+            setSelectedObject(opt);
+          }}
+          onClear={() => {
+            onChange("");
+            setSelectedLabel("");
+          }}
+          displayLabel={selectedLabel}
+          placeholder={placeholder}
+          emptyText="No items found"
+          onQueryChange={setSearch}
+          serverSearch
+          loading={isLoading}
+          onOpenChange={setOpen}
+          className={cn("h-8", className)}
+          header={
+            renderCols.length > 0 && options.length > 0 ? (
+              <div className="grid gap-2 border-b border-[#EEF2F6] bg-[#F1F5F9] px-3 py-2 text-[11px] font-bold text-[#4a5d82] dark:border-[var(--tm-border)] dark:bg-[var(--tm-elevated)] dark:text-slate-400" style={{ gridTemplateColumns: `repeat(${renderCols.length}, minmax(0, 1fr))` }}>
+                {renderCols.map((col, idx) => (
+                  <span key={idx} className="truncate">{col}</span>
+                ))}
+              </div>
+            ) : undefined
+          }
+          renderOption={(opt) => {
+            const itemCols = getDynamicCols(opt);
+            return itemCols.length > 0 ? (
+              <div className="grid gap-2 text-xs" style={{ gridTemplateColumns: `repeat(${itemCols.length}, minmax(0, 1fr))` }}>
+                {itemCols.map((col, idx) => (
+                  <span key={idx} className={cn("truncate", idx === 0 ? "font-semibold text-[#0c1a3a] dark:text-slate-100" : "text-[#4a5d82] dark:text-slate-300")}>
+                    {opt[col] || '-'}
                   </span>
-                )}
-                <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-40 text-slate-400" />
+                ))}
               </div>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className={cn("p-0 z-[9999] max-w-[95vw]", renderCols.length > 4 ? "w-[600px]" : renderCols.length > 2 ? "w-[450px]" : "w-[280px]")} align="start">
-            <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={false}>
-              <div className="border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
-                <CommandInput
-                  placeholder="Search..."
-                  className="h-8 border-none focus:ring-0 bg-transparent text-[11px]"
-                  onValueChange={setSearch}
-                />
-              </div>
-              <CommandList className="max-h-52 scrollbar-thin">
-                {isLoading && (
-                  <div className="flex items-center justify-center py-6 text-slate-400">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                    <span className="text-[10px] font-medium  ">Searching...</span>
-                  </div>
-                )}
-                {!isLoading && options.length === 0 && (
-                  <CommandEmpty className="py-6 text-center text-[10px] text-slate-400 font-medium normal-case">
-                    No items found
-                  </CommandEmpty>
-                )}
-                {!isLoading && (
-                  <CommandGroup>
-                    {renderCols.length > 0 && options.length > 0 && (
-                      <div className="flex w-full items-center justify-between px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-[var(--tm-muted)]/80 border-b border-[var(--tm-border)] uppercase tracking-wider">
-                        <div className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${renderCols.length}, minmax(0, 1fr))` }}>
-                          {renderCols.map((col, idx) => (
-                            <span key={idx} className="truncate pr-1 border-r last:border-r-0 border-[#3D4F66]">
-                              {col}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="w-3 shrink-0" />
-                      </div>
-                    )}
-                    {sortByLabel(options, {
-                      getLabel: (opt) => getOptionLabel(opt),
-                      getValue: (opt) => String(getOptionValue(opt) ?? ''),
-                    }).map((opt, i) => {
-                      const optLabel = getOptionLabel(opt);
-                      const optValue = getOptionValue(opt);
-                      const itemCols = getDynamicCols(opt);
-                      return (
-                        <CommandItem
-                          key={optValue || i}
-                          value={optLabel}
-                          onSelect={() => {
-                            onChange(optValue);
-                            setSelectedLabel(getTriggerLabel(opt));
-                            setSelectedObject(opt);
-                            setOpen(false);
-                          }}
-                          className="text-[11px] font-medium py-2 px-2.5 cursor-pointer hover:bg-[var(--tm-muted)] transition-colors flex flex-col items-start gap-0.5 border-b border-slate-50 last:border-0"
-                        >
-                          <div className="flex w-full items-center justify-between gap-2">
-                            {itemCols.length > 0 ? (
-                              <div className="grid w-full gap-2" style={{ gridTemplateColumns: `repeat(${itemCols.length}, minmax(0, 1fr))` }}>
-                                {itemCols.map((col, idx) => (
-                                  <span key={idx} className="text-slate-100 font-medium truncate pr-1 border-r last:border-r-0 border-[var(--tm-border)]">
-                                    {opt[col] || '-'}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-slate-100 font-medium">{optLabel}</span>
-                            )}
-
-                            {value?.toString() === optValue ? (
-                              <Check className="h-3 w-3 text-[#0EA5E9] shrink-0" />
-                            ) : (
-                              <div className="w-3 shrink-0" />
-                            )}
-                          </div>
-                          {opt.secondaryValue && itemCols.length === 0 && (
-                            <span className="text-[9px] text-slate-400 font-normal">{opt.secondaryValue}</span>
-                          )}
-                        </CommandItem>
-                      )
-                    })}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+            ) : (
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-xs font-semibold text-[#0c1a3a] dark:text-slate-100">{getOptionLabel(opt)}</span>
+                {opt.secondaryValue ? <span className="truncate text-[11px] text-[#7a8494]">{opt.secondaryValue}</span> : null}
+              </span>
+            );
+          }}
+        />
       </div>
       {cascadedColumn && selectedObject && (
         <div className="flex items-center gap-2 shrink-0">
@@ -493,7 +427,7 @@ export function CustomFieldsSection({
     )}>
       {!hideLabel ? (
         <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+          <span className="crm-form-section-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <Sparkles size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0 flex-1">

@@ -1,6 +1,4 @@
-import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { getBrand, getBrandInitials } from '@/config/brandConfig';
 
 interface BrandLoaderProps {
   /** Full-screen overlay (auth / app boot) */
@@ -13,35 +11,14 @@ interface BrandLoaderProps {
 }
 
 const SIZE = {
-  sm: {
-    wrap: 'h-10 w-10',
-    mark: 'h-5 w-5 text-[8px]',
-    mid: 'inset-[3px]',
-    inner: 'inset-[5px]',
-    gap: 'gap-2',
-    msg: 'text-[10px] tracking-[0.12em]',
-  },
-  md: {
-    wrap: 'h-14 w-14',
-    mark: 'h-7 w-7 text-[10px]',
-    mid: 'inset-[4px]',
-    inner: 'inset-2',
-    gap: 'gap-2.5',
-    msg: 'text-[10px] tracking-[0.14em]',
-  },
-  lg: {
-    wrap: 'h-24 w-24',
-    mark: 'h-14 w-14 text-lg',
-    mid: 'inset-[6px]',
-    inner: 'inset-3',
-    gap: 'gap-3',
-    msg: 'text-[11px] tracking-[0.16em]',
-  },
+  sm: { wrap: 'h-10 w-10', core: 'h-5 w-5 text-[8px]', ring: 'inset-[0.15rem] border-[2.5px]', gap: 'gap-1.5' },
+  md: { wrap: 'h-12 w-12', core: 'h-6 w-6 text-[9px]', ring: 'inset-[0.2rem] border-[3px]', gap: 'gap-2' },
+  lg: { wrap: 'h-14 w-14', core: 'h-7 w-7 text-[10px]', ring: 'inset-[0.2rem] border-[3px]', gap: 'gap-2' },
 } as const;
 
 /**
- * E-procurement style loader: brand initials + 3 orbiting rings.
- * Surfaces follow active theme (dark / light).
+ * CRM (Spectrum CRM) page loader: pulsing halo, blue / red ring, "FI" core — and, full screen,
+ * a gradient bar running along the top.
  */
 export function BrandLoader({
   fullScreen = false,
@@ -49,49 +26,21 @@ export function BrandLoader({
   className,
   size,
 }: BrandLoaderProps) {
-  const brand = useMemo(() => getBrand(), []);
-  const initials = useMemo(() => getBrandInitials(brand.brandName), [brand.brandName]);
   const resolvedSize = size ?? (fullScreen ? 'lg' : 'sm');
   const dims = SIZE[resolvedSize];
 
   const content = (
-    <div className={cn('relative flex flex-col items-center', dims.gap, className)}>
-      <div className={cn('relative flex items-center justify-center', dims.wrap)}>
-        <span
-          aria-hidden
-          className="brand-loader-orbit-cw absolute inset-0 rounded-full border-2 border-transparent border-t-brand border-r-brand/40"
-        />
-        <span
-          aria-hidden
-          className={cn(
-            'brand-loader-orbit-ccw absolute rounded-full border-2 border-transparent border-b-accent-warm border-l-accent-warm/50',
-            dims.mid
-          )}
-        />
-        <span
-          aria-hidden
-          className={cn(
-            'brand-loader-orbit-cw-slow absolute rounded-full border-2 border-transparent border-t-[#38BDF8]/90 border-r-emerald-400/50',
-            dims.inner
-          )}
-        />
-
-        <div
-          className={cn(
-            'brand-loader-mark relative z-10 flex items-center justify-center rounded-full font-bold tracking-tight',
-            'bg-[var(--tm-surface)] text-[var(--tm-input-fg)]',
-            'shadow-[var(--tm-shadow-sm)] ring-1 ring-[var(--tm-border)]',
-            dims.mark
-          )}
-        >
-          {initials}
-        </div>
+    <div className={cn('relative flex flex-col items-center justify-center p-4', dims.gap, className)}>
+      <div className={cn('relative grid place-items-center', dims.wrap)} aria-hidden>
+        <span className="crm-loader-halo absolute inset-0 rounded-full" />
+        <span className={cn('crm-loader-ring absolute rounded-full', dims.ring)} />
+        <span className={cn('crm-loader-core relative z-[1] grid place-items-center rounded-full font-bold', dims.core)}>
+          FI
+        </span>
       </div>
 
       {message ? (
-        <p className={cn('brand-loader-msg font-semibold uppercase animate-pulse', dims.msg)}>
-          {message}
-        </p>
+        <p className="crm-loader-msg text-xs font-semibold">{message}</p>
       ) : (
         <p className="sr-only">Loading</p>
       )}
@@ -101,12 +50,39 @@ export function BrandLoader({
   if (!fullScreen) return content;
 
   return (
-    <div className="brand-loader-screen fixed inset-0 z-[200] flex items-center justify-center bg-[var(--tm-page)]">
-      <div
-        aria-hidden
-        className="brand-loader-glow pointer-events-none absolute inset-0"
-      />
+    <div
+      className="brand-loader-screen fixed inset-0 z-[200] grid place-items-center bg-[var(--tm-page)]"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="crm-loader-track absolute inset-x-0 top-0 h-1 overflow-hidden">
+        <div className="crm-loader-bar h-full" />
+      </div>
       {content}
     </div>
+  );
+}
+
+interface InlineLoaderProps {
+  /** Diameter in px (default 14). */
+  size?: number;
+  className?: string;
+  /** Accessible status text. */
+  label?: string;
+}
+
+/**
+ * The CRM loader ring, small enough for buttons, inputs and list rows — the one inline spinner in the app.
+ * Takes the text colour (top arc) with the CRM red accent, so it reads on light and filled buttons.
+ */
+export function InlineLoader({ size = 14, className, label = 'Loading' }: InlineLoaderProps) {
+  return (
+    <span
+      role="status"
+      aria-label={label}
+      className={cn('crm-loader-inline inline-block shrink-0 rounded-full align-[-0.125em]', className)}
+      style={{ width: size, height: size, borderWidth: Math.max(2, Math.round(size / 7)) }}
+    />
   );
 }

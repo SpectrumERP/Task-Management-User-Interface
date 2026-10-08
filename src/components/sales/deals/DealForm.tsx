@@ -3,8 +3,8 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Loader2, Save, X } from 'lucide-react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { Save, X } from 'lucide-react';
+import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { Button } from '@/components/ui/button';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
@@ -177,7 +177,7 @@ export function DealForm() {
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <InlineLoader size={14} />
                   <span className="hidden sm:inline">Saving...</span>
                 </>
               ) : (

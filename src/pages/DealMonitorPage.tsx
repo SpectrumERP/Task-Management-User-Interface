@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Download } from 'lucide-react';
+import { AlertTriangle, Download, Plus } from 'lucide-react';
 import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
 import { Board } from '@/components/kanban/Board';
@@ -131,8 +131,47 @@ export default function DealMonitorPage() {
         data-page-tour="deal-monitor-breadcrumb"
       />
 
+
+      {/* CRM page band: title + actions, then the task toolbar */}
+      <div className="crm-band">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h1 className="crm-page-title text-slate-50">Deal Monitor - {totalItems}</h1>
+          <div className="flex items-center gap-2 shrink-0">
+            {viewMode === 'list' && tasks.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => exportReportToExcel(tasks, false, 'Deal_Monitor_Tasks.csv')}
+                className="h-9 px-3.5 text-[13px] font-semibold gap-1.5 rounded-[7px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-500 hover:bg-[var(--tm-muted)]"
+              >
+                <Download size={14} />
+                Export CSV
+              </Button>
+            )}
+            {isSave && (
+              <Button
+                type="button"
+                onClick={handleCreateTask}
+                data-page-tour="task-create"
+                className="h-9 px-4 rounded-[7px] bg-[#1E56A0] hover:bg-[#17457F] text-white text-[13px] font-semibold gap-1.5"
+              >
+                <Plus size={15} strokeWidth={2.4} />
+                Create Task
+              </Button>
+            )}
+          </div>
+        </div>
+        <TaskFilter
+          onFilter={handleFilter}
+          viewMode={viewMode}
+          onViewModeChange={setViewModeAndStore}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          hideCategoryFilter
+        />
+      </div>
+
       {dealMonitorCategoryNo === null ? (
-        <div className="shrink-0 mx-0 mb-2 flex items-start gap-2.5 rounded-xl border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-3.5 py-2.5">
+        <div className="shrink-0 mx-0 mt-3 flex items-start gap-2.5 rounded-xl border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-3.5 py-2.5">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" strokeWidth={2.25} />
           <div className="min-w-0">
             <p className="text-xs font-semibold text-slate-100">Deal Monitor category not found</p>
@@ -143,37 +182,9 @@ export default function DealMonitorPage() {
         </div>
       ) : null}
 
-      <div className="shrink-0">
-        <TaskFilter
-          onFilter={handleFilter}
-          viewMode={viewMode}
-          onViewModeChange={setViewModeAndStore}
-          onCreateTask={isSave ? handleCreateTask : undefined}
-          showFilters={showFilters}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-          hideCategoryFilter
-        />
-      </div>
-
       {viewMode === 'list' ? (
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.08)]">
-          {tasks.length > 0 && (
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
-              <span className="text-[11px] font-semibold text-slate-400">
-                {totalItems === 1 ? '1 task' : `${totalItems} tasks`}
-              </span>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => exportReportToExcel(tasks, false, 'Deal_Monitor_Tasks.csv')}
-                className="h-7 px-3 text-[10px] font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
-              >
-                <Download size={12} />
-                Export CSV
-              </Button>
-            </div>
-          )}
-          <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="crm-list-page crm-bleed-x crm-bleed-b flex-1 min-h-0 flex flex-col overflow-hidden pt-3">
+          <div className="crm-pad-x flex-1 min-h-0 overflow-hidden">
             <TaskListView
               tasks={pagedTasks}
               isLoading={isLoading}
@@ -190,6 +201,7 @@ export default function DealMonitorPage() {
           </div>
 
           {totalItems > 0 ? (
+            <div className="mt-3 shrink-0">
             <MasterPaginationBar
               totalItems={totalItems}
               startIndex={startIndex}
@@ -202,9 +214,9 @@ export default function DealMonitorPage() {
               currentPage={safePageNo}
               totalPages={totalPages}
               onPageChange={setPageNo}
-              hideBelow={0}
               pageSizeOptions={[10, 25, 50, 100]}
             />
+            </div>
           ) : null}
         </div>
       ) : (

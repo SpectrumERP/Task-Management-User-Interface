@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Loader2, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ActionTip } from './TruncatedCellTip';
+import { InlineLoader } from '@/components/ui/BrandLoader';
 
 interface InlineAttachmentRenameProps {
   originalName: string;
@@ -76,7 +77,7 @@ export function InlineAttachmentRename({ originalName, onSave, onCancel, saving 
             aria-label="Save name"
             className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-[6px] bg-[#0EA5E9] text-white hover:bg-[#0284C7] disabled:opacity-60 transition-colors"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} strokeWidth={2.5} />}
+            {saving ? <InlineLoader size={14} /> : <Check size={14} strokeWidth={2.5} />}
           </button>
         </ActionTip>
         <ActionTip label="Cancel">

@@ -1,5 +1,4 @@
 import SteelMontLogo from '@/assets/SteelMountLogo01.png';
-import SteelMontFavicon from '@/assets/favicon-SteelMontLogo01-32x32.png';
 
 export interface BrandFeature {
   key: 'boards' | 'planner' | 'teams';
@@ -67,8 +66,9 @@ const STEELMONT_SPECTRUM: BrandConfig = {
   copyrightSuffix: 'Spectrum Task & Planner',
   logoSrc: SteelMontLogo,
   maskLogoSrc: SteelMontLogo,
-  faviconSrc: SteelMontFavicon,
-  documentTitle: 'Steelmont | Spectrum Task & Planner',
+  // Same favicon as Spectrum ERP CRM; tab title "Spectrum ERP Task".
+  faviconSrc: `${import.meta.env.BASE_URL}favicon-32x32.png?v=2`,
+  documentTitle: 'Spectrum ERP Task',
   primaryColor: '#0EA5E9',
   accentColor: '#F59E0B',
   invertMaskLogo: true,

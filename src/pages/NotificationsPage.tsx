@@ -202,9 +202,14 @@ export default function NotificationsPage() {
         bleed
       />
 
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      {/* CRM page band: title (breadcrumb above keeps the way back home) */}
+      <div className="crm-band" style={{ marginTop: 0 }}>
+        <h1 className="crm-page-title text-slate-50">Notifications - {totalRecords}</h1>
+      </div>
+
+      <div className="crm-bleed-x crm-bleed-b relative flex min-h-0 flex-1 flex-col overflow-hidden pt-3">
         {loadError && !loading ? (
-          <LoadErrorState title="Failed to load notifications" onRetry={load} className="flex-1" />
+          <LoadErrorState title="Failed to load notifications" onRetry={load} className="flex-1 crm-pad-x" />
         ) : loading && items.length === 0 ? (
           <BrandLoader message="Loading notifications" />
         ) : rows.length === 0 ? (
@@ -212,8 +217,9 @@ export default function NotificationsPage() {
             No notifications
           </div>
         ) : (
-          <div className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)]">
+          <div className="crm-list-page flex flex-1 min-h-0 flex-col overflow-hidden">
             <DataTableScroll
+              className="crm-pad-x"
               minWidth={640}
               onNearEnd={undefined}
               nearEndOffsetPx={undefined}
@@ -357,21 +363,22 @@ export default function NotificationsPage() {
                     </tbody>
                   </table>
 
-                  {/* Pagination footer */}
-                  <MasterPaginationBar
-                    totalItems={totalRecords}
-                    startIndex={(pageNo - 1) * itemsPerPage}
-                    endIndex={Math.min(pageNo * itemsPerPage, totalRecords)}
-                    itemsPerPage={itemsPerPage}
-                    onItemsPerPageChange={(size) => loadPage(1, size)}
-                    currentPage={pageNo}
-                    totalPages={totalPages}
-                    onPageChange={(page) => loadPage(page, itemsPerPage)}
-                    hideBelow={0}
-                  />
                 </>
               }
             />
+            <div className="mt-3 shrink-0">
+            {/* Pagination footer */}
+            <MasterPaginationBar
+              totalItems={totalRecords}
+              startIndex={(pageNo - 1) * itemsPerPage}
+              endIndex={Math.min(pageNo * itemsPerPage, totalRecords)}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => loadPage(1, size)}
+              currentPage={pageNo}
+              totalPages={totalPages}
+              onPageChange={(page) => loadPage(page, itemsPerPage)}
+            />
+            </div>
           </div>
         )}
       </div>

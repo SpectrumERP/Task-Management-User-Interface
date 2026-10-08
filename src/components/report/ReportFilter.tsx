@@ -104,7 +104,7 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
   };
 
   return (
-    <section data-page-tour="report-filters" className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+    <section data-page-tour="report-filters" className="crm-form-section rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
       <div
         className={cn(
           'flex items-center justify-between gap-3 px-4 py-2.5 bg-[var(--tm-elevated)] border-[var(--tm-border)]',
@@ -112,7 +112,7 @@ export function ReportFilter({ onApply }: ReportFilterProps) {
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+          <span className="crm-form-section-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
             <SlidersHorizontal size={15} strokeWidth={1.75} />
           </span>
           <div className="min-w-0">

@@ -1,20 +1,7 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, Loader2, Plus, X } from "lucide-react"
+import { Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { CrmSearchSelect } from "@/components/ui/CrmSearchSelect"
 import { locationService, LocationResponse, formatLocationDisplayLabel } from "@/services/locationService"
 import { sortByLabel } from "@/lib/sortOptions"
 
@@ -52,18 +39,7 @@ export function LocationCombobox({
   const [options, setOptions] = React.useState<LocationResponse[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedLabel, setSelectedLabel] = React.useState(initialLabel || "")
-  const [container, setContainer] = React.useState<HTMLElement | null>(null)
 
-  React.useEffect(() => {
-    if (open) {
-      const dialogs = document.querySelectorAll('[role="dialog"]')
-      if (dialogs.length > 0) {
-        setContainer(dialogs[dialogs.length - 1] as HTMLElement)
-      } else {
-        setContainer(null)
-      }
-    }
-  }, [open])
 
   const isInitialized = React.useRef(false)
   const lastInitialLabelRef = React.useRef(initialLabel)
@@ -147,143 +123,60 @@ export function LocationCombobox({
     }
   }, [search, open])
 
+  const sortedLocations = React.useMemo(
+    () =>
+      sortByLabel(options, {
+        getLabel: (loc) => formatLocationDisplayLabel(loc),
+        getValue: (loc) => String(loc.operLocationNo),
+      }),
+    [options]
+  )
+
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={modal}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={cn(
-            "w-full justify-between transition-all border shadow-sm relative pr-8",
-            !className?.includes("text-") && "text-sm font-medium text-slate-50",
-            !className?.includes("h-") && "h-9",
-            className,
-            "rounded-[8px]",
-            error ? "!border-red-500 text-red-500" : "border-[var(--tm-border)]"
-          )}
-        >
-          <span
-            className={cn(
-              "truncate pr-2 text-left",
-              !selectedLabel && "text-slate-400 font-medium",
-              error && "text-red-500"
-            )}
-          >
-            {selectedLabel || placeholder}
-          </span>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
-            {value && !disabled && isClearable && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onChange({ operLocationNo: "" } as any)
-                  setSelectedLabel("")
+    <CrmSearchSelect<LocationResponse>
+      items={sortedLocations}
+      getKey={(loc) => String(loc.operLocationNo)}
+      getLabel={(loc) => loc.operLocationName || "—"}
+      selectedKeys={value ? [String(value)] : []}
+      onSelect={(location) => {
+        onChange(location)
+        setSelectedLabel(formatLocationDisplayLabel(location))
+      }}
+      onClear={() => {
+        onChange({ operLocationNo: "" } as any)
+        setSelectedLabel("")
+      }}
+      clearable={isClearable}
+      displayLabel={selectedLabel}
+      placeholder={placeholder}
+      emptyText="No data found."
+      disabled={disabled}
+      invalid={error}
+      onQueryChange={setSearch}
+      serverSearch
+      loading={isLoading}
+      loadingText="Searching locations…"
+      onOpenChange={setOpen}
+      className={cn(!className?.includes("h-") && "h-9", className)}
+      modal={modal}
+      footer={
+        onAddNew
+          ? (close) => (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  close()
+                  setTimeout(() => onAddNew?.(), 0)
                 }}
-                className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
+                className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-bold text-[#1E56A0] hover:bg-[#eef3fc] dark:text-[#4f86d1] dark:hover:bg-[var(--tm-muted)]"
               >
-                <X className="h-3 w-3" />
-              </span>
-            )}
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40 text-slate-400" />
-          </div>
-        </Button>
-      </PopoverTrigger>
-      <PopoverPrimitive.Portal container={container || document.body}>
-        <PopoverPrimitive.Content
-          className={cn(
-            "z-[100] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none",
-            "max-w-[calc(100vw-1.5rem)]",
-            "overflow-hidden pointer-events-auto",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-          )}
-          style={{ width: "max(var(--radix-popover-trigger-width), 260px)" }}
-          align="start"
-          sideOffset={4}
-          collisionPadding={16}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <Command className="w-full bg-transparent" shouldFilter={false}>
-            <div className="shrink-0 border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
-              <CommandInput
-                placeholder="Search location..."
-                className="h-10 border-none focus:ring-0 bg-transparent"
-                onValueChange={setSearch}
-              />
-            </div>
-
-            <CommandList className="max-h-64 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-              {isLoading && (
-                <div className="flex items-center justify-center py-8 text-slate-500">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span className="text-xs font-medium">Searching locations...</span>
-                </div>
-              )}
-              {!isLoading && options.length === 0 && (
-                <CommandEmpty className="py-8 text-center text-xs text-slate-500 font-medium">
-                  No data found.
-                </CommandEmpty>
-              )}
-              {!isLoading && options.length > 0 && (
-                <CommandGroup className="overflow-visible p-1">
-                  {sortByLabel(options, {
-                    getLabel: (loc) => formatLocationDisplayLabel(loc),
-                    getValue: (loc) => String(loc.operLocationNo),
-                  }).map((location) => {
-                    const isSelected = value === location.operLocationNo.toString()
-
-                    return (
-                      <CommandItem
-                        key={location.operLocationNo}
-                        value={String(location.operLocationNo)}
-                        onSelect={() => {
-                          onChange(location)
-                          setSelectedLabel(formatLocationDisplayLabel(location))
-                          setOpen(false)
-                        }}
-                        className={cn(
-                          "rounded-[8px] px-3 py-2 cursor-pointer w-full",
-                          "aria-selected:bg-[var(--tm-tint)] data-[selected=true]:bg-[var(--tm-tint)]"
-                        )}
-                      >
-                        <div className="flex w-full items-center gap-2">
-                          <span className="flex-1 truncate text-[12px] font-semibold text-slate-50" title={location.operLocationName || "—"}>
-                            {location.operLocationName || "—"}
-                          </span>
-                          {isSelected ? (
-                            <Check className="h-3.5 w-3.5 shrink-0 text-[#0EA5E9]" />
-                          ) : <span className="w-3.5" />}
-                        </div>
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
-              )}
-            </CommandList>
-
-            {onAddNew && (
-              <div className="shrink-0 p-1 border-t border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setOpen(false)
-                    setTimeout(() => onAddNew?.(), 0)
-                  }}
-                  className="w-full justify-start text-[#0EA5E9] hover:text-[#0284C7] hover:bg-[var(--tm-muted)]/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-lg transition-all active:scale-[0.98] select-none"
-                >
-                  <Plus className="h-3.5 w-3.5 stroke-[3]" />
-                  {addNewLabel}
-                </Button>
-              </div>
-            )}
-          </Command>
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </Popover>
+                <Plus className="h-3.5 w-3.5" strokeWidth={3} />
+                {addNewLabel}
+              </button>
+            )
+          : undefined
+      }
+    />
   )
 }

@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, Loader2, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, Bell, FileEdit, Layers, type LucideIcon } from 'lucide-react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { Info, Users, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, Bell, FileEdit, Layers, type LucideIcon } from 'lucide-react';
+import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
@@ -338,11 +338,11 @@ const splitExecutionChallenges = (challenges?: any[] | null) => {
 
 function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: LucideIcon, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
   return (
-    <section data-page-tour={tourId} className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+    <section data-page-tour={tourId} className="crm-form-section rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+      <div className="crm-form-section-head flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
         <div className="flex items-center gap-2 min-w-0">
           {Icon && (
-            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+            <span className="crm-form-section-icon inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
               <Icon size={14} strokeWidth={1.75} />
             </span>
           )}
@@ -2077,11 +2077,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       tags={field.value || []}
                       onChange={field.onChange}
                       placeholder="Enter tags/keywords"
-                      className="min-h-[40px] py-1 rounded-[8px] border-[var(--tm-border)]/80 shadow-sm input-section"
+                      className="pr-9"
                     />
                   )}
                 />
-                <p className="text-[10px] text-slate-500 font-medium mt-1">Note: Press Enter or type a comma to add a tag.</p>
+                <p className="mt-1 text-xs text-[#94a3b8]">Note: Press Enter or type a comma to add a tag.</p>
               </FieldInfoControl>
             </div>
           </FormSection>
@@ -3030,7 +3030,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 <Image size={14} />
                               )
                             ) : (
-                              <Loader2 size={14} className="animate-spin" />
+                              <InlineLoader size={14} />
                             )}
                           </span>
                           <div className="min-w-0 flex-1">
@@ -3930,7 +3930,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 <X size={12} className="mr-1" /> Cancel
                               </Button>
                               <Button type="button" size="sm" className="h-8 px-2.5 text-[11px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50 rounded-[8px]" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
-                                {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
+                                {savingSubtaskIndex === index ? <InlineLoader size={12} className="mr-1" /> : <Check size={12} className="mr-1" />}
                                 Save
                               </Button>
                             </div>
@@ -4143,7 +4143,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                               <X size={12} className="mr-1" /> Cancel
                             </Button>
                             <Button type="button" size="sm" className="h-8 px-2.5 text-[11px] font-medium bg-[#0EA5E9] hover:bg-[#0284C7] text-white disabled:opacity-50 rounded-[8px]" disabled={savingSubtaskIndex === index} onClick={() => handleSaveInlineSubtask(index)} title="Save">
-                              {savingSubtaskIndex === index ? <Loader2 size={12} className="animate-spin mr-1" /> : <Check size={12} className="mr-1" />}
+                              {savingSubtaskIndex === index ? <InlineLoader size={12} className="mr-1" /> : <Check size={12} className="mr-1" />}
                               Save
                             </Button>
                           </div>
@@ -4386,9 +4386,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             </DialogHeader>
             <div className="p-5 overflow-y-auto flex-1">
               <Suspense fallback={
-                <div className="flex items-center justify-center py-16 text-slate-500 text-sm font-medium">
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  Loading camera…
+                <div className="flex items-center justify-center py-16">
+                  <BrandLoader size="sm" message="Loading camera" />
                 </div>
               }>
                 <CameraComp

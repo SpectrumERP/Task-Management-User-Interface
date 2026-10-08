@@ -109,12 +109,25 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   }
 }
 
+/** Dev only: flag a GET that reaches the network again within a few seconds (a likely double load). */
+const lastGetAt = new Map<string, number>();
+function warnIfRepeated(key: string) {
+  if (!import.meta.env.DEV) return;
+  const now = Date.now();
+  const before = lastGetAt.get(key);
+  lastGetAt.set(key, now);
+  if (before !== undefined && now - before < 3000) {
+    console.warn(`[duplicate API] GET ${key} again after ${now - before} ms`, new Error('called from').stack);
+  }
+}
+
 export const apiService = {
   get: <T>(endpoint: string, options?: RequestOptions) => {
     const key = getDedupeKey(endpoint, options?.params);
     const existing = pendingGets.get(key);
     if (existing) return existing as Promise<T>;
 
+    warnIfRepeated(key);
     const promise = request<T>(endpoint, { ...options, method: 'GET' }).finally(() => {
       if (pendingGets.get(key) === promise) pendingGets.delete(key);
     });

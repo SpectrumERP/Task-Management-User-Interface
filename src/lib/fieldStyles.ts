@@ -5,7 +5,7 @@
 
 /** Body text inside controls */
 export const FIELD_TEXT_STYLE =
-  'text-sm text-tm-input-fg placeholder:text-tm-placeholder placeholder:font-medium';
+  'text-[13px] text-tm-input-fg placeholder:text-tm-placeholder placeholder:font-normal';
 
 /** Dense master-form text (optional size) */
 export const FIELD_TEXT_STYLE_SM =

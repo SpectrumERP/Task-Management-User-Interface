@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useFocusModeStore } from '@/store/useFocusModeStore';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, LogOut } from 'lucide-react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { BootShell } from '@/components/ui/BootShell';
 import { OnboardingSpotlightTour } from '@/components/layout/OnboardingSpotlightTour';
 import { InternalPageGuideTour } from '@/components/layout/InternalPageGuideTour';
 
@@ -18,11 +18,35 @@ interface MainLayoutProps {
   onTabChange?: (id: string) => void;
 }
 
+/**
+ * Sidebar collapsed state is shared with the Spectrum CRM (same origin, same key),
+ * so closing the left panel in one app keeps it closed when you switch to the other.
+ */
+const SHARED_SIDEBAR_KEY = 'fi-crm-sidebar-collapsed';
+const LEGACY_SIDEBAR_KEY = 'isSidebarCollapsed';
+
+function readSidebarCollapsed(): boolean {
+  try {
+    const shared = localStorage.getItem(SHARED_SIDEBAR_KEY);
+    if (shared != null) return shared === '1';
+    return localStorage.getItem(LEGACY_SIDEBAR_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeSidebarCollapsed(collapsed: boolean) {
+  try {
+    localStorage.setItem(SHARED_SIDEBAR_KEY, collapsed ? '1' : '0');
+    localStorage.setItem(LEGACY_SIDEBAR_KEY, String(collapsed));
+  } catch {
+    /* storage blocked — keep in-memory state only */
+  }
+}
+
 export function MainLayout({ children, activeTab = 'board', onTabChange }: MainLayoutProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(() => {
-    return localStorage.getItem('isSidebarCollapsed') === 'true';
-  });
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(readSidebarCollapsed);
 
   const isFocusMode = useFocusModeStore((s) => s.isFocusMode);
   const isFocusSidebarOpen = useFocusModeStore((s) => s.isSidebarOpen);
@@ -71,7 +95,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
       setIsMobileSidebarOpen(false);
       return;
     }
-    setIsDesktopSidebarCollapsed(localStorage.getItem('isSidebarCollapsed') === 'true');
+    setIsDesktopSidebarCollapsed(readSidebarCollapsed());
   }, [isFocusMode]);
 
   // Focus-mode Menu open → also open mobile drawer on small screens
@@ -101,7 +125,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
   }, [accessibleForms, activeTab, onTabChange]);
 
   if (accessibleForms === null || !isSettingsLoaded) {
-    return <BrandLoader fullScreen message="Loading workspace" />;
+    return <BootShell label="Loading workspace" />;
   }
 
   if (accessibleForms !== null && accessibleForms.length === 0) {
@@ -151,7 +175,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
             : () => {
                 setIsDesktopSidebarCollapsed((prev) => {
                   const next = !prev;
-                  localStorage.setItem('isSidebarCollapsed', String(next));
+                  writeSidebarCollapsed(next);
                   return next;
                 });
               }
@@ -179,7 +203,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
 
           <div
             className={cn(
-              'absolute inset-y-0 left-0 w-56 bg-[var(--tm-sidebar)] shadow-2xl transform transition-transform duration-300 ease-out flex flex-col h-full border-r border-[var(--tm-chrome-border)]',
+              'absolute inset-y-0 left-0 w-56 bg-[#1E56A0] dark:bg-[var(--tm-sidebar)] dark:border-[var(--tm-border)] shadow-2xl transform transition-transform duration-300 ease-out flex flex-col h-full border-r border-white/10',
               isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
             )}
           >
@@ -199,7 +223,9 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
           className={cn(
             'relative hidden lg:flex h-full transition-all duration-300',
             sidebarWidth,
-            showDesktopSidebar ? 'overflow-visible' : 'overflow-hidden pointer-events-none opacity-0'
+            // Full screen: slide (clip to the animated width) like the CRM, no fade
+            isFocusMode ? 'overflow-hidden' : 'overflow-visible',
+            !showDesktopSidebar && 'pointer-events-none'
           )}
         >
           <Sidebar
@@ -213,7 +239,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
                 : () => {
                     setIsDesktopSidebarCollapsed((prev) => {
                       const next = !prev;
-                      localStorage.setItem('isSidebarCollapsed', String(next));
+                      writeSidebarCollapsed(next);
                       return next;
                     });
                   }
@@ -227,6 +253,14 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
           </main>
         </div>
       </div>
+
+      {/* Copyright strip under the whole app (sidebar + content), same as the Spectrum CRM. */}
+      <footer className="flex h-8 shrink-0 items-center justify-between gap-4 border-t border-[var(--tm-border)] bg-[var(--tm-surface)] px-5 text-[11px] text-[#94a3b8] dark:text-slate-500">
+        <p className="truncate">
+          © {new Date().getFullYear()} Force Intellect Pvt. Ltd. All rights reserved.
+        </p>
+        <p className="hidden shrink-0 font-semibold sm:block">Spectrum ERP</p>
+      </footer>
 
       <OnboardingSpotlightTour />
       <InternalPageGuideTour />

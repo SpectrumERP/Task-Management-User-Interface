@@ -29,6 +29,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { getStatusPillClass } from '@/lib/taskStatusGroups';
+import { RowEditIcon, RowViewIcon } from '@/components/shared/RowIcons';
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -473,7 +474,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           <div className="flex w-full min-w-0 justify-start items-center">
             <TruncatedText
               text={task.status || '-'}
-              className={cn('!w-fit !max-w-full text-center normal-case px-2 py-0.5 rounded-full border inline-block', getStatusPillClass(task.status, false))}
+              className={cn('tm-badge !w-fit !max-w-full text-center normal-case px-2 py-0.5 rounded-full border inline-block', getStatusPillClass(task.status, false))}
             />
           </div>
         </td>
@@ -484,7 +485,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cn(cellOverflowClass, 'tm-col-primary')}>
           <TruncatedText
             text={task.title || ''}
-            className="text-slate-50 group-hover:text-[#0EA5E9] transition-colors select-all"
+            className="text-slate-50 group-hover:text-[#1E56A0] transition-colors select-all"
           />
         </td>
       )}
@@ -501,7 +502,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
             return (
               <div
                 style={{ backgroundColor: bgColor, color: textColor }}
-                className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] shadow-sm"
+                className="tm-badge w-fit max-w-full min-w-0 px-2 py-0.5 rounded-full"
               >
                 <TruncatedText text={task.categoryName} />
               </div>
@@ -514,7 +515,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('type') && !isHideType && (
         <td className={cellOverflowClass}>
           {task.typeName ? (
-            <div className="max-w-full min-w-0 text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-md border border-[var(--tm-border)]">
+            <div className="tm-badge w-fit max-w-full min-w-0 text-slate-300 bg-[var(--tm-muted)] px-2 py-0.5 rounded-full border border-[var(--tm-border)]">
               <TruncatedText text={task.typeName} />
             </div>
           ) : (
@@ -536,7 +537,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               const contrastText = getContrastColor(colorCoding);
               return (
                 <div
-                  className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] shadow-sm"
+                  className="tm-badge w-fit max-w-full min-w-0 px-2 py-0.5 rounded-full"
                   style={{ backgroundColor: colorCoding, color: contrastText }}
                 >
                   <TruncatedText text={label} />
@@ -544,7 +545,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               );
             }
             return (
-              <div className="max-w-full min-w-0 px-2 py-0.5 rounded-[6px] text-slate-300 bg-[var(--tm-muted)]">
+              <div className="tm-badge w-fit max-w-full min-w-0 px-2 py-0.5 rounded-full text-slate-300 bg-[var(--tm-muted)] border border-[var(--tm-border)]">
                 <TruncatedText text={label} />
               </div>
             );
@@ -565,7 +566,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               />
               <TruncatedText
                 text={task.assignedDisplayName}
-                className="text-slate-200"
+                className="tm-person-link text-slate-200"
               />
             </div>
           ) : (
@@ -704,7 +705,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                 }}
                 className="h-7 w-7 shrink-0 rounded-md p-0 text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
               >
-                <Eye size={14} strokeWidth={2.25} className="block" />
+                <RowViewIcon />
               </Button>
             </ActionTip>
             {canEditTask(task) && (
@@ -719,7 +720,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                   }}
                   className="h-7 w-7 shrink-0 rounded-md p-0 text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
                 >
-                  <Edit2 size={14} strokeWidth={2.25} className="block" />
+                  <RowEditIcon />
                 </Button>
               </ActionTip>
             )}

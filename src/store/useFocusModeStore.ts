@@ -16,7 +16,13 @@ export const useFocusModeStore = create<FocusModeState>((set) => ({
   isSidebarOpen: false,
 
   enterFocusMode: () => {
-    localStorage.setItem('isSidebarCollapsed', 'true');
+    try {
+      // Shared with the Spectrum CRM so the left panel stays closed across both apps.
+      localStorage.setItem('fi-crm-sidebar-collapsed', '1');
+      localStorage.setItem('isSidebarCollapsed', 'true');
+    } catch {
+      /* storage blocked */
+    }
     set({ isFocusMode: true, isSidebarOpen: false });
   },
 

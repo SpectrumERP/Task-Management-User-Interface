@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Bell, Loader2, Mail, Send, AlertCircle } from 'lucide-react';
+import { Bell, Mail, Send, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -20,6 +20,7 @@ import {
   sendMinutesOfMeeting,
   type MinutesRecipient,
 } from '@/lib/meetingMinutesShare';
+import { InlineLoader } from '@/components/ui/BrandLoader';
 
 type SendMinutesDialogProps = {
   open: boolean;
@@ -248,7 +249,7 @@ export function SendMinutesDialog({
               (!statusAllowed || withEmail.length === 0) && 'opacity-60'
             )}
           >
-            {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            {sending ? <InlineLoader size={14} /> : <Send size={14} />}
             Send to {withEmail.length || 0}
           </Button>
         </DialogFooter>

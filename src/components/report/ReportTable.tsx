@@ -239,7 +239,7 @@ export function ReportTable({ data }: ReportTableProps) {
                 />
                 <TruncatedText
                   text={task.assignedTo.displayName}
-                  className="text-slate-300 text-xs font-medium"
+                  className="tm-person-link text-slate-300 text-xs font-medium"
                 />
               </div>
             ) : (
@@ -260,7 +260,7 @@ export function ReportTable({ data }: ReportTableProps) {
                 />
                 <TruncatedText
                   text={task.originator.displayName}
-                  className="text-slate-300 text-xs font-medium"
+                  className="tm-person-link text-slate-300 text-xs font-medium"
                 />
               </div>
             ) : (
@@ -372,13 +372,13 @@ export function ReportTable({ data }: ReportTableProps) {
   };
 
   return (
-    <section data-page-tour="report-table" className="flex flex-1 min-h-0 flex-col rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
-      <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center justify-between px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)]">
+    <section data-page-tour="report-table" className="crm-list-page flex flex-1 min-h-0 flex-col overflow-hidden">
+      <div className="crm-pad-x pb-2 shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-slate-100 tracking-tight inline-flex items-center">
             Report Results
             <ActionTip label={`${data.length} matching record${data.length === 1 ? '' : 's'}`}>
-              <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 font-semibold text-[#0EA5E9] tabular-nums">
+              <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#eef3fc] dark:bg-[var(--tm-tint)] px-1.5 font-semibold text-[#1E56A0] dark:text-[#4f86d1] tabular-nums">
                 {data.length}
               </span>
             </ActionTip>
@@ -459,6 +459,7 @@ export function ReportTable({ data }: ReportTableProps) {
         </div>
       ) : (
         <DataTableScroll
+          className="crm-pad-x"
           mobile={
             <div className="flex flex-col gap-2 p-2">
               {pageRows.map((task, index) => {
@@ -575,6 +576,7 @@ export function ReportTable({ data }: ReportTableProps) {
       )}
 
       {totalItems > 0 && (
+        <div className="mt-3 shrink-0">
         <MasterPaginationBar
           totalItems={totalItems}
           startIndex={startIndex}
@@ -585,6 +587,7 @@ export function ReportTable({ data }: ReportTableProps) {
           totalPages={totalPages}
           onPageChange={setCurrentPage}
         />
+        </div>
       )}
     </section>
   );

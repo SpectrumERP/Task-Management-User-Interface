@@ -35,21 +35,25 @@ export function TagInput({ tags, onChange, placeholder = "Add tag...", className
   };
 
   return (
+    // One CRM-style field (`.crm-tag-field`): chips and the typing box sit inside a single bordered box.
     <div className={cn(
-      "flex flex-wrap gap-2 p-2 min-h-[40px] w-full rounded-md border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-brand transition-all",
+      "crm-tag-field flex flex-wrap items-center gap-1.5 min-h-9 w-full px-2.5 py-1 cursor-text",
       className
-    )}>
+    )}
+      onClick={(e) => (e.currentTarget.querySelector('input') as HTMLInputElement | null)?.focus()}
+    >
       {tags.map((tag, index) => (
         <Badge
           key={index}
           variant="secondary"
-          className="gap-1.5 px-2 py-1 bg-[var(--tm-muted)] text-slate-200 hover:bg-slate-200 border-none rounded-lg font-medium text-xs group"
+          className="gap-1 rounded-full border border-[#c2d3f5] bg-[#eef3fc] px-2 py-0.5 text-[11px] font-bold text-[#1E56A0] shadow-none hover:bg-[#eef3fc] dark:border-[#1E56A0]/40 dark:bg-[#1E56A0]/20 dark:text-[#4f86d1]"
         >
           {tag}
           <button
             type="button"
             onClick={() => removeTag(index)}
-            className="text-slate-400 hover:text-slate-300 transition-colors rounded-full p-0.5"
+            aria-label={`Remove ${tag}`}
+            className="rounded-full p-0.5 text-[#1E56A0]/70 transition-colors hover:bg-[#1E56A0]/10 hover:text-[#1E56A0] dark:text-[#4f86d1]/80"
           >
             <X size={12} strokeWidth={3} />
           </button>
@@ -61,7 +65,7 @@ export function TagInput({ tags, onChange, placeholder = "Add tag...", className
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={tags.length === 0 ? placeholder : ""}
-        className="flex-1 bg-transparent outline-none text-sm text-slate-50 font-medium placeholder:text-slate-400 min-w-[120px]"
+        className="crm-tag-input h-7 min-w-[120px] flex-1 bg-transparent text-[13px] outline-none placeholder:text-slate-400"
       />
     </div>
   );

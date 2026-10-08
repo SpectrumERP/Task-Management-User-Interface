@@ -118,7 +118,7 @@ export function NotificationNav() {
             variant="outline"
             data-tour="notifications"
             aria-label={badgeTotal > 0 ? `Notifications, ${badgeTotal}` : 'Notifications'}
-            className="relative h-9 w-9 p-0 rounded-[8px] text-[#0EA5E9] border-[#0EA5E9]/35 bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 shadow-none"
+            className="relative h-8 w-8 p-0 rounded-lg border border-[#CBD5E1] bg-[#eef3fc] text-[#1E56A0] hover:border-[#1E56A0] hover:bg-[#eef3fc] active:scale-95 shadow-none transition-[background-color,border-color,color,transform] duration-200"
           >
             <Bell size={15} />
             {badgeTotal > 0 ? (

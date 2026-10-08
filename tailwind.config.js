@@ -127,6 +127,11 @@ module.exports = {
 				'icon-md': 'var(--icon-md)',
 				'icon-lg': 'var(--icon-lg)',
 			},
+			/* Spectrum CRM font stack — same typography in both apps */
+			fontFamily: {
+				sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+				display: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+			},
 			fontSize: {
 				caption: ['0.6875rem', { lineHeight: '1rem', fontWeight: '500' }], /* 11px */
 				label: ['0.75rem', { lineHeight: '1rem', fontWeight: '500' }], /* 12px */

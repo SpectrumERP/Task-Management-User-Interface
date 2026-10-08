@@ -1,31 +1,24 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, X, Plus } from "lucide-react"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
+import { Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { FIELD_TEXT_STYLE } from "@/lib/fieldStyles"
-import { Button } from "@/components/ui/button"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-
+import { CrmSearchSelect } from "@/components/ui/CrmSearchSelect"
 import { getContrastColor } from "@/lib/colorUtils"
 import { sortByLabel } from "@/lib/sortOptions"
 
+interface ComboboxOption {
+  label: string
+  value: string
+  colorCoding?: string
+  description?: string
+}
+
 interface ComboboxProps {
-  options: { label: string; value: string; colorCoding?: string; description?: string }[]
+  options: ComboboxOption[]
   value: string | undefined
   onChange: (value: string) => void
   placeholder?: string
+  /** Kept for callers; the CRM field searches inline (placeholder shows while typing). */
   searchPlaceholder?: string
   emptyMessage?: string
   className?: string
@@ -47,12 +40,25 @@ interface ComboboxProps {
   contentClassName?: string
 }
 
+function ColorChip({ option }: { option: ComboboxOption }) {
+  return (
+    <span
+      className="inline-flex w-fit max-w-full items-center self-start truncate rounded-full px-2 py-0.5 text-[11px] font-bold"
+      style={{ backgroundColor: option.colorCoding, color: getContrastColor(option.colorCoding!) }}
+    >
+      {option.label}
+    </span>
+  )
+}
+
+const hasColor = (option?: ComboboxOption) => Boolean(option?.colorCoding && option.colorCoding !== "none")
+
+/** Searchable single-select — Spectrum CRM dropdown search (see CrmSearchSelect). */
 export function Combobox({
   options,
   value,
   onChange,
   placeholder = "Select option...",
-  searchPlaceholder = "Search...",
   emptyMessage = "No option found.",
   className,
   disabled = false,
@@ -66,163 +72,61 @@ export function Combobox({
   pinValues,
   contentClassName,
 }: ComboboxProps) {
-  const [open, setOpen] = React.useState(false)
-  const [search, setSearch] = React.useState("")
-  const [container, setContainer] = React.useState<HTMLElement | null>(null)
-
-  React.useEffect(() => {
-    if (open) {
-      const dialogs = document.querySelectorAll('[role="dialog"]')
-      if (dialogs.length > 0) {
-        setContainer(dialogs[dialogs.length - 1] as HTMLElement)
-      } else {
-        setContainer(null)
-      }
-    }
-  }, [open])
-
-  const selectedOption = options.find((option) => option.value === value)
-
   const sortedOptions = React.useMemo(
     () => sortByLabel(options, { enabled: sortAlphabetically, pinValues }),
     [options, sortAlphabetically, pinValues]
   )
+  const selectedOption = options.find((option) => option.value === value)
 
-  const trigger = (
-    <Popover open={open} onOpenChange={setOpen} modal={modal}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={cn(
-            "w-full justify-between font-medium text-sm h-10 shadow-tm-control transition-all border border-tm-border pr-2",
-            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-tm-elevated disabled:hover:bg-tm-elevated",
-            className,
-            FIELD_TEXT_STYLE,
-            !value && "text-tm-placeholder",
-            "rounded-md",
-            !(typeof className === "string" && /border-red/.test(className)) && "!border-tm-border"
+  return (
+    <CrmSearchSelect<ComboboxOption>
+      items={sortedOptions}
+      getKey={(o) => o.value}
+      getLabel={(o) => o.label}
+      getSearchText={(o) => o.description ?? ""}
+      selectedKeys={value ? [value] : []}
+      // Picking the selected option again clears it (as before).
+      onSelect={(o) => onChange(o.value === value ? "" : o.value)}
+      onClear={() => onChange("")}
+      clearable={isClearable}
+      displayLabel={selectedOption?.label ?? ""}
+      renderValue={hasColor(selectedOption) ? <ColorChip option={selectedOption!} /> : undefined}
+      renderOption={(o, selected) => (
+        <span className="flex min-w-0 flex-col">
+          {hasColor(o) ? (
+            <ColorChip option={o} />
+          ) : (
+            <span className={cn("truncate text-xs font-semibold", selected ? "text-[#1E56A0] dark:text-[#4f86d1]" : "text-[#0c1a3a] dark:text-slate-100")}>
+              {o.label}
+            </span>
           )}
-        >
-          <div className="flex-1 overflow-hidden flex items-center pr-2">
-            {selectedOption ? (
-              selectedOption.colorCoding && selectedOption.colorCoding !== 'none' ? (
-                <span
-                  className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm truncate"
-                  style={{ backgroundColor: selectedOption.colorCoding, color: getContrastColor(selectedOption.colorCoding) }}
-                >
-                  {selectedOption.label}
-                </span>
-              ) : (
-                <span className="truncate">{selectedOption.label}</span>
-              )
-            ) : (
-              <span className="truncate">{placeholder}</span>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {value && !disabled && isClearable && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange("");
-                }}
-                className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
-              >
-                <X className="h-3 w-3" />
-              </span>
-            )}
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 text-slate-400" />
-          </div>
-        </Button>
-      </PopoverTrigger>
-      <PopoverPrimitive.Portal container={container || document.body}>
-        <PopoverPrimitive.Content
-          className={cn(
-            "z-[100] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            contentClassName
-          )}
-          align="start"
-        >
-          <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={shouldFilter}>
-            <CommandInput
-              value={search}
-              onValueChange={(val) => {
-                setSearch(val)
-                onSearchChange?.(val)
-              }}
-              placeholder={searchPlaceholder}
-              className="h-9 border-none focus:ring-0"
-            />
-            <CommandList className="max-h-60 overflow-y-auto">
-              <CommandEmpty className="py-3 text-center text-xs text-slate-500">{emptyMessage}</CommandEmpty>
-              <CommandGroup>
-                {sortedOptions.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.label}
-                    onSelect={() => {
-                      onChange(option.value === value ? "" : option.value)
-                      setOpen(false)
-                    }}
-                    className="text-xs font-medium py-2 px-3 flex items-center justify-between cursor-pointer"
-                  >
-                    <div className="flex flex-col min-w-0 pr-4">
-                      <div className="flex items-center">
-                        {option.colorCoding && option.colorCoding !== 'none' ? (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-medium shadow-sm"
-                            style={{ backgroundColor: option.colorCoding, color: getContrastColor(option.colorCoding) }}
-                          >
-                            {option.label}
-                          </span>
-                        ) : (
-                          <span className="truncate">{option.label}</span>
-                        )}
-                      </div>
-                      {option.description && (
-                        <span className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
-                          {option.description}
-                        </span>
-                      )}
-                    </div>
-                    <Check
-                      className={cn(
-                        "ml-auto h-4 w-4 text-brand",
-                        value === option.value ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-            {onAddNew && (
-              <div className="p-1 border-t border-tm-border bg-tm-muted/50">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpen(false);
-                    setTimeout(() => {
-                      if (onAddNew) onAddNew();
-                    }, 0);
-                  }}
-                  className="w-full justify-start text-brand hover:text-brand hover:bg-tm-muted/80 h-8 px-2.5 text-xs font-black gap-1.5 rounded-md transition-all active:scale-[0.98] select-none"
-                >
-                  <Plus className="h-3.5 w-3.5 stroke-[3]" />
-                  {addNewLabel}
-                </Button>
-              </div>
-            )}
-          </Command>
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </Popover>
+          {o.description ? <span className="mt-0.5 truncate text-[11px] text-[#7a8494]">{o.description}</span> : null}
+        </span>
+      )}
+      placeholder={placeholder}
+      emptyText={emptyMessage}
+      disabled={disabled}
+      onQueryChange={onSearchChange}
+      serverSearch={!shouldFilter}
+      className={className}
+      contentClassName={contentClassName}
+      modal={modal}
+      footer={
+        onAddNew ? (close) => (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              close()
+              setTimeout(onAddNew, 0)
+            }}
+            className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-bold text-[#1E56A0] hover:bg-[#eef3fc] dark:text-[#4f86d1] dark:hover:bg-[var(--tm-muted)]"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={3} />
+            {addNewLabel}
+          </button>
+        ) : undefined
+      }
+    />
   )
-
-  return trigger
 }
-

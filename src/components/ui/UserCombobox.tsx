@@ -1,20 +1,6 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { CrmSearchSelect } from "@/components/ui/CrmSearchSelect"
 import { userService, UserResponse } from "@/services/userService"
 import { useAuthStore } from "@/store/useAuthStore"
 import { sortByLabel } from "@/lib/sortOptions"
@@ -64,22 +50,10 @@ export function UserCombobox({
 }: UserComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
-  const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [options, setOptions] = React.useState<UserResponse[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedLabel, setSelectedLabel] = React.useState(initialLabel || "")
-  const [container, setContainer] = React.useState<HTMLElement | null>(null)
 
-  React.useEffect(() => {
-    if (open) {
-      const dialogs = document.querySelectorAll('[role="dialog"]')
-      if (dialogs.length > 0) {
-        setContainer(dialogs[dialogs.length - 1] as HTMLElement)
-      } else {
-        setContainer(null)
-      }
-    }
-  }, [open])
 
   const authUser = useAuthStore(state => state.user)
   const loginNo = authUser?.loginNo || 0
@@ -198,121 +172,55 @@ export function UserCombobox({
     }
   }, [search, open, loginNo])
 
-  const handleOpenChange = (next: boolean) => {
-    setOpen(next)
-    if (!next) setSearch("")
-  }
+  const sortedUsers = React.useMemo(
+    () =>
+      sortByLabel(options, {
+        getLabel: (u) => u.printingName || u.loginId || '',
+        getValue: (u) => String(u.loginNo),
+      }),
+    [options]
+  )
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange} modal={modal}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={cn(
-            "w-full justify-between transition-all border shadow-sm relative pr-8",
-            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[var(--tm-elevated)] disabled:hover:bg-[var(--tm-elevated)]",
-            !className?.includes("text-") && "text-sm font-medium text-slate-50",
-            !className?.includes("h-") && "h-9",
-            className,
-            "rounded-[8px]",
-            error ? "!border-red-500 text-red-500" : "!border-[var(--tm-border)]"
-          )}
-        >
-          <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium", error && "text-red-500")}>{selectedLabel || placeholder}</span>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
-            {value && !disabled && isClearable && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange({ loginNo: "", printingName: "" } as any);
-                }}
-                className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
-              >
-                <X className="h-3 w-3" />
-              </span>
-            )}
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40 text-slate-400" />
+    <CrmSearchSelect<UserResponse>
+      items={sortedUsers}
+      getKey={(u) => String(u.loginNo)}
+      getLabel={(u) => u.printingName || u.loginId || ''}
+      selectedKeys={value ? [String(value)] : []}
+      onSelect={(user) => {
+        onChange(user)
+        setSelectedLabel(user.printingName)
+      }}
+      onClear={() => {
+        onChange({ loginNo: "", printingName: "" } as any)
+        setSelectedLabel("")
+      }}
+      clearable={isClearable}
+      displayLabel={selectedLabel}
+      placeholder={placeholder}
+      emptyText="No data found."
+      disabled={disabled}
+      invalid={error}
+      onQueryChange={setSearch}
+      serverSearch
+      loading={isLoading}
+      loadingText="Searching users…"
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setSearch("")
+      }}
+      className={cn(!className?.includes("h-") && "h-9", className)}
+      modal={modal}
+      header={
+        <div className="border-b border-[#EEF2F6] bg-[#F1F5F9] px-3 py-2 text-[11px] font-bold text-[#4a5d82] dark:border-[var(--tm-border)] dark:bg-[var(--tm-elevated)] dark:text-slate-400">
+          <div className="grid grid-cols-[2fr_1.5fr_2fr] gap-3">
+            <div>User Name</div>
+            <div>Login ID</div>
+            <div>Email</div>
           </div>
-        </Button>
-      </PopoverTrigger>
-      <PopoverPrimitive.Portal container={container || document.body}>
-        <PopoverPrimitive.Content
-          className="z-[100] w-[min(92vw,500px)] p-0 rounded-xl border border-[var(--tm-border)] bg-[var(--tm-surface)] text-popover-foreground shadow-[0_16px_40px_-12px_rgba(15,23,42,0.45)] outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-          align="start"
-          sideOffset={6}
-          onOpenAutoFocus={(event) => {
-            event.preventDefault()
-            requestAnimationFrame(() => searchInputRef.current?.focus())
-          }}
-        >
-          <Command className="rounded-xl border-0 bg-transparent" shouldFilter={false}>
-            <div className="border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
-              <CommandInput
-                ref={searchInputRef}
-                value={search}
-                placeholder="Type to search..."
-                className="h-10 border-none focus:ring-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500"
-                onValueChange={setSearch}
-              />
-            </div>
-
-            <div className="flex px-3 py-2 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 pr-9">
-              <div className="grid grid-cols-[2fr_1.5fr_2fr] gap-3 w-full">
-                <div>User Name</div>
-                <div>Login ID</div>
-                <div>Email</div>
-              </div>
-            </div>
-
-            <CommandList className="max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-1.5 custom-scrollbar" style={{ maxHeight: 'calc(var(--radix-popover-content-available-height) - 100px)' }}>
-              {isLoading && (
-                <div className="flex items-center justify-center py-8 text-slate-500">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  <span className="text-xs font-medium">Searching users...</span>
-                </div>
-              )}
-              {!isLoading && options.length === 0 && (
-                <CommandEmpty className="py-8 text-center text-xs text-slate-500 font-medium">
-                  No data found.
-                </CommandEmpty>
-              )}
-              {!isLoading && (
-                <CommandGroup>
-                  {sortByLabel(options, {
-                    getLabel: (u) => u.printingName || u.loginId || '',
-                    getValue: (u) => String(u.loginNo),
-                  }).map((user) => {
-                    const isSelected = value === user.loginNo.toString()
-                    return (
-                      <CommandItem
-                        key={user.loginNo}
-                        value={`${user.loginId} ${user.printingName} ${user.email}`}
-                        onSelect={() => {
-                          onChange(user)
-                          setSelectedLabel(user.printingName)
-                          setOpen(false)
-                        }}
-                        className={cn(userItemClassName, isSelected && "bg-[#0EA5E9]/10 ring-1 ring-[#0EA5E9]/25")}
-                      >
-                        <UserOptionLine user={user} />
-                        <Check
-                          className={cn(
-                            "h-4 w-4 shrink-0 text-[#0EA5E9]",
-                            isSelected ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </Popover>
+        </div>
+      }
+      renderOption={(user) => <UserOptionLine user={user} />}
+    />
   )
 }

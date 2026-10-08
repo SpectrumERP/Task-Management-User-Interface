@@ -13,13 +13,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { X, Loader2, Save, Sparkles, AlertCircle, Layers, Sliders, Folder, MapPin } from 'lucide-react';
+import { X, Save, Sparkles, AlertCircle, Layers, Sliders, Folder, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@radix-ui/react-label';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 import { fetchStatesByCountry } from './shared/geo';
 import { MasterDeleteDialog } from './shared/MasterDeleteDialog';
 import { useConfirmDelete } from './shared/useConfirmDelete';
+import { InlineLoader } from '@/components/ui/BrandLoader';
 
 interface MasterCreateDialogProps {
   open: boolean;
@@ -897,7 +898,7 @@ export function MasterCreateDialog({
           >
             {isSaving ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <InlineLoader size={14} />
                 Saving...
               </>
             ) : (

@@ -74,14 +74,14 @@ export function FieldLabel({
     <label
       htmlFor={htmlFor}
       className={cn(
-        'inline-flex items-start gap-0.5 text-[11px] font-medium text-slate-300',
+        'inline-flex items-start gap-0.5 text-[12.5px] font-bold text-[#4a5d82] dark:text-slate-300',
         disabled && 'opacity-60 pointer-events-none',
         className
       )}
     >
       <span>{children}</span>
       {required ? (
-        <span className="text-red-500 leading-none text-[12px] relative -top-px" aria-hidden>
+        <span className="text-[#c41e1e] dark:text-red-400 leading-none text-[12px] relative -top-px ml-0.5" aria-hidden>
           *
         </span>
       ) : null}

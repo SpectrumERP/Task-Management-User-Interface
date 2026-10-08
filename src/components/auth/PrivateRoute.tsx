@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useEffect } from 'react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { BootShell } from '@/components/ui/BootShell';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -16,7 +16,7 @@ export function PrivateRoute({ children }: PrivateRouteProps) {
   }, [checkAuth]);
 
   if (isLoading) {
-    return <BrandLoader fullScreen message="Verifying session" />;
+    return <BootShell label="Verifying session" />;
   }
 
   if (!isAuthenticated) {

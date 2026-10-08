@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Loader2, Clock, X } from 'lucide-react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Clock, X } from 'lucide-react';
+import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { Combobox } from '@/components/ui/Combobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { formatLocationDisplayLabel } from '@/services/locationService';
@@ -73,11 +73,11 @@ const toOptionalInt = (val: string) => {
 
 function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
   return (
-    <section data-page-tour={tourId} className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
+    <section data-page-tour={tourId} className="crm-form-section rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-visible">
+      <div className="crm-form-section-head flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] rounded-t-[8px]">
         <div className="flex items-center gap-2.5 min-w-0">
           {Icon && (
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+            <span className="crm-form-section-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
               <Icon size={15} strokeWidth={1.75} />
             </span>
           )}
@@ -712,7 +712,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       ) : null}
 
       <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
-        <div className="w-full mx-auto p-4">
+        <div className="w-full mx-auto px-5 py-4">
           <form onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="space-y-3">
 
             {/* SECTION 1: Basic Information */}
@@ -1650,7 +1650,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                             )}
                           >
                             {file.status !== 'failed' ? (
-                              <Loader2 size={14} className="animate-spin" />
+                              <InlineLoader size={14} />
                             ) : file.name.toLowerCase().endsWith('.pdf') ? (
                               <FileText size={14} />
                             ) : (
@@ -1886,7 +1886,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   setIsSavingCategory(false);
                 }
               }}>
-                {isSavingCategory ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Save
+                {isSavingCategory ? <InlineLoader size={16} className="mr-2" /> : null} Save
               </Button>
             </div>
           </div>
@@ -1929,7 +1929,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   setIsSavingType(false);
                 }
               }}>
-                {isSavingType ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Save
+                {isSavingType ? <InlineLoader size={16} className="mr-2" /> : null} Save
               </Button>
             </div>
           </div>
@@ -2014,7 +2014,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               className="h-9 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm"
               disabled={form.formState.isSubmitting}
             >
-              {form.formState.isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              {form.formState.isSubmitting ? <InlineLoader size={14} className="mr-1.5" /> : null}
               Save
             </Button>
           </DialogFooter>

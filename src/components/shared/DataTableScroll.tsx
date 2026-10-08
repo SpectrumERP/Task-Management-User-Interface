@@ -168,7 +168,7 @@ export function DataTableScroll({
         {/* Body — vertical (+ horizontal) scrollbar only here */}
         <div
           ref={setBodyNode}
-          className="min-h-0 flex-1 overflow-auto box-border"
+          className="tm-data-table-scroll-body min-h-0 flex-1 overflow-auto box-border"
           onScroll={handleBodyScroll}
         >
           <div style={widthStyle} className="w-full">

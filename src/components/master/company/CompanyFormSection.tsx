@@ -47,7 +47,7 @@ export function CompanyFormSection({
 
   const heading = (
     <>
-      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
+      <span className="crm-form-section-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[#0EA5E9]">
         <Icon size={15} strokeWidth={1.75} />
       </span>
       <div className="min-w-0">

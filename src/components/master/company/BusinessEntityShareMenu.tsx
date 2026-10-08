@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, MessageCircle, Share2, Loader2 } from 'lucide-react';
+import { Mail, MessageCircle, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ import {
   shareContactViaWhatsApp,
   type ShareContactInfo,
 } from '@/lib/businessEntityShare';
+import { InlineLoader } from '@/components/ui/BrandLoader';
 
 type ContactShareProps = {
   mode: 'contact';
@@ -76,7 +77,7 @@ export function BusinessEntityShareMenu(props: BusinessEntityShareMenuProps) {
             className
           )}
         >
-          {busy ? <Loader2 size={13} className="animate-spin" /> : <Share2 size={13} />}
+          {busy ? <InlineLoader size={13} /> : <Share2 size={13} />}
           {!iconOnly ? <span>Share</span> : null}
         </Button>
       </DropdownMenuTrigger>

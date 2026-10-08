@@ -93,15 +93,17 @@ export default function MeetingReportPage() {
         bleed
         data-page-tour="meeting-report-breadcrumb"
       />
-      <div className="shrink-0">
+      {/* CRM page band: title, then the report filters */}
+      <div className="crm-band">
+        <h1 className="crm-page-title text-slate-50 mb-3">MIS Meeting Report</h1>
         <MeetingReportFilter onApply={handleApplyFilters} />
       </div>
-      <div className="relative flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
+      <div className="crm-bleed-x crm-bleed-b relative flex min-h-0 flex-1 basis-0 flex-col overflow-hidden pt-1">
         {loadError && !isLoading ? (
           <LoadErrorState
             title="Failed to load meeting report"
             onRetry={() => lastFilters && handleApplyFilters(lastFilters)}
-            className="flex-1"
+            className="flex-1 crm-pad-x"
           />
         ) : (
           <MeetingReportTable data={reportData} />

@@ -20,17 +20,15 @@ import {
   Calendar,
   CalendarDays,
   FileText,
-  Shield,
-  UserRound,
   Handshake
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { BrandLogo } from '@/components/ui/BrandLogo';
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserType } from '@/types/enums';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { CRM_SSO_ENABLED, crmHomeUrl } from '@/lib/crmSso';
+import { prerenderApp } from '@/lib/prerenderApp';
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
   // { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
@@ -81,12 +79,20 @@ interface SidebarProps {
 
 type FlyoutItem = { icon: typeof LayoutGrid; label: string; id: string; formNo?: number };
 
+/**
+ * Collapsed sidebar, grouped section (Master Data, Meeting Masters…): hovering the icon opens a flyout
+ * beside the rail listing every option inside, so they can be opened without expanding the sidebar.
+ * Single options keep their plain name tooltip.
+ */
 function SectionFlyoutMenu({
   title,
   Icon,
+  items,
   isSectionActive,
   onExpand,
   onToggleCollapse,
+  activeTab,
+  onTabChange,
   dataTour,
 }: {
   title: string;
@@ -99,34 +105,79 @@ function SectionFlyoutMenu({
   onTabChange: (id: string) => void;
   dataTour?: string;
 }) {
+  // After picking an option the flyout closes, and stays closed until the pointer leaves the group
+  // (otherwise hover / focus-within would keep it open under the cursor).
+  const [dismissed, setDismissed] = useState(false);
+
   return (
-    <div className="relative w-full flex justify-center">
+    <div
+      className="group/fly relative w-full flex justify-center"
+      onMouseLeave={() => setDismissed(false)}
+    >
       <button
         type="button"
         data-tour={dataTour}
+        aria-haspopup="menu"
+        aria-label={title}
         onClick={() => {
           if (onToggleCollapse) onToggleCollapse();
           onExpand();
         }}
+        className="flex items-center justify-center mx-auto h-9 w-9 rounded-lg p-0 transition-colors duration-150 relative text-white hover:bg-white/10"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "grid h-7 w-7 shrink-0 place-items-center rounded-md",
+            isSectionActive ? "bg-[#C4161C]" : "bg-white/15"
+          )}
+        >
+          <Icon size={15} strokeWidth={isSectionActive ? 2.15 : 1.9} className="text-white" />
+        </span>
+      </button>
+
+      {/* Flyout: pl-2.5 is a hover bridge from the icon to the panel, so it stays open on the way over. */}
+      <div
+        role="menu"
+        aria-label={title}
         className={cn(
-          "group flex items-center justify-center mx-auto h-9 w-9 rounded-[10px] p-0 transition-all duration-200 relative",
-          isSectionActive
-            ? "bg-[var(--tm-tint)] text-[#0EA5E9] shadow-sm"
-            : "text-slate-500 hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9] hover:shadow-sm"
+          "invisible absolute left-full top-0 z-50 pl-2.5 opacity-0 transition-[opacity,visibility] duration-150",
+          !dismissed && "group-hover/fly:visible group-hover/fly:opacity-100 group-focus-within/fly:visible group-focus-within/fly:opacity-100"
         )}
       >
-        <Icon
-          size={18}
-          strokeWidth={isSectionActive ? 2.15 : 1.75}
-          className={isSectionActive ? "text-[#0EA5E9]" : "text-slate-400 group-hover:text-[#0EA5E9]"}
-        />
-        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
-          <div className="tm-sidebar-tip">
+        <div className="w-56 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white text-left shadow-[0_16px_48px_rgba(12,26,58,0.18)] dark:border-[var(--tm-border)] dark:bg-[var(--tm-surface)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.55)]">
+          <p className="border-b border-[#EEF2F6] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#7a8494] dark:border-[var(--tm-border)] dark:text-slate-400">
             {title}
-            <span className="tm-sidebar-tip-arrow" aria-hidden />
+          </p>
+          <div className="max-h-[min(60vh,22rem)] overflow-y-auto py-1">
+            {items.map((item) => {
+              const active = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="menuitem"
+                  aria-current={active ? 'page' : undefined}
+                  onClick={(event) => {
+                    setDismissed(true);
+                    event.currentTarget.blur();
+                    onTabChange(item.id);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12.5px] font-semibold transition-colors",
+                    active
+                      ? "bg-[#eef3fc] text-[#1E56A0] shadow-[inset_3px_0_0_#1E56A0] dark:bg-[#1E56A0]/20 dark:text-[#4f86d1]"
+                      : "text-[#0c1a3a] hover:bg-[#F1F5F9] dark:text-slate-100 dark:hover:bg-[var(--tm-muted)]"
+                  )}
+                >
+                  <item.icon size={14} strokeWidth={2} className="shrink-0 opacity-80" />
+                  <span className="min-w-0 truncate">{item.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
-      </button>
+      </div>
     </div>
   );
 }
@@ -161,12 +212,25 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
   ]
     .filter(Boolean)
     .join(' · ');
+  // Footer, as in the CRM: two-letter initials (EDP → ED) and a "Name · Role" tip.
+  const footerNameParts = (userDisplayName ?? '').trim().split(/\s+/).filter(Boolean);
+  const userInitials = (
+    footerNameParts.length > 1
+      ? `${footerNameParts[0].charAt(0)}${footerNameParts[1].charAt(0)}`
+      : (userDisplayName ?? '').trim().slice(0, 2)
+  ).toUpperCase() || 'U';
+  const userFooterTip = [userDisplayName, roleLabel].filter(Boolean).join(' · ');
 
   // Menu rights are loaded once by MainLayout — avoid a second task-management-menu call here.
 
   const filteredNavItems = accessibleForms ? navItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
   const filteredMasterItems = accessibleForms ? masterItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
   const filteredMenuMasterItems = accessibleForms ? menuMasterItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
+
+  // Section split for the sidebar titles (order unchanged): reports apart from the workspace pages.
+  const REPORT_NAV_IDS = new Set(['reports', 'meeting-reports']);
+  const workspaceNavItems = filteredNavItems.filter((item) => !REPORT_NAV_IDS.has(item.id));
+  const reportNavItems = filteredNavItems.filter((item) => REPORT_NAV_IDS.has(item.id));
 
   const isMasterActive = filteredMasterItems.some(item => item.id === activeTab);
   const [isMasterExpanded, setIsMasterExpanded] = useState(isMasterActive);
@@ -182,7 +246,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
   const navBtnBase =
     "w-full flex items-center text-left relative group transition-[background-color,color,box-shadow,transform] duration-200 ease-out";
 
-  const renderNavItem = (item: { icon: typeof LayoutGrid; label: string; id: string }, onClick?: () => void) => {
+  const renderNavItem = (item: { icon: typeof LayoutGrid; label: string; id: string }, onClick?: () => void, onPrefetch?: () => void) => {
     const isActive = activeTab === item.id;
 
     return (
@@ -190,43 +254,29 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         key={item.id}
         data-tour={`nav-${item.id}`}
         onClick={onClick ?? (() => onTabChange(item.id))}
+        onPointerEnter={onPrefetch}
+        onFocus={onPrefetch}
         className={cn(
           navBtnBase,
           isCollapsed
-            ? cn(
-              "justify-center mx-auto h-9 w-9 rounded-[10px] p-0",
-              isActive
-                ? "bg-[#0EA5E9] text-white shadow-[0_6px_16px_-6px_rgba(14,165,233,0.55)]"
-                : "text-slate-500 hover:bg-[#0EA5E9] hover:text-white hover:shadow-[0_6px_16px_-6px_rgba(14,165,233,0.35)]"
-            )
+            ? "justify-center mx-auto h-9 w-9 rounded-lg p-0 text-white hover:bg-white/10"
             : cn(
-              "gap-3 rounded-xl px-3 py-[9px] text-[13px] tracking-[-0.01em]",
+              "gap-2 rounded-lg px-2 py-1.5 min-h-9 text-[13px]",
               isActive
-                ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
-                : "font-medium text-slate-300 hover:bg-[var(--tm-chrome-muted)] hover:text-[#0EA5E9]"
+                ? "text-white font-semibold hover:bg-white/[0.08]"
+                : "font-medium text-white/90 hover:bg-white/[0.08] hover:text-white"
             )
         )}
       >
-        {isActive && !isCollapsed && (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-0 top-1/2 h-[70%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
-          />
-        )}
-        <item.icon
-          size={isCollapsed ? 16 : 16}
-          strokeWidth={isActive ? 2.15 : 1.75}
+        <span
+          aria-hidden
           className={cn(
-            "shrink-0 transition-colors duration-200",
-            isCollapsed && isActive
-              ? "text-white"
-              : isActive
-                ? "text-slate-50"
-                : isCollapsed
-                  ? "text-slate-400 group-hover:text-white"
-                  : "text-slate-400 group-hover:text-[#0EA5E9]"
+            "grid h-7 w-7 shrink-0 place-items-center rounded-md transition-colors duration-150",
+            isActive ? "bg-[#C4161C]" : "bg-white/15"
           )}
-        />
+        >
+          <item.icon size={15} strokeWidth={isActive ? 2.15 : 1.9} className="shrink-0 text-white" />
+        </span>
         {!isCollapsed && (
           <span className="min-w-0 flex-1 overflow-hidden text-left">
             <TruncatedText text={item.label} className="text-left" />
@@ -234,7 +284,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         )}
 
         {isCollapsed && (
-          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 pointer-events-none opacity-0 scale-95 transition-none group-hover:opacity-100 group-hover:scale-100 group-hover:transition-[opacity,transform] group-hover:duration-150 group-hover:ease-[ease]">
             <div className="tm-sidebar-tip">
               {item.label}
               <span className="tm-sidebar-tip-arrow" aria-hidden />
@@ -256,36 +306,31 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         {/* Vertical rail */}
         <span
           className={cn(
-            "absolute left-[7px] w-px bg-slate-200",
+            "absolute left-[7px] w-px bg-white/20",
             isLast ? "top-0 h-1/2" : "inset-y-0"
           )}
         />
         {/* Elbow */}
-        <span className="absolute left-[7px] top-1/2 w-2.5 h-px bg-slate-200" />
+        <span className="absolute left-[7px] top-1/2 w-2.5 h-px bg-white/20" />
 
         <button
           onClick={() => onTabChange(item.id)}
           className={cn(
-            "relative ml-4 w-[calc(100%-1rem)] flex items-center gap-2.5 pl-2 pr-2.5 py-[6px] rounded-lg text-left text-[12.5px] tracking-[-0.01em] transition-colors duration-150 group",
+            "relative ml-4 w-[calc(100%-1rem)] flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-md text-left text-[12.5px] transition-colors duration-150 group",
             isActive
-              ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
-              : "font-medium text-slate-500 hover:bg-[var(--tm-chrome-muted)] hover:text-[#0EA5E9]"
+              ? "bg-white/[0.12] text-white font-semibold"
+              : "font-medium text-white/75 hover:bg-white/[0.08] hover:text-white"
           )}
         >
-          {isActive && (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
-            />
-          )}
-          <item.icon
-            size={14}
-            strokeWidth={isActive ? 2.1 : 1.7}
+          <span
+            aria-hidden
             className={cn(
-              "shrink-0",
-              isActive ? "text-slate-50" : "text-slate-400 group-hover:text-[#0EA5E9]"
+              "grid h-6 w-6 shrink-0 place-items-center rounded-md",
+              isActive ? "bg-[#C4161C]" : "bg-white/10"
             )}
-          />
+          >
+            <item.icon size={13} strokeWidth={isActive ? 2.1 : 1.8} className="shrink-0 text-white" />
+          </span>
           <span className="min-w-0 flex-1 overflow-hidden text-left">
             <TruncatedText text={item.label} className="text-left" />
           </span>
@@ -319,23 +364,19 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
           onClick={onToggle}
           data-tour={dataTour}
           className={cn(
-            "relative w-full flex items-center gap-3 px-3 py-[9px] rounded-xl cursor-pointer transition-colors duration-150 text-left text-[13px] tracking-[-0.01em] group",
-            showActive
-              ? "bg-[var(--tm-chrome-muted)] text-slate-50 font-semibold"
-              : "font-medium text-slate-300 hover:bg-[var(--tm-chrome-muted)] hover:text-[#0EA5E9]"
+            "relative w-full flex items-center gap-2 px-2 py-1.5 min-h-9 rounded-lg cursor-pointer transition-colors duration-150 text-left text-[13px] group hover:bg-white/[0.08]",
+            showActive ? "text-white font-semibold" : "font-medium text-white/90 hover:text-white"
           )}
         >
-          {showActive && (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute left-0 top-1/2 h-[70%] w-[3px] -translate-y-1/2 rounded-r-full bg-[#0EA5E9]"
-            />
-          )}
-          <Icon
-            size={16}
-            strokeWidth={showActive ? 2.15 : 1.75}
-            className={cn("shrink-0", showActive ? "text-slate-50" : "text-slate-400 group-hover:text-[#0EA5E9]")}
-          />
+          <span
+            aria-hidden
+            className={cn(
+              "grid h-7 w-7 shrink-0 place-items-center rounded-md",
+              isSectionActive ? "bg-[#C4161C]" : "bg-white/15"
+            )}
+          >
+            <Icon size={15} strokeWidth={showActive ? 2.15 : 1.9} className="shrink-0 text-white" />
+          </span>
           <span className="min-w-0 flex-1 overflow-hidden text-left">
             <TruncatedText text={title} className="text-left" />
           </span>
@@ -344,7 +385,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             strokeWidth={2}
             className={cn(
               "shrink-0 transition-transform duration-300",
-              showActive ? "text-slate-400" : "text-slate-300",
+              "text-white/60",
               !isExpanded && "-rotate-90"
             )}
           />
@@ -390,8 +431,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
   return (
     <aside
       className={cn(
-        "relative h-full flex flex-col shrink-0 transition-all duration-300 border-r border-[var(--tm-chrome-border)]",
-        "bg-[linear-gradient(180deg,var(--tm-sidebar)_0%,var(--tm-sidebar-end)_100%)]",
+        "crm-sidebar relative h-full flex flex-col shrink-0 transition-all duration-300 border-r border-white/10 bg-[#1E56A0]",
         isCollapsed ? "w-14 items-center overflow-visible" : "w-56 overflow-visible",
         className
       )}
@@ -412,11 +452,10 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               isCollapsed ? "w-14 h-11 justify-center" : "min-w-0 flex-1"
             )}
           >
-            <BrandLogo
-              maxHeight={isCollapsed ? 40 : 44}
-              maxWidth={isCollapsed ? 56 : 200}
-              className={isCollapsed ? "justify-center" : undefined}
-              imgClassName={isCollapsed ? "object-center" : undefined}
+            <img
+              src={`${import.meta.env.BASE_URL}spectrum-erp-logo-on-dark.png`}
+              alt="Spectrum ERP"
+              className={cn("block h-9 w-full object-contain", isCollapsed ? "object-center" : "object-left")}
             />
           </div>
           {onClose && (
@@ -424,12 +463,12 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="lg:hidden h-8 w-8 rounded-xl hover:bg-[var(--tm-chrome-muted)] flex items-center justify-center shrink-0"
+              className="lg:hidden h-8 w-8 rounded-lg hover:bg-white/10 flex items-center justify-center shrink-0"
             >
-              <X size={18} className="text-slate-500" />
+              <X size={18} className="text-white/80" />
             </Button>
           )}
-          <div className="pointer-events-none absolute inset-x-3 bottom-0 h-px bg-gradient-to-r from-transparent via-[var(--tm-border)] to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
         </div>
       )}
 
@@ -438,73 +477,116 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
         data-tour="sidebar-nav"
         className={cn(
           "flex-1 scrollbar-hide",
-          isCollapsed ? "overflow-visible px-1 pt-2.5 space-y-1" : "overflow-y-auto px-2.5 py-3.5 space-y-0.5"
+          isCollapsed ? "overflow-visible px-1 pt-2.5 pb-2" : "overflow-y-auto px-2.5 py-2"
         )}
       >
-        {filteredNavItems.map((item) => renderNavItem(item))}
-
-        {/* Master Data Section */}
-        {filteredMasterItems.length > 0 && (
-          isCollapsed ? (
-            renderSectionFlyout(
-              "Master Data",
-              Database,
-              filteredMasterItems,
-              isMasterActive,
-              () => setIsMasterExpanded(true),
-              "nav-master"
+        {/* Sections, as in the CRM sidebar: small title (expanded) or a short divider (collapsed) */}
+        {[
+          {
+            key: 'workspace',
+            title: 'Workspace',
+            show: workspaceNavItems.length > 0 || CRM_SSO_ENABLED,
+            body: (
+              <>
+                {workspaceNavItems.map((item) => renderNavItem(item))}
+                {/* Back to the CRM (single sign-on) — last in Workspace, like the CRM's "Tasks" link */}
+                {CRM_SSO_ENABLED && renderNavItem(crmModuleItem, () => window.location.assign(crmHomeUrl), () => prerenderApp(crmHomeUrl))}
+              </>
+            ),
+          },
+          {
+            key: 'reports',
+            title: 'Reports',
+            show: reportNavItems.length > 0,
+            body: reportNavItems.map((item) => renderNavItem(item)),
+          },
+          {
+            key: 'masters',
+            title: 'Masters',
+            show: filteredMasterItems.length > 0 || filteredMenuMasterItems.length > 0,
+            body: (
+              <>
+          {/* Master Data Section */}
+          {filteredMasterItems.length > 0 && (
+            isCollapsed ? (
+              renderSectionFlyout(
+                "Master Data",
+                Database,
+                filteredMasterItems,
+                isMasterActive,
+                () => setIsMasterExpanded(true),
+                "nav-master"
+              )
+            ) : (
+              renderTreeSection({
+                title: "Master Data",
+                Icon: Database,
+                items: filteredMasterItems,
+                isExpanded: isMasterExpanded,
+                isSectionActive: isMasterActive,
+                onToggle: () => setIsMasterExpanded(!isMasterExpanded),
+                dataTour: "nav-master",
+              })
             )
-          ) : (
-            renderTreeSection({
-              title: "Master Data",
-              Icon: Database,
-              items: filteredMasterItems,
-              isExpanded: isMasterExpanded,
-              isSectionActive: isMasterActive,
-              onToggle: () => setIsMasterExpanded(!isMasterExpanded),
-              dataTour: "nav-master",
-            })
-          )
-        )}
+          )}
 
-        {/* Meeting Master Section */}
-        {filteredMenuMasterItems.length > 0 && (
-          isCollapsed ? (
-            renderSectionFlyout(
-              "Meeting Masters",
-              Calendar,
-              filteredMenuMasterItems,
-              isMenuMasterActive,
-              () => setIsMenuMasterExpanded(true),
-              "nav-meeting-masters"
+          {/* Meeting Master Section */}
+          {filteredMenuMasterItems.length > 0 && (
+            isCollapsed ? (
+              renderSectionFlyout(
+                "Meeting Masters",
+                Calendar,
+                filteredMenuMasterItems,
+                isMenuMasterActive,
+                () => setIsMenuMasterExpanded(true),
+                "nav-meeting-masters"
+              )
+            ) : (
+              renderTreeSection({
+                title: "Meeting Masters",
+                Icon: Calendar,
+                items: filteredMenuMasterItems,
+                isExpanded: isMenuMasterExpanded,
+                isSectionActive: isMenuMasterActive,
+                onToggle: () => setIsMenuMasterExpanded(!isMenuMasterExpanded),
+                dataTour: "nav-meeting-masters",
+              })
             )
-          ) : (
-            renderTreeSection({
-              title: "Meeting Masters",
-              Icon: Calendar,
-              items: filteredMenuMasterItems,
-              isExpanded: isMenuMasterExpanded,
-              isSectionActive: isMenuMasterActive,
-              onToggle: () => setIsMenuMasterExpanded(!isMenuMasterExpanded),
-              dataTour: "nav-meeting-masters",
-            })
-          )
-        )}
-        {CRM_SSO_ENABLED && renderNavItem(crmModuleItem, () => window.location.assign(crmHomeUrl))}
+          )}
+              </>
+            ),
+          },
+        ]
+          .filter((section) => section.show)
+          .map((section, index) => (
+            <div
+              key={section.key}
+              className={cn(index > 0 && (isCollapsed ? 'mt-2' : 'mt-4 border-t border-white/10 pt-3'))}
+            >
+              {isCollapsed ? (
+                index > 0 ? <div className="mx-auto mb-1.5 h-px w-6 bg-white/15" aria-hidden /> : null
+              ) : (
+                <p className={cn('px-2 pb-1.5 text-[10px] font-bold tracking-[0.14em] text-white/40', index === 0 && 'pt-1')}>
+                  {section.title}
+                </p>
+              )}
+              <div className={isCollapsed ? 'space-y-1' : 'space-y-0.5'}>{section.body}</div>
+            </div>
+          ))}
       </nav>
 
       {bottomItems.length > 0 && (
-        <div className="space-y-0 pt-1 border-t border-[var(--tm-border)]/70">
+        <div className="space-y-0 pt-1 border-t border-white/10">
           {bottomItems.map((item) => (
             <button
               key={item.id}
               className={cn(
-                "w-full flex items-center text-left transition-colors font-medium text-sm text-slate-500 hover:bg-[var(--tm-chrome-muted)] hover:text-[#0EA5E9] rounded-xl group",
+                "w-full flex items-center text-left transition-colors font-medium text-sm text-white/90 hover:bg-white/[0.08] hover:text-white rounded-lg group",
                 isCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-2"
               )}
               title={isCollapsed ? item.label : undefined}
             >
-              <item.icon size={18} strokeWidth={1.75} className="text-slate-400 group-hover:text-[#0EA5E9]" />
+              <item.icon size={18} strokeWidth={1.75} className="text-white/80 group-hover:text-white" />
               {!isCollapsed && (
                 <span className="min-w-0 flex-1 overflow-hidden text-left">
                   <TruncatedText text={item.label} className="text-left" />
@@ -518,67 +600,41 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
       {(userDisplayName || roleLabel) && (
         <div
           className={cn(
-            'shrink-0 border-t border-[var(--tm-border)]/70 overflow-visible',
-            isCollapsed ? 'px-1.5 py-2.5' : 'px-2.5 py-2.5'
+            // Same height as the list pager bar, so both bottom lines meet.
+            'shrink-0 flex h-[var(--crm-footer-h)] items-center border-t border-white/10 overflow-visible',
+            isCollapsed ? 'px-1.5' : 'px-2.5'
           )}
         >
+          {/* CRM sidebar footer: gradient initials avatar; expanded adds name and role; collapsed tip on the right */}
           <div
             className={cn(
-              'overflow-visible',
-              isCollapsed
-                ? 'mx-auto flex h-9 w-9 items-center justify-center'
-                : 'flex items-center justify-center'
+              'group/shield relative flex w-full items-center rounded-lg cursor-default',
+              isCollapsed ? 'justify-center px-0' : 'gap-2.5 px-2'
             )}
+            aria-label={userShieldTip || undefined}
           >
-            <div
-              className={cn(
-                'inline-flex items-center min-w-0 max-w-full',
-                isCollapsed ? '' : 'gap-1.5'
-              )}
-            >
-              <span
-                className={cn(
-                  'group/shield relative inline-flex shrink-0 items-center justify-center cursor-default text-[#0EA5E9]',
-                  isCollapsed ? 'h-9 w-9' : 'h-4 w-4'
-                )}
-                aria-label={userShieldTip}
-              >
-                {roleLabel ? (
-                  <Shield size={isCollapsed ? 15 : 13} strokeWidth={1.75} />
-                ) : (
-                  <UserRound size={isCollapsed ? 15 : 13} strokeWidth={1.75} />
-                )}
-                {userShieldTip ? (
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 opacity-0 pointer-events-none group-hover/shield:opacity-100 transition-opacity duration-200">
-                    <div className="tm-sidebar-tip">
-                      {userShieldTip}
-                      <span className="tm-sidebar-tip-arrow" aria-hidden />
-                    </div>
-                  </div>
-                ) : null}
-              </span>
-
-              {!isCollapsed && (
-                <div className="min-w-0 overflow-hidden inline-flex items-center gap-1">
-                  {userDisplayName ? (
-                    <TruncatedText
-                      text={userDisplayName}
-                      className="min-w-0 w-auto max-w-[7.5rem] text-[13px] font-medium leading-none text-[var(--tm-input-fg)]"
-                    />
-                  ) : null}
-                  {userDisplayName && roleLabel ? (
-                    <span className="shrink-0 text-[12px] leading-none text-slate-400" aria-hidden>
-                      ·
-                    </span>
-                  ) : null}
-                  {roleLabel ? (
-                    <span className="shrink-0 text-[12px] font-medium leading-none text-[#0EA5E9]">
-                      {roleLabel}
-                    </span>
-                  ) : null}
-                </div>
-              )}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#1E56A0,#C41E1E)] text-xs font-bold text-white">
+              {userInitials}
             </div>
+            {!isCollapsed && (
+              <div className="min-w-0 flex-1">
+                <TruncatedText
+                  text={userDisplayName ?? 'User'}
+                  className="block min-w-0 text-xs font-semibold text-white"
+                />
+                {roleLabel ? (
+                  <p className="truncate text-[11px] text-white/50">{roleLabel}</p>
+                ) : null}
+              </div>
+            )}
+            {isCollapsed && userFooterTip ? (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 z-50 pointer-events-none opacity-0 scale-95 transition-none group-hover/shield:opacity-100 group-hover/shield:scale-100 group-hover/shield:transition-[opacity,transform] group-hover/shield:duration-150 group-hover/shield:ease-[ease]">
+                <div className="tm-sidebar-tip">
+                  {userFooterTip}
+                  <span className="tm-sidebar-tip-arrow" aria-hidden />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -38,6 +39,7 @@ import {
   isMinutesSendStatusAllowed,
   readLastMinutesSentAt,
 } from '@/lib/meetingMinutesShare';
+import { RowDeleteIcon, RowEditIcon } from '@/components/shared/RowIcons';
 
 interface MeetingListViewProps {
   onMeetingClick?: (meetingNotesNo: number) => void;
@@ -361,40 +363,41 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
 
   return (
     <div className="page-shell">
-      {renderBreadcrumb(
-        isSave ? (
-          <Button
-            type="button"
-            data-page-tour="meeting-create"
-            onClick={() => navigate('/meetings/new')}
-            className="h-9 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold shadow-sm shadow-brand/20 gap-1.5 px-4"
-          >
-            <Plus size={15} strokeWidth={2.4} />
-            <span className="hidden sm:inline">New Meeting</span>
-            <span className="sm:hidden">New</span>
-          </Button>
-        ) : null
-      )}
+      {/* CRM page band: title + primary action, then filters toolbar */}
+      <div className="crm-band" data-page-tour="meetings-breadcrumb">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h1 className="crm-page-title text-slate-50">Meeting Notes - {totalItems}</h1>
+          <div className="flex items-center gap-2 shrink-0">
+          <PageGuideButton guideKey="meetings" />
+          {isSave ? (
+            <Button
+              type="button"
+              data-page-tour="meeting-create"
+              onClick={() => navigate('/meetings/new')}
+              className="h-9 px-4 rounded-[7px] bg-[#1E56A0] hover:bg-[#17457F] text-white text-[13px] font-semibold gap-1.5"
+            >
+              <Plus size={15} strokeWidth={2.4} />
+              <span className="hidden sm:inline">New Meeting</span>
+              <span className="sm:hidden">New</span>
+            </Button>
+          ) : null}
+          </div>
+        </div>
 
-      {/* Filters */}
-      <Card className="shrink-0 rounded-[14px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] p-3">
-        <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
-          <div className="relative flex-1 min-w-0" data-page-tour="meeting-title-filter">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-            />
+        <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
+          <div className="crm-search w-full lg:w-[18rem] lg:flex-none" data-page-tour="meeting-title-filter">
+            <Search size={13} className="text-[#94a3b8] shrink-0" strokeWidth={2} />
             <Input
               placeholder="Search by title…"
               value={filterTitle}
               onChange={(e) => setFilterTitle(e.target.value)}
-              className="h-10 pl-9 rounded-[10px] bg-[var(--tm-elevated)]/50 border-[var(--tm-border)] text-xs"
+              className="h-full p-0 !bg-transparent border-none shadow-none focus-visible:ring-0 text-[13px]"
             />
           </div>
 
           <div
             data-page-tour="meeting-status-filter"
-            className="flex items-center gap-1 p-1 rounded-[10px] border border-[var(--tm-border)]/70 bg-[var(--tm-elevated)]/40 overflow-x-auto"
+            className="inline-flex shrink-0 overflow-x-auto rounded-[7px] border border-[var(--tm-border)] bg-[var(--tm-surface)]"
           >
             {dynamicStatusPills.map((pill) => (
               <button
@@ -405,9 +408,9 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  'h-8 px-3 rounded-[8px] text-[11px] font-semibold whitespace-nowrap transition-colors',
+                  'h-[30px] px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors border-l border-[var(--tm-border)] first:border-l-0',
                   filterStatus === pill.id
-                    ? 'bg-[#0EA5E9] text-white shadow-sm'
+                    ? 'bg-[#1E56A0] text-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-[var(--tm-muted)]'
                 )}
               >
@@ -427,7 +430,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                   type="button"
                   variant="outline"
                   onClick={clearFilters}
-                  className="h-10 rounded-[10px] px-3 text-xs font-semibold border-[var(--tm-border)] text-slate-300 gap-1.5"
+                  className="h-8 rounded-[7px] px-3 text-[13px] font-semibold border-[var(--tm-border)] text-slate-400 gap-1.5"
                 >
                   <RotateCcw size={13} />
                   Clear
@@ -436,7 +439,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
             ) : null}
           </div>
         </div>
-      </Card>
+      </div>
 
       {filteredMeetings.length === 0 ? (
         <Card className="flex flex-1 min-h-0 flex-col bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-2xl overflow-hidden">
@@ -460,9 +463,9 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           />
         </Card>
       ) : (
-        <>
-          <div className="flex items-center justify-between gap-2 px-1 shrink-0">
-            <p className="text-[11px] font-semibold text-slate-500">
+        <div className="crm-list-page crm-bleed-x crm-bleed-b flex flex-1 min-h-0 flex-col overflow-hidden">
+          <div className="crm-pad-x pb-2 flex items-center justify-between gap-2 shrink-0">
+            <p className="text-[12px] font-semibold text-slate-500">
               Showing{' '}
               <span className="text-slate-300 tabular-nums">{totalItems}</span>
               {hasActiveFilters ? (
@@ -474,7 +477,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
               variant="outline"
               size="sm"
               onClick={() => exportMeetingReportToExcel(numberedMeetings, 'MeetingNotes.csv')}
-              className="h-8 px-3 text-[11px] font-semibold gap-1.5 rounded-[8px] border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[#0EA5E9]/10"
+              className="h-8 px-3 text-[12px] font-semibold gap-1.5 rounded-[7px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-500 hover:bg-[var(--tm-muted)]"
             >
               <Download size={13} />
               Export CSV
@@ -482,9 +485,9 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
           </div>
 
           {/* Table (mobile cards + desktop) */}
-          <Card
+          <div
             data-page-tour="meeting-table"
-            className="flex flex-1 min-h-0 flex-col overflow-hidden border-[var(--tm-border)]/70 rounded-[14px] bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]"
+            className="crm-pad-x flex flex-1 min-h-0 flex-col overflow-hidden"
           >
             <DataTableScroll
               mobile={
@@ -808,7 +811,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                                     onClick={() => openMeeting(meeting, { sendMinutes: true })}
                                     className="h-7 w-7 rounded-[6px] text-[#0EA5E9] hover:!bg-transparent"
                                   >
-                                    <Send size={13} strokeWidth={2.25} />
+                                    <Send size={12} strokeWidth={2} className="row-icon row-icon-view" />
                                   </Button>
                                 </ActionTip>
                               ) : null} */}
@@ -822,7 +825,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                                     onClick={() => openMeeting(meeting)}
                                     className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:!bg-transparent"
                                   >
-                                    <Edit2 size={13} strokeWidth={2.5} />
+                                    <RowEditIcon />
                                   </Button>
                                 </ActionTip>
                               ) : null}
@@ -839,7 +842,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                                     onClick={() => requestDelete(meeting)}
                                     className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:!bg-transparent disabled:opacity-40"
                                   >
-                                    <Trash2 size={13} strokeWidth={2.25} />
+                                    <RowDeleteIcon />
                                   </Button>
                                 </ActionTip>
                               ) : null}
@@ -852,10 +855,10 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                 </table>
               }
             />
-          </Card>
+          </div>
 
           {totalItems > 0 && (
-            <div className="shrink-0">
+            <div className="shrink-0 mt-3">
               <MasterPaginationBar
                 totalItems={totalItems}
                 startIndex={startIndex}
@@ -868,7 +871,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
               />
             </div>
           )}
-        </>
+        </div>
       )}
 
       <MasterDeleteDialog

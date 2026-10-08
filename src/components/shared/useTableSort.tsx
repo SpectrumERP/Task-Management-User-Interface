@@ -1,5 +1,4 @@
 import { useMemo, useState, type MouseEvent } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { looksLikeDateValue, toUtcIso, toUtcMs } from '@/lib/dateTime';
 
@@ -157,8 +156,8 @@ export function SortableHeader({
       type="button"
       className={cn(
         'inline-flex min-h-[1.75rem] w-full max-w-full items-center gap-1 cursor-pointer select-none text-inherit',
-        'hover:text-[#0EA5E9] transition-colors group/header bg-transparent border-0 p-0 font-inherit',
-        'focus-visible:outline-none focus-visible:text-[#0EA5E9]',
+        'hover:text-[#1E56A0] dark:hover:text-[#4f86d1] transition-colors group/header bg-transparent border-0 p-0 font-inherit',
+        'focus-visible:outline-none focus-visible:text-[#1E56A0] dark:focus-visible:text-[#4f86d1]',
         // Above zebra cells; below resize handle (z-[2]) so drag still works on the edge.
         'relative z-[1] pointer-events-auto',
         className
@@ -178,22 +177,30 @@ export function SortableHeader({
     >
       {/* Truncate instead of spilling into the next column on fixed-width tables */}
       <span className="min-w-0 truncate">{label}</span>
+      {/* CRM sort mark: ↕ when unsorted, ↑/↓ when active — pinned to the right edge. */}
       <span
+        aria-hidden="true"
         className={cn(
-          'flex flex-col shrink-0 text-current transition-opacity',
-          isActive ? 'opacity-100 text-[#0EA5E9]' : 'opacity-40 group-hover/header:opacity-100'
+          'ml-auto flex shrink-0 pl-1 transition-colors',
+          isActive
+            ? 'text-[#1E56A0] dark:text-[#4f86d1]'
+            : 'text-[#94a3b8] group-hover/header:text-[#1E56A0] dark:group-hover/header:text-[#4f86d1]'
         )}
       >
-        <ChevronUp
-          size={10}
-          className={cn('-mb-1', isActive && !sortDesc && 'text-[#0EA5E9]')}
-        />
-        <ChevronDown
-          size={10}
-          className={cn(isActive && sortDesc && 'text-[#0EA5E9]')}
-        />
+        <SortMark dir={isActive ? (sortDesc ? 'desc' : 'asc') : null} />
       </span>
     </button>
+  );
+}
+
+/** Thin CRM-style sort arrow (SVG so it never renders as an emoji): ↕ unsorted, ↑ / ↓ active. */
+function SortMark({ dir }: { dir: 'asc' | 'desc' | null }) {
+  return (
+    <svg width="9" height="14" viewBox="0 0 9 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      {dir !== 'desc' && <path d="M4.5 1v12M1.5 4 4.5 1l3 3" />}
+      {dir === 'desc' && <path d="M4.5 1v12" />}
+      {dir !== 'asc' && <path d="M1.5 10l3 3 3-3" />}
+    </svg>
   );
 }
 

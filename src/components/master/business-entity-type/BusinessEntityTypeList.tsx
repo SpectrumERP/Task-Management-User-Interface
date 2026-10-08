@@ -115,48 +115,48 @@ export function BusinessEntityTypeList() {
   return (
     <div className="page-shell">
       <MasterListHeader
+        count={totalItems}
         title={TITLE}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAddClick={() => navigate(toMasterNewPath('business-entity-type'))}
         canAdd={isSave}
       />
-
-      <div className="flex-1 min-h-0 flex flex-col">
-        <MasterEntityTable
-          rows={paginatedList}
-          nameHeader="Business Entity Type Name"
-          columns={[
-            {
-              header: 'Description',
-              sortKey: 'description',
-              render: (item) => item.description || <span className="italic text-slate-300 font-medium">No description</span>,
-            },
-          ]}
-          getCode={(item) => item.code || `SYS-${item.id}`}
-          getName={(item) => <span>{item.name}</span>}
-          onEdit={(item) => navigate(toMasterEditPath('business-entity-type', item.id))}
-          onDelete={handleDeleteClick}
-          canUpdate={isUpdate}
-          canDelete={isDelete}
-          isLoading={isLoading}
-          loadError={loadError}
-          onRetryLoad={fetchBusinessEntityTypes}
-          emptyIcon={Building2}
-        />
-        {!isLoading && filteredList.length > 0 && (
-          <MasterPaginationBar
-            totalItems={totalItems}
-            startIndex={startIndex}
-            endIndex={endIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        )}
-      </div>
+      <MasterEntityTable
+        rows={paginatedList}
+        nameHeader="Business Entity Type Name"
+        columns={[
+          {
+            header: 'Description',
+            sortKey: 'description',
+            render: (item) => item.description || <span className="italic text-slate-300 font-medium">No description</span>,
+          },
+        ]}
+        getCode={(item) => item.code || `SYS-${item.id}`}
+        getName={(item) => <span>{item.name}</span>}
+        onEdit={(item) => navigate(toMasterEditPath('business-entity-type', item.id))}
+        onDelete={handleDeleteClick}
+        canUpdate={isUpdate}
+        canDelete={isDelete}
+        isLoading={isLoading}
+        loadError={loadError}
+        onRetryLoad={fetchBusinessEntityTypes}
+        emptyIcon={Building2}
+        footer={
+          !isLoading && filteredList.length > 0 ? (
+            <MasterPaginationBar
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null
+        }
+      />
 
       <MasterDeleteDialog
         open={deleteConfirmOpen}

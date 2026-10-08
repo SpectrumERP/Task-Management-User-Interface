@@ -108,6 +108,7 @@ export function LocationList() {
   return (
     <div className="page-shell">
       <MasterListHeader
+        count={totalItems}
         title={TITLE}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}

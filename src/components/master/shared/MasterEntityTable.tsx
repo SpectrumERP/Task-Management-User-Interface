@@ -10,6 +10,7 @@ import { ActionTip, TruncatedText, nodeToPlainText } from './TruncatedCellTip';
 import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
 import { useColumnResize } from '@/components/shared/useColumnResize';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
+import { RowDeleteIcon, RowEditIcon } from '@/components/shared/RowIcons';
 
 /** Sticky column policy (wide desktop tables): Code left, Actions right. */
 
@@ -109,7 +110,8 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
 }: MasterEntityTableProps<T>) {
   const shellClass = embedded
     ? 'flex flex-1 flex-col min-h-0 overflow-hidden'
-    : 'flex flex-1 flex-col min-h-0 w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden';
+    // CRM list page: no card — framed grid on the canvas, pager edge to edge at the bottom.
+    : 'crm-list-page crm-bleed-x crm-bleed-b flex flex-1 flex-col min-h-0 overflow-hidden';
 
   const getSortValue = useCallback((row: T, key: string) => {
     if (key === 'code') return row.code || `SYS-${row.id}`;
@@ -204,8 +206,8 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
   // Loader only when there is nothing to show yet (first load / empty refetch).
   if (isLoading && rows.length === 0) {
     return (
-      <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')}>
-        <div className="flex items-center justify-center p-10 min-h-[200px]">
+      <div className={shellClass}>
+        <div className="flex items-center justify-center p-10 min-h-[200px] crm-pad-x">
           <BrandLoader size="sm" message="Loading records" />
         </div>
       </div>
@@ -214,7 +216,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
 
   if (loadError && rows.length === 0) {
     return (
-      <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')}>
+      <div className={shellClass}>
         <LoadErrorState
           title="Failed to load records"
           description="Could not load this master list. Retry runs the same search again."
@@ -226,7 +228,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
 
   if (rows.length === 0) {
     return (
-      <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')}>
+      <div className={shellClass}>
         <EmptyState icon={EmptyIcon} title={emptyTitle} description={emptyDescription} />
         {footer}
       </div>
@@ -234,19 +236,20 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
   }
 
   return (
-    <div className={cn(shellClass, !embedded && 'bg-[var(--tm-surface)]')} data-page-tour="master-table">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--tm-border)] bg-[var(--tm-elevated)]/50 shrink-0">
-        <span className="text-[11px] font-semibold text-slate-400">Total {rows.length} Records</span>
-        <Button 
-          variant="outline" 
-          size="sm" 
+    <div className={shellClass} data-page-tour="master-table">
+      <div className={cn('flex items-center justify-between shrink-0', embedded ? 'px-4 py-2 border-b border-[var(--tm-border)]' : 'crm-pad-x pb-2')}>
+        <span className="text-[12px] font-semibold text-slate-500">Total {rows.length} Records</span>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={handleExport}
-          className="h-7 px-3 font-semibold gap-1.5 rounded-[6px] border-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/10 shadow-sm"
+          className="h-8 px-3 text-[12px] font-semibold gap-1.5 rounded-[7px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-500 hover:bg-[var(--tm-muted)]"
         >
-          <Download size={12} />
+          <Download size={13} />
           Export CSV
         </Button>
       </div>
+      <div className={cn('flex flex-1 min-h-0 flex-col', !embedded && 'crm-pad-x')}>
       <DataTableScroll
         minWidth={tableMinWidth}
         mobile={
@@ -458,7 +461,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                             onClick={() => onEdit(item)}
                             className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)]"
                           >
-                            <Edit size={13} />
+                            <RowEditIcon />
                           </Button>
                         </ActionTip>
                       ) : null}
@@ -475,7 +478,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                             }}
                             className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                           >
-                            <Trash2 size={13} />
+                            <RowDeleteIcon />
                           </Button>
                         </ActionTip>
                       ) : null}
@@ -488,7 +491,8 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
           </table>
         }
       />
-      {footer ? <div className="shrink-0">{footer}</div> : null}
+      </div>
+      {footer ? <div className={cn('shrink-0', !embedded && 'mt-3')}>{footer}</div> : null}
     </div>
   );
 }

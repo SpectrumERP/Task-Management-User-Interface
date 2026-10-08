@@ -60,6 +60,8 @@
     --radius-2xl: 16px;
     --radius: var(--radius-md);
     --page-pad: 16px;
+    /* Left / right page gutter — same as the CRM (1.25rem at every width) */
+    --page-pad-x: 20px;
     --page-gap: 16px;
     --card-pad: 12px;
     --card-radius: var(--radius-lg);
@@ -86,7 +88,7 @@
     --accent-warm: #F59E0B;
     --accent-warm-foreground: #0B1220;
 
-    --tm-page: #F5F7F9;
+    --tm-page: #F4F6FA;
     --tm-surface: #FFFFFF;
     --tm-elevated: #EEF1F4;
     --tm-muted: #F5F7F9;
@@ -331,8 +333,8 @@
     /* Split sides so filter push pad is not wiped by the shorthand */
     padding-top: var(--page-pad);
     padding-bottom: var(--page-pad);
-    padding-left: var(--page-pad);
-    padding-right: calc(var(--page-pad) + var(--tm-filters-drawer-width, 0px));
+    padding-left: var(--page-pad-x);
+    padding-right: calc(var(--page-pad-x) + var(--tm-filters-drawer-width, 0px));
     gap: var(--page-gap);
     transition: padding-right 300ms ease-out;
   }
@@ -349,8 +351,8 @@
     overflow: auto;
     padding-top: var(--page-pad);
     padding-bottom: var(--page-pad);
-    padding-left: var(--page-pad);
-    padding-right: calc(var(--page-pad) + var(--tm-filters-drawer-width, 0px));
+    padding-left: var(--page-pad-x);
+    padding-right: calc(var(--page-pad-x) + var(--tm-filters-drawer-width, 0px));
     gap: var(--page-gap);
     transition: padding-right 300ms ease-out;
   }
@@ -367,7 +369,7 @@
 
     .page-shell,
     .page-shell-scroll {
-      padding-right: var(--page-pad);
+      padding-right: var(--page-pad-x);
     }
   }
 
@@ -636,21 +638,20 @@ html:not(.dark) aside {
   box-shadow: none;
 }
 
-html:not(.dark) header .theme-toggle {
-  background: rgba(14, 165, 233, 0.1) !important;
-  border-color: rgba(14, 165, 233, 0.35) !important;
-  color: #0284c7 !important;
-}
-
-html:not(.dark) header .theme-toggle:hover {
-  background: rgba(14, 165, 233, 0.18) !important;
-  color: #0369a1 !important;
-}
-
+/* Theme toggle = CRM header icon button (same as the other header actions) */
+header .theme-toggle,
+html:not(.dark) header .theme-toggle,
 html.dark header .theme-toggle {
-  background: rgba(14, 165, 233, 0.16) !important;
-  border-color: rgba(56, 189, 248, 0.4) !important;
-  color: #7dd3fc !important;
+  background: #eef3fc !important;
+  border-color: #CBD5E1 !important;
+  color: #1E56A0 !important;
+}
+
+header .theme-toggle:hover,
+html:not(.dark) header .theme-toggle:hover {
+  background: #eef3fc !important;
+  border-color: #1E56A0 !important;
+  color: #1E56A0 !important;
 }
 
 /* Dark chrome only: force light logo */
@@ -1130,4 +1131,759 @@ html:not(.dark) .tm-sidebar-tip {
 
 .tm-data-table>tbody>tr[data-row-alert]:hover>td {
   background-color: color-mix(in srgb, rgb(239 68 68) 20%, var(--tm-row-odd)) !important;
+}
+
+/* ── CRM data table (Spectrum CRM `.crm-table` look), light theme ──
+   Slate header, bold 12px labels, full grid lines, white rows (no zebra), slate hover.
+   The vars also feed the sticky Code / Actions cells above. */
+html:not(.dark) .tm-data-table {
+  --tm-elevated: #F1F5F9;
+  --tm-border: #E2E8F0;
+  --tm-row-odd: #FFFFFF;
+  --tm-row-even: #FFFFFF;
+  --tm-row-hover: #F1F5F9;
+  background: #FFFFFF;
+}
+
+/* Scrollbar-width spacer beside the detached header (DataTableScroll). */
+html:not(.dark) .tm-data-table-scroll-header {
+  background-color: #F1F5F9;
+}
+
+html:not(.dark) .tm-data-table>thead>tr>th,
+html:not(.dark) .tm-data-table>thead>tr>th * {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+html:not(.dark) .tm-data-table>thead>tr>th {
+  padding: 10px 12px;
+  color: #4a5d82;
+  background-color: #F1F5F9;
+}
+
+html:not(.dark) .tm-data-table>tbody>tr>td,
+html:not(.dark) .tm-data-table>tbody>tr>td * {
+  font-size: 12.5px !important;
+}
+
+html:not(.dark) .tm-data-table>tbody>tr>td .tm-text-semibold,
+html:not(.dark) .tm-data-table>tbody>tr>td .tm-text-semibold * {
+  font-size: 12.5px !important;
+}
+
+html:not(.dark) .tm-data-table>tbody>tr>td {
+  padding: 9px 12px;
+  color: #0c1a3a;
+}
+
+/* Code column — CRM record ID: blue monospace bold (SL-0005 look). */
+html:not(.dark) .tm-data-table>tbody>tr>td:is(.tm-col-id, .tm-col-code, .tm-col-sticky-code),
+html:not(.dark) .tm-data-table>tbody>tr>td:is(.tm-col-id, .tm-col-code, .tm-col-sticky-code) * {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #1E56A0 !important;
+}
+
+html:not(.dark) .tm-data-table>tbody>tr>td:is(.tm-col-id, .tm-col-code, .tm-col-sticky-code) svg {
+  color: #94a3b8 !important;
+}
+
+/* Category / Type / Priority chips — CRM `.badge`: compact bold pill, sized to its text. */
+html:not(.dark) .tm-data-table>tbody>tr>td .tm-badge,
+html:not(.dark) .tm-data-table>tbody>tr>td .tm-badge * {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+}
+
+/* Person names (Assign To) — CRM contact link: blue, semibold, dotted underline. */
+html:not(.dark) .tm-data-table>tbody>tr>td .tm-person-link,
+html:not(.dark) .tm-data-table>tbody>tr>td .tm-person-link * {
+  color: #1E56A0 !important;
+  font-weight: 600 !important;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+/* Empty space under the rows shows the page canvas, like the CRM grid. */
+html:not(.dark) .tm-data-table-scroll-body {
+  background: #F4F6FA;
+}
+
+/* Title / name column — CRM bold ink, blue on row hover. */
+html:not(.dark) .tm-data-table>tbody>tr>td.tm-col-primary,
+html:not(.dark) .tm-data-table>tbody>tr>td.tm-col-primary * {
+  font-weight: 700 !important;
+  color: #0c1a3a !important;
+}
+
+html:not(.dark) .tm-data-table>tbody>tr:hover>td.tm-col-primary * {
+  color: #1E56A0 !important;
+}
+/* ── CRM chrome (Spectrum CRM look): blue sidebar + header rail in light; app-dark in dark mode ──
+   Beats the light-theme `aside` / `.theme-header-rail` rules above. */
+html:not(.dark) .crm-sidebar,
+html:not(.dark) aside.crm-sidebar {
+  background: #1E56A0 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none;
+}
+
+html:not(.dark) .theme-header-rail.crm-rail {
+  background: #1E56A0 !important;
+  border-right-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Dark mode: the left panel follows the dark theme (sidebar surface + dark line). */
+html.dark .crm-sidebar,
+html.dark aside.crm-sidebar {
+  background: var(--tm-sidebar) !important;
+  border-right: 1px solid var(--tm-border) !important;
+  box-shadow: none;
+}
+
+html.dark .theme-header-rail.crm-rail {
+  background: var(--tm-sidebar) !important;
+  border-right-color: var(--tm-border) !important;
+  border-bottom-color: var(--tm-border) !important;
+}
+
+/* ── CRM loader (BrandLoader): same look as the Spectrum CRM page loader ── */
+.crm-loader-halo {
+  background: #eef3fc;
+  animation: crm-loader-pulse 1.4s ease-in-out infinite;
+}
+
+.crm-loader-ring {
+  border-style: solid;
+  border-color: #eef3fc;
+  border-top-color: #1E56A0;
+  border-right-color: #c41e1e;
+  animation: crm-loader-spin 0.75s linear infinite;
+}
+
+.crm-loader-core {
+  background: #1E56A0;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+.crm-loader-msg {
+  color: #0c1a3a;
+}
+
+html.dark .crm-loader-msg {
+  color: var(--tm-input-fg);
+}
+
+html.dark .crm-loader-halo {
+  background: rgba(30, 86, 160, 0.25);
+}
+
+html.dark .crm-loader-ring {
+  border-color: rgba(30, 86, 160, 0.25);
+  border-top-color: #4f86d1;
+  border-right-color: #e05252;
+}
+
+.crm-loader-track {
+  background: #eef3fc;
+}
+
+.crm-loader-bar {
+  width: 40%;
+  background-image: linear-gradient(135deg, #1E56A0, #c41e1e);
+  animation: crm-loader-bar 1.1s ease-in-out infinite;
+}
+
+@keyframes crm-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes crm-loader-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes crm-loader-bar {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-loader-halo,
+  .crm-loader-ring,
+  .crm-loader-bar {
+    animation: none;
+  }
+}
+
+/* Inline CRM loader ring (InlineLoader) — buttons, inputs, list rows */
+.crm-loader-inline {
+  border-style: solid;
+  border-color: color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  border-right-color: #c41e1e;
+  animation: crm-loader-spin 0.75s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-loader-inline {
+    animation: none;
+  }
+}
+
+/* Dark mode: keep the CRM sidebar hover (light wash on blue), not the dark chrome hover above */
+html.dark aside.crm-sidebar button:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark aside.crm-sidebar button:hover svg {
+  color: #ffffff !important;
+}
+
+/* CRM header: flat white bar with a 1px line (no drop shadow) */
+html:not(.dark) header.theme-app-chrome {
+  box-shadow: none;
+}
+
+/* Header rail keeps its own faint bottom line over the header border (CRM sidebar logo row) */
+.theme-header-rail.crm-rail,
+html:not(.dark) .theme-header-rail.crm-rail {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ── CRM buttons (Spectrum CRM `.btn-solid` / `.btn-primary` / `.btn-danger`) ──
+   Task screens hard-code sky blue (#0EA5E9) on buttons; recolour only <button>/<a>
+   so badges, links and icons keep their own colours. */
+:is(button, a):is(
+  [class~="bg-[#0EA5E9]"], [class~="bg-[#0ea5e9]"], [class~="bg-brand"], .bg-primary
+) {
+  background-color: #1E56A0;
+  border-color: #1E56A0;
+  color: #fff;
+}
+
+:is(button, a):is(
+  [class~="bg-[#0EA5E9]"], [class~="bg-[#0ea5e9]"], [class~="bg-brand"], .bg-primary
+):hover:not(:disabled) {
+  background-color: #17457F;
+  border-color: #17457F;
+}
+
+/* Gradient call-to-actions → CRM primary gradient (blue → ink). */
+:is(button, a):is(
+  [class*="from-[#0EA5E9]"], [class*="from-[#38BDF8]"], [class*="from-[#0284C7]"]
+) {
+  background-image: linear-gradient(135deg, #1E56A0, #0c1a3a);
+  color: #fff;
+}
+
+:is(button, a):is(
+  [class*="from-[#0EA5E9]"], [class*="from-[#38BDF8]"], [class*="from-[#0284C7]"]
+):hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* Danger → CRM accent red. */
+:is(button, a):is(.bg-destructive, [class~="bg-red-500"], [class~="bg-red-600"]) {
+  background-color: #c41e1e;
+  border-color: #c41e1e;
+  color: #fff;
+}
+
+:is(button, a):is(.bg-destructive, [class~="bg-red-500"], [class~="bg-red-600"]):hover:not(:disabled) {
+  background-color: #a81919;
+  border-color: #a81919;
+}
+
+/* Brand-outline / ghost buttons (Export CSV, Apply, icon actions) → CRM blue. */
+html:not(.dark) :is(button, a):is([class~="text-[#0EA5E9]"], [class~="hover:text-[#0EA5E9]"]:hover, [class~="text-brand"]) {
+  color: #1E56A0;
+}
+
+html:not(.dark) :is(button, a):is([class*="border-[#0EA5E9]"]) {
+  border-color: rgba(30, 86, 160, 0.3);
+}
+
+html:not(.dark) :is(button, a):is([class~="hover:bg-[#0EA5E9]/10"], [class~="hover:bg-brand-soft"]):hover:not(:disabled) {
+  background-color: rgba(30, 86, 160, 0.08);
+}
+
+html.dark :is(button, a):is([class~="text-[#0EA5E9]"], [class~="hover:text-[#0EA5E9]"]:hover, [class~="text-brand"]) {
+  color: #4f86d1;
+}
+
+/* ── CRM list page (Tasks): framed grid like the CRM leads table ── */
+.crm-list-page .tm-data-table>thead>tr>th {
+  border-top: 1px solid var(--tm-border);
+}
+
+.crm-list-page .tm-data-table>thead>tr>th:first-child,
+.crm-list-page .tm-data-table>tbody>tr>td:first-child {
+  border-left: 1px solid var(--tm-border);
+}
+
+.crm-list-page .tm-data-table>thead>tr>th:last-child,
+.crm-list-page .tm-data-table>tbody>tr>td:last-child {
+  border-right: 1px solid var(--tm-border);
+}
+
+/* ── CRM data grid, app-wide extras (every .tm-data-table, light theme) ── */
+/* Status / stage pills in any grid (e.g. Meetings) → CRM `.badge`. */
+html:not(.dark) .tm-data-table>tbody>tr>td [class*="rounded-full"][class*="border"][class*="px-2"],
+html:not(.dark) .tm-data-table>tbody>tr>td [class*="rounded-full"][class*="border"][class*="px-2"] * {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+}
+
+/* Sky-blue links / codes / counts inside grids → CRM blue. */
+html:not(.dark) .tm-data-table>tbody>tr>td :is([class~="text-[#0EA5E9]"], [class~="text-brand"]),
+html:not(.dark) .tm-data-table>tbody>tr>td :is([class~="hover:text-[#0EA5E9]"], [class~="group-hover:text-[#0EA5E9]"]):hover,
+html:not(.dark) .tm-data-table>tbody>tr:hover>td [class~="group-hover:text-[#0EA5E9]"] {
+  color: #1E56A0 !important;
+}
+
+html:not(.dark) .tm-data-table>tbody>tr>td [class~="bg-[var(--tm-tint)]"][class~="text-[#0EA5E9]"] {
+  background-color: #eef3fc;
+}
+
+/* Row-action icons (view / edit) hover → CRM blue; delete stays red. */
+html:not(.dark) .tm-data-table>tbody>tr>td :is(button, a)[class~="hover:text-[#0EA5E9]"]:hover {
+  color: #1E56A0 !important;
+}
+
+/* ── CRM list-page layout helpers (inside .page-shell) ──
+   crm-band: white header + toolbar strip, edge to edge, line below.
+   crm-bleed-x / crm-bleed-b: pull a block to the page edges; crm-pad-x puts the gutter back. */
+.crm-band {
+  flex-shrink: 0;
+  margin-top: calc(var(--page-pad) * -1);
+  margin-left: calc(var(--page-pad-x) * -1);
+  margin-right: calc((var(--page-pad-x) + var(--tm-filters-drawer-width, 0px)) * -1);
+  padding: 16px calc(var(--page-pad-x) + var(--tm-filters-drawer-width, 0px)) 12px var(--page-pad-x);
+  background: var(--tm-surface);
+  border-bottom: 1px solid var(--tm-border);
+}
+
+.crm-bleed-x {
+  margin-left: calc(var(--page-pad-x) * -1);
+  margin-right: calc((var(--page-pad-x) + var(--tm-filters-drawer-width, 0px)) * -1);
+}
+
+.crm-bleed-b {
+  margin-bottom: calc(var(--page-pad) * -1);
+}
+
+.crm-pad-x {
+  padding-left: var(--page-pad-x);
+  padding-right: calc(var(--page-pad-x) + var(--tm-filters-drawer-width, 0px));
+}
+
+.crm-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+html:not(.dark) .crm-page-title {
+  color: #0c1a3a;
+}
+
+/* CRM search box (Leads "Search leads…"): slate fill, 8px radius, 12px text, blue focus ring. */
+.crm-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--tm-border);
+  border-radius: 8px;
+  background: var(--tm-surface);
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+
+.crm-search input {
+  font-size: 12px !important;
+}
+
+.crm-search svg {
+  width: 13px;
+  height: 13px;
+  color: #94a3b8;
+}
+
+html:not(.dark) .crm-search {
+  background: #F1F5F9;
+}
+
+.crm-search:focus-within {
+  border-color: #1E56A0;
+  box-shadow: 0 0 0 3px rgba(41, 85, 163, 0.22);
+  background: var(--tm-surface);
+}
+
+/* Page-change loader (MasterPaginationBar) covers the whole list area. */
+.crm-list-page {
+  position: relative;
+}
+
+/* Search inputs beat the app-wide `input:not(...)` !important chrome (`:not(#crm)` lifts specificity). */
+.crm-search input:not(#crm) {
+  background-color: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+input.crm-search-input:not(#crm) {
+  border-radius: 8px !important;
+  border-color: var(--tm-border) !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+}
+
+html:not(.dark) input.crm-search-input:not(#crm) {
+  background-color: #F1F5F9 !important;
+}
+
+input.crm-search-input:not(#crm):focus,
+input.crm-search-input:not(#crm):focus-visible {
+  background-color: var(--tm-surface) !important;
+  border-color: #1E56A0 !important;
+  box-shadow: 0 0 0 3px rgba(41, 85, 163, 0.22) !important;
+}
+
+/* ── Row actions: Spectrum CRM RowIconButton (24px button, 12px icon, faint ink, tinted hover) ── */
+.tm-data-table td.tm-col-actions :is(button, a):has(.row-icon) {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  padding: 0 !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.tm-data-table td.tm-col-actions :is(button, a):has(.row-icon):disabled {
+  opacity: 0.4;
+}
+
+.tm-data-table td.tm-col-actions :is(button, a):has(.row-icon-view):hover:not(:disabled) {
+  background: #eef3fc !important;
+  color: #1E56A0 !important;
+}
+
+.tm-data-table td.tm-col-actions :is(button, a):has(.row-icon-edit):hover:not(:disabled) {
+  background: #fffbeb !important;
+  color: #b45309 !important;
+}
+
+.tm-data-table td.tm-col-actions :is(button, a):has(.row-icon-delete):hover:not(:disabled) {
+  background: #fff0f0 !important;
+  color: #c41e1e !important;
+}
+
+html.dark .tm-data-table td.tm-col-actions :is(button, a):has(.row-icon-view):hover:not(:disabled) {
+  background: rgba(30, 86, 160, 0.25) !important;
+  color: #4f86d1 !important;
+}
+
+html.dark .tm-data-table td.tm-col-actions :is(button, a):has(.row-icon-edit):hover:not(:disabled) {
+  background: rgba(180, 83, 9, 0.2) !important;
+  color: #f59e0b !important;
+}
+
+html.dark .tm-data-table td.tm-col-actions :is(button, a):has(.row-icon-delete):hover:not(:disabled) {
+  background: rgba(196, 30, 30, 0.2) !important;
+  color: #f87171 !important;
+}
+
+/* CRM spacing between row actions. */
+.tm-data-table td.tm-col-actions div:has(> * > :is(button, a) .row-icon),
+.tm-data-table td.tm-col-actions div:has(> :is(button, a) .row-icon) {
+  gap: 2px !important;
+}
+
+/* ── Spectrum CRM typography ──
+   CRM text never drops below ~11px in controls: tiny text buttons (10–11px) read at 12px like the CRM pager;
+   inputs/selects at 13px like `.form-input`. Square icon buttons (no px-*) keep their size. */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button[class*="px-"]:is([class~="text-[9px]"], [class~="text-[10px]"], [class~="text-[11px]"]) {
+  font-size: 12px !important;
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(.login-field),
+textarea,
+select,
+button[role='combobox'] {
+  font-size: 13px;
+}
+
+/* Grid column titles: CRM ink-soft (#4a5d82) on every nested label, whatever colour class a table
+   put on its <th> content. Sort arrows (aria-hidden) and icons keep their own colour. */
+html:not(.dark) .tm-data-table>thead>tr>th,
+html:not(.dark) .tm-data-table>thead>tr>th :is(span, button, div, label, a, p):not([aria-hidden='true']) {
+  color: #4a5d82 !important;
+}
+
+/* CRM row icons are 12px — beat the Button primitive's `[&_svg]:size-4` (16px). */
+.tm-data-table td.tm-col-actions .row-icon {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* CRM dropdown search field (CrmSearchSelect): the typing input is bare inside the field —
+   beat the app-wide `input:not(...)` !important chrome. */
+.crm-select-field input.crm-select-input:not(#crm) {
+  height: 100% !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+}
+
+html:not(.dark) .crm-select-field {
+  background-color: #fff;
+}
+
+/* Dropdown list text = the field's size (12px): options, sub-lines and lookup column titles alike. */
+.crm-select-panel :is(.text-xs, .text-\[11px\], .text-\[10px\], .text-\[11\.5px\]) {
+  font-size: 12px !important;
+}
+
+.crm-select-panel [role='option'] {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+/* Option rows match the list's column titles: 12px / 18px (rows like UserOptionLine carry no size class). */
+.crm-select-panel [role='option'],
+.crm-select-panel [role='option'] * {
+  font-size: 12px !important;
+  line-height: 18px !important;
+}
+
+.crm-select-panel [role='listbox'] ~ *,
+.crm-select-panel > div:first-child {
+  line-height: 18px;
+}
+
+/* ══ Spectrum CRM form design (CreateLead): section cards, headers, fields ══ */
+/* Section card: white, 1px line, 16px corners, soft card shadow; 20px between sections. */
+.crm-form-section {
+  border: 1px solid var(--tm-border) !important;
+  border-radius: 16px !important;
+  background: var(--tm-surface) !important;
+}
+
+html:not(.dark) .crm-form-section {
+  border-color: #E2E8F0 !important;
+  background: #fff !important;
+  box-shadow: 0 12px 40px rgba(12, 26, 58, 0.08) !important;
+}
+
+.crm-form-section + .crm-form-section,
+.crm-form-section + * + .crm-form-section {
+  margin-top: 20px !important;
+}
+
+/* Section header: white strip, faint line, 14px bold title. */
+.crm-form-section-head {
+  background: transparent !important;
+  border-radius: 16px 16px 0 0 !important;
+  padding: 14px 20px !important;
+}
+
+html:not(.dark) .crm-form-section-head {
+  border-bottom-color: #EEF2F6 !important;
+}
+
+.crm-form-section-head :is(h2, h3) {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+html:not(.dark) .crm-form-section-head :is(h2, h3) {
+  color: #0c1a3a !important;
+}
+
+.crm-form-section-head p {
+  font-size: 11.5px !important;
+}
+
+/* Section icon: CRM 32px solid-blue tile, white glyph. */
+.crm-form-section-icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  background: #1E56A0 !important;
+  color: #fff !important;
+}
+
+.crm-form-section-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+/* Section body: 20px padding; field grids 16px apart (CRM FormGrid gap-4). */
+.crm-form-section-head + * {
+  padding: 20px !important;
+}
+
+.crm-form-section :is(.gap-3, .gap-x-3, .gap-x-4, .gap-4) {
+  column-gap: 16px !important;
+}
+
+.crm-form-section :is(.gap-3, .gap-y-3, .gap-y-3\.5, .gap-4) {
+  row-gap: 16px !important;
+}
+
+/* Fields: CRM `.form-input` — 1.5px line, 7px corners, white, no shadow; darker line on hover;
+   blue line + focus ring when active; red line + red ring on error. */
+html:not(.dark) :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='color']):not([type='submit']):not([type='button']):not(.login-field):not(.crm-select-input):not(.crm-search-input):not(.crm-tag-input):not(.crm-search *), textarea, button[role='combobox'], [data-radix-select-trigger], .crm-select-field):not(#crm) {
+  border-width: 1.5px !important;
+  border-color: #E2E8F0 !important;
+  border-radius: 7px !important;
+  background-color: #fff !important;
+  box-shadow: none !important;
+}
+
+html:not(.dark) :is(input:not([type='checkbox']):not([type='radio']):not(.crm-select-input):not(.crm-search-input):not(.crm-tag-input):not(.crm-search *), textarea, button[role='combobox'], .crm-select-field):not(#crm):hover:not(:disabled) {
+  border-color: #CBD5E1 !important;
+}
+
+html:not(.dark) :is(input:not([type='checkbox']):not([type='radio']):not(.crm-select-input):not(.crm-search-input):not(.crm-tag-input):not(.crm-search *), textarea, button[role='combobox']):not(#crm):focus-visible,
+html:not(.dark) .crm-select-field:not(#crm):focus-within {
+  border-color: #1E56A0 !important;
+  box-shadow: 0 0 0 3px rgba(41, 85, 163, 0.22) !important;
+  outline: none !important;
+}
+
+html:not(.dark) :is(input, textarea, button[role='combobox'], .crm-select-field):not(#crm):is([aria-invalid='true'], .\!border-red-500, .border-red-500) {
+  border-color: #c41e1e !important;
+  box-shadow: 0 0 0 3px rgba(196, 30, 30, 0.12) !important;
+}
+
+html:not(.dark) :is(input, textarea, button[role='combobox']):not(#crm):disabled,
+html:not(.dark) .crm-select-field:not(#crm):has(input:disabled) {
+  background-color: #F1F5F9 !important;
+  opacity: 0.6;
+}
+
+/* Search boxes keep their slate fill (CRM search). */
+html:not(.dark) input.crm-search-input:not(#crm):not(:focus) {
+  background-color: #F1F5F9 !important;
+}
+
+/* Bottom bars line up: sidebar profile footer = list pager bar (incl. its 1px top line). */
+:root {
+  --crm-footer-h: 60px;
+}
+
+/* Dark mode header icon buttons = the CRM's dark header chips (its --color-line-strong /
+   --color-primary-soft / --color-primary in dark): #3A4A63 line, #17284A fill, #3B74C4 icon. */
+html.dark header :is(button, a):is([class*="bg-[#eef3fc]"], .theme-toggle),
+html.dark header :is(button, a):is([class*="bg-[#eef3fc]"], .theme-toggle):hover {
+  border-color: #3A4A63 !important;
+  background-color: #17284A !important;
+  color: #3B74C4 !important;
+}
+
+html.dark header :is(button, a):is([class*="bg-[#eef3fc]"], .theme-toggle):hover,
+html.dark header :is(button, a)[aria-expanded='true'][class*="bg-[#eef3fc]"] {
+  border-color: #3B74C4 !important;
+}
+
+html.dark header :is(button, a):is([class*="bg-[#eef3fc]"], .theme-toggle) svg {
+  color: #3B74C4 !important;
+}
+
+/* Outlined header buttons (Folders, Clipboard): dark line like the CRM. */
+html.dark header button[class*="border-[#CBD5E1]"]:not([class*="bg-[#eef3fc]"]) {
+  border-color: #3A4A63 !important;
+}
+
+html.dark header button[class*="border-[#CBD5E1]"]:not([class*="bg-[#eef3fc]"]):hover {
+  border-color: #3B74C4 !important;
+}
+
+/* Client (SteelMont) logo in the header: keep its real colours (skip the dark-mode white logo filter);
+   on dark it sits on a small white chip so the navy mark stays readable. */
+html.dark header img.client-logo {
+  filter: none;
+  opacity: 1;
+}
+
+.client-logo-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+html.dark .client-logo-chip {
+  background: #fff;
+  padding: 2px 6px;
+}
+
+/* Tags / keywords field (TagInput): one CRM `.form-input` box — the typing input inside is bare
+   (beats the app-wide input chrome), chips sit in the box, blue line + ring while typing. */
+.crm-tag-field {
+  border: 1.5px solid var(--tm-border);
+  border-radius: 7px;
+  background: var(--tm-input);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+html:not(.dark) .crm-tag-field {
+  border-color: #E2E8F0;
+  background: #fff;
+}
+
+html:not(.dark) .crm-tag-field:hover {
+  border-color: #CBD5E1;
+}
+
+.crm-tag-field:focus-within {
+  border-color: #1E56A0 !important;
+  box-shadow: 0 0 0 3px rgba(41, 85, 163, 0.22);
+}
+
+.crm-tag-field input.crm-tag-input:not(#crm) {
+  height: 1.75rem !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 13px !important;
 }

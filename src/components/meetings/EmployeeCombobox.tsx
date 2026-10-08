@@ -1,20 +1,6 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { CrmSearchSelect } from "@/components/ui/CrmSearchSelect"
 import { apiService } from "@/services/apiService"
 import { sortByLabel } from "@/lib/sortOptions"
 
@@ -147,102 +133,52 @@ export function EmployeeCombobox({
     }
   }, [search, open])
 
+  const sortedEmployees = React.useMemo(
+    () =>
+      sortByLabel(options, {
+        getLabel: (emp) => emp.empName || emp.empCode || '',
+        getValue: (emp) => String(emp.empNo),
+      }),
+    [options]
+  )
+
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={modal}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          disabled={disabled}
-          className={cn(
-            "w-full justify-between transition-all border shadow-sm relative pr-8",
-            "disabled:opacity-100 disabled:cursor-not-allowed disabled:bg-[var(--tm-elevated)] disabled:hover:bg-[var(--tm-elevated)]",
-            !className?.includes("text-") && "text-sm font-medium text-slate-50",
-            !className?.includes("h-") && "h-9",
-            className,
-            "rounded-[8px]",
-            error ? "!border-red-500 text-red-500" : "!border-[var(--tm-border)]"
-          )}
-        >
-          <span className={cn("truncate pr-2", !selectedLabel && "text-slate-400 font-medium", error && "text-red-500")}>{selectedLabel || placeholder}</span>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
-            {value && !disabled && isClearable && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange({ empNo: 0, empCode: "", empName: "" } as any);
-                }}
-                className="p-0.5 rounded-full hover:bg-[var(--tm-muted)] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
-              >
-                <X className="h-3 w-3" />
-              </span>
-            )}
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40 text-slate-400" />
-          </div>
-        </Button>
-      </PopoverTrigger>
-      <PopoverPrimitive.Content
-        className="z-[100] w-[300px] sm:w-[400px] md:w-[500px] max-w-[90vw] p-0 rounded-md border bg-popover text-popover-foreground shadow-md outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-        align="start"
-      >
-        <Command className="rounded-xl border-[var(--tm-border)]" shouldFilter={false}>
-          <div className="border-b border-[var(--tm-border)] bg-[var(--tm-muted)]/50">
-            <CommandInput
-              autoFocus
-              placeholder="Type to search..."
-              className="h-10 border-none focus:ring-0 bg-transparent"
-              onValueChange={setSearch}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 px-3 py-2 bg-[var(--tm-muted)]/80 border-b border-[var(--tm-border)] text-[10px] font-black text-slate-500 uppercase tracking-wider">
-            <div>Employee Name</div>
-            <div>Employee Code</div>
-          </div>
-
-          <CommandList className="max-h-72 scrollbar-hide">
-            {isLoading && (
-              <div className="flex items-center justify-center py-8 text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-xs font-medium">Searching employees...</span>
-              </div>
-            )}
-            {!isLoading && options.length === 0 && (
-              <CommandEmpty className="py-8 text-center text-xs text-slate-500 font-medium">
-                No data found.
-              </CommandEmpty>
-            )}
-            {!isLoading && (
-              <CommandGroup>
-                {sortByLabel(options, {
-                  getLabel: (emp) => emp.empName || emp.empCode || '',
-                  getValue: (emp) => String(emp.empNo),
-                }).map((emp) => (
-                  <CommandItem
-                    key={emp.empNo}
-                    value={`${emp.empName} ${emp.empCode}`}
-                    onSelect={() => {
-                      onChange(emp)
-                      setSelectedLabel(emp.empName)
-                      setOpen(false)
-                    }}
-                    className="text-[11px] font-medium py-2 px-3 cursor-pointer"
-                  >
-                    <div className="grid grid-cols-2 w-full items-center gap-2">
-                      <div className="truncate text-slate-50 font-bold">{emp.empName}</div>
-                      <div className="truncate text-slate-300">{emp.empCode}</div>
-                    </div>
-                    {value === emp.empNo.toString() && (
-                      <Check className="h-3 w-3 text-[#0EA5E9] ml-2 shrink-0" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverPrimitive.Content>
-    </Popover>
+    <CrmSearchSelect<EmployeeResponse>
+      items={sortedEmployees}
+      getKey={(emp) => String(emp.empNo)}
+      getLabel={(emp) => emp.empName || emp.empCode || ''}
+      getSearchText={(emp) => emp.empCode || ''}
+      selectedKeys={value ? [String(value)] : []}
+      onSelect={(emp) => {
+        onChange(emp)
+        setSelectedLabel(emp.empName)
+      }}
+      onClear={() => onChange({ empNo: 0, empCode: "", empName: "" } as any)}
+      clearable={isClearable}
+      displayLabel={selectedLabel}
+      placeholder={placeholder}
+      emptyText="No data found."
+      disabled={disabled}
+      invalid={error}
+      onQueryChange={setSearch}
+      serverSearch
+      loading={isLoading}
+      loadingText="Searching employees…"
+      onOpenChange={setOpen}
+      className={cn(!className?.includes("h-") && "h-9", className)}
+      modal={modal}
+      header={
+        <div className="grid grid-cols-2 gap-2 border-b border-[#EEF2F6] bg-[#F1F5F9] px-3 py-2 text-[11px] font-bold text-[#4a5d82] dark:border-[var(--tm-border)] dark:bg-[var(--tm-elevated)] dark:text-slate-400">
+          <div>Employee Name</div>
+          <div>Employee Code</div>
+        </div>
+      }
+      renderOption={(emp) => (
+        <div className="grid grid-cols-2 items-center gap-2 text-xs">
+          <div className="truncate font-semibold text-[#0c1a3a] dark:text-slate-100">{emp.empName}</div>
+          <div className="truncate text-[#4a5d82] dark:text-slate-300">{emp.empCode}</div>
+        </div>
+      )}
+    />
   )
 }

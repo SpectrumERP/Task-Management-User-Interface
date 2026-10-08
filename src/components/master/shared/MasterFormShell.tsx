@@ -9,12 +9,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { X, Loader2, Save } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterListPath, MasterType } from './masterRoutes';
-import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
 
 interface MasterFormShellProps {
   type: MasterType | string;
@@ -54,7 +54,6 @@ export function MasterFormShell({
 }: MasterFormShellProps) {
   const navigate = useNavigate();
   const goToList = () => navigate(toMasterListPath(type));
-  const listPath = toMasterListPath(type);
   const handledSuccessRef = useRef(false);
   const blockSave = isSaving || isLoadingRecord || loadError;
 
@@ -73,74 +72,82 @@ export function MasterFormShell({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--tm-page)]">
-      <AppBreadcrumbBar
-        data-page-tour="master-form-breadcrumb"
-        items={[
-          { label: 'Masters', href: listPath },
-          { label: title, href: listPath },
-          { label: editingId ? 'Edit' : 'New', current: true },
-        ]}
-        guideKey={type === 'company' ? 'company-form' : 'master-form'}
-        actions={
-          <div className="flex items-center gap-2" data-page-tour="master-form-actions">
+      {/* Spectrum CRM form page (CreateLead): back link + title on top, sections, Cancel / Save below. */}
+      <form
+        onSubmit={onSubmit}
+        className="flex-1 min-h-0 overflow-y-auto px-5 py-4"
+        data-page-tour="master-form-fields"
+      >
+        <div className="mb-5 flex items-start justify-between gap-3" data-page-tour="master-form-breadcrumb">
+          <div className="min-w-0">
+            <button
+              type="button"
+              onClick={goToList}
+              className="mb-3 flex items-center gap-1.5 text-xs font-medium text-[#7a8494] transition-colors hover:text-[#0c1a3a] dark:hover:text-slate-100"
+            >
+              <ChevronLeft size={13} strokeWidth={2} />
+              Back to {title}
+            </button>
+            <h1 className="text-xl font-bold text-[#0c1a3a] dark:text-slate-50">
+              {editingId ? `Edit ${title}` : `New ${title}`}
+            </h1>
+            <p className="mt-0.5 text-xs text-[#7a8494]">
+              {editingId ? `Editing record ${editingId}` : `Add a new record to ${title}`}
+            </p>
+          </div>
+          <PageGuideButton guideKey={type === 'company' ? 'company-form' : 'master-form'} />
+        </div>
+
+        <div className="space-y-5">
+          {isLoadingRecord ? (
+            <div className="flex items-center justify-center py-16 min-h-[220px]">
+              <BrandLoader size="sm" message="Loading record" />
+            </div>
+          ) : loadError ? (
+            <LoadErrorState
+              title="Failed to load record"
+              description="Could not load this record for editing. Retry uses the same request. Cancel returns to the list."
+              onRetry={onRetryLoad}
+            />
+          ) : (
+            children
+          )}
+
+          {serverError && !isLoadingRecord && !loadError ? (
+            <div className="rounded-[7px] border border-[#c41e1e]/25 bg-[#fff0f0] px-4 py-3 text-xs font-medium text-[#c41e1e] flex items-start gap-2 dark:bg-red-500/10 dark:text-red-400">
+              <span className="font-bold shrink-0">Error:</span>
+              <span className="flex-1 whitespace-pre-wrap leading-relaxed">{serverError}</span>
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1" data-page-tour="master-form-actions">
             <Button
               type="button"
               variant="outline"
               onClick={goToList}
               disabled={isSaving}
-              className="h-9 px-3 rounded-[8px] text-xs font-medium text-slate-300 border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] shadow-none gap-1.5 disabled:opacity-40"
+              className="h-9 px-4 rounded-[7px] text-[13px] font-semibold border-[#E2E8F0] bg-white text-[#7a8494] hover:bg-[#F1F5F9] shadow-none disabled:opacity-40 dark:border-[var(--tm-border)] dark:bg-[var(--tm-surface)] dark:text-slate-300"
             >
-              <X size={14} />
-              <span className="hidden sm:inline">Cancel</span>
+              Cancel
             </Button>
             <Button
-              type="button"
-              onClick={onSubmit}
+              type="submit"
               disabled={blockSave}
-              className="h-9 px-4 rounded-[8px] text-xs font-semibold bg-[#0EA5E9] hover:bg-[#0284C7] text-white shadow-sm shadow-[#0EA5E9]/20 gap-1.5 disabled:opacity-50"
+              className="h-9 px-4 rounded-[7px] text-[13px] font-semibold bg-[#1E56A0] hover:bg-[#17457F] text-white gap-1.5 disabled:opacity-50"
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span className="hidden sm:inline">Saving...</span>
+                  <InlineLoader size={14} />
+                  Saving…
                 </>
+              ) : editingId ? (
+                'Save Changes'
               ) : (
-                <>
-                  <Save size={14} />
-                  <span className="hidden sm:inline">{editingId ? 'Update' : 'Save'}</span>
-                </>
+                `Save ${title.replace(/ Master$/, '')}`
               )}
             </Button>
           </div>
-        }
-      />
-
-      {/* Page-level scroll (matches TaskDetail / Create Task) */}
-      <form
-        onSubmit={onSubmit}
-        className="flex-1 min-h-0 overflow-y-auto px-3.5 sm:px-4 py-3 space-y-3"
-        data-page-tour="master-form-fields"
-      >
-        {isLoadingRecord ? (
-          <div className="flex items-center justify-center py-16 min-h-[220px]">
-            <BrandLoader size="sm" message="Loading record" />
-          </div>
-        ) : loadError ? (
-          <LoadErrorState
-            title="Failed to load record"
-            description="Could not load this record for editing. Retry uses the same request. Cancel returns to the list."
-            onRetry={onRetryLoad}
-          />
-        ) : (
-          children
-        )}
-
-        {serverError && !isLoadingRecord && !loadError ? (
-          <div className="rounded-[8px] border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-medium text-red-400 flex items-start gap-2">
-            <span className="font-semibold shrink-0">Error:</span>
-            <span className="flex-1 whitespace-pre-wrap leading-relaxed">{serverError}</span>
-          </div>
-        ) : null}
+        </div>
       </form>
 
       <Dialog open={showConfirm} onOpenChange={(open) => { if (!open) onCancelConfirm(); }}>

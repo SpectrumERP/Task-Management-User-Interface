@@ -25,8 +25,7 @@ interface AppBreadcrumbBarProps {
 }
 
 /**
- * Full-width page breadcrumb bar — trail on the left, guide + actions on the right.
- * Fixed height across the app (with or without actions / guide / badges).
+ * Full-width page breadcrumb bar — trail on the left (nested pages only, as in the CRM), guide + actions on the right.
  * Edge-to-edge surface strip with bottom border (use `bleed` inside page-shell).
  */
 export function AppBreadcrumbBar({
@@ -37,18 +36,30 @@ export function AppBreadcrumbBar({
   className,
   'data-page-tour': dataPageTour,
 }: AppBreadcrumbBarProps) {
+  // Same rule as the CRM: a trail only on nested pages (create / edit / detail — a crumb links back to a
+  // section), as "Task › Section › Page". Top-level pages (no link back, or just "Home") show none, and
+  // the strip itself only stays for its buttons.
+  const nested = items.some((item) => item.href && item.label !== 'Home');
+  if (!nested && !actions) return null;
+  const trail: AppBreadcrumbItem[] = nested ? [{ label: 'Task', href: '/' }, ...items] : [];
+
   return (
     <div
       data-page-tour={dataPageTour}
       className={cn(
-        'box-border w-full h-14 shrink-0 z-20 bg-[var(--tm-surface)] border-b border-[var(--tm-border)]/70 px-4 py-0 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]',
+        // CRM breadcrumb row: compact white strip, faint top line, header line below — no shadow
+        'box-border w-full shrink-0 z-20 bg-[var(--tm-surface)] border-t border-t-[#EEF2F6] border-b border-b-[#E2E8F0] dark:border-t-[var(--tm-border)] dark:border-b-[var(--tm-border)] px-5 py-2',
         bleed &&
-          '-ml-[var(--page-pad)] -mr-[calc(var(--page-pad)+var(--tm-filters-drawer-width,0px))] -mt-[var(--page-pad)] mb-0 max-w-none w-auto',
+          '-ml-[var(--page-pad-x)] -mr-[calc(var(--page-pad-x)+var(--tm-filters-drawer-width,0px))] -mt-[var(--page-pad)] mb-0 max-w-none w-auto',
         className
       )}
     >
-      <div className="flex h-full w-full min-w-0 items-center justify-between gap-3">
-        <MasterBreadcrumb items={items} className="min-w-0 flex-1 leading-none" />
+      <div className="flex w-full min-w-0 items-center justify-between gap-3">
+        {trail.length ? (
+          <MasterBreadcrumb items={trail} className="min-w-0 flex-1 leading-none" />
+        ) : (
+          <span className="min-w-0 flex-1" aria-hidden />
+        )}
         {(guideKey || actions) ? (
           <div className="flex shrink-0 items-center justify-end gap-2">
             {guideKey ? <PageGuideButton guideKey={guideKey} /> : null}

@@ -154,6 +154,14 @@ function HoverTipBubble({
   );
 }
 
+/** Only one floating tip on screen: opening one closes the previous (e.g. a clicked, still-focused button). */
+let closeOpenTip: (() => void) | null = null;
+
+/** Focus opens a tip only for keyboard focus — a mouse click leaves focus behind and must not keep a tip up. */
+function isKeyboardFocus(el: EventTarget | null) {
+  return el instanceof HTMLElement && el.matches(':focus-visible');
+}
+
 function useHoverTipPosition() {
   const ref = useRef<HTMLSpanElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -172,6 +180,8 @@ function useHoverTipPosition() {
       midY: rect.top + rect.height / 2,
       right: rect.right,
     });
+    closeOpenTip?.();
+    closeOpenTip = () => setOpen(false);
     setOpen(true);
   };
 
@@ -206,7 +216,7 @@ export function ActionTip({
         className="inline-flex shrink-0 items-center justify-center leading-none"
         onMouseEnter={() => showAt(ref.current, Boolean(label))}
         onMouseLeave={hide}
-        onFocus={() => showAt(ref.current, Boolean(label))}
+        onFocus={(e) => { if (isKeyboardFocus(e.target)) showAt(ref.current, Boolean(label)); }}
         onBlur={hide}
       >
         {children}
@@ -295,7 +305,7 @@ export function TruncatedText({
         className={cn('block w-full min-w-0 max-w-full truncate whitespace-nowrap', className)}
         onMouseEnter={placeTip}
         onMouseLeave={hide}
-        onFocus={placeTip}
+        onFocus={(e) => { if (isKeyboardFocus(e.target)) placeTip(); }}
         onBlur={hide}
       >
         {text}

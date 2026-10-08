@@ -14,7 +14,7 @@ function applyThemeClass(theme: ThemeMode) {
   // Prefer computed --tm-page so theme-color stays in sync with design tokens
   const pageBg =
     getComputedStyle(root).getPropertyValue('--tm-page').trim() ||
-    (theme === 'dark' ? '#0B1220' : '#F5F7F9');
+    (theme === 'dark' ? '#0B1220' : '#F4F6FA');
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', pageBg);
 }

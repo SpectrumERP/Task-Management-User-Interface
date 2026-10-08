@@ -4,8 +4,7 @@ import { formatDateOnly } from '@/lib/dateTime';
 import { Edit, FileText, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { Button } from '@/components/ui/button';
-import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
-import { Card } from '@/components/ui/card';
+import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { Combobox } from '@/components/ui/Combobox';
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -20,6 +19,7 @@ import { FieldLabel } from '@/components/ui/form-field';
 import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
+import { RowDeleteIcon, RowEditIcon } from '@/components/shared/RowIcons';
 
 export function DealSearchPage() {
   const navigate = useNavigate();
@@ -189,28 +189,24 @@ export function DealSearchPage() {
 
   return (
     <div className="page-shell">
-      <AppBreadcrumbBar
-        items={[
-          { label: 'Sales' },
-          { label: 'Sales Deals', current: true },
-        ]}
-        guideKey="deals"
-        bleed
-        data-page-tour="deals-breadcrumb"
-        actions={
+      {/* CRM page band: title + primary action, then filters */}
+      <div className="crm-band" data-page-tour="deals-breadcrumb">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h1 className="crm-page-title text-slate-50">Sales Deals - {totalItems}</h1>
+          <div className="flex items-center gap-2 shrink-0">
+          <PageGuideButton guideKey="deals" />
           <Button
             type="button"
             data-page-tour="deal-create"
             onClick={() => navigate('/sales/deals/new')}
-            className="h-9 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold gap-1.5 shadow-sm shadow-brand/20"
+            className="h-9 px-4 rounded-[7px] bg-[#1E56A0] hover:bg-[#17457F] text-white text-[13px] font-semibold gap-1.5"
           >
-            <Plus size={15} />
+            <Plus size={15} strokeWidth={2.4} />
             New Deal
           </Button>
-        }
-      />
-
-      <Card data-page-tour="deal-filters" className="shrink-0 rounded-2xl border-[var(--tm-border)] shadow-sm p-4">
+          </div>
+        </div>
+      <div data-page-tour="deal-filters">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
             <div className="space-y-0.5">
               <FieldLabel className="text-[11px] font-medium text-slate-200 normal-case ml-1">Company</FieldLabel>
@@ -221,7 +217,7 @@ export function DealSearchPage() {
               }))}
                 placeholder="Select company"
                 searchPlaceholder="Search company..."
-                className="h-11 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-9 rounded-[7px] border-[var(--tm-border)] hover:border-[#1E56A0]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#1E56A0]/20 focus:border-[#1E56A0] focus-visible:ring-2 focus-visible:ring-[#1E56A0]/20 focus-visible:border-[#1E56A0] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 
@@ -231,7 +227,7 @@ export function DealSearchPage() {
                 disabled={!filters.companyNo || isLoadingDivisions}
                 placeholder={!filters.companyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "All divisions"}
                 searchPlaceholder="Search division..."
-                className="h-11 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none"
+                className="h-9 rounded-[7px] border-[var(--tm-border)] hover:border-[#1E56A0]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#1E56A0]/20 focus:border-[#1E56A0] focus-visible:ring-2 focus-visible:ring-[#1E56A0]/20 focus-visible:border-[#1E56A0] focus-visible:ring-offset-0 focus:outline-none"
               />
             </div>
 
@@ -254,19 +250,21 @@ export function DealSearchPage() {
             </div> */}
 
             <div className="flex items-end gap-0.5">
-              <Button type="button" variant="outline" data-page-tour="deal-reset" onClick={resetFilters} className="h-11 rounded-[8px] text-xs font-medium gap-0.5 flex-1">
+              <Button type="button" variant="outline" data-page-tour="deal-reset" onClick={resetFilters} className="h-9 rounded-[7px] text-[13px] font-semibold gap-1 flex-1">
                 <RotateCcw size={14} />
                 Reset
               </Button>
-              <Button type="button" data-page-tour="deal-search-btn" onClick={applyFilters} className="h-11 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold gap-0.5 flex-1">
+              <Button type="button" data-page-tour="deal-search-btn" onClick={applyFilters} className="h-9 rounded-[7px] bg-[#1E56A0] hover:bg-[#17457F] text-white text-[13px] font-semibold gap-1 flex-1">
                 <Search size={14} />
                 Search
               </Button>
             </div>
           </div>
-        </Card>
+        </div>
+      </div>
 
-        <Card data-page-tour="deal-table" className="flex-1 min-h-0 flex flex-col rounded-2xl border-[var(--tm-border)] shadow-sm overflow-hidden">
+        <div data-page-tour="deal-table" className="crm-list-page crm-bleed-x crm-bleed-b flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="crm-pad-x flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading && deals.length === 0 ? (
             <div className="px-4 py-16 flex items-center justify-center">
               <BrandLoader size="sm" message="Loading sales deals" />
@@ -432,7 +430,7 @@ export function DealSearchPage() {
                                 onClick={() => handleEdit(deal)}
                                 className="h-8 w-8 rounded-lg text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-muted)]"
                               >
-                                <Edit size={14} />
+                                <RowEditIcon />
                               </Button>
                             </ActionTip>
                             <ActionTip label="Delete">
@@ -445,7 +443,7 @@ export function DealSearchPage() {
                                 disabled={!deal.id}
                                 className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                               >
-                                <Trash2 size={14} />
+                                <RowDeleteIcon />
                               </Button>
                             </ActionTip>
                           </div>
@@ -457,9 +455,10 @@ export function DealSearchPage() {
               }
             />
           )}
-        </Card>
+        </div>
 
         {totalItems > 0 && (
+          <div className="mt-3 shrink-0">
           <MasterPaginationBar
             totalItems={totalItems}
             startIndex={startIndex}
@@ -470,7 +469,9 @@ export function DealSearchPage() {
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
+          </div>
         )}
+        </div>
 
       <MasterDeleteDialog
         open={!!deleteTarget}

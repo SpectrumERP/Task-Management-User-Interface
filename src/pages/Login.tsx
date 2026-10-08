@@ -15,6 +15,7 @@ import { BrandLogo } from '@/components/ui/BrandLogo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { FieldErrorTip } from '@/components/ui/form-field';
 import { markOnboardingPending } from '@/components/layout/OnboardingSpotlightTour';
+import { InlineLoader } from '@/components/ui/BrandLoader';
 
 const FEATURE_ICONS = {
   boards: LayoutDashboard,
@@ -377,7 +378,7 @@ export default function Login() {
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
-                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <InlineLoader size={16} className="text-white" />
                     Signing in...
                   </span>
                 ) : (
