@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
@@ -42,39 +42,51 @@ const opencvNodeStubs = (): Plugin => {
 };
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    generateVersionFile(),
-    opencvNodeStubs(),
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "./src"),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
+    plugins: [
+      react(),
+      generateVersionFile(),
+      opencvNodeStubs(),
+    ],
+    resolve: {
+      alias: {
+        "@": path.resolve(import.meta.dirname, "./src"),
+      },
     },
-  },
-  build: {
-    // OpenCV alone is ~10MB and is lazy-loaded via CameraComp
-    chunkSizeWarningLimit: 11000,
-    rolldownOptions: {
-      output: {
-        codeSplitting: {
-          groups: [
-            {
-              name: 'opencv',
-              test: /node_modules[\\/]@techstark[\\/]opencv-js/,
-            },
-            {
-              name: 'tesseract',
-              test: /node_modules[\\/]tesseract\.js/,
-            },
-            {
-              name: 'xlsx',
-              test: /node_modules[\\/]xlsx/,
-            },
-          ],
+    server: {
+      proxy: {
+        '/api': {
+          target: env.VITE_API_BASE_URL,
+          changeOrigin: true,
         },
       },
     },
-  },
+    build: {
+      // OpenCV alone is ~10MB and is lazy-loaded via CameraComp
+      chunkSizeWarningLimit: 11000,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: 'opencv',
+                test: /node_modules[\\/]@techstark[\\/]opencv-js/,
+              },
+              {
+                name: 'tesseract',
+                test: /node_modules[\\/]tesseract\.js/,
+              },
+              {
+                name: 'xlsx',
+                test: /node_modules[\\/]xlsx/,
+              },
+            ],
+          },
+        },
+      },
+    },
+  }
 })
