@@ -178,11 +178,11 @@ export function TaskCompanyList() {
         rows={paginatedList}
         nameHeader="Task Company Name"
         columns={[
-          { header: 'Alias', sortKey: 'aliasName', render: (item) => item.aliasName || '-' },
-          { header: 'Address 1', sortKey: 'address1', render: (item) => item.address1 || '-' },
-          { header: 'City', sortKey: 'cityName', render: (item) => item.cityName || '-' },
-          { header: 'State', sortKey: 'stateName', render: (item) => item.stateName || '-' },
-          { header: 'Country', sortKey: 'countryName', render: (item) => item.countryName || '-' },
+          { header: 'Alias', sortKey: 'aliasName', render: (item) => item.aliasName || '' },
+          { header: 'Address 1', sortKey: 'address1', render: (item) => item.address1 || '' },
+          { header: 'City', sortKey: 'cityName', render: (item) => item.cityName || '' },
+          { header: 'State', sortKey: 'stateName', render: (item) => item.stateName || '' },
+          { header: 'Country', sortKey: 'countryName', render: (item) => item.countryName || '' },
         ]}
         getCode={(item) => item.code || `SYS-${item.id}`}
         getName={(item) => <span>{item.name}</span>}

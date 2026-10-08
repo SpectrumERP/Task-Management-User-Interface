@@ -152,8 +152,8 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    return formatUtcDateTime(dateString, '-');
+    if (!dateString) return '';
+    return formatUtcDateTime(dateString, '');
   };
 
   const getColStyle = (colId: string): CSSProperties => {
@@ -256,13 +256,12 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
           mobile={
             <div className="flex flex-col gap-2 p-2">
               {pageRows.map((meeting, index) => {
-                const title = meeting.meetingTitle || meeting.title || '-';
+                const title = meeting.meetingTitle || meeting.title || '';
                 const statusName = String(meeting.status?.statusName || meeting.status || 'Draft');
                 const company =
                   meeting.companyName ||
                   meeting.taskCompany?.companyName ||
-                  meeting.company?.companyName ||
-                  '-';
+                  meeting.company?.companyName || '';
                 const when = formatDate(
                   meeting.meetingStartDateTime || meeting.startDateTime || meeting.startDate || ''
                 );
@@ -355,7 +354,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         style={getColStyle('meetingTitle')}
                       >
                         <TruncatedText
-                          text={meeting.meetingTitle || meeting.title || '-'}
+                          text={meeting.meetingTitle || meeting.title || ''}
                           className="min-w-[150px] font-medium text-slate-50"
                         />
                       </td>
@@ -366,7 +365,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         style={getColStyle('category')}
                       >
                         <TruncatedText
-                          text={meeting.meetingCategoryName || meeting.category?.categoryName || '-'}
+                          text={meeting.meetingCategoryName || meeting.category?.categoryName || ''}
                           className="text-slate-300"
                         />
                       </td>
@@ -377,7 +376,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         style={getColStyle('type')}
                       >
                         <TruncatedText
-                          text={meeting.meetingTypeName || meeting.type?.typeName || '-'}
+                          text={meeting.meetingTypeName || meeting.type?.typeName || ''}
                           className="text-slate-300"
                         />
                       </td>
@@ -391,8 +390,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                           text={
                             meeting.companyName ||
                             meeting.taskCompany?.companyName ||
-                            meeting.company?.companyName ||
-                            '-'
+                            meeting.company?.companyName || ''
                           }
                           className="text-slate-300"
                         />
@@ -404,7 +402,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         style={getColStyle('location')}
                       >
                         <TruncatedText
-                          text={meeting.locationName || meeting.location?.locationName || '-'}
+                          text={meeting.locationName || meeting.location?.locationName || ''}
                           className="text-slate-300"
                         />
                       </td>
@@ -415,7 +413,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         style={getColStyle('mode')}
                       >
                         <TruncatedText
-                          text={meeting.mode || meeting.meetingMode?.meetingModeName || '-'}
+                          text={meeting.mode || meeting.meetingMode?.meetingModeName || ''}
                           className="text-slate-300"
                         />
                       </td>
@@ -463,8 +461,8 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                                       : p.printingName || p.loginId || p.participantName
                                   )
                                   .filter(Boolean)
-                                  .join(', ') || '-'
-                              : String(meeting.participants || meeting.internalUsers || '-')
+                                  .join(', ') || ''
+                              : String(meeting.participants || meeting.internalUsers || '')
                           }
                           className="text-slate-300"
                         />
@@ -482,8 +480,8 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                                   .map((d: any) => d.topic || d.discussionSummary)
                                   .filter(Boolean)
                                   .map((t: any) => `• ${t}`)
-                                  .join('\n') || '-'
-                              : meeting.discussionsMade || meeting.agenda || '-'
+                                  .join('\n') || ''
+                              : meeting.discussionsMade || meeting.agenda || ''
                           }
                           className="text-slate-300"
                         />
@@ -501,8 +499,8 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                                   .map((d: any) => d.decisionRemarks)
                                   .filter(Boolean)
                                   .map((t: any) => `• ${t}`)
-                                  .join('\n') || '-'
-                              : meeting.discussionRemarks || meeting.remarks || '-'
+                                  .join('\n') || ''
+                              : meeting.discussionRemarks || meeting.remarks || ''
                           }
                           className="text-slate-300"
                         />

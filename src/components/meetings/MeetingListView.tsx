@@ -493,7 +493,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
               mobile={
                 <div className="space-y-2.5 p-2 pb-2">
                   {sortedMeetings.map((meeting) => {
-                    const status = meeting.statusName || '—';
+                    const status = meeting.statusName || '';
                     const start = formatScheduleLine(meeting.meetingStartDateTime);
                     const canSend = isMinutesSendStatusAllowed(status);
                     const deleteGate = canDeleteMeetingNote(isDelete, status);
@@ -515,7 +515,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                               <p className="text-[11px] text-slate-500 mt-0.5 truncate">
                                 {[meeting.meetingTypeName, meeting.meetingCategoryName]
                                   .filter(Boolean)
-                                  .join(' · ') || '—'}
+                                  .join(' · ') || ''}
                               </p>
                             </div>
                             <span
@@ -716,7 +716,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                   </colgroup>
                   <tbody>
                     {sortedMeetings.map((meeting) => {
-                      const status = meeting.statusName || '—';
+                      const status = meeting.statusName || '';
                       const start = formatScheduleLine(meeting.meetingStartDateTime);
                       const end = formatScheduleLine(meeting.meetingEndDateTime);
                       const deleteGate = canDeleteMeetingNote(isDelete, status);
@@ -736,7 +736,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                           </td>
                           <td className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0">
                             <TruncatedText
-                              text={meeting.meetingTitle || '—'}
+                              text={meeting.meetingTitle || ''}
                               className="font-medium text-slate-50"
                             />
                             {lastSent ? (
@@ -747,19 +747,19 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                           </td>
                           <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                             <TruncatedText
-                              text={meeting.meetingTypeName || '—'}
+                              text={meeting.meetingTypeName || ''}
                               className="text-slate-300"
                             />
                           </td>
                           <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                             <TruncatedText
-                              text={meeting.meetingCategoryName || '—'}
+                              text={meeting.meetingCategoryName || ''}
                               className="text-slate-300"
                             />
                           </td>
                           <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                             <TruncatedText
-                              text={meeting.companyName || '—'}
+                              text={meeting.companyName || ''}
                               className="text-slate-300"
                             />
                           </td>
@@ -774,13 +774,13 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                           </td>
                           <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                             <TruncatedText
-                              text={meeting.createdBy?.printingName || meeting.createdBy?.displayName || meeting.createdByName || '—'}
+                              text={meeting.createdBy?.printingName || meeting.createdBy?.displayName || meeting.createdByName || ''}
                               className="text-slate-300"
                             />
                           </td>
                           <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                             <TruncatedText
-                              text={meeting.createdDate || meeting.createdOn ? formatUtcDateTime(meeting.createdDate || meeting.createdOn) : '—'}
+                              text={meeting.createdDate || meeting.createdOn ? formatUtcDateTime(meeting.createdDate || meeting.createdOn) : ''}
                               className="text-slate-300"
                             />
                           </td>

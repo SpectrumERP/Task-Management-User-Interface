@@ -19,16 +19,14 @@ import {
   Monitor,
   Calendar,
   CalendarDays,
-  FileText,
-  Handshake
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserType } from '@/types/enums';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
-import { CRM_SSO_ENABLED, crmHomeUrl } from '@/lib/crmSso';
-import { prerenderApp } from '@/lib/prerenderApp';
+import { CRM_SSO_ENABLED } from '@/lib/crmSso';
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
   // { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
@@ -60,9 +58,6 @@ export const menuMasterItems = [
   { icon: Calendar, label: 'Meeting Category', id: 'master-meeting-category', formNo: 1561 },
   { icon: CalendarDays, label: 'Meeting Types', id: 'master-meeting-type', formNo: 1560 }
 ];
-
-/** Inside the CRM (shared sign-in): switches back to the CRM, a separate app, so it is not a tab of this one. */
-const crmModuleItem = { icon: Handshake, label: 'CRM', id: 'crm-module' };
 
 export const bottomItems: { icon: any; label: string; id: string }[] = [];
 
@@ -490,7 +485,6 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               <>
                 {workspaceNavItems.map((item) => renderNavItem(item))}
                 {/* Back to the CRM (single sign-on) — last in Workspace, like the CRM's "Tasks" link */}
-                {CRM_SSO_ENABLED && renderNavItem(crmModuleItem, () => window.location.assign(crmHomeUrl), () => prerenderApp(crmHomeUrl))}
               </>
             ),
           },

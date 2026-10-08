@@ -285,7 +285,7 @@ export function CompanyList() {
         if (isAttachmentMode) {
           const detailNo = c.attachmentNo ?? c.businessEntityNo ?? 0;
           const beNo = c.businessEntityNo ?? 0;
-          const beName = c.businessEntityName ?? 'N/A';
+          const beName = c.businessEntityName ?? '';
           const code = c.code ?? `BE-${beNo}`;
           const status = c.status || 'Active';
           const fName = c.fileName || 'document.pdf';
@@ -310,17 +310,17 @@ export function CompanyList() {
         if (isContactMode) {
           const detailNo = c.businessEntityContactPersonDetailNo ?? c.businessEntityNo ?? 0;
           const beNo = c.businessEntityNo ?? 0;
-          const contactName = c.contactPersonName ?? 'N/A';
-          const email = c.email ?? 'N/A';
-          const department = c.department ?? 'N/A';
-          const designation = c.designation ?? 'N/A';
-          const beName = c.businessEntityName ?? 'N/A';
+          const contactName = c.contactPersonName ?? '';
+          const email = c.email ?? '';
+          const department = c.department ?? '';
+          const designation = c.designation ?? '';
+          const beName = c.businessEntityName ?? '';
           const code = c.code ?? `BE-${beNo}`;
           const cityName = c.cityName ?? '';
           const stateName = c.stateName ?? '';
           const countryName = c.countryName ?? '';
           const status = c.status || 'Active';
-          const phone = c.phoneNo || c.phone || 'N/A';
+          const phone = c.phoneNo || c.phone || '';
 
           return {
             id: detailNo.toString(),
@@ -789,7 +789,7 @@ export function CompanyList() {
                   <>
                     <div className="md:hidden flex flex-col gap-2 p-2">
                       {paginatedList.map((company: any) => {
-                        const locStr = [company.city, company.state, company.country].filter(Boolean).join(', ') || '—';
+                        const locStr = [company.city, company.state, company.country].filter(Boolean).join(', ') || '';
                         const typeStr = company.type || '';
                         return (
                           <div
@@ -931,12 +931,12 @@ export function CompanyList() {
                       </thead>
                       <tbody>
                         {paginatedList.map((company: any) => {
-                          const locStr = [company.address, company.city, company.state, company.country].filter(Boolean).join(', ') || 'N/A';
-                          const creditStr = company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit';
-                          const cityStr = company.city || 'N/A';
-                          const stateStr = company.state || 'N/A';
-                          const countryStr = company.country || 'N/A';
-                          const vatStr = company.vatGst || 'N/A';
+                          const locStr = [company.address, company.city, company.state, company.country].filter(Boolean).join(', ') || '';
+                          const creditStr = company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : '';
+                          const cityStr = company.city || '';
+                          const stateStr = company.state || '';
+                          const countryStr = company.country || '';
+                          const vatStr = company.vatGst || '';
                           const typeStr = company.type || '';
                           const nameStr = company.name || '';
                           return (
@@ -957,7 +957,7 @@ export function CompanyList() {
                                 <TruncatedText text={nameStr} className="font-medium text-slate-50" />
                               </td>
                               <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                                <TruncatedText text={company.aliasName || '—'} className="text-slate-300" />
+                                <TruncatedText text={company.aliasName || ''} className="text-slate-300" />
                               </td>
                               <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
                                 {typeStr ? (
@@ -973,7 +973,7 @@ export function CompanyList() {
                                     {typeStr}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-500">—</span>
+                                  null
                                 )}
                               </td>
                               <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
@@ -1082,20 +1082,20 @@ export function CompanyList() {
                               <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 py-1.5 border-t border-b border-[var(--tm-border)] font-medium text-slate-500">
                                 <div className="col-span-2 min-w-0">
                                   <span className="text-[8px] font-semibold text-[#0EA5E9] block mb-0.5">Primary Location</span>
-                                  <TruncatedText text={company.address || 'N/A'} className="text-slate-100 font-medium leading-snug" />
+                                  <TruncatedText text={company.address || ''} className="text-slate-100 font-medium leading-snug" />
                                 </div>
                                 <div className="min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">City & PIN Code</span>
-                                  <TruncatedText text={[company.city, company.pinCode].filter(Boolean).join(' - ') || 'N/A'} className="text-slate-200 font-medium" />
+                                  <TruncatedText text={[company.city, company.pinCode].filter(Boolean).join(' - ') || ''} className="text-slate-200 font-medium" />
                                 </div>
                                 <div className="min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">State & Country</span>
-                                  <TruncatedText text={[company.state, company.country].filter(Boolean).join(', ') || 'N/A'} className="text-slate-200 font-medium" />
+                                  <TruncatedText text={[company.state, company.country].filter(Boolean).join(', ') || ''} className="text-slate-200 font-medium" />
                                 </div>
                                 <div className="col-span-2 min-w-0">
                                   <span className="text-[8px] font-semibold text-slate-400 block mb-0.5">Credit limit & GST</span>
                                   <TruncatedText
-                                    text={`${company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : 'No Limit'}${company.vatGst ? ` | GST: ${company.vatGst}` : ''}`}
+                                    text={[company.creditLimit ? `$${company.creditLimit.toLocaleString()}` : '', company.vatGst ? `GST: ${company.vatGst}` : ''].filter(Boolean).join(' | ')}
                                     className="text-slate-200 font-medium"
                                   />
                                 </div>
@@ -1173,10 +1173,10 @@ export function CompanyList() {
                       {paginatedList.map((company: any) => {
                         const contact = company.contacts?.[0] || {};
                         const contactName = contact.contactPersonName || contact.contactName || contact.name || '';
-                        const phoneStr = contact.phoneNo || contact.phone || 'N/A';
-                        const emailStr = contact.email || 'N/A';
-                        const designationStr = contact.designation || 'N/A';
-                        const departmentStr = contact.department || 'N/A';
+                        const phoneStr = contact.phoneNo || contact.phone || '';
+                        const emailStr = contact.email || '';
+                        const designationStr = contact.designation || '';
+                        const departmentStr = contact.department || '';
                         const statusStr = contact.status || company.status || 'Active';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors">
@@ -1283,12 +1283,12 @@ export function CompanyList() {
                                       </div>
                                       <div className="flex justify-between gap-2">
                                         <span className="text-slate-400">Phone:</span>
-                                        <span className="text-slate-200 font-mono">{contact.phoneNo || contact.phone || 'N/A'}</span>
+                                        <span className="text-slate-200 font-mono">{contact.phoneNo || contact.phone || ''}</span>
                                       </div>
                                       <div className="flex justify-between gap-2 min-w-0">
                                         <span className="text-slate-400 shrink-0">Email:</span>
                                         <div className="min-w-0 max-w-[150px] overflow-hidden">
-                                          <TruncatedText text={contact.email || 'N/A'} className="text-slate-200 text-right" />
+                                          <TruncatedText text={contact.email || ''} className="text-slate-200 text-right" />
                                         </div>
                                       </div>
                                     </div>
@@ -1486,8 +1486,8 @@ export function CompanyList() {
                       {paginatedList.map((company: any) => {
                         const att = company.attachments?.[0] || {};
                         const fileName = att.fileName || att.name || '';
-                        const fileType = att.fileType || '—';
-                        const sizeStr = att.fileSize ? `${(Number(att.fileSize) / 1024).toFixed(1)} KB` : '—';
+                        const fileType = att.fileType || '';
+                        const sizeStr = att.fileSize ? `${(Number(att.fileSize) / 1024).toFixed(1)} KB` : '';
                         return (
                           <tr key={company.id} className="border-b border-[var(--tm-border)] last:border-b-0 hover:bg-[var(--tm-elevated)]/70 transition-colors group">
                             <td className="tm-col-sticky-code tm-col-primary sticky left-0 z-20 px-3 py-2.5 align-middle min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">

@@ -136,7 +136,7 @@ export function PriorityList() {
             plainText: false,
             render: (item) => (
               <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-[var(--tm-muted)] px-1.5 text-[11px] font-semibold text-slate-200 tabular-nums">
-                {item.sequence || '—'}
+                {item.sequence || ''}
               </span>
             ),
           },
@@ -161,7 +161,7 @@ export function PriorityList() {
                 }
                 title={item.reminderSummary || undefined}
               >
-                {item.reminderSummary || '—'}
+                {item.reminderSummary || ''}
               </span>
             ),
           },

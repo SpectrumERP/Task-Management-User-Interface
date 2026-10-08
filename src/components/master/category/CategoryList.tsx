@@ -122,7 +122,7 @@ export function CategoryList() {
               ].filter(Boolean);
 
               if (chips.length === 0) {
-                return <span className="text-slate-300">—</span>;
+                return null;
               }
 
               return <div className="flex flex-wrap gap-1">{chips}</div>;

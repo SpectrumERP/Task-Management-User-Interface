@@ -473,7 +473,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cn(cellOverflowClass, 'text-left')} style={{ textAlign: 'left' }}>
           <div className="flex w-full min-w-0 justify-start items-center">
             <TruncatedText
-              text={task.status || '-'}
+              text={task.status || ''}
               className={cn('tm-badge !w-fit !max-w-full text-center normal-case px-2 py-0.5 rounded-full border inline-block', getStatusPillClass(task.status, false))}
             />
           </div>
@@ -507,7 +507,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                 <TruncatedText text={task.categoryName} />
               </div>
             );
-          })() : <span className="text-slate-300">-</span>}
+          })() : null}
         </td>
       )}
 
@@ -519,7 +519,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               <TruncatedText text={task.typeName} />
             </div>
           ) : (
-            <span className="text-slate-300">-</span>
+            null
           )}
         </td>
       )}
@@ -532,7 +532,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               p => p.OperTaskPriorityNo === task.priority_No || p.Priority === task.priority
             );
             const colorCoding = priorityObj?.ColorCoding;
-            const label = task.priority || '-';
+            const label = task.priority || '';
             if (colorCoding && colorCoding !== 'none') {
               const contrastText = getContrastColor(colorCoding);
               return (
@@ -570,7 +570,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               />
             </div>
           ) : (
-            <span className="text-slate-400">-</span>
+            null
           )}
         </td>
       )}
@@ -579,7 +579,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('dueDate') && (
         <td className={cellOverflowClass}>
           <TruncatedText
-            text={task.end_date ? formatDateOnly(task.end_date) : '-'}
+            text={task.end_date ? formatDateOnly(task.end_date) : ''}
             className="text-slate-200"
           />
         </td>
@@ -589,7 +589,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('completionDate') && (
         <td className={cellOverflowClass}>
           <TruncatedText
-            text={task.completionDate ? formatDateOnly(task.completionDate) : '-'}
+            text={task.completionDate ? formatDateOnly(task.completionDate) : ''}
             className="text-slate-200"
           />
         </td>
@@ -599,7 +599,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('folder') && !isHideFolder && (
         <td className={cellOverflowClass}>
           <TruncatedText
-            text={String(task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.['Folder Name'] || task.project_No || '-')}
+            text={String(task.folderName || fillValues?.folder?.find(f => f.TaskFolderNo === task.project_No)?.['Folder Name'] || task.project_No || '')}
             className="text-slate-200"
           />
         </td>
@@ -609,7 +609,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('companyName') && (
         <td className={cellOverflowClass}>
           <TruncatedText
-            text={task.companyName || '-'}
+            text={task.companyName || ''}
             className="text-slate-200"
           />
         </td>
@@ -619,7 +619,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       {visibleColumns.has('location') && (
         <td className={cellOverflowClass}>
           <TruncatedText
-            text={task.locationName || (task.location_No ? `Loc ${task.location_No}` : '-')}
+            text={task.locationName || (task.location_No ? `Loc ${task.location_No}` : '')}
             className="text-slate-200"
           />
         </td>
@@ -642,7 +642,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               />
             </div>
           ) : (
-            <span className="text-slate-400">-</span>
+            null
           )}
         </td>
       )}
@@ -664,7 +664,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
               />
             </div>
           ) : (
-            <span className="text-slate-400">-</span>
+            null
           )}
         </td>
       )}
@@ -678,7 +678,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                 ? formatUtcDateTime(task.createdDate)
                 : task.start_date
                   ? formatUtcDateTime(task.start_date)
-                  : '-'
+                  : ''
             }
             className="text-slate-200"
           />

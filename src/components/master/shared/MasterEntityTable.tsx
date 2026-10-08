@@ -285,7 +285,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                             <div key={idx} className="min-w-0 max-w-full text-slate-400">
                               <span className="font-medium text-slate-500">{col.header}: </span>
                               <div className="inline-block min-w-0 max-w-[10rem] align-bottom">
-                                <TruncatedText text={cell || '-'} className="text-slate-300" />
+                                <TruncatedText text={cell || ''} className="text-slate-300" />
                               </div>
                             </div>
                           );
@@ -401,7 +401,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                 const createdByText = item.createdBy || 'System';
                 const createdDateText = item.createdDate
                   ? formatUtcDateTime(item.createdDate)
-                  : 'N/A';
+                  : '';
                 return (
                 <tr
                   key={item.id}
@@ -439,7 +439,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                         key={idx}
                         className={cn('px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0 overflow-hidden', col.className)}
                       >
-                        <TruncatedText text={cellText || '-'} className="text-slate-300" />
+                        <TruncatedText text={cellText || ''} className="text-slate-300" />
                       </td>
                     );
                   })}

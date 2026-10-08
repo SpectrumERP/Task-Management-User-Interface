@@ -209,11 +209,11 @@ export function ReportTable({ data }: ReportTableProps) {
       case 'title':
         return (
           <td key={colId} className={cn(tdClass, 'tm-col-primary font-medium text-slate-50 max-w-[280px] overflow-hidden')} style={widthStyle}>
-            <TruncatedText text={task.title || '-'} className="font-medium text-slate-50" />
+            <TruncatedText text={task.title || ''} className="font-medium text-slate-50" />
           </td>
         );
       case 'status': {
-        const statusName = String(task.status?.statusName || task.status || '-');
+        const statusName = String(task.status?.statusName || task.status || '');
         return (
           <td key={colId} className={tdClass} style={widthStyle}>
             <TruncatedText text={statusName} className={getStatusTextClass(statusName)} />
@@ -223,7 +223,7 @@ export function ReportTable({ data }: ReportTableProps) {
       case 'priority':
         return (
           <td key={colId} className={tdClass} style={widthStyle}>
-            <TruncatedText text={task.priority?.priorityName || '-'} className="text-slate-300" />
+            <TruncatedText text={task.priority?.priorityName || ''} className="text-slate-300" />
           </td>
         );
       case 'owner':
@@ -272,7 +272,7 @@ export function ReportTable({ data }: ReportTableProps) {
         return (
           <td key={colId} className={tdClass} style={widthStyle}>
             <TruncatedText
-              text={task.taskCompany?.taskCompanyAlias || task.taskCompany?.companyName || '-'}
+              text={task.taskCompany?.taskCompanyAlias || task.taskCompany?.companyName || ''}
               className="text-slate-300"
             />
           </td>
@@ -280,27 +280,27 @@ export function ReportTable({ data }: ReportTableProps) {
       case 'location':
         return (
           <td key={colId} className={tdClass} style={widthStyle}>
-            <TruncatedText text={task.location?.locationName || '-'} className="text-slate-300" />
+            <TruncatedText text={task.location?.locationName || ''} className="text-slate-300" />
           </td>
         );
       case 'category':
         return (
           <td key={colId} className={tdClass} style={widthStyle}>
-            <TruncatedText text={task.category?.categoryName || '-'} className="text-slate-300" />
+            <TruncatedText text={task.category?.categoryName || ''} className="text-slate-300" />
           </td>
         );
       case 'type':
         if (!isColumnAllowed('type')) return null;
         return (
           <td key={colId} className={tdClass} style={widthStyle}>
-            <TruncatedText text={task.type?.typeName || '-'} className="text-slate-300" />
+            <TruncatedText text={task.type?.typeName || ''} className="text-slate-300" />
           </td>
         );
       case 'folder':
         if (!isColumnAllowed('folder')) return null;
         return (
           <td key={colId} className={tdClass} style={widthStyle}>
-            <TruncatedText text={task.folder?.folderName || '-'} className="text-slate-300" />
+            <TruncatedText text={task.folder?.folderName || ''} className="text-slate-300" />
           </td>
         );
       case 'isPending':
@@ -331,19 +331,19 @@ export function ReportTable({ data }: ReportTableProps) {
             className={cn(tdClass, 'max-w-[220px] overflow-hidden text-ellipsis')}
             style={widthStyle}
           >
-            <TruncatedText text={task.description || '-'} className="text-slate-300" />
+            <TruncatedText text={task.description || ''} className="text-slate-300" />
           </td>
         );
       case 'roadBlock':
         return (
           <td key={colId} className={cn(tdClass, 'overflow-hidden')} style={widthStyle}>
-            <TruncatedText text={task.roadBlock || '-'} className="text-slate-300" />
+            <TruncatedText text={task.roadBlock || ''} className="text-slate-300" />
           </td>
         );
       case 'progress':
         return (
           <td key={colId} className={cn(tdClass, 'overflow-hidden')} style={widthStyle}>
-            <TruncatedText text={task.taskProgressReview || '-'} className="text-slate-300" />
+            <TruncatedText text={task.taskProgressReview || ''} className="text-slate-300" />
           </td>
         );
       case 'userRemarks':
@@ -353,7 +353,7 @@ export function ReportTable({ data }: ReportTableProps) {
             className={cn(tdClass, 'max-w-[150px] overflow-hidden text-ellipsis')}
             style={widthStyle}
           >
-            <TruncatedText text={task.completionRemark || '-'} className="text-slate-300" />
+            <TruncatedText text={task.completionRemark || ''} className="text-slate-300" />
           </td>
         );
       case 'managementRemarks':
@@ -363,7 +363,7 @@ export function ReportTable({ data }: ReportTableProps) {
             className={cn(tdClass, 'max-w-[150px] overflow-hidden text-ellipsis')}
             style={widthStyle}
           >
-            <TruncatedText text={task.managementRemark || '-'} className="text-slate-300" />
+            <TruncatedText text={task.managementRemark || ''} className="text-slate-300" />
           </td>
         );
       default:
@@ -463,11 +463,11 @@ export function ReportTable({ data }: ReportTableProps) {
           mobile={
             <div className="flex flex-col gap-2 p-2">
               {pageRows.map((task, index) => {
-                const statusName = String(task.status?.statusName || task.status || '-');
+                const statusName = String(task.status?.statusName || task.status || '');
                 const companyName =
-                  task.taskCompany?.taskCompanyAlias || task.taskCompany?.companyName || '-';
-                const ownerName = task.assignedTo?.displayName || '-';
-                const priorityName = task.priority?.priorityName || '-';
+                  task.taskCompany?.taskCompanyAlias || task.taskCompany?.companyName || '';
+                const ownerName = task.assignedTo?.displayName || '';
+                const priorityName = task.priority?.priorityName || '';
                 return (
                   <div
                     key={task.taskNo || task.operTaskNo || `${startIndex + index}`}
@@ -483,7 +483,7 @@ export function ReportTable({ data }: ReportTableProps) {
                       />
                     </div>
                     <TruncatedText
-                      text={task.title || '-'}
+                      text={task.title || ''}
                       className="mt-1 text-sm font-semibold text-slate-100"
                     />
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-slate-400">

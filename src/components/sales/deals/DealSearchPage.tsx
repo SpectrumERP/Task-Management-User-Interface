@@ -297,21 +297,21 @@ export function DealSearchPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <TruncatedText
-                            text={String(deal.companyName || deal.companyNo || '-')}
+                            text={String(deal.companyName || deal.companyNo || '')}
                             className="text-sm font-semibold text-slate-100"
                           />
                           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-400">
                             <span className="min-w-0 truncate">
                               <span className="text-slate-500">Division: </span>
-                              {String(deal.divisionName || deal.divisionNo || 'N/A')}
+                              {String(deal.divisionName || deal.divisionNo || '')}
                             </span>
                             <span className="min-w-0 truncate">
                               <span className="text-slate-500">Doc: </span>
-                              {String(deal.documentNoYearly || '-')}
+                              {String(deal.documentNoYearly || '')}
                             </span>
                             <span className="min-w-0 truncate">
                               <span className="text-slate-500">Date: </span>
-                              {deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
+                              {deal.documentDate ? formatDateOnly(deal.documentDate) : ''}
                             </span>
                           </div>
                           {deal.description ? (
@@ -399,23 +399,23 @@ export function DealSearchPage() {
                     {sortedDeals.map((deal) => (
                       <tr key={deal.id || `${deal.companyNo}-${deal.documentNoYearly}`} className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50 transition-colors">
                         <td className="tm-col-sticky-code tm-col-primary sticky left-0 z-20 px-3 py-2.5 font-medium text-slate-50 max-w-[10rem] min-w-0 overflow-hidden border-r border-[var(--tm-border)] shadow-[4px_0_10px_-4px_rgba(0,0,0,0.18)]">
-                          <TruncatedText text={String(deal.companyName || deal.companyNo || '-')} className="font-medium text-slate-50" />
+                          <TruncatedText text={String(deal.companyName || deal.companyNo || '')} className="font-medium text-slate-50" />
                         </td>
                         <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 max-w-[9rem] min-w-0 overflow-hidden">
-                          <TruncatedText text={String(deal.divisionName || deal.divisionNo || 'N/A')} className="text-slate-300" />
+                          <TruncatedText text={String(deal.divisionName || deal.divisionNo || '')} className="text-slate-300" />
                         </td>
                         <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 max-w-[9rem] min-w-0 overflow-hidden">
-                          <TruncatedText text={String(deal.documentNoYearly || '-')} className="text-slate-300" />
+                          <TruncatedText text={String(deal.documentNoYearly || '')} className="text-slate-300" />
                         </td>
                         <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 max-w-[8rem] min-w-0 overflow-hidden">
                           <TruncatedText
-                            text={deal.documentDate ? formatDateOnly(deal.documentDate) : 'N/A'}
+                            text={deal.documentDate ? formatDateOnly(deal.documentDate) : ''}
                             className="text-slate-300"
                           />
                         </td>
                         <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 max-w-[320px] min-w-0 overflow-hidden">
                           <TruncatedText
-                            text={deal.description || '-'}
+                            text={deal.description || ''}
                             className="text-slate-300"
                           />
                         </td>
