@@ -893,16 +893,16 @@ export function TaskFilter({
 
               {/* Create Task Button from Dashboard */}
               {onCreateTask && (
-                <ActionTip label="Create task">
+                <ActionTip label="Add">
                   <Button
                     type="button"
                     onClick={onCreateTask}
                     data-page-tour="task-create"
-                    aria-label="Create task"
+                    aria-label="Add"
                     className="h-9 px-3 sm:px-3.5 rounded-lg bg-[#1E56A0] hover:bg-[#17457F] font-semibold text-[11px] normal-case text-white shadow-[0_6px_16px_-6px_rgba(30,86,160,0.45)] hover:shadow-[0_8px_18px_-6px_rgba(30,86,160,0.5)] transition-all duration-200 gap-1 shrink-0 flex-1 sm:flex-initial justify-center"
                   >
                     <Plus size={15} strokeWidth={2.4} />
-                    <span className="hidden sm:inline">Create</span>
+                    <span className="hidden sm:inline">Add</span>
                   </Button>
                 </ActionTip>
               )}

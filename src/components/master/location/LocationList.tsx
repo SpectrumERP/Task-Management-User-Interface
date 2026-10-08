@@ -100,11 +100,6 @@ export function LocationList() {
     setDeleteTargetLabel(null);
   };
 
-  const formatAddress = (item: LocationMaster) => {
-    const parts = [item.address1, item.cityNo].filter(Boolean);
-    return parts.length > 0 ? parts.join(', ') : '—';
-  };
-
   return (
     <div className="page-shell">
       <MasterListHeader
@@ -119,28 +114,6 @@ export function LocationList() {
       <MasterEntityTable
         rows={paginatedList}
         nameHeader="Location Name"
-        columns={[
-          {
-            header: 'Type',
-            width: 100,
-            render: (item) => item.type || '—',
-          },
-          {
-            header: 'Incharge',
-            width: 140,
-            render: (item) => item.inchargeNo || 'No Lead',
-          },
-          {
-            header: 'Address',
-            width: 220,
-            render: (item) => formatAddress(item),
-          },
-          {
-            header: 'Region',
-            width: 100,
-            render: (item) => item.locationRegion || 'Central',
-          },
-        ]}
         getCode={(item) => item.code || `SYS-${item.id}`}
         getName={(item) => item.name}
         onEdit={(item) => navigate(toMasterEditPath('location', item.id))}

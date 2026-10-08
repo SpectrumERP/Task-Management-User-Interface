@@ -202,7 +202,7 @@ export function DealSearchPage() {
             className="h-9 px-4 rounded-[7px] bg-[#1E56A0] hover:bg-[#17457F] text-white text-[13px] font-semibold gap-1.5"
           >
             <Plus size={15} strokeWidth={2.4} />
-            New Deal
+            Add
           </Button>
           </div>
         </div>

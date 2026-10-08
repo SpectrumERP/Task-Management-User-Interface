@@ -31,7 +31,7 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
       S('task-search', 'Search tasks', 'Type to filter instantly by title, code, or person. Clear with the × in the search box.'),
       S('task-filters', 'Filters', 'Opens the filter drawer — priority, task code, category, assign to, and due date. Use Reset to clear all filters.'),
       S('task-view-mode', 'View mode', 'Switch between List, Board, or Calendar from this control.'),
-      S('task-create', 'Create task', 'Opens the form to create a new task.', 'left'),
+      S('task-create', 'Add', 'Use Add to open the form for a new task.', 'left'),
       S('task-status-pills', 'Status filters', 'Tap status pills (Assigned, In-Progress, Hold, Complete, Cancelled) to filter. Tap again to clear. Multiple pills work together.'),
       S('task-table', 'Task list', 'Browse tasks here. Click the code for a quick preview, or edit from the row actions. Sort by clicking column headers.', 'top'),
     ],
@@ -43,7 +43,7 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
       S('task-search', 'Search', 'Type to filter Deal Monitor tasks by title, code, or person.'),
       S('task-filters', 'Filters', 'Opens priority, task code, assign to, and due-date filters. Category is fixed for this view.'),
       S('task-view-mode', 'View mode', 'Switch between List, Board, and Calendar.'),
-      S('task-create', 'Create', 'Create a new Deal Monitor task.', 'left'),
+      S('task-create', 'Add', 'Use Add to create a new Deal Monitor task.', 'left'),
       S('task-status-pills', 'Status pills', 'Filter quickly with status pills. Tap again to clear.'),
       S('task-table', 'Results', 'Click a row to open the full task page. Sort with column headers.', 'top'),
     ],
@@ -52,7 +52,7 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
   meetings: {
     title: 'Meetings Guide',
     steps: [
-      S('meeting-create', 'New meeting', '+ New Meeting opens the create form.', 'left'),
+      S('meeting-create', 'Add', 'Use Add to open the new meeting note form.', 'left'),
       S('meeting-title-filter', 'Search', 'Filter meetings by typing in the title search box.'),
       S('meeting-status-filter', 'Status pills', 'Quickly narrow by Initial, Release, or Authorized.'),
       S('meeting-date-filter', 'Date range', 'Shortlist meetings by schedule dates.'),
@@ -112,7 +112,7 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
     steps: [
       S('master-breadcrumb', 'Breadcrumb', 'Masters → current entity — navigation remains clear here.'),
       S('master-search', 'Search', 'Filter records by name or code.'),
-      S('master-add', 'Add record', 'Use Add Record to create a new master record.', 'left'),
+      S('master-add', 'Add', 'Use Add to create a new master record.', 'left'),
       S('master-table', 'Records table', 'Code, name, actions — edit or delete here.', 'top'),
       S('master-pagination', 'Pagination', 'Navigate the list using page size and next/prev.'),
       S('page-guide-btn', 'Page Guide', 'Start the tour for this screen again from ?.', 'left'),
@@ -124,7 +124,7 @@ export const PAGE_GUIDES: Record<string, PageGuideDef> = {
     steps: [
       S('master-search', 'Search', 'Search by business entity name or code.'),
       S('company-view-mode', 'View mode', 'Switch between Entity, Contact, and Attachment views.'),
-      S('master-add', 'Add record', 'Create a new company or business entity.', 'left'),
+      S('master-add', 'Add', 'Create a new company or business entity.', 'left'),
       S('master-table', 'Records', 'List rows — edit or open details.', 'top'),
       S('master-pagination', 'Pagination', 'Browse large lists across pages.'),
     ],

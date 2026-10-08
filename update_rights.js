@@ -6,7 +6,7 @@ let content = fs.readFileSync(masterManagerPath, 'utf8');
 
 // Wrap "Add Record" button
 content = content.replace(
-  /(\{\/\* Add Record Button \*\/\}\s*)<Button\s+onClick=\{handleAddClick\}([\s\S]*?)<\/Button>/g,
+  /(\{\/\* Add Button \*\/\}\s*)<Button\s+onClick=\{handleAddClick\}([\s\S]*?)<\/Button>/g,
   '$1{isSave && (\n        <Button onClick={handleAddClick}$2</Button>\n      )}'
 );
 

@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterListPath, MasterType } from './masterRoutes';
+import { masterNavLabel } from './masterLabels';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 
 interface MasterFormShellProps {
@@ -108,8 +109,8 @@ export function MasterFormShell({
       <AppBreadcrumbBar
         className="sticky top-0 z-30"
         items={[
-          { label: title, href: toMasterListPath(type) },
-          { label: editingId ? `Edit ${title}` : `New ${title}`, current: true },
+          { label: masterNavLabel(type, title), href: toMasterListPath(type) },
+          { label: editingId ? 'Edit' : 'New', current: true },
         ]}
         guideKey={type === 'company' ? 'company-form' : 'master-form'}
         actions={actions}

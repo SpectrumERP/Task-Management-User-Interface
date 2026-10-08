@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X, Plus } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
+import { masterNavLabel, masterTypeFromPath } from './masterLabels';
 
 interface MasterListHeaderProps {
   title: string;
@@ -29,12 +31,15 @@ export function MasterListHeader({
   guideKey,
   count,
 }: MasterListHeaderProps) {
+  const masterType = masterTypeFromPath(useLocation().pathname);
+  const crumbLabel = masterType ? masterNavLabel(masterType, title) : title;
+
   return (
     <>
       <AppBreadcrumbBar
         items={[
           { label: 'Masters' },
-          { label: title, current: true },
+          { label: crumbLabel, current: true },
         ]}
         guideKey={guideKey}
         bleed
@@ -57,7 +62,7 @@ export function MasterListHeader({
               className="h-9 px-4 rounded-[7px] bg-[#1E56A0] hover:bg-[#17457F] text-white font-semibold text-[13px] gap-1.5 shrink-0"
             >
               <Plus size={15} strokeWidth={2.4} />
-              Add Record
+              Add
             </Button>
           ) : null}
         </div>

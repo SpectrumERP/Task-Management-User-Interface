@@ -76,6 +76,15 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
       },
     });
 
+    // An HTML page (e.g. a dev server's index.html fallback when /api is not proxied) is never API data;
+    // fail loudly instead of handing callers `null` as if the call succeeded.
+    if (response.ok && (response.headers.get('content-type') ?? '').includes('text/html')) {
+      const message = `API returned a web page instead of data (${endpoint}). Check the API URL / dev proxy.`;
+      console.error(message, url);
+      toast.error('API returned a web page instead of data. Check the API URL / dev proxy.', { id: 'api-html-response' });
+      throw new ApiError(response.status, { message });
+    }
+
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {

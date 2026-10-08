@@ -351,7 +351,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                   className="h-10 px-5 rounded-[8px] bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-semibold shadow-sm shadow-brand/20"
                 >
                   <Plus className="w-4 h-4 mr-1.5" strokeWidth={2.4} />
-                  New Meeting Note
+                  Add
                 </Button>
               ) : null
             }
@@ -377,8 +377,8 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
               className="h-9 px-4 rounded-[7px] bg-[#1E56A0] hover:bg-[#17457F] text-white text-[13px] font-semibold gap-1.5"
             >
               <Plus size={15} strokeWidth={2.4} />
-              <span className="hidden sm:inline">New Meeting</span>
-              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">Add</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           ) : null}
           </div>
