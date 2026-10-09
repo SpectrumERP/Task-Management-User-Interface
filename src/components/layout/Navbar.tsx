@@ -42,7 +42,6 @@ import { IN_SPECTRUM } from '@/lib/crmSso';
 import { ModuleLauncher } from '@/components/layout/ModuleLauncher';
 // Header copy of the client logo, trimmed to its edges so it reads at header size.
 import SteelMontLogo from '@/assets/SteelMontLogoHeader.png';
-import { ShellHomeButton, ShellHomeLink } from '@/components/layout/ShellHomeLink';
 
 /** CRM sidebar toggle glyph (panel with a left rail). */
 function SidebarToggleIcon({ size = 16 }: { size?: number }) {
@@ -201,19 +200,15 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
               )}
             >
               <div className="w-56 shrink-0 px-3">
-                <ShellHomeLink className="block w-full min-w-0">
                   <img
                   src={`${import.meta.env.BASE_URL}spectrum-erp-logo-on-dark.png`}
                   alt="Spectrum ERP"
                   className="block h-9 w-full min-w-0 object-contain object-left"
                 />
-                </ShellHomeLink>
               </div>
             </div>
             <div className={cn("flex min-w-0 items-center pl-4", isSidebarOpen && "lg:hidden")}>
-              <ShellHomeLink className="inline-flex min-w-0">
                 <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="block h-8 w-auto max-w-[10.5rem] object-contain object-left" />
-              </ShellHomeLink>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -309,9 +304,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
             )}
             {/* Inside Spectrum ERP the shell's app launcher sits before the logo, as in the shell. */}
             {IN_SPECTRUM && <div data-spectrum-launcher-slot="flat" className="flex shrink-0 items-center" />}
-            <ShellHomeLink className="inline-flex min-w-0">
               <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="block h-8 w-auto max-w-[10.5rem] object-contain object-left" />
-            </ShellHomeLink>
           </div>
 
           {/* Desktop brand rail — CRM layout:
@@ -326,13 +319,11 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
             {!isSidebarCollapsed && (
               <div className="flex w-full min-w-0 items-center gap-2.5">
                 {IN_SPECTRUM && <div data-spectrum-launcher-slot="dark" className="flex shrink-0 items-center" />}
-                <ShellHomeLink className="block min-w-0 flex-1">
                   <img
                     src={`${import.meta.env.BASE_URL}spectrum-erp-logo-on-dark.png`}
                     alt="Spectrum ERP"
                     className={cn("block w-full min-w-0 object-contain object-left", IN_SPECTRUM ? "h-8" : "h-9")}
                   />
-                </ShellHomeLink>
               </div>
             )}
 
@@ -377,9 +368,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
           {isSidebarCollapsed && (
             <div className="hidden lg:flex items-center gap-3 pl-4 min-w-0">
               {IN_SPECTRUM && <div data-spectrum-launcher-slot="flat" className="flex shrink-0 items-center" />}
-              <ShellHomeLink className="inline-flex min-w-0">
                 <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="block h-8 w-auto max-w-[10.5rem] object-contain object-left" />
-              </ShellHomeLink>
             </div>
           )}
           {/* Spectrum ERP │ client (SteelMont) logo — vertical line, then the client logo; desktop/tablet only */}
@@ -470,13 +459,6 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
             )}
 
             <ClipboardDrawer />
-
-            {/* Inside Spectrum ERP: straight back to its main dashboard (as the shell's header). */}
-            {IN_SPECTRUM && (
-              <ActionTip label="Main dashboard">
-                <ShellHomeButton className="h-8 w-8 shrink-0 rounded-lg border border-[#CBD5E1] bg-[#eef3fc] text-[#1E56A0] hover:border-[#1E56A0] active:scale-95 transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E56A0]" />
-              </ActionTip>
-            )}
 
             <ActionTip label={isFocusMode ? 'Exit full screen' : 'Full screen'}>
               <Button
