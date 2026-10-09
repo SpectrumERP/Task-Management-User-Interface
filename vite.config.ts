@@ -78,6 +78,8 @@ function spectrumFederation(): Plugin[] {
     shared: {
       react: { singleton: true },
       'react-dom': { singleton: true },
+      'react/jsx-runtime': { singleton: true },
+      'react/jsx-dev-runtime': { singleton: true },
     },
     dts: false,
   }) as Plugin[];

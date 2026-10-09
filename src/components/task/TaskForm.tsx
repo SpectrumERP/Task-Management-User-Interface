@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- TaskForm maps loosely-typed API payloads throughout */
+import { AttachedFileRow } from '@/components/shared/AttachedFileRow';
+import { AttachmentDropZone } from '@/components/shared/AttachmentDropZone';
 import { useForm, Controller, useFieldArray, FormProvider, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Info, Users, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, FileText, Paperclip, UploadCloud, Trash, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, Bell, FileEdit, Layers, type LucideIcon } from 'lucide-react';
+import { Info, Users, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, FileText, Paperclip, UploadCloud, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, Bell, Layers, type LucideIcon } from 'lucide-react';
 import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
@@ -2950,48 +2952,16 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           )}
 
           {!hiddenSections.includes('attachments') && (
-            <FormSection title="Attachments" icon={Paperclip} tourId="task-form-attachments">
+            <FormSection title="Documents / Attachments" icon={Paperclip} tourId="task-form-attachments">
               <div className="space-y-3">
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const files = e.dataTransfer?.files;
-                    if (files?.length) processFiles(Array.from(files));
-                  }}
-                  className="group relative flex items-center gap-3.5 rounded-[8px] border border-dashed border-[#0EA5E9]/25 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] px-3.5 py-3 cursor-pointer transition-all hover:border-[#0EA5E9]/45 hover:shadow-[0_8px_24px_-16px_rgba(14,165,233,0.35)]"
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept={UPLOAD_ACCEPT_ATTR}
-                    onChange={handleFileSelection}
-                    className="hidden"
-                  />
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-surface)] text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12 shadow-sm group-hover:bg-[var(--tm-tint)] transition-colors">
-                    <UploadCloud size={18} strokeWidth={1.75} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-semibold text-slate-100 leading-tight">
-                      Drop files here or{' '}
-                      <span className="text-[#0EA5E9] underline decoration-[#0EA5E9]/30 underline-offset-2">
-                        browse
-                      </span>
-                    </p>
-                    <p className="mt-0.5 text-[10px] font-medium text-slate-400">
-                      {ALLOWED_UPLOAD_HELPER_TEXT}
-                    </p>
-                  </div>
-                  <span className="hidden sm:inline-flex h-8 items-center rounded-[7px] bg-[#0EA5E9] px-3 text-[11px] font-semibold text-white shadow-sm shadow-[#0EA5E9]/20 group-hover:bg-[#0284C7] transition-colors">
-                    Upload
-                  </span>
-                </div>
+                {/* Same upload area as the CRM's lead / opportunity forms. */}
+                <AttachmentDropZone
+                  inputRef={fileInputRef}
+                  onFiles={processFiles}
+                  onInputChange={handleFileSelection}
+                  accept={UPLOAD_ACCEPT_ATTR}
+                  helperText={ALLOWED_UPLOAD_HELPER_TEXT}
+                />
 
                 {uploadingFiles.length > 0 && (
                   <div className="space-y-1.5">
@@ -3081,95 +3051,30 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   const attachments = form.watch('attachments') || [];
                   if (attachments.length === 0) return null;
 
+                  // Uploaded files, as in the CRM's attachment list.
                   return (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 px-0.5">
-                        <h4 className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          Attached
-                        </h4>
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--tm-tint)] px-1.5 text-[10px] font-semibold text-[#0EA5E9] tabular-nums">
-                          {attachments.length}
-                        </span>
-                      </div>
-                      <div className="rounded-[8px] border border-[var(--tm-border)]/80 overflow-hidden divide-y divide-[var(--tm-border)] bg-[var(--tm-surface)] shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-                        {attachments.map((file: any) => {
-                          const isPdf = (file.name || '').toLowerCase().endsWith('.pdf');
-                          return (
-                            <motion.div
-                              key={file.id}
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="group/file flex items-center gap-2.5 px-2.5 py-2 hover:bg-[var(--tm-elevated)] transition-colors"
-                            >
-                              <span
-                                className={cn(
-                                  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] ring-1',
-                                  isPdf
-                                    ? 'bg-[var(--tm-tint)] text-[#0EA5E9] ring-[#0EA5E9]/12'
-                                    : 'bg-violet-500/15 text-violet-400 ring-violet-500/30'
-                                )}
-                              >
-                                {isPdf ? <FileText size={14} /> : <Image size={14} />}
-                              </span>
-                              {attachmentToRename?.id === file.id ? (
-                                <InlineAttachmentRename
-                                  originalName={file.name || 'document'}
-                                  saving={isRenamingAttachment}
-                                  onSave={confirmRenameAttachment}
-                                  onCancel={() => setAttachmentToRename(null)}
-                                />
-                              ) : (
-                                <>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <p className="text-[11px] font-semibold text-slate-100 truncate leading-tight">
-                                        {file.name}
-                                      </p>
-                                      {file.size ? (
-                                        <span className="shrink-0 text-[10px] font-medium text-slate-400 tabular-nums">
-                                          {formatFileSize(file.size)}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        attachmentService.downloadAttachment(file.id, file.name)
-                                      }
-                                      className="mt-0.5 text-[10px] font-semibold text-[#0EA5E9] hover:underline underline-offset-2"
-                                    >
-                                      View
-                                    </button>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="ghost"
-                                      title="Rename"
-                                      aria-label="Rename attachment"
-                                      disabled={attachmentToRename != null}
-                                      onClick={() => setAttachmentToRename({ id: file.id, name: file.name })}
-                                      className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-sky-400 hover:bg-sky-500/10 transition-all"
-                                    >
-                                      <FileEdit size={12} />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={() => handleRemoveAttachment(file.id, file.name)}
-                                      className="h-7 w-7 shrink-0 rounded-[7px] text-slate-400 opacity-70 group-hover/file:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                    >
-                                      <Trash size={12} />
-                                    </Button>
-                                  </div>
-                                </>
-                              )}
-                            </motion.div>
-                          );
-                        })}
-                      </div>
+                    <div className="space-y-2">
+                      {attachments.map((file: any) => (
+                        <AttachedFileRow
+                          key={file.id}
+                          name={file.name}
+                          sizeLabel={file.size ? formatFileSize(file.size) : undefined}
+                          onView={() => attachmentService.downloadAttachment(file.id, file.name)}
+                          onRename={() => setAttachmentToRename({ id: file.id, name: file.name })}
+                          onDelete={() => handleRemoveAttachment(file.id, file.name)}
+                          renameDisabled={attachmentToRename != null}
+                          renaming={
+                            attachmentToRename?.id === file.id ? (
+                              <InlineAttachmentRename
+                                originalName={file.name || 'document'}
+                                saving={isRenamingAttachment}
+                                onSave={confirmRenameAttachment}
+                                onCancel={() => setAttachmentToRename(null)}
+                              />
+                            ) : undefined
+                          }
+                        />
+                      ))}
                     </div>
                   );
                 })()}

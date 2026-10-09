@@ -27,6 +27,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { UserType } from '@/types/enums';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { CRM_SSO_ENABLED } from '@/lib/crmSso';
+import { ShellHomeLink } from '@/components/layout/ShellHomeLink';
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
   // { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
@@ -257,8 +258,9 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             ? "justify-center mx-auto h-9 w-9 rounded-lg p-0 text-white hover:bg-white/10"
             : cn(
               "gap-2 rounded-lg px-2 py-1.5 min-h-9 text-[13px]",
+              // Where the user is, as in the Spectrum ERP shell: lit row, bold, red tile and a red bar.
               isActive
-                ? "text-white font-semibold hover:bg-white/[0.08]"
+                ? "bg-white/[0.16] text-white font-semibold shadow-[inset_3px_0_0_#e05252]"
                 : "font-medium text-white/90 hover:bg-white/[0.08] hover:text-white"
             )
         )}
@@ -298,22 +300,24 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
 
     return (
       <div key={item.id} className="relative flex items-stretch min-h-[32px]">
-        {/* Vertical rail */}
-        <span
-          className={cn(
-            "absolute left-[7px] w-px bg-white/20",
-            isLast ? "top-0 h-1/2" : "inset-y-0"
-          )}
-        />
-        {/* Elbow */}
-        <span className="absolute left-[7px] top-1/2 w-2.5 h-px bg-white/20" />
+        {isLast ? (
+          // Last row: the rail ends in a rounded elbow into it, as in the Spectrum ERP shell.
+          <span className="absolute left-[7px] top-0 h-[calc(50%+1px)] w-2.5 rounded-bl-lg border-b border-l border-white/20" />
+        ) : (
+          <>
+            {/* Vertical rail */}
+            <span className="absolute inset-y-0 left-[7px] w-px bg-white/20" />
+            {/* Elbow */}
+            <span className="absolute left-[7px] top-1/2 w-2.5 h-px bg-white/20" />
+          </>
+        )}
 
         <button
           onClick={() => onTabChange(item.id)}
           className={cn(
             "relative ml-4 w-[calc(100%-1rem)] flex items-center gap-2 pl-1.5 pr-2 py-1 rounded-md text-left text-[12.5px] transition-colors duration-150 group",
             isActive
-              ? "bg-white/[0.12] text-white font-semibold"
+              ? "bg-white/[0.16] text-white font-semibold shadow-[inset_3px_0_0_#e05252]"
               : "font-medium text-white/75 hover:bg-white/[0.08] hover:text-white"
           )}
         >
@@ -360,14 +364,16 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
           data-tour={dataTour}
           className={cn(
             "relative w-full flex items-center gap-2 px-2 py-1.5 min-h-9 rounded-lg cursor-pointer transition-colors duration-150 text-left text-[13px] group hover:bg-white/[0.08]",
-            showActive ? "text-white font-semibold" : "font-medium text-white/90 hover:text-white"
+            showActive ? "text-white font-semibold" : "font-medium text-white/90 hover:text-white",
+            // Holds the open form: lit as part of the active section (the red tile marks the form).
+            isSectionActive && "bg-white/[0.09]"
           )}
         >
           <span
             aria-hidden
             className={cn(
               "grid h-7 w-7 shrink-0 place-items-center rounded-md",
-              isSectionActive ? "bg-[#C4161C]" : "bg-white/15"
+              isSectionActive ? "bg-white/[0.26]" : "bg-white/15"
             )}
           >
             <Icon size={15} strokeWidth={showActive ? 2.15 : 1.9} className="shrink-0 text-white" />
@@ -447,11 +453,13 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               isCollapsed ? "w-14 h-11 justify-center" : "min-w-0 flex-1"
             )}
           >
-            <img
+            <ShellHomeLink className="block w-full min-w-0">
+              <img
               src={`${import.meta.env.BASE_URL}spectrum-erp-logo-on-dark.png`}
               alt="Spectrum ERP"
               className={cn("block h-9 w-full object-contain", isCollapsed ? "object-center" : "object-left")}
             />
+            </ShellHomeLink>
           </div>
           {onClose && (
             <Button

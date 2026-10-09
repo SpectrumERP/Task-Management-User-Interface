@@ -259,7 +259,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
         <p className="truncate">
           © {new Date().getFullYear()} Force Intellect Pvt. Ltd. All rights reserved.
         </p>
-        <p className="hidden shrink-0 font-semibold sm:block">Spectrum ERP</p>
+        <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="hidden h-5 w-auto shrink-0 sm:block" />
       </footer>
 
       <OnboardingSpotlightTour />
