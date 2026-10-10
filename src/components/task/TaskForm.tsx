@@ -890,9 +890,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     name: "execution_logs"
   });
 
-  const [collabSortCol, setCollabSortCol] = useState<string | null>('userName');
+  const [collabSortCol, setCollabSortCol] = useState<string | null>(null);
   const [collabSortDesc, setCollabSortDesc] = useState(false);
-  const [informSortCol, setInformSortCol] = useState<string | null>('userName');
+  const [informSortCol, setInformSortCol] = useState<string | null>(null);
   const [informSortDesc, setInformSortDesc] = useState(false);
 
   const sortPeopleRows = useCallback(
@@ -2548,10 +2548,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     ) : (
                       <FieldControl error={hasCollabError ? (collabError as any).message : undefined}>
                         <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                          <table className="tm-data-table w-full text-left border-collapse min-w-[600px]">
+                          <table className="tm-data-table w-full text-left border-collapse min-w-[420px] [--tm-col-id-width:2.75rem]">
                             <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                               <tr>
-                                <th className="tm-col-sr px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-left">#</th>
+                                <th className="tm-col-sr px-2 py-2.5 border-r border-[var(--tm-border)] text-center">#</th>
                                 <th className="px-3 py-2.5 w-[30%] border-r border-[var(--tm-border)]">
                                   <SortableHeader
                                     label="User Name"
@@ -2561,7 +2561,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     onSort={handleCollabSort}
                                   />
                                 </th>
-                                <th className="px-3 py-2.5 w-[30%] border-r border-[var(--tm-border)]">
+                                <th className="px-3 py-2.5 w-[20%] border-r border-[var(--tm-border)]">
                                   <SortableHeader
                                     label="Display Name"
                                     sortKey="displayName"
@@ -2579,7 +2579,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     onSort={handleCollabSort}
                                   />
                                 </th>
-                                <th className="px-1 py-2.5 w-12 text-center"></th>
+                                <th className="px-1 py-2.5 w-10 text-center"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--tm-border)]">
@@ -2593,7 +2593,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 if (field.isFromTeam) {
                                   return (
                                     <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors">
-                                      <td className="px-3 py-2.5 text-center">
+                                      <td className="px-2 py-2.5 text-center">
                                         <input type="hidden" {...form.register(`collaborators.${index}.userName`)} />
                                         <input type="hidden" {...form.register(`collaborators.${index}.displayName`)} />
                                         <input type="hidden" {...form.register(`collaborators.${index}.email`)} />
@@ -2611,14 +2611,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                         </div>
                                       </td>
                                       <td className="px-3 py-2.5 text-slate-500 break-all">{email || '—'}</td>
-                                      <td className="px-3 py-2.5 text-center text-slate-500">-</td>
+                                      <td className="px-1 py-2.5 text-center text-slate-500">-</td>
                                     </tr>
                                   );
                                 }
 
                                 return (
                                   <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors group">
-                                    <td className="px-3 py-2.5 text-center align-top pt-3">
+                                    <td className="px-2 py-2.5 text-center align-top pt-3">
                                       <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                         {index + 1}
                                       </span>
@@ -2675,7 +2675,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                         className="h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
                                       />
                                     </td>
-                                    <td className="px-3 py-2.5 text-center align-top pt-3">
+                                    <td className="px-1 py-2.5 text-center align-top pt-3">
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -2780,10 +2780,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     ) : (
                       <FieldControl error={hasInformError ? (informError as any).message : undefined}>
                         <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                          <table className="tm-data-table w-full text-left border-collapse min-w-[600px]">
+                          <table className="tm-data-table w-full text-left border-collapse min-w-[420px] [--tm-col-id-width:2.75rem]">
                             <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
                               <tr>
-                                <th className="tm-col-sr px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-left">#</th>
+                                <th className="tm-col-sr px-2 py-2.5 border-r border-[var(--tm-border)] text-center">#</th>
                                 <th className="px-3 py-2.5 w-[30%] border-r border-[var(--tm-border)]">
                                   <SortableHeader
                                     label="User Name"
@@ -2811,7 +2811,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     onSort={handleInformSort}
                                   />
                                 </th>
-                                <th className="px-1 py-2.5 w-12 text-center"></th>
+                                <th className="px-1 py-2.5 w-10 text-center"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--tm-border)]">
@@ -2825,7 +2825,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                 if (field.isFromTeam) {
                                   return (
                                     <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors">
-                                      <td className="px-3 py-2.5 text-center">
+                                      <td className="px-2 py-2.5 text-center">
                                         <input type="hidden" {...form.register(`informed_to.${index}.userName`)} />
                                         <input type="hidden" {...form.register(`informed_to.${index}.displayName`)} />
                                         <input type="hidden" {...form.register(`informed_to.${index}.email`)} />
@@ -2843,14 +2843,14 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                         </div>
                                       </td>
                                       <td className="px-3 py-2.5 text-slate-500 break-all">{email || '—'}</td>
-                                      <td className="px-3 py-2.5 text-center text-slate-500">-</td>
+                                      <td className="px-1 py-2.5 text-center text-slate-500">-</td>
                                     </tr>
                                   );
                                 }
 
                                 return (
                                   <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors group">
-                                    <td className="px-3 py-2.5 text-center align-top pt-3">
+                                    <td className="px-2 py-2.5 text-center align-top pt-3">
                                       <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                         {index + 1}
                                       </span>
@@ -2907,7 +2907,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                         className="h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
                                       />
                                     </td>
-                                    <td className="px-3 py-2.5 text-center align-top pt-3">
+                                    <td className="px-1 py-2.5 text-center align-top pt-3">
                                       <button
                                         type="button"
                                         onClick={() => {
