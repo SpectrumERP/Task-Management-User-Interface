@@ -302,8 +302,12 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
                 </Button>
               </ActionTip>
             )}
-            {/* Inside Spectrum ERP the shell's app launcher sits before the logo, as in the shell. */}
-            {IN_SPECTRUM && <div data-spectrum-launcher-slot="flat" className="flex shrink-0 items-center" />}
+            {/* The app launcher sits before the logo: inside Spectrum ERP the shell's, standalone ours. */}
+            {IN_SPECTRUM ? (
+              <div data-spectrum-launcher-slot="flat" className="flex shrink-0 items-center" />
+            ) : (
+              <div className="flex shrink-0 items-center"><ModuleLauncher /></div>
+            )}
               <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="block h-8 w-auto max-w-[10.5rem] object-contain object-left" />
           </div>
 
@@ -318,11 +322,15 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
           >
             {!isSidebarCollapsed && (
               <div className="flex w-full min-w-0 items-center gap-2.5">
-                {IN_SPECTRUM && <div data-spectrum-launcher-slot="dark" className="flex shrink-0 items-center" />}
+                {IN_SPECTRUM ? (
+                  <div data-spectrum-launcher-slot="dark" className="flex shrink-0 items-center" />
+                ) : (
+                  <div className="flex shrink-0 items-center"><ModuleLauncher tone="dark" /></div>
+                )}
                   <img
                     src={`${import.meta.env.BASE_URL}spectrum-erp-logo-on-dark.png`}
                     alt="Spectrum ERP"
-                    className={cn("block w-full min-w-0 object-contain object-left", IN_SPECTRUM ? "h-8" : "h-9")}
+                    className="block h-8 w-full min-w-0 object-contain object-left"
                   />
               </div>
             )}
@@ -367,7 +375,11 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
           )}
           {isSidebarCollapsed && (
             <div className="hidden lg:flex items-center gap-3 pl-4 min-w-0">
-              {IN_SPECTRUM && <div data-spectrum-launcher-slot="flat" className="flex shrink-0 items-center" />}
+              {IN_SPECTRUM ? (
+                <div data-spectrum-launcher-slot="flat" className="flex shrink-0 items-center" />
+              ) : (
+                <div className="flex shrink-0 items-center"><ModuleLauncher /></div>
+              )}
                 <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="block h-8 w-auto max-w-[10.5rem] object-contain object-left" />
             </div>
           )}
@@ -378,12 +390,6 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
               <img src={SteelMontLogo} alt="SteelMont" className="client-logo block h-8 w-auto object-contain" />
             </span>
           </div>
-          {/* Spectrum ERP module launcher — after the sidebar toggle / logo, as in the CRM (standalone only) */}
-          {!IN_SPECTRUM && (
-            <div className="flex items-center pl-2 lg:pl-3 shrink-0">
-              <ModuleLauncher />
-            </div>
-          )}
           <div className="flex flex-1 items-center justify-end gap-1.5 lg:gap-2 min-w-0 px-4 sm:px-5">
             {!isHideFolder && (
               <DropdownMenu>

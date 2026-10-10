@@ -95,7 +95,8 @@ function WaffleIcon() {
   )
 }
 
-export function ModuleLauncher() {
+/** `tone="dark"`: on the blue left rail, before the logo (as in the Spectrum ERP shell). */
+export function ModuleLauncher({ tone = 'light' }: { tone?: 'light' | 'dark' } = {}) {
   const activeModule = 'task'
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -172,8 +173,12 @@ export function ModuleLauncher() {
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={open ? panelId : undefined}
-          className={`flex h-8 w-8 items-center justify-center rounded-lg border text-[#1E56A0] dark:text-[#4f86d1] transition-[background-color,border-color,transform] duration-200 ease-out active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E56A0] ${
-            open ? 'border-[#1E56A0] bg-[#eef3fc] dark:bg-[#1E56A0]/20' : 'border-[#CBD5E1] bg-[#eef3fc] hover:border-[#1E56A0] dark:border-[var(--tm-border)] dark:bg-[#1E56A0]/20'
+          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-[background-color,border-color,transform] duration-200 ease-out active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 ${
+            tone === 'dark'
+              ? `text-white focus-visible:outline-white ${open ? 'border-white/40 bg-white/20' : 'border-white/15 bg-white/10 hover:border-white/30 hover:bg-white/20'}`
+              : `text-[#1E56A0] dark:text-[#4f86d1] focus-visible:outline-[#1E56A0] ${
+                  open ? 'border-[#1E56A0] bg-[#eef3fc] dark:bg-[#1E56A0]/20' : 'border-[#CBD5E1] bg-[#eef3fc] hover:border-[#1E56A0] dark:border-[var(--tm-border)] dark:bg-[#1E56A0]/20'
+                }`
           }`}
         >
           <WaffleIcon />
