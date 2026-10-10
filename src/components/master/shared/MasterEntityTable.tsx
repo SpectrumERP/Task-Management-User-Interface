@@ -52,7 +52,7 @@ interface MasterEntityTableProps<T extends { id: string; code?: string; createdB
   /** When true, skips outer card chrome (use inside a parent section with pagination). */
   embedded?: boolean;
   footer?: React.ReactNode;
-  /** Initial sort column (default: name). */
+  /** Initial sort column (default: none — original order). */
   defaultSortKey?: string | null;
   /**
    * When true, render getName() as React (color chips / badges).
@@ -105,7 +105,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
   getDeleteLabel,
   embedded = false,
   footer,
-  defaultSortKey = 'code',
+  defaultSortKey = null,
   nameAsRich = false,
 }: MasterEntityTableProps<T>) {
   const shellClass = embedded

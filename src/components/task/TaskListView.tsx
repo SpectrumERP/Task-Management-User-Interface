@@ -229,7 +229,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   const { sortCol, sortDesc, handleSort, sortedRows: sortedTasks } = useTableSort(
     tasks,
     getTaskSortValue,
-    { defaultKey: 'code', defaultDesc: false }
+    { defaultKey: null, defaultDesc: false }
   );
 
   const handleResizeStart = (e: React.MouseEvent, colKey: string) => {

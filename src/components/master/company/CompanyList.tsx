@@ -585,7 +585,7 @@ export function CompanyList() {
     startIndex,
     endIndex,
   } = usePagedTableSort(filteredList, getCompanySortValue, {
-    defaultKey: 'code',
+    defaultKey: null,
     defaultDesc: false,
     page: currentPage,
     pageSize: itemsPerPage,

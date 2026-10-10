@@ -3,51 +3,11 @@ import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-const DONE_KEY = 'tm-onboarding-spotlight-done';
-const PENDING_KEY = 'tm-pending-onboarding';
-const FORCE_KEY = 'tm-force-onboarding';
+const START_EVENT = 'tm-start-onboarding';
 
-export function markOnboardingPending() {
-  try {
-    // Login ke baad tour queue — pehle se DONE ho to skip
-    if (localStorage.getItem(DONE_KEY) === '1') return;
-    sessionStorage.setItem(PENDING_KEY, '1');
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Help (?) se dubara tour chalane ke liye */
+/** Tour sirf Help (?) button click pe chalta hai — kabhi auto-start nahi */
 export function forceStartOnboardingTour() {
-  try {
-    localStorage.removeItem(DONE_KEY);
-    sessionStorage.setItem(FORCE_KEY, '1');
-    sessionStorage.setItem(PENDING_KEY, '1');
-    window.dispatchEvent(new Event('tm-start-onboarding'));
-  } catch {
-    /* ignore */
-  }
-}
-
-export function shouldStartOnboardingTour() {
-  try {
-    if (sessionStorage.getItem(FORCE_KEY) === '1') return true;
-    if (localStorage.getItem(DONE_KEY) === '1') return false;
-    // Pending after login, OR first-ever visit (no done flag)
-    return sessionStorage.getItem(PENDING_KEY) === '1' || localStorage.getItem(DONE_KEY) !== '1';
-  } catch {
-    return true;
-  }
-}
-
-function markOnboardingDone() {
-  try {
-    localStorage.setItem(DONE_KEY, '1');
-    sessionStorage.removeItem(PENDING_KEY);
-    sessionStorage.removeItem(FORCE_KEY);
-  } catch {
-    /* ignore */
-  }
+  window.dispatchEvent(new Event(START_EVENT));
 }
 
 type TourStep = {
@@ -181,11 +141,7 @@ function findNextStepIndex(fromIndex: number): number {
   return -1;
 }
 
-interface OnboardingSpotlightTourProps {
-  startDelayMs?: number;
-}
-
-export function OnboardingSpotlightTour({ startDelayMs = 900 }: OnboardingSpotlightTourProps) {
+export function OnboardingSpotlightTour() {
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -193,7 +149,6 @@ export function OnboardingSpotlightTour({ startDelayMs = 900 }: OnboardingSpotli
   const retryRef = useRef(0);
 
   const finish = useCallback(() => {
-    markOnboardingDone();
     setActive(false);
     setPulse(false);
     setRect(null);
@@ -213,27 +168,27 @@ export function OnboardingSpotlightTour({ startDelayMs = 900 }: OnboardingSpotli
   }, []);
 
   useEffect(() => {
+    let t: number | undefined;
     const tryStart = () => {
-      if (!shouldStartOnboardingTour()) return;
       if (beginTour()) return;
-      // Keep trying while layout boots (sidebar / rights load)
+      // Keep trying while layout settles (dropdowns close / sidebar renders)
       if (retryRef.current < 20) {
         retryRef.current += 1;
-        window.setTimeout(tryStart, 400);
+        t = window.setTimeout(tryStart, 400);
       }
     };
 
-    const t = window.setTimeout(tryStart, startDelayMs);
-    const onForce = () => {
+    const onStart = () => {
+      window.clearTimeout(t);
       retryRef.current = 0;
-      window.setTimeout(tryStart, 100);
+      t = window.setTimeout(tryStart, 100);
     };
-    window.addEventListener('tm-start-onboarding', onForce);
+    window.addEventListener(START_EVENT, onStart);
     return () => {
       window.clearTimeout(t);
-      window.removeEventListener('tm-start-onboarding', onForce);
+      window.removeEventListener(START_EVENT, onStart);
     };
-  }, [startDelayMs, beginTour]);
+  }, [beginTour]);
 
   const step = STEPS[stepIndex];
 

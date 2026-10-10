@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark" data-brand-name="SteelMont" data-theme="dark">
+<html lang="en" data-brand-name="SteelMont" data-theme="light">
 
 <head>
   <meta charset="UTF-8" />
@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0B1220" />
+  <meta name="theme-color" content="#F4F6FA" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -25,7 +25,7 @@
       try {
 
         var t = localStorage.getItem('steelmont-theme');
-        if (t !== 'light' && t !== 'dark') t = 'dark';
+        if (t !== 'light' && t !== 'dark') t = 'light';
         var r = document.documentElement;
         r.classList.toggle('dark', t === 'dark');
         r.style.colorScheme = t;
