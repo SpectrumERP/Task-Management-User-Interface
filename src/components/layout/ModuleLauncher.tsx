@@ -58,8 +58,8 @@ const MODULES: ErpModule[] = [
     label: 'CRM',
     description: 'Leads, opportunities, contacts',
     color: '#0e7490',
-    // Inside Spectrum ERP the CRM opens on its Sales Dashboard (the Dashboard tile is the shell's home).
-    to: IN_SPECTRUM ? crmHomeUrl : `${crmHomeUrl}leads`,
+    // The CRM opens on its first page, the Sales Dashboard (inside Spectrum ERP too).
+    to: crmHomeUrl,
     external: true,
     icon: (
       <svg {...glyph}>
