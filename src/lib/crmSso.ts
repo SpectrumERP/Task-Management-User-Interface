@@ -25,9 +25,6 @@ const LOOP_WINDOW_MS = 10_000;
  */
 export const CRM_SSO_ENABLED = true;
 
-/** The Spectrum ERP shell, whose login is used when this app runs on its own. */
-const SPECTRUM_URL = String(import.meta.env.VITE_SPECTRUM_URL || 'http://localhost:5173').replace(/\/+$/, '');
-
 /** The CRM's root path: this app's base without its trailing `/task`. */
 const CRM_ROOT = ROUTER_BASENAME.replace(/\/task$/, '');
 
@@ -168,9 +165,10 @@ export function onCrmSessionEnd(listener: () => void): () => void {
 
 /** `returnTo` is a path inside this app (e.g. `/task/12`); the CRM login sends the user back to it. */
 export function crmLoginUrl(returnTo?: string): string {
-  // On its own the app is on another origin, which the shell does not return to.
-  if (!IN_SPECTRUM) return `${SPECTRUM_URL}/login`;
-  return returnTo ? `/login?next=${encodeURIComponent(withBase(returnTo))}` : '/login';
+  // In the integrated deployment Task is served under /task on the CRM's origin,
+  // so use that origin's login instead of a localhost development URL.
+  const login = IN_SPECTRUM ? '/login' : `${CRM_ROOT}/login`;
+  return returnTo ? `${login}?next=${encodeURIComponent(withBase(returnTo))}` : login;
 }
 
 /**

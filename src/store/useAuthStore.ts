@@ -187,6 +187,19 @@ async function adoptCrmSession(set: SetState, get: () => AuthState) {
 // Signed out (or expired) in a CRM tab: this app's session ended with it.
 if (CRM_SSO_ENABLED) {
   onCrmSessionEnd(() => {
-    if (useAuthStore.getState().isAuthenticated) useAuthStore.setState({ isSessionTimeoutOpen: true });
+    if (!useAuthStore.getState().isAuthenticated) return;
+
+    // A logout in the CRM ends the shared session for every app. Drop Task's local copy too;
+    // otherwise its in-memory Zustand token keeps protected pages usable until a reload.
+    void authService.clearSession();
+    useAuthStore.setState({
+      user: null,
+      company: null,
+      token: null,
+      isAuthenticated: false,
+      isSessionTimeoutOpen: false,
+      accessibleForms: null,
+      formRights: null,
+    });
   });
 }
