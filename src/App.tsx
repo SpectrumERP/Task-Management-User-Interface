@@ -46,6 +46,11 @@ import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
 import { exportReportToExcel } from '@/utils/exportToExcel';
 import { ROUTER_BASENAME, publicUrl } from '@/lib/basePath';
 
+/** Match the CRM: show the session prompt 15 seconds before the JWT expires. */
+const SESSION_EXPIRY_SKEW_MS = 15_000;
+const SESSION_EXPIRY_CHECK_MS = 60_000;
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+
 function Dashboard() {
   const { isSave } = useFormRights(1547);
   const location = useLocation();
@@ -361,22 +366,45 @@ function Dashboard() {
 }
 
 function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
-  const { isSessionTimeoutOpen, logout } = useAuthStore();
+  const { isSessionTimeoutOpen, isAuthenticated, token, logout } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
-    // Check every 10 seconds in the background for active token expiration
-    const intervalId = setInterval(() => {
-      const { token, isAuthenticated, isSessionTimeoutOpen } = useAuthStore.getState();
-      if (isAuthenticated && token && !isSessionTimeoutOpen) {
-        if (authService.isTokenExpired(token)) {
-          useAuthStore.setState({ isSessionTimeoutOpen: true });
-        }
-      }
-    }, 10000);
+    if (!isAuthenticated || !token) return;
 
-    return () => clearInterval(intervalId);
-  }, []);
+    let timeoutId: number | undefined;
+    const checkExpiry = () => {
+      window.clearTimeout(timeoutId);
+      const { token, isAuthenticated, isSessionTimeoutOpen } = useAuthStore.getState();
+      if (!isAuthenticated || !token || isSessionTimeoutOpen) return;
+
+      const expiresAt = authService.getTokenExpiry(token);
+      if (expiresAt === null || Date.now() >= expiresAt - SESSION_EXPIRY_SKEW_MS) {
+        useAuthStore.setState({ isSessionTimeoutOpen: true });
+        return;
+      }
+
+      timeoutId = window.setTimeout(
+        checkExpiry,
+        Math.min(expiresAt - SESSION_EXPIRY_SKEW_MS - Date.now(), MAX_TIMEOUT_MS),
+      );
+    };
+
+    checkExpiry();
+    const intervalId = window.setInterval(checkExpiry, SESSION_EXPIRY_CHECK_MS);
+    const onWake = () => {
+      if (document.visibilityState === 'visible') checkExpiry();
+    };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('focus', onWake);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onWake);
+      window.removeEventListener('focus', onWake);
+    };
+  }, [isAuthenticated, token]);
 
   return (
     <>
@@ -391,7 +419,7 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
               Session Expired
             </DialogTitle>
             <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
-              Your session has timed out. Please log in again to continue.
+              Your session has expired for your security. Please sign in again to continue.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 flex items-center justify-center">
@@ -404,7 +432,7 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
               }}
               className="w-full rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white shadow-lg shadow-red-600/20 text-xs h-9 transition-all"
             >
-              OK
+              Sign in again
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -56,12 +56,20 @@ export const authService = {
     return null;
   },
 
-  isTokenExpired(token: string): boolean {
+  getTokenExpiry(token: string): number | null {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.exp * 1000 < Date.now();
+      const encodedPayload = token.split('.')[1];
+      if (!encodedPayload) return null;
+      const normalized = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(normalized)) as { exp?: number };
+      return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
     } catch {
-      return true;
+      return null;
     }
+  },
+
+  isTokenExpired(token: string): boolean {
+    const expiresAt = this.getTokenExpiry(token);
+    return expiresAt === null || expiresAt <= Date.now();
   }
 };
