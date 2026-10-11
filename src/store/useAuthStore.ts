@@ -36,7 +36,6 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isSessionTimeoutOpen: boolean;
   login: (loginId: string, password: string) => Promise<boolean>;
   /** Inside the CRM this also signs out of the CRM and opens its login (`returnTo`: come back here after). */
   logout: (options?: { returnTo?: string }) => Promise<void>;
@@ -55,7 +54,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   isAuthenticated: false,
   isLoading: true,
-  isSessionTimeoutOpen: false,
   accessibleForms: null,
   formRights: null,
 
@@ -187,8 +185,8 @@ async function adoptCrmSession(set: SetState, get: () => AuthState) {
 // Signed out (or expired) in a CRM tab: this app's session ended with it.
 if (CRM_SSO_ENABLED) {
   onCrmSessionEnd(() => {
-    // Show the existing timeout prompt for sign-outs from CRM or another tab.
-    // The prompt's OK action clears Task's local session and redirects to CRM login.
-    if (useAuthStore.getState().isAuthenticated) useAuthStore.setState({ isSessionTimeoutOpen: true });
+    if (useAuthStore.getState().isAuthenticated) {
+      void useAuthStore.getState().logout({ returnTo: `${window.location.pathname}${window.location.search}` });
+    }
   });
 }

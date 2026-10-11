@@ -10,6 +10,12 @@ interface ImportMetaEnv {
   readonly VITE_TASK_ROUTE_BASE?: string;
   /** Spectrum ERP shell, whose login is used when this app runs on its own. */
   readonly VITE_SPECTRUM_URL?: string;
+  /** CRM sign-in URL for standalone or cross-origin Task deployments; defaults to this origin's /login. */
+  readonly VITE_CRM_LOGIN_URL?: string;
+  /** Public base URL of this Task app, used as the post-login return URL when hosted separately. */
+  readonly VITE_TASK_PUBLIC_URL?: string;
+  /** Must match CRM VITE_COOKIE_DOMAIN when sharing session cookies across same-site subdomains. */
+  readonly VITE_CRM_COOKIE_DOMAIN?: string;
   readonly VITE_BRAND_NAME?: string;
   readonly VITE_BRAND_PRODUCT_NAME?: string;
   readonly VITE_BRAND_LOGO_URL?: string;

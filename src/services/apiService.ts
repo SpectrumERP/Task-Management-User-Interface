@@ -91,7 +91,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
     if (!response.ok) {
       if (response.status === 401) {
-        useAuthStore.setState({ isSessionTimeoutOpen: true });
+        void useAuthStore.getState().logout({ returnTo: `${window.location.pathname}${window.location.search}` });
       } else {
         const errorMessage = getErrorMessage(data, response.status);
         toast.error(errorMessage);

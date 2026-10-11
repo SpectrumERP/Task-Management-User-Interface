@@ -94,7 +94,9 @@ function readCookie(name: string): string | null {
 }
 
 function expireCookie(name: string) {
-  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Strict`;
+  const domain = String(import.meta.env.VITE_CRM_COOKIE_DOMAIN ?? '').trim();
+  const sharedDomain = domain ? `; Domain=${domain}` : '';
+  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Strict${sharedDomain}`;
 }
 
 async function readVault<T>(name: string): Promise<T | null> {
@@ -156,19 +158,49 @@ export function endCrmSession() {
 
 /** Runs when the CRM signs out or its session expires in another tab. */
 export function onCrmSessionEnd(listener: () => void): () => void {
+  let active = true;
+  let ended = false;
+  let sawSession = false;
+  const notify = () => {
+    if (!active || ended) return;
+    ended = true;
+    listener();
+  };
   const handler = (event: MessageEvent<{ type?: string }>) => {
-    if (event.data?.type === 'logout' || event.data?.type === 'expired') listener();
+    if (event.data?.type === 'logout' || event.data?.type === 'expired') notify();
   };
   channel?.addEventListener('message', handler);
-  return () => channel?.removeEventListener('message', handler);
+  // BroadcastChannel is origin-scoped. Poll the shared cookie too so same-site
+  // sibling subdomains notice a CRM logout/expiry even though they cannot share the channel.
+  const checkSharedSession = async () => {
+    if (!active || ended) return;
+    if (await readCrmSession()) sawSession = true;
+    else if (sawSession) notify();
+  };
+  void checkSharedSession();
+  const intervalId = window.setInterval(() => void checkSharedSession(), 5_000);
+  return () => {
+    active = false;
+    window.clearInterval(intervalId);
+    channel?.removeEventListener('message', handler);
+  };
 }
 
 /** `returnTo` is a path inside this app (e.g. `/task/12`); the CRM login sends the user back to it. */
 export function crmLoginUrl(returnTo?: string): string {
-  // In the integrated deployment Task is served under /task on the CRM's origin,
-  // so use that origin's login instead of a localhost development URL.
-  const login = IN_SPECTRUM ? '/login' : `${CRM_ROOT}/login`;
-  return returnTo ? `${login}?next=${encodeURIComponent(withBase(returnTo))}` : login;
+  // Explicit URL supports independently hosted micro-frontends. With no override,
+  // resolve the CRM login on this app's current origin (monorepo/same-origin deploy).
+  const configuredLogin = String(import.meta.env.VITE_CRM_LOGIN_URL ?? '').trim();
+  const login = configuredLogin || `${CRM_ROOT}/login`;
+  const url = new URL(login, window.location.origin);
+  if (returnTo) {
+    const taskPublicUrl = String(import.meta.env.VITE_TASK_PUBLIC_URL ?? '').trim();
+    const returnUrl = taskPublicUrl
+      ? new URL(withBase(returnTo), taskPublicUrl.endsWith('/') ? taskPublicUrl : `${taskPublicUrl}/`)
+      : new URL(withBase(returnTo), window.location.origin);
+    url.searchParams.set('next', returnUrl.toString());
+  }
+  return configuredLogin || returnTo ? url.toString() : login;
 }
 
 /**

@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Board } from '@/components/kanban/Board';
 import { Button } from '@/components/ui/button';
-import { Clock, Download, Plus } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import TaskDetail from '@/pages/TaskDetail';
 import MeetingNotesPage from '@/pages/MeetingNotesPage';
 import ReportPage from '@/pages/ReportPage';
@@ -17,14 +17,6 @@ import { CrmLoginRedirect } from '@/components/auth/CrmLoginRedirect';
 import { NotificationsProvider } from '@/context/NotificationsContext';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authService } from '@/services/authService';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { TaskFilter } from '@/components/task/TaskFilter';
 import { TaskListView } from '@/components/task/TaskListView';
 import { useTaskStore, type FilterParams } from '@/store/useTaskStore';
@@ -46,9 +38,6 @@ import { RouteErrorFallback } from '@/components/ui/RouteErrorFallback';
 import { exportReportToExcel } from '@/utils/exportToExcel';
 import { ROUTER_BASENAME, publicUrl } from '@/lib/basePath';
 
-/** Match the CRM: show the session prompt 15 seconds before the JWT expires. */
-const SESSION_EXPIRY_SKEW_MS = 15_000;
-const SESSION_EXPIRY_CHECK_MS = 60_000;
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 function Dashboard() {
@@ -366,7 +355,7 @@ function Dashboard() {
 }
 
 function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
-  const { isSessionTimeoutOpen, isAuthenticated, token, logout } = useAuthStore();
+  const { isAuthenticated, token, logout } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
@@ -375,23 +364,27 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
     let timeoutId: number | undefined;
     const checkExpiry = () => {
       window.clearTimeout(timeoutId);
-      const { token, isAuthenticated, isSessionTimeoutOpen } = useAuthStore.getState();
-      if (!isAuthenticated || !token || isSessionTimeoutOpen) return;
+      const state = useAuthStore.getState();
+      const currentToken = state.token;
+      if (!state.isAuthenticated || !currentToken) return;
 
-      const expiresAt = authService.getTokenExpiry(token);
-      if (expiresAt === null || Date.now() >= expiresAt - SESSION_EXPIRY_SKEW_MS) {
-        useAuthStore.setState({ isSessionTimeoutOpen: true });
+      const expiresAt = authService.getTokenExpiry(currentToken);
+      if (expiresAt === null) {
+        void logout({ returnTo: `${location.pathname}${location.search}` });
         return;
       }
 
-      timeoutId = window.setTimeout(
-        checkExpiry,
-        Math.min(expiresAt - SESSION_EXPIRY_SKEW_MS - Date.now(), MAX_TIMEOUT_MS),
-      );
+      const remainingMs = expiresAt - Date.now();
+      if (remainingMs <= 0) {
+        // A JWT cannot be used past exp: clear the shared session and return to CRM sign-in.
+        void logout({ returnTo: `${location.pathname}${location.search}` });
+        return;
+      }
+
+      timeoutId = window.setTimeout(checkExpiry, Math.min(remainingMs, MAX_TIMEOUT_MS));
     };
 
     checkExpiry();
-    const intervalId = window.setInterval(checkExpiry, SESSION_EXPIRY_CHECK_MS);
     const onWake = () => {
       if (document.visibilityState === 'visible') checkExpiry();
     };
@@ -400,45 +393,12 @@ function SessionTimeoutGuard({ children }: { children: React.ReactNode }) {
 
     return () => {
       window.clearTimeout(timeoutId);
-      window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onWake);
       window.removeEventListener('focus', onWake);
     };
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, logout, location.pathname, location.search]);
 
-  return (
-    <>
-      {children}
-      <Dialog open={isSessionTimeoutOpen} onOpenChange={() => { }}>
-        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 border-[var(--tm-border)] shadow-2xl [&>button]:hidden">
-          <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/30">
-              <Clock className="h-6 w-6 text-red-400 animate-pulse" />
-            </div>
-            <DialogTitle className="text-center text-lg font-black text-slate-50 leading-tight">
-              Session Expired
-            </DialogTitle>
-            <DialogDescription className="text-center text-slate-300 font-medium text-xs leading-normal">
-              Your session has expired for your security. Please sign in again to continue.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 flex items-center justify-center">
-            <Button
-              type="button"
-              onClick={async () => {
-                useAuthStore.setState({ isSessionTimeoutOpen: false });
-                // Opens the Spectrum ERP login, which brings the user back to this page.
-                await logout({ returnTo: `${location.pathname}${location.search}` });
-              }}
-              className="w-full rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white shadow-lg shadow-red-600/20 text-xs h-9 transition-all"
-            >
-              Sign in again
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+  return <>{children}</>;
 }
 
 function MasterPageRoute() {
