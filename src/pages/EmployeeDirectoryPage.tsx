@@ -8,7 +8,7 @@ import { MasterPaginationBar } from '@/components/master/shared/MasterPagination
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { compareSortValues, useTableSort } from '@/components/shared/useTableSort';
 import { EmployeeListView } from '@/components/employee/EmployeeListView';
-import { EmployeeSummaryCards } from '@/components/employee/EmployeeSummaryCards';
+// import { EmployeeSummaryCards } from '@/components/employee/EmployeeSummaryCards';
 import { EmployeeDetailsDrawer } from '@/components/employee/EmployeeDetailsDrawer';
 import { EmployeeFilterDrawer } from '@/components/employee/EmployeeFilterDrawer';
 import { employeeService } from '@/services/employeeService';
@@ -76,7 +76,7 @@ export default function EmployeeDirectoryPage() {
   const requestKey = JSON.stringify([pageNo, pageSize, keyword, companyNo ?? null, reloadNonce]);
   const [result, setResult] = useState<{ key: string; page: EmployeePage | null } | null>(null);
   /** Unfiltered directory size, for the summary card (taken from a load with no search / filter). */
-  const [directoryTotal, setDirectoryTotal] = useState<number | null>(null);
+  // const [directoryTotal, setDirectoryTotal] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +85,7 @@ export default function EmployeeDirectoryPage() {
       .then((page) => {
         if (cancelled) return;
         setResult({ key: requestKey, page });
-        if (!keyword && !companyNo) setDirectoryTotal(page.totalRecords);
+        // if (!keyword && !companyNo) setDirectoryTotal(page.totalRecords);
       })
       .catch((err) => {
         if (cancelled) return;
