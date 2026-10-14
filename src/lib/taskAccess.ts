@@ -6,6 +6,8 @@ type TaskOwnerLike = {
   owner_user_No?: number | string | null;
   owner?: { id?: number | string | null } | null;
   assignedTo?: { id?: number | string | null } | null;
+  isEditable?: boolean | null;
+  IsEditable?: boolean | null;
 } | null | undefined;
 
 type TaskOriginatorLike = {
@@ -16,11 +18,33 @@ type TaskOriginatorLike = {
 } | null | undefined;
 
 export function isAdminUser(user: AuthUserLike): boolean {
-  return Number(user?.UserType ?? user?.userType) === UserType.admin;
+  const val =
+    user?.UserType ??
+    user?.userType ??
+    user?.role ??
+    (user as any)?.userTypeName ??
+    (user as any)?.UserTypeName ??
+    (user as any)?.user_type;
+  if (typeof val === 'string') {
+    if (val.toLowerCase().includes('admin')) return true;
+    if (val.toLowerCase().includes('general')) return false;
+  }
+  return Number(val) === UserType.admin;
 }
 
 export function isGeneralUser(user: AuthUserLike): boolean {
-  return Number(user?.UserType ?? user?.userType) === UserType.General;
+  const val =
+    user?.UserType ??
+    user?.userType ??
+    user?.role ??
+    (user as any)?.userTypeName ??
+    (user as any)?.UserTypeName ??
+    (user as any)?.user_type;
+  if (typeof val === 'string') {
+    if (val.toLowerCase().includes('general')) return true;
+    if (val.toLowerCase().includes('admin')) return false;
+  }
+  return Number(val) === UserType.General;
 }
 
 export function getCurrentLoginNo(user: AuthUserLike): number | null {
@@ -76,11 +100,25 @@ export function canUserChangeTaskAssignee(
   return loginNo === originatorNo;
 }
 
+export function parseBoolean(val: unknown): boolean | undefined {
+  if (val === undefined || val === null) return undefined;
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'number') return val !== 0;
+  if (typeof val === 'string') {
+    const s = val.trim().toLowerCase();
+    if (s === 'false' || s === '0' || s === 'no') return false;
+    if (s === 'true' || s === '1' || s === 'yes') return true;
+  }
+  return Boolean(val);
+}
+
 /**
  * Edit rules:
- * - Admin (+ update right): can edit any task
- * - General (+ update right): can edit only tasks assigned to them
- * - Parent / other tasks for General: view only
+ * - If isEditable is explicitly false from the API: CANNOT edit (overrides any role)
+ * - If isEditable is explicitly true from the API: CAN edit
+ * - If isEditable is not provided:
+ *   - Admin (+ update right): can edit any task
+ *   - General (+ update right): can edit only tasks assigned to them
  */
 export function canUserEditTask(
   user: AuthUserLike,
@@ -88,15 +126,36 @@ export function canUserEditTask(
   hasUpdateRight: boolean
 ): boolean {
   if (!hasUpdateRight) return false;
+
+  const isEditable = parseBoolean(task?.isEditable ?? (task as any)?.IsEditable);
+  if (isEditable === false) {
+    return false;
+  }
+  if (isEditable === true) {
+    return true;
+  }
+
   if (isAdminUser(user)) return true;
-  if (isGeneralUser(user)) return isTaskAssignedToUser(user, task);
-  // Unknown role: fall back to form right only
+  if (isGeneralUser(user)) {
+    return isTaskAssignedToUser(user, task);
+  }
   return true;
 }
 
 export function isTaskViewOnlyForUser(user: AuthUserLike, task: TaskOwnerLike): boolean {
   if (!task) return false;
+
+  const isEditable = parseBoolean(task?.isEditable ?? (task as any)?.IsEditable);
+  if (isEditable === false) {
+    return true;
+  }
+  if (isEditable === true) {
+    return false;
+  }
+
   if (isAdminUser(user)) return false;
-  if (isGeneralUser(user)) return !isTaskAssignedToUser(user, task);
+  if (isGeneralUser(user)) {
+    return !isTaskAssignedToUser(user, task);
+  }
   return false;
 }

@@ -4,6 +4,7 @@ import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { isAllFilterSentinel, parseNumericStatusIds, parseStatusPillToken, statusMatchesPill, taskMatchesStatusIds } from '@/lib/taskStatusGroups';
+import { parseBoolean } from '@/lib/taskAccess';
 
 export interface FilterParams {
   operTaskNo?: number;
@@ -28,6 +29,7 @@ export interface FilterParams {
   toCreatedDate?: string;
   pageSize?: number;
   pageNo?: number;
+  isGroupView?: boolean;
 }
 
 export interface TaskFillValues {
@@ -52,6 +54,8 @@ interface TaskState {
   tasksForStatusCounts: Task[];
   searchKeyword: string;
   setSearchKeyword: (keyword: string) => void;
+  isGroupView: boolean;
+  setIsGroupView: (isGroup: boolean) => void;
   isLoading: boolean;
   fetchError: string | null;
   clearFetchError: () => void;
@@ -171,6 +175,7 @@ const nestOrphanSubtasksUnderParents = (tasks: Task[]): Task[] => {
         tags: [],
         originator_user_No: 0,
         owner_user_No: 0, // not assigned to current user → view-only
+        isEditable: false,
         parent_task_No: undefined,
         location_No: t.location_No ?? 0,
         company: t.company,
@@ -220,6 +225,31 @@ const nestOrphanSubtasksUnderParents = (tasks: Task[]): Task[] => {
   return result;
 };
 
+/**
+ * When single task (flat list) view is selected (IsGroupView=false),
+ * unnest any child tasks so each task appears as its own standalone row.
+ */
+const flattenTaskTree = (tasks: Task[]): Task[] => {
+  const result: Task[] = [];
+  const seen = new Set<number>();
+  const traverse = (t: Task) => {
+    if (!seen.has(t.taskNo)) {
+      seen.add(t.taskNo);
+      const { subTasks, ...rest } = t;
+      result.push({ ...rest, subTasks: [] });
+      if (subTasks && subTasks.length > 0) {
+        for (const st of subTasks) {
+          traverse(st);
+        }
+      }
+    }
+  };
+  for (const t of tasks) {
+    traverse(t);
+  }
+  return result;
+};
+
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   allTasks: [],
@@ -235,6 +265,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }
     const filtered = filterTasksByKeyword(all, kw, fillValues);
     set({ searchKeyword: keyword, tasks: filtered });
+  },
+  isGroupView: (() => {
+    const saved = localStorage.getItem('glacier_task_is_group_view');
+    return saved !== null ? saved === 'true' : true;
+  })(),
+  setIsGroupView: (isGroup: boolean) => {
+    localStorage.setItem('glacier_task_is_group_view', String(isGroup));
+    set({ isGroupView: isGroup });
   },
   isLoading: false,
   fetchError: null,
@@ -301,13 +339,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         finalFolderNo = (activeFolder as any).taskFolderNo || activeFolder.TaskFolderNo;
       }
       console.log("finalFolderNo", finalFolderNo);
+      const isGroup = filters?.isGroupView !== undefined
+        ? Boolean(filters.isGroupView)
+        : get().isGroupView;
+
       const searchParamsCamel: any = {
         companyNo: getCompanyNo(),
         ...filters,
+        isGroupView: isGroup,
         ...(finalFolderNo ? { folderNo: finalFolderNo } : {})
       };
 
       const searchParamsPascal: any = {};
+      searchParamsPascal.IsGroupView = isGroup;
 
       if (searchParamsCamel.companyNo !== undefined) searchParamsPascal.CompanyNo = Number(searchParamsCamel.companyNo);
       if (!isHideFolder) {
@@ -488,6 +532,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         calendarColor: item.colorCoding || '',
         estimated_effort_value: item.estimatedEfforts ?? null,
         is_business_benefit_applicable: item.isBusinessBenefitApplicable || false,
+        isPrivate: item.isPrivate ?? item.IsPrivate ?? false,
+        isEditable: parseBoolean(item.isEditable ?? item.IsEditable),
         collaborators: [],
         informed_to: [],
         actual_efforts: [],
@@ -497,7 +543,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       });
 
       const rawRows = response?.success && Array.isArray(response.data) ? response.data : [];
-      const mappedTasks: Task[] = nestOrphanSubtasksUnderParents(rawRows.map(mapTaskItem));
+      const mappedTasks: Task[] = isGroup
+        ? nestOrphanSubtasksUnderParents(rawRows.map(mapTaskItem))
+        : flattenTaskTree(rawRows.map(mapTaskItem));
 
       // Client-side safety net: API may return rows outside selected drawer filters
       const categoryNo =

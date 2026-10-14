@@ -82,6 +82,7 @@ export interface Task {
   benefit_period?: string;
   actual_benefit_period?: string;
   isPrivate?: boolean;
+  isEditable?: boolean;
   status_No: number;
   collaborators: Person[];
   informed_to: Person[];

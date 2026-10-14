@@ -63,6 +63,8 @@ function Dashboard() {
   const fetchError = useTaskStore((state) => state.fetchError);
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
   const searchKeyword = useTaskStore((state) => state.searchKeyword);
+  const isGroupView = useTaskStore((state) => state.isGroupView);
+  const setIsGroupView = useTaskStore((state) => state.setIsGroupView);
 
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
@@ -78,6 +80,16 @@ function Dashboard() {
   const [filterClearNonce, setFilterClearNonce] = useState(0);
   const [trackedFolderNo, setTrackedFolderNo] = useState<number | null>(null);
 
+  const handleGroupViewChange = useCallback((newGroupView: boolean) => {
+    if (newGroupView === isGroupView) return;
+    setIsGroupView(newGroupView);
+    setPageNo(1);
+    setCurrentFilters((prev) => ({
+      ...(prev || { companyNo }),
+      isGroupView: newGroupView,
+    }));
+  }, [isGroupView, setIsGroupView, companyNo]);
+
   const selectedFolderNo = selectedFolder?.TaskFolderNo ?? null;
   if (selectedFolder && selectedFolderNo !== trackedFolderNo) {
     setTrackedFolderNo(selectedFolderNo);
@@ -89,6 +101,7 @@ function Dashboard() {
       return {
         ...(prev || { companyNo }),
         folderNo: selectedFolder.TaskFolderNo,
+        isGroupView,
       };
     });
   }
@@ -109,7 +122,7 @@ function Dashboard() {
         : undefined);
 
       // Initial filters setup
-      setCurrentFilters({ companyNo, folderNo });
+      setCurrentFilters({ companyNo, folderNo, isGroupView: useTaskStore.getState().isGroupView });
     };
     initData();
   }, [fetchFillValues, companyNo]);
@@ -257,6 +270,8 @@ function Dashboard() {
             onFilter={handleFilter}
             viewMode={viewMode}
             onViewModeChange={setViewModeAndStore}
+            isGroupView={isGroupView}
+            onGroupViewChange={handleGroupViewChange}
             showFilters={showFilters}
             onToggleFilters={() => setShowFilters(!showFilters)}
             clearNonce={filterClearNonce}

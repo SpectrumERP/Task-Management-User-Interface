@@ -25,6 +25,8 @@ export default function DealMonitorPage() {
   const tasks = useTaskStore((state) => state.tasks);
   const fetchError = useTaskStore((state) => state.fetchError);
   const selectedFolder = useTaskStore((state) => state.selectedFolder);
+  const isGroupView = useTaskStore((state) => state.isGroupView);
+  const setIsGroupView = useTaskStore((state) => state.setIsGroupView);
 
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1;
@@ -35,6 +37,16 @@ export default function DealMonitorPage() {
   const [showFilters, setShowFilters] = useState(false);
   // undefined = not resolved yet, null = resolved but no matching category found, number = resolved
   const [dealMonitorCategoryNo, setDealMonitorCategoryNo] = useState<number | null | undefined>(undefined);
+
+  const handleGroupViewChange = (newGroupView: boolean) => {
+    if (newGroupView === isGroupView) return;
+    setIsGroupView(newGroupView);
+    setPageNo(1);
+    setCurrentFilters((prev: any) => ({
+      ...(prev || { companyNo }),
+      isGroupView: newGroupView,
+    }));
+  };
 
   const handleTaskClick = (taskId: number) => {
     navigate(dealMonitorTaskUrl(taskId));
@@ -164,6 +176,8 @@ export default function DealMonitorPage() {
           onFilter={handleFilter}
           viewMode={viewMode}
           onViewModeChange={setViewModeAndStore}
+          isGroupView={isGroupView}
+          onGroupViewChange={handleGroupViewChange}
           showFilters={showFilters}
           onToggleFilters={() => setShowFilters(!showFilters)}
           hideCategoryFilter

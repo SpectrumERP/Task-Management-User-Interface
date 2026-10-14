@@ -47,7 +47,8 @@ import {
 import { motion } from 'framer-motion';
 import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { canUserChangeTaskAssignee } from '@/lib/taskAccess';
+import { useFormRights } from '@/hooks/useFormRights';
+import { canUserChangeTaskAssignee, canUserEditTask } from '@/lib/taskAccess';
 import { Combobox } from '@/components/ui/Combobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
@@ -421,6 +422,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const isDealMonitorContext = initialData?.categoryName?.toLowerCase() === 'deal monitor' || searchParams.get('category')?.toLowerCase() === 'deal monitor';
   const { isHideType, isHideFolder, categoryFieldCaption, typeFieldCaption, tagCaption, isHideDetailSection } = useSettings();
   const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const user = useAuthStore(state => state.user);
+  const { isUpdate } = useFormRights(1547);
+  const isTaskEditable = !readOnly && (!initialData || canUserEditTask(user, initialData, isUpdate));
   const formRights = useAuthStore(state => state.formRights) || {};
   const [activeMasterType, setActiveMasterType] = useState<string | null>(null);
 
@@ -3743,27 +3747,34 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       </form>
 
       {/* Floating Sub-Task Actions (Right Center) */}
-      {!isSubTask && (
+      {!isSubTask && (isTaskEditable || (localSubtasks.length + subtaskFields.length) > 0) && (
         <div className="fixed right-6 top-[67%] -translate-y-1/2 flex flex-row items-center z-40 bg-white/95 backdrop-blur-md rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-slate-200 overflow-hidden transition-all hover:shadow-md">
           <button
             type="button"
             disabled={(localSubtasks.length + subtaskFields.length) === 0}
             onClick={() => setIsSubtasksModalOpen(true)}
-            className="flex items-center gap-2 py-2 pl-3 pr-2 text-[14px] font-semibold text-[#005580] hover:bg-[#f8fafc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            className={cn(
+              "flex items-center gap-2 py-2 text-[14px] font-semibold text-[#005580] hover:bg-[#f8fafc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent",
+              !isTaskEditable ? "px-3.5" : "pl-3 pr-2"
+            )}
           >
             <Layers size={16} className="text-[#005580]" /> Sub-Tasks
             <span className="bg-[#005580] text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">
               {localSubtasks.length + subtaskFields.length}
             </span>
           </button>
-          <div className="w-px h-5 bg-slate-200 mx-1" />
-          <button
-            type="button"
-            onClick={() => setIsStandaloneSubtaskModalOpen(true)}
-            className="flex items-center gap-1.5 pl-2 pr-3 py-2 text-[14px] font-semibold text-[#005580] hover:bg-[#f8fafc] transition-colors"
-          >
-            <Plus size={16} strokeWidth={2.5} /> Add
-          </button>
+          {isTaskEditable && (
+            <>
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+              <button
+                type="button"
+                onClick={() => setIsStandaloneSubtaskModalOpen(true)}
+                className="flex items-center gap-1.5 pl-2 pr-3 py-2 text-[14px] font-semibold text-[#005580] hover:bg-[#f8fafc] transition-colors"
+              >
+                <Plus size={16} strokeWidth={2.5} /> Add
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -3894,7 +3905,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 })()}
               </div>
               <DialogDescription className="text-[12px] font-medium text-slate-500 mt-0.5">
-                View, add, edit, or delete sub-tasks for this task.
+                {isTaskEditable ? 'View, add, edit, or delete sub-tasks for this task.' : 'View sub-tasks for this task.'}
               </DialogDescription>
             </div>
             <Button
@@ -3922,7 +3933,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
               {localSubtasks.length === 0 && subtaskFields.length === 0 ? (
                 <div className="text-center p-10 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center gap-1">
                   <p className="text-xs text-slate-500 font-medium">No sub-tasks yet.</p>
-                  <p className="text-[10px] text-slate-400 font-medium">Use Add on the floating action to create one.</p>
+                  {isTaskEditable && (
+                    <p className="text-[10px] text-slate-400 font-medium">Use Add on the floating action to create one.</p>
+                  )}
                 </div>
               ) : (
                 <>
@@ -4088,17 +4101,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-[var(--tm-border)] text-slate-300 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit">
-                              <Edit2 size={13} />
-                            </Button>
+                            {isTaskEditable && (
+                              <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-[var(--tm-border)] text-slate-300 disabled:opacity-50" disabled={subtaskFields.length > 0} onClick={() => handleInlineEdit(task)} title="Inline Edit">
+                                <Edit2 size={13} />
+                              </Button>
+                            )}
                             {task.taskNo > 0 && (
-                              <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-[var(--tm-border)] text-[#0EA5E9]" onClick={() => navigate(`/task/${task.taskNo}`)} title="Full Edit">
+                              <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-[var(--tm-border)] text-[#0EA5E9]" onClick={() => navigate(`/task/${task.taskNo}`)} title={isTaskEditable ? "Full Edit" : "View Sub-Task"}>
                                 <ExternalLink size={13} />
                               </Button>
                             )}
-                            <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-red-500/30 text-red-500 hover:bg-red-500/10" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete">
-                              <Trash2 size={13} />
-                            </Button>
+                            {isTaskEditable && (
+                              <Button type="button" size="sm" variant="outline" className="h-8 w-8 p-0 rounded-[8px] border-red-500/30 text-red-500 hover:bg-red-500/10" onClick={() => setSubtaskToDelete(task.taskNo)} title="Delete">
+                                <Trash2 size={13} />
+                              </Button>
+                            )}
                           </div>
                         </div>
 
