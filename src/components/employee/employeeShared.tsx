@@ -7,15 +7,15 @@ import type { Employee } from '@/types/employee';
 
 export const EMPTY_VALUE = '—';
 
-/** Photo when the API sends one, else the app's initials avatar (CRM gradient, as in the sidebar footer). */
+/** Photo from the payroll photo API when there is one, else the app's initials avatar (CRM gradient, as in the sidebar footer). */
 export function EmployeeAvatar({
   employee,
   className,
 }: {
-  employee: Pick<Employee, 'empName' | 'photoUrl'>;
+  employee: Pick<Employee, 'empNo' | 'empName'>;
   className?: string;
 }) {
-  const src = useEmployeePhoto(employee.photoUrl);
+  const src = useEmployeePhoto(employee.empNo);
   // Remember which src failed, so a new photo for the same avatar gets its own chance.
   const [brokenSrc, setBrokenSrc] = useState<string | null>(null);
   const showPhoto = Boolean(src) && src !== brokenSrc;

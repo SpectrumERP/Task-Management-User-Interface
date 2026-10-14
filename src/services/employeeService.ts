@@ -1,174 +1,131 @@
 import { apiService } from './apiService';
-import type { Employee } from '@/types/employee';
-import { MOCK_EMPLOYEES, isMockEmpNo } from '@/mocks/employeeMock';
+import type { Employee, EmployeePage, EmployeeSearchParams } from '@/types/employee';
 
-/**
- * Where the directory gets its data (VITE_EMPLOYEE_DIRECTORY_SOURCE):
- * - auto (default): payroll API; sample data only if the API fails or returns no employees
- * - api: payroll API only (errors show the error state)
- * - mock: sample data only, no API call
- */
-type SourceSetting = 'auto' | 'api' | 'mock';
-const SOURCE_SETTING: SourceSetting = (() => {
-  const v = String(import.meta.env.VITE_EMPLOYEE_DIRECTORY_SOURCE || 'auto').toLowerCase();
-  return v === 'api' || v === 'mock' ? v : 'auto';
-})();
+/* Shapes from the payroll Swagger (Task Management API v1). */
 
-export type EmployeeDataSource = 'api' | 'mock';
-
-export interface EmployeeListResult {
-  employees: Employee[];
-  source: EmployeeDataSource;
-  /** Why sample data is shown, when it is */
-  fallbackReason?: 'forced' | 'empty' | 'error';
+interface ApiResponse<T> {
+  success?: boolean;
+  message?: string | null;
+  data?: T | null;
 }
 
-type Raw = Record<string, unknown>;
-
-/** First non-empty string among the given keys (API casing differs between payroll endpoints). */
-function pick(row: Raw, ...keys: string[]): string {
-  for (const key of keys) {
-    const value = row[key];
-    if (value == null) continue;
-    if (typeof value === 'string' || typeof value === 'number') {
-      const s = String(value).trim();
-      if (s) return s;
-    }
-  }
-  return '';
+/** EmployeeSearchResultModel */
+interface EmployeeSearchRow {
+  empNo?: number;
+  code?: string | null;
+  empName?: string | null;
+  department?: string | null;
+  dateOfBirth?: string | null;
+  jobDescription?: string | null;
+  joiningDate?: string | null;
+  companyName?: string | null;
+  workLocation?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  extension?: string | null;
+  status?: string | null;
+  empType?: string | null;
+  grade?: string | null;
+  gender?: string | null;
+  address?: string | null;
 }
 
-const LIST_KEYS = ['items', 'records', 'rows', 'list', 'result', 'results', 'employees', 'data', 'content'];
-
-function isRecord(value: unknown): value is Raw {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+/** EmployeeSearchApiResponse — paging fields sit next to `data`. */
+interface EmployeeSearchResponse extends ApiResponse<EmployeeSearchRow[]> {
+  pageNo?: number;
+  pageSize?: number;
+  totalRecords?: number;
+  totalPages?: number;
 }
 
-/** Rows from `[...]`, `{ data: [...] }`, `{ data: { items | records | … : [...] } }` or a single `{ data: {…} }`. */
-function unwrapList(response: unknown): Raw[] {
-  if (Array.isArray(response)) return response.filter(isRecord);
-  if (!isRecord(response)) return [];
-  const data = 'data' in response ? response.data : response;
-  if (Array.isArray(data)) return data.filter(isRecord);
-  if (!isRecord(data)) return [];
-  for (const key of LIST_KEYS) {
-    const nested = data[key];
-    if (Array.isArray(nested)) return nested.filter(isRecord);
-  }
-  // A single employee object (e.g. ?empNo=…), not a wrapper.
-  return data !== response || !('success' in response) ? [data] : [];
+/** EmployeeLoadDataModel — department / company come back as objects here. */
+interface EmployeeLoadData extends Omit<EmployeeSearchRow, 'department' | 'companyName'> {
+  department?: { departmentNo?: number; departmentName?: string | null; code?: string | null } | null;
+  company?: { companyNo?: number; companyName?: string | null; code?: string | null } | null;
 }
 
-/** Short description of a response, for the fallback log (keys only — never employee data). */
-function describeResponse(response: unknown): string {
-  if (Array.isArray(response)) return `array(${response.length})`;
-  if (!isRecord(response)) return typeof response;
-  const data = response.data;
-  const dataShape = Array.isArray(data) ? `array(${data.length})` : isRecord(data) ? `{${Object.keys(data).join(', ')}}` : typeof data;
-  return `{${Object.keys(response).join(', ')}} data=${dataShape}${response.message ? ` message="${String(response.message)}"` : ''}`;
+/** EmployeePhotoModel */
+interface EmployeePhoto {
+  empNo?: number;
+  contentType?: string | null;
+  base64?: string | null;
+  dataUrl?: string | null;
 }
 
-/** Known photo keys first (compared case-insensitively), then any key that looks like a photo. */
-const PHOTO_KEYS = [
-  'photoUrl', 'photo', 'profilePhoto', 'profilePhotoUrl', 'profilePic', 'profilePicture', 'profileImage',
-  'profileImageUrl', 'empPhoto', 'employeePhoto', 'empImage', 'employeeImage', 'image', 'imageUrl', 'imagePath',
-  'photoPath', 'avatar', 'avatarUrl', 'photoBase64', 'imageBase64',
-].map((k) => k.toLowerCase());
-const PHOTO_KEY_PATTERN = /photo|image|img|pic|avatar/i;
+const text = (value: string | null | undefined) => (value ?? '').trim();
 
-function findPhotoValue(row: Raw): string {
-  const entries = Object.entries(row).filter(([, v]) => typeof v === 'string' && v.trim());
-  for (const key of PHOTO_KEYS) {
-    const hit = entries.find(([k]) => k.toLowerCase() === key);
-    if (hit) return String(hit[1]).trim();
-  }
-  const loose = entries.find(([k]) => PHOTO_KEY_PATTERN.test(k));
-  return loose ? String(loose[1]).trim() : '';
-}
+/** .NET sends DateTime.MinValue (0001-01-01) for an empty date. */
+const dateText = (value: string | null | undefined) => {
+  const v = text(value);
+  return v && !v.startsWith('0001-') ? v : '';
+};
 
-/**
- * Normalise whatever the API sends into something EmployeeAvatar can show:
- * data:/blob:/http(s) URLs as-is, bare base64 → data URL, and server paths as '/…'
- * (fetched with the sign-in token, see useEmployeePhoto).
- */
-function toPhotoSource(value: string): string {
-  if (!value) return '';
-  if (/^(data:|blob:|https?:\/\/)/i.test(value)) return value;
-  const compact = value.replace(/\s+/g, '');
-  if (compact.length > 100 && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)) {
-    const mime = compact.startsWith('iVBOR') ? 'image/png' : compact.startsWith('R0lGOD') ? 'image/gif' : 'image/jpeg';
-    return `data:${mime};base64,${compact}`;
-  }
-  // A file path / relative URL on the API server — only if it looks like one (not a flag such as "Y").
-  if (!value.includes('/') && !/\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(value)) return '';
-  return value.startsWith('/') ? value : `/${value.replace(/^\.?\/+/, '')}`;
-}
-
-export function toEmployee(row: Raw): Employee {
+function toEmployee(
+  row: Omit<EmployeeSearchRow, 'department' | 'companyName'>,
+  department: string,
+  companyName: string
+): Employee {
   return {
-    empNo: Number(pick(row, 'empNo', 'EmpNo', 'employeeNo', 'EmployeeNo')) || 0,
-    empCode: pick(row, 'empCode', 'EmpCode', 'employeeCode', 'EmployeeCode', 'employeeId'),
-    empName: pick(row, 'empName', 'EmpName', 'employeeName', 'EmployeeName', 'printingName', 'name'),
-    designation: pick(row, 'designation', 'Designation', 'designationName', 'DesignationName'),
-    department: pick(row, 'department', 'Department', 'departmentName', 'DepartmentName'),
-    jobDescription: pick(
-      row,
-      'jobDescription', 'JobDescription', 'jobDesc', 'JobDesc', 'responsibility', 'Responsibility',
-      'responsibilities', 'Responsibilities', 'roleDescription', 'RoleDescription'
-    ),
-    companyName: pick(row, 'companyName', 'CompanyName', 'company', 'Company'),
-    workLocation: pick(row, 'workLocation', 'WorkLocation', 'locationName', 'LocationName', 'location', 'Location', 'branchName'),
-    email: pick(row, 'email', 'Email', 'emailId', 'EmailId', 'officialEmail', 'OfficialEmail'),
-    phone: pick(row, 'phone', 'Phone', 'phoneNo', 'PhoneNo', 'mobileNo', 'MobileNo', 'mobile'),
-    extension: pick(row, 'extension', 'Extension', 'extensionNo', 'ExtensionNo', 'ext', 'Ext'),
-    status: pick(row, 'status', 'Status', 'empStatus', 'EmpStatus', 'statusName', 'StatusName'),
-    photoUrl: toPhotoSource(findPhotoValue(row)),
-    reportingTo: pick(row, 'reportingTo', 'ReportingTo', 'reportTo', 'ReportTo', 'managerName', 'ManagerName'),
-    dateOfJoining: pick(row, 'dateOfJoining', 'DateOfJoining', 'joiningDate', 'JoiningDate', 'doj', 'DOJ'),
-    employmentType: pick(row, 'employmentType', 'EmploymentType', 'empType', 'EmpType'),
-    grade: pick(row, 'grade', 'Grade', 'gradeName', 'GradeName'),
-    gender: pick(row, 'gender', 'Gender'),
-    dateOfBirth: pick(row, 'dateOfBirth', 'DateOfBirth', 'dob', 'DOB'),
-    address: pick(row, 'address', 'Address', 'currentAddress', 'CurrentAddress'),
-    raw: row,
+    empNo: Number(row.empNo) || 0,
+    empCode: text(row.code),
+    empName: text(row.empName),
+    department: text(department),
+    jobDescription: text(row.jobDescription),
+    companyName: text(companyName),
+    workLocation: text(row.workLocation),
+    email: text(row.email),
+    phone: text(row.phone),
+    extension: text(row.extension),
+    status: text(row.status),
+    dateOfJoining: dateText(row.joiningDate),
+    employmentType: text(row.empType),
+    grade: text(row.grade),
+    gender: text(row.gender),
+    dateOfBirth: dateText(row.dateOfBirth),
+    address: text(row.address),
   };
 }
 
-async function fetchEmployees(params: Record<string, string>, silent = false): Promise<Employee[]> {
-  const response = await apiService.get<unknown>('/api/payroll/employees', { params, silent });
-  const employees = unwrapList(response).map(toEmployee).filter((e) => e.empNo > 0 || e.empCode || e.empName);
-  if (employees.length === 0) {
-    console.warn(`[Employee Directory] /api/payroll/employees gave no employees. Response: ${describeResponse(response)}`);
-  }
-  return employees;
-}
-
 export const employeeService = {
-  /** Whole directory — paging, search and filters run client-side, as on the Tasks List. */
-  getEmployees: async (): Promise<EmployeeListResult> => {
-    if (SOURCE_SETTING === 'mock') {
-      return { employees: MOCK_EMPLOYEES, source: 'mock', fallbackReason: 'forced' };
+  /** One page of the directory; keyword and company are filtered by the API. */
+  searchEmployees: async ({ pageNo, pageSize, keyword, companyNo }: EmployeeSearchParams): Promise<EmployeePage> => {
+    const params: Record<string, string> = { PageNo: String(pageNo), PageSize: String(pageSize) };
+    if (keyword?.trim()) params.KeywordSearch = keyword.trim();
+    if (companyNo) params.CompanyNo = String(companyNo);
+
+    const response = await apiService.get<EmployeeSearchResponse>('/api/payroll/employees/search-data', { params });
+    if (response?.success === false) {
+      throw new Error(response.message || 'Could not load employees');
     }
-    try {
-      // Auto mode stays quiet on failure: the page shows a "Sample data" badge instead of an error toast.
-      const employees = await fetchEmployees({ keywordSearch: '' }, SOURCE_SETTING === 'auto');
-      if (employees.length > 0 || SOURCE_SETTING === 'api') {
-        return { employees, source: 'api' };
-      }
-      return { employees: MOCK_EMPLOYEES, source: 'mock', fallbackReason: 'empty' };
-    } catch (err) {
-      if (SOURCE_SETTING === 'api') throw err;
-      console.warn('[Employee Directory] /api/payroll/employees failed — showing sample employees.', err);
-      return { employees: MOCK_EMPLOYEES, source: 'mock', fallbackReason: 'error' };
-    }
+    const rows = Array.isArray(response?.data) ? response.data : [];
+    const employees = rows.map((row) => toEmployee(row, row.department ?? '', row.companyName ?? ''));
+    const totalRecords = Number(response?.totalRecords) || 0;
+    return {
+      employees,
+      pageNo: Number(response?.pageNo) || pageNo,
+      pageSize: Number(response?.pageSize) || pageSize,
+      totalRecords,
+      totalPages: Number(response?.totalPages) || Math.ceil(totalRecords / pageSize),
+    };
   },
 
-  /** One employee for the full profile; sample ids resolve from the sample set. */
+  /** Full record for the profile page (GET /api/payroll/employees/load-data/{id}); null when not found. */
   getEmployee: async (empNo: number): Promise<Employee | null> => {
-    if (SOURCE_SETTING === 'mock' || isMockEmpNo(empNo)) {
-      return MOCK_EMPLOYEES.find((e) => e.empNo === empNo) ?? null;
-    }
-    const rows = await fetchEmployees({ empNo: String(empNo) });
-    return rows.find((e) => e.empNo === empNo) ?? rows[0] ?? null;
+    const response = await apiService.get<ApiResponse<EmployeeLoadData>>(`/api/payroll/employees/load-data/${empNo}`);
+    const row = response?.success === false ? null : response?.data;
+    if (!row || !row.empNo) return null;
+    return toEmployee(row, row.department?.departmentName ?? '', row.company?.companyName ?? '');
+  },
+
+  /** Displayable photo src (data URL), or null when the employee has none. Silent: a missing photo shows initials. */
+  getEmployeePhoto: async (empNo: number): Promise<string | null> => {
+    const response = await apiService.get<ApiResponse<EmployeePhoto>>(`/api/payroll/employees/photo/${empNo}`, {
+      silent: true,
+    });
+    const photo = response?.success === false ? null : response?.data;
+    if (!photo) return null;
+    if (text(photo.dataUrl)) return text(photo.dataUrl);
+    const base64 = text(photo.base64);
+    return base64 ? `data:${text(photo.contentType) || 'image/jpeg'};base64,${base64}` : null;
   },
 };

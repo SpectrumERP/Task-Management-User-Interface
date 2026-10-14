@@ -1,4 +1,4 @@
-import { MapPin, Network, Users, type LucideIcon } from 'lucide-react';
+import { Users, type LucideIcon } from 'lucide-react';
 
 function SummaryCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
   return (
@@ -14,20 +14,11 @@ function SummaryCard({ icon: Icon, label, value }: { icon: LucideIcon; label: st
   );
 }
 
-export function EmployeeSummaryCards({
-  total,
-  departments,
-  locations,
-}: {
-  total: number;
-  departments: number;
-  locations: number;
-}) {
+/** Directory total from the search API (totalRecords). Department / location counts need a full load, so they are not shown. */
+export function EmployeeSummaryCards({ total }: { total: number }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <SummaryCard icon={Users} label="Total Employees" value={total} />
-      <SummaryCard icon={Network} label="Departments" value={departments} />
-      <SummaryCard icon={MapPin} label="Locations" value={locations} />
     </div>
   );
 }

@@ -3,7 +3,6 @@ import type { Employee } from '@/types/employee';
 const COLUMNS: { header: string; value: (e: Employee) => string }[] = [
   { header: 'Employee Name', value: (e) => e.empName },
   { header: 'Employee ID', value: (e) => e.empCode },
-  { header: 'Designation', value: (e) => e.designation },
   { header: 'Department', value: (e) => e.department },
   { header: 'Job Description', value: (e) => e.jobDescription },
   { header: 'Company Name', value: (e) => e.companyName },

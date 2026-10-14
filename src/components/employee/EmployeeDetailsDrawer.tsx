@@ -58,7 +58,7 @@ interface EmployeeDetailsDrawerProps {
   onClose: () => void;
   /** Desktop: the drawer's left edge lines up with this element's right edge (the search box). */
   alignLeftTo?: RefObject<HTMLElement | null>;
-  /** Position of the employee in the current (filtered, sorted) list, for the "3 / 36" counter. */
+  /** Position of the employee in the whole result set (across pages), for the "3 / 36" counter. */
   position?: { index: number; total: number } | null;
   onPrev?: () => void;
   onNext?: () => void;
@@ -256,7 +256,6 @@ export function EmployeeDetailsDrawer({
   const basic: Field[] = e
     ? [
         { icon: Hash, label: 'Employee ID', value: e.empCode, copy: true },
-        { icon: Briefcase, label: 'Designation', value: e.designation },
         { icon: Network, label: 'Department', value: e.department },
         { icon: Building2, label: 'Company Name', value: e.companyName },
         { icon: MapPin, label: 'Work Location', value: e.workLocation },
@@ -271,9 +270,7 @@ export function EmployeeDetailsDrawer({
   const contact: Field[] = e && email && phone && ext ? [email, phone, ext] : [];
   const job: Field[] = e
     ? [
-        { icon: Briefcase, label: 'Designation', value: e.designation },
         { icon: Network, label: 'Department', value: e.department },
-        { icon: UserRound, label: 'Reporting To', value: e.reportingTo },
         { icon: CalendarDays, label: 'Date of Joining', value: dateText(e.dateOfJoining) },
         { icon: Briefcase, label: 'Employment Type', value: e.employmentType },
         { icon: Hash, label: 'Grade', value: e.grade },
@@ -403,10 +400,8 @@ export function EmployeeDetailsDrawer({
                         <CopyButton label="Employee ID" value={e.empCode} />
                       </div>
                     ) : null}
-                    {e.designation || e.department ? (
-                      <p className="mt-0.5 truncate text-[13px] text-slate-300">
-                        {[e.designation, e.department].filter(Boolean).join(' · ')}
-                      </p>
+                    {e.department ? (
+                      <p className="mt-0.5 truncate text-[13px] text-slate-300">{e.department}</p>
                     ) : null}
                     {metaChips.length ? (
                       <div className="mt-2 flex flex-wrap gap-1.5">

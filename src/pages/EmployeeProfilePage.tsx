@@ -121,9 +121,7 @@ export default function EmployeeProfilePage() {
                 {employee.empCode ? (
                   <p className="mt-0.5 text-[13px] font-semibold text-[#1E56A0] dark:text-[#4f86d1]">{employee.empCode}</p>
                 ) : null}
-                <p className="mt-1 text-[13px] text-slate-300">
-                  {[employee.designation, employee.department].filter(Boolean).join(' · ') || '—'}
-                </p>
+                <p className="mt-1 text-[13px] text-slate-300">{employee.department || '—'}</p>
               </div>
               <div className="flex flex-wrap gap-2 sm:justify-end">
                 {employee.email ? (
@@ -156,10 +154,8 @@ export default function EmployeeProfilePage() {
               </EmployeeSection>
 
               <EmployeeSection title="Job Details" icon={Briefcase}>
-                <EmployeeFieldRow icon={Briefcase} label="Designation" value={employee.designation} />
                 <EmployeeFieldRow icon={Network} label="Department" value={employee.department} />
                 <EmployeeFieldRow icon={FileText} label="Job Description" value={employee.jobDescription} />
-                <EmployeeFieldRow icon={UserRound} label="Reporting To" value={employee.reportingTo} />
                 <EmployeeFieldRow icon={CalendarDays} label="Date of Joining" value={date(employee.dateOfJoining)} />
                 <EmployeeFieldRow icon={Briefcase} label="Employment Type" value={employee.employmentType} />
                 <EmployeeFieldRow icon={Hash} label="Grade" value={employee.grade} />

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Briefcase, Building2, CircleDot, Layers, MapPin, Network, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { Building2, Layers, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/Combobox';
@@ -13,12 +13,9 @@ import {
   type EmployeeFilters,
 } from '@/lib/employeeDirectory';
 
+/** Only filters the payroll search API accepts (CompanyNo); department / status etc. are not supported yet. */
 const FIELDS: { key: keyof EmployeeFilters; label: string; icon: typeof Layers; placeholder: string }[] = [
-  { key: 'department', label: 'Department', icon: Network, placeholder: 'All departments' },
-  { key: 'designation', label: 'Designation', icon: Briefcase, placeholder: 'All designations' },
-  { key: 'companyName', label: 'Company Name', icon: Building2, placeholder: 'All companies' },
-  { key: 'workLocation', label: 'Work Location', icon: MapPin, placeholder: 'All locations' },
-  { key: 'status', label: 'Status', icon: CircleDot, placeholder: 'All statuses' },
+  { key: 'companyNo', label: 'Company Name', icon: Building2, placeholder: 'All companies' },
 ];
 
 interface EmployeeFilterDrawerProps {
@@ -41,7 +38,7 @@ export function EmployeeFilterDrawer({ open, onClose, filters, options, onChange
   }, [open, onClose]);
 
   const hasChanges = countActiveEmployeeFilters(filters) > 0;
-  // Only fields the API actually fills are worth offering.
+  // Only fields with something to pick are worth offering.
   const fields = FIELDS.filter((f) => options[f.key].length > 0);
 
   return (
@@ -83,7 +80,7 @@ export function EmployeeFilterDrawer({ open, onClose, filters, options, onChange
           <div className="overflow-y-auto px-4 py-3 scrollbar-sleek flex-1 space-y-3">
             <FilterPanel title="Employee filters" icon={Layers} cols={1}>
               {fields.length === 0 ? (
-                <p className="text-[11px] text-slate-400">No filterable fields are available for these employees.</p>
+                <p className="text-[11px] text-slate-400">No filters are available.</p>
               ) : (
                 fields.map((field) => (
                   <div key={field.key} className="space-y-1 min-w-0">
@@ -91,7 +88,7 @@ export function EmployeeFilterDrawer({ open, onClose, filters, options, onChange
                     <Combobox
                       value={filters[field.key]}
                       onChange={(val) => onChange({ ...filters, [field.key]: val })}
-                      options={options[field.key].map((v) => ({ value: v, label: v }))}
+                      options={options[field.key]}
                       placeholder={field.placeholder}
                       className={cn(filterControlClass, FIELD_TEXT_STYLE)}
                     />

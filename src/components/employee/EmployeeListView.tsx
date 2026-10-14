@@ -24,7 +24,6 @@ export type EmployeeColumnKey =
   | 'profile'
   | 'empCode'
   | 'empName'
-  | 'designation'
   | 'department'
   | 'companyName'
   | 'workLocation'
@@ -47,7 +46,6 @@ const COLUMNS: ColumnDef[] = [
   { key: 'profile', label: 'Profile Photo', defaultVisible: true, width: '7.5rem', sortable: false },
   { key: 'empName', label: 'Employee Name', defaultVisible: true, width: '11rem', sortable: true },
   { key: 'empCode', label: 'Employee ID', defaultVisible: true, width: '8.75rem', sortable: true },
-  { key: 'designation', label: 'Designation', defaultVisible: true, width: '10rem', sortable: true },
   { key: 'department', label: 'Department', defaultVisible: true, width: '9rem', sortable: true },
   { key: 'jobDescription', label: 'Job Description', defaultVisible: true, width: '16rem', sortable: true },
   { key: 'companyName', label: 'Company Name', defaultVisible: true, width: '9.75rem', sortable: true },
@@ -337,7 +335,7 @@ export function EmployeeListView({
                 </div>
                 <TruncatedText text={employee.empName} className="text-sm font-semibold text-slate-100 leading-snug" />
                 <TruncatedText
-                  text={[employee.designation, employee.department, employee.workLocation].filter(Boolean).join(' · ')}
+                  text={[employee.department, employee.workLocation].filter(Boolean).join(' · ')}
                   className="text-[11px] text-slate-400"
                 />
               </div>
