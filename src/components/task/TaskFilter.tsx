@@ -27,10 +27,10 @@ function isAllFillValueId(
   return row ? isAllFilterSentinel(row.label) : false;
 }
 
-const filterControlClass =
+export const filterControlClass =
   'h-10 rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)] shadow-none text-xs text-slate-200 focus:ring-2 focus:ring-[#1E56A0]/15';
 
-function FilterFieldLabel({
+export function FilterFieldLabel({
   icon: Icon,
   children,
   required,
@@ -52,7 +52,7 @@ function FilterFieldLabel({
   );
 }
 
-function FilterPanel({
+export function FilterPanel({
   title,
   icon: Icon,
   children,

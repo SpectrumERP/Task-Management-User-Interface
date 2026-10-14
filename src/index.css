@@ -1888,3 +1888,19 @@ html:not(.dark) .crm-tag-field:hover {
   box-shadow: none !important;
   font-size: 13px !important;
 }
+
+/* Employee Directory: last of several pinned left columns gets the scrolled edge shadow
+   (the Tasks Code column rule covers .tm-col-sticky-code only). */
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>thead>tr>th.tm-sticky-edge,
+.tm-data-table-scroll[data-tm-scroll-left='1'] .tm-data-table>tbody>tr>td.tm-sticky-edge {
+  box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.1) !important;
+}
+
+/* Row whose details drawer is open (Employee Directory) — holds the hover tint, sticky cells included
+   (listed by class so they out-rank the zebra rules on pinned cells). */
+.tm-data-table>tbody>tr[data-selected='true']>td,
+.tm-data-table>tbody>tr[data-selected='true']>td.tm-sticky-cell,
+.tm-data-table>tbody>tr[data-selected='true']>td.tm-col-sticky-code,
+.tm-data-table>tbody>tr[data-selected='true']>td.tm-col-actions {
+  background-color: var(--tm-row-hover) !important;
+}

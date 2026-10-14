@@ -12,6 +12,9 @@ import MeetingReportPage from '@/pages/MeetingReportPage';
 import DealMonitorPage from '@/pages/DealMonitorPage';
 import UserProfilePage from '@/pages/UserProfilePage';
 import NotificationsPage from '@/pages/NotificationsPage';
+import EmployeeDirectoryPage from '@/pages/EmployeeDirectoryPage';
+import EmployeeProfilePage from '@/pages/EmployeeProfilePage';
+import { canOpenEmployeeDirectory } from '@/lib/employeeDirectory';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
 import { CrmLoginRedirect } from '@/components/auth/CrmLoginRedirect';
 import { NotificationsProvider } from '@/context/NotificationsContext';
@@ -206,6 +209,8 @@ function Dashboard() {
       navigate('/meetings');
     } else if (id === 'reports') {
       navigate('/reports');
+    } else if (id === 'employee-directory') {
+      navigate('/employees');
     } else if (id === 'meeting-reports') {
       navigate('/meeting-reports');
     } else {
@@ -442,6 +447,8 @@ function MasterPageRoute() {
           navigate('/meetings');
         } else if (id === 'reports') {
           navigate('/reports');
+        } else if (id === 'employee-directory') {
+          navigate('/employees');
         } else if (id === 'meeting-reports') {
           navigate('/meeting-reports');
         } else {
@@ -473,6 +480,8 @@ function SalesDealsRoute() {
           navigate('/meetings');
         } else if (id === 'reports') {
           navigate('/reports');
+        } else if (id === 'employee-directory') {
+          navigate('/employees');
         } else if (id === 'meeting-reports') {
           navigate('/meeting-reports');
         }
@@ -501,6 +510,8 @@ function MeetingNotesRoute() {
           navigate('/meetings');
         } else if (id === 'reports') {
           navigate('/reports');
+        } else if (id === 'employee-directory') {
+          navigate('/employees');
         } else if (id === 'meeting-reports') {
           navigate('/meeting-reports');
         }
@@ -529,6 +540,8 @@ function ReportRoute() {
           navigate('/meetings');
         } else if (id === 'reports') {
           navigate('/reports');
+        } else if (id === 'employee-directory') {
+          navigate('/employees');
         } else if (id === 'meeting-reports') {
           navigate('/meeting-reports');
         }
@@ -557,6 +570,8 @@ function DealMonitorRoute() {
           navigate('/meetings');
         } else if (id === 'reports') {
           navigate('/reports');
+        } else if (id === 'employee-directory') {
+          navigate('/employees');
         } else if (id === 'meeting-reports') {
           navigate('/meeting-reports');
         }
@@ -585,6 +600,8 @@ function MeetingReportRoute() {
           navigate('/meetings');
         } else if (id === 'reports') {
           navigate('/reports');
+        } else if (id === 'employee-directory') {
+          navigate('/employees');
         } else if (id === 'meeting-reports') {
           navigate('/meeting-reports');
         }
@@ -608,6 +625,8 @@ function handleAppNav(navigate: ReturnType<typeof useNavigate>, id: string) {
     navigate('/meetings');
   } else if (id === 'reports') {
     navigate('/reports');
+  } else if (id === 'employee-directory') {
+    navigate('/employees');
   } else if (id === 'meeting-reports') {
     navigate('/meeting-reports');
   }
@@ -618,6 +637,21 @@ function UserProfileRoute() {
   return (
     <MainLayout activeTab="tasks" onTabChange={(id) => handleAppNav(navigate, id)}>
       <UserProfilePage />
+    </MainLayout>
+  );
+}
+
+/** Employee Directory list + full profile. Both keep the Masters › Employee Directory menu row lit. */
+function EmployeeDirectoryRoute({ profile = false }: { profile?: boolean }) {
+  const navigate = useNavigate();
+  const accessibleForms = useAuthStore((state) => state.accessibleForms);
+  // Menu rights load inside MainLayout; once known, keep users without the right out.
+  if (accessibleForms !== null && !canOpenEmployeeDirectory(accessibleForms)) {
+    return <Navigate to="/" replace />;
+  }
+  return (
+    <MainLayout activeTab="employee-directory" onTabChange={(id) => handleAppNav(navigate, id)}>
+      {profile ? <EmployeeProfilePage /> : <EmployeeDirectoryPage />}
     </MainLayout>
   );
 }
@@ -759,6 +793,22 @@ export const router = createBrowserRouter([
         element: (
           <PrivateRoute>
             <UserProfileRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/employees",
+        element: (
+          <PrivateRoute>
+            <EmployeeDirectoryRoute />
+          </PrivateRoute>
+        ),
+      },
+      {
+        path: "/employees/:empNo",
+        element: (
+          <PrivateRoute>
+            <EmployeeDirectoryRoute profile />
           </PrivateRoute>
         ),
       },

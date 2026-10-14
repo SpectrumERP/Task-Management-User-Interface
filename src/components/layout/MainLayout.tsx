@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sidebar, navItems, masterItems, menuMasterItems } from '@/components/layout/Sidebar';
+import { Sidebar, navItems, masterItems, menuMasterItems, employeeDirectoryItem } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -110,7 +110,7 @@ export function MainLayout({ children, activeTab = 'board', onTabChange }: MainL
 
   useEffect(() => {
     if (accessibleForms && accessibleForms.length > 0 && onTabChange) {
-      const allItems = [...navItems, ...masterItems, ...menuMasterItems];
+      const allItems = [...navItems, ...masterItems, ...menuMasterItems, employeeDirectoryItem];
       const currentItem = allItems.find((item) => item.id === activeTab);
 
       if (currentItem && currentItem.formNo && !accessibleForms.includes(currentItem.formNo)) {

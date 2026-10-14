@@ -19,7 +19,8 @@ import {
   Monitor,
   Calendar,
   CalendarDays,
-  FileText
+  FileText,
+  Contact
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ import { UserType } from '@/types/enums';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { CRM_SSO_ENABLED } from '@/lib/crmSso';
 import { ShellHomeLink } from '@/components/layout/ShellHomeLink';
+import { EMPLOYEE_DIRECTORY_FORM_NO, canOpenEmployeeDirectory } from '@/lib/employeeDirectory';
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
   // { icon: Handshake, label: 'Sales Deals', id: 'sales-deals' },
@@ -59,6 +61,13 @@ export const menuMasterItems = [
   { icon: Calendar, label: 'Meeting Category', id: 'master-meeting-category', formNo: 1561 },
   { icon: CalendarDays, label: 'Meeting Types', id: 'master-meeting-type', formNo: 1560 }
 ];
+
+export const employeeDirectoryItem = {
+  icon: Contact,
+  label: 'Employee Directory',
+  id: 'employee-directory',
+  formNo: EMPLOYEE_DIRECTORY_FORM_NO,
+};
 
 export const bottomItems: { icon: any; label: string; id: string }[] = [];
 
@@ -222,6 +231,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
   const filteredNavItems = accessibleForms ? navItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
   const filteredMasterItems = accessibleForms ? masterItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
   const filteredMenuMasterItems = accessibleForms ? menuMasterItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
+  const showEmployeeDirectory = canOpenEmployeeDirectory(accessibleForms);
 
   // Section split for the sidebar titles (order unchanged): reports apart from the workspace pages.
   const REPORT_NAV_IDS = new Set(['reports', 'meeting-reports']);
@@ -505,7 +515,7 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
           {
             key: 'masters',
             title: 'Masters',
-            show: filteredMasterItems.length > 0 || filteredMenuMasterItems.length > 0,
+            show: filteredMasterItems.length > 0 || filteredMenuMasterItems.length > 0 || showEmployeeDirectory,
             body: (
               <>
           {/* Master Data Section */}
@@ -555,6 +565,9 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
               })
             )
           )}
+
+          {/* Employee Directory — a page of its own, so a plain row (not a tree) */}
+          {showEmployeeDirectory && renderNavItem(employeeDirectoryItem)}
               </>
             ),
           },

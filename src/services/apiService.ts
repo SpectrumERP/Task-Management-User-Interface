@@ -9,8 +9,13 @@ import { toErrorMessage } from '@/lib/toErrorMessage';
 const BASE_URL =
   import.meta.env.DEV && !import.meta.env.VITE_TASK_ROUTE_BASE ? '' : import.meta.env.VITE_API_BASE_URL;
 
+/** API origin for callers that fetch outside apiService (files, images): '' in dev, where Vite proxies /api. */
+export const API_BASE_URL: string = BASE_URL || '';
+
 interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
+  /** Skip error toasts — for callers that handle failure themselves (e.g. fall back to sample data). 401 still signs out. */
+  silent?: boolean;
 }
 
 const getErrorMessage = (data: any, status: number): string => {
@@ -54,7 +59,8 @@ function getDedupeKey(endpoint: string, params?: Record<string, string>): string
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { params, headers, ...rest } = options;
+  const { params, headers, silent = false, ...rest } = options;
+  const notifyError: typeof toast.error = (...args) => (silent ? '' : toast.error(...args));
 
   const url = buildUrl(endpoint, params);
 
@@ -83,7 +89,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     if (response.ok && (response.headers.get('content-type') ?? '').includes('text/html')) {
       const message = `API returned a web page instead of data (${endpoint}). Check the API URL / dev proxy.`;
       console.error(message, url);
-      toast.error('API returned a web page instead of data. Check the API URL / dev proxy.', { id: 'api-html-response' });
+      notifyError('API returned a web page instead of data. Check the API URL / dev proxy.', { id: 'api-html-response' });
       throw new ApiError(response.status, { message });
     }
 
@@ -94,7 +100,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         void useAuthStore.getState().logout({ returnTo: `${window.location.pathname}${window.location.search}` });
       } else {
         const errorMessage = getErrorMessage(data, response.status);
-        toast.error(errorMessage);
+        notifyError(errorMessage);
       }
       throw new ApiError(response.status, data);
     }
@@ -105,7 +111,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
         'Operation failed'
       );
       if (errorMessage) {
-        toast.error(errorMessage);
+        notifyError(errorMessage);
       }
     }
 
@@ -115,7 +121,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     
     // Check if it's a network error (TypeError usually implies network/cors issues)
     if (error instanceof TypeError) {
-      toast.error('Network error or server unreachable. Please check your connection.');
+      notifyError('Network error or server unreachable. Please check your connection.');
     }
     
     throw new Error('Network error or server unreachable');
