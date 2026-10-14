@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   LayoutGrid,
   X,
@@ -243,11 +243,43 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
 
   const isMenuMasterActive = filteredMenuMasterItems.some(item => item.id === activeTab);
   const [isMenuMasterExpanded, setIsMenuMasterExpanded] = useState(isMenuMasterActive);
+  const navRef = useRef<HTMLElement | null>(null);
+  const [navThumb, setNavThumb] = useState({ height: 0, top: 0, visible: false });
 
   useEffect(() => {
     setIsMasterExpanded(filteredMasterItems.some(item => item.id === activeTab));
     setIsMenuMasterExpanded(filteredMenuMasterItems.some(item => item.id === activeTab));
   }, [activeTab, accessibleForms]);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || isCollapsed) {
+      setNavThumb({ height: 0, top: 0, visible: false });
+      return;
+    }
+
+    const updateThumb = () => {
+      const { clientHeight, scrollHeight, scrollTop } = nav;
+      const visible = scrollHeight > clientHeight;
+      const height = visible ? Math.max(20, (clientHeight / scrollHeight) * clientHeight) : 0;
+      const top = visible
+        ? (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - height)
+        : 0;
+      setNavThumb({ height, top, visible });
+    };
+
+    updateThumb();
+    nav.addEventListener('scroll', updateThumb, { passive: true });
+    const observer = new ResizeObserver(updateThumb);
+    observer.observe(nav);
+    const contentObserver = new MutationObserver(updateThumb);
+    contentObserver.observe(nav, { childList: true, subtree: true, attributes: true });
+    return () => {
+      nav.removeEventListener('scroll', updateThumb);
+      observer.disconnect();
+      contentObserver.disconnect();
+    };
+  }, [isCollapsed, isMasterExpanded, isMenuMasterExpanded, activeTab]);
 
   const navBtnBase =
     "w-full flex items-center text-left relative group transition-[background-color,color,box-shadow,transform] duration-200 ease-out";
@@ -487,9 +519,10 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
 
       {/* Navigation */}
       <nav
+        ref={navRef}
         data-tour="sidebar-nav"
         className={cn(
-          "flex-1 scrollbar-hide",
+          "crm-sidebar-nav-scroll min-h-0 flex-1",
           isCollapsed ? "overflow-visible px-1 pt-2.5 pb-2" : "overflow-y-auto px-2.5 py-2"
         )}
       >
@@ -589,6 +622,17 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             </div>
           ))}
       </nav>
+      {!isCollapsed && navThumb.visible && (
+        <div
+          aria-hidden="true"
+          className="crm-sidebar-scroll-indicator"
+          style={{
+            top: `${navRef.current?.offsetTop ?? 0}px`,
+            height: `${navThumb.height}px`,
+            transform: `translateY(${navThumb.top}px)`,
+          }}
+        />
+      )}
 
       {bottomItems.length > 0 && (
         <div className="space-y-0 pt-1 border-t border-white/10">
