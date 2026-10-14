@@ -2,6 +2,7 @@ import { dbService } from './dbService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'sonner';
 import { toErrorMessage } from '@/lib/toErrorMessage';
+import { currentAppPath } from '@/lib/basePath';
 
 // In local development route API calls through Vite so the browser does not need
 // cross-origin permission from the UAT API. Production keeps the configured API URL. Inside the Spectrum
@@ -97,7 +98,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
     if (!response.ok) {
       if (response.status === 401) {
-        void useAuthStore.getState().logout({ returnTo: `${window.location.pathname}${window.location.search}` });
+        void useAuthStore.getState().logout({ returnTo: currentAppPath() });
       } else {
         const errorMessage = getErrorMessage(data, response.status);
         notifyError(errorMessage);
