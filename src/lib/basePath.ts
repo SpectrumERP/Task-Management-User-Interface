@@ -18,6 +18,16 @@ export function withBase(path: string): string {
   return `${ROUTER_BASENAME}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+/** The browser's current URL as an in-app route ('/task/employees?x=1' → '/employees?x=1'), for `withBase` callers. */
+export function currentAppPath(): string {
+  const { pathname, search } = window.location;
+  const inApp =
+    ROUTER_BASENAME !== '/' && (pathname === ROUTER_BASENAME || pathname.startsWith(`${ROUTER_BASENAME}/`))
+      ? pathname.slice(ROUTER_BASENAME.length) || '/'
+      : pathname;
+  return `${inApp}${search}`;
+}
+
 /** A file from /public ('version.json') → its URL under the base. */
 export function publicUrl(file: string): string {
   return `${BASE_URL}${file.replace(/^\/+/, '')}`;
