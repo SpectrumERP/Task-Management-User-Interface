@@ -11,7 +11,8 @@ import { apiService } from '@/services/apiService';
 import { attachmentService } from '@/services/attachmentService';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { useAuthStore } from '@/store/useAuthStore';
-import { canUserEditTask, isTaskViewOnlyForUser } from '@/lib/taskAccess';
+import { useTaskStore } from '@/store/useTaskStore';
+import { canUserEditTask, isTaskViewOnlyForUser, parseBoolean } from '@/lib/taskAccess';
 import { toUtcIso } from '@/lib/dateTime';
 import { toast } from 'sonner';
 import {
@@ -121,6 +122,21 @@ export default function TaskDetail() {
 
     try {
       setIsFetching(true);
+      const state = useTaskStore.getState();
+      const findStoreTask = (tNo: number): Task | undefined => {
+        const search = (list: Task[]): Task | undefined => {
+          for (const item of list) {
+            if (item.taskNo === tNo) return item;
+            if (item.subTasks && item.subTasks.length > 0) {
+              const res = search(item.subTasks);
+              if (res) return res;
+            }
+          }
+          return undefined;
+        };
+        return search(state.tasks) || search(state.allTasks);
+      };
+      const storeTask = findStoreTask(Number(id));
       const response = await apiService.get<{ success: boolean; data: any; message?: string }>(`/api/crm/tasks/load-data/${id}`);
       if (response.success && response.data) {
         const d = response.data;
@@ -175,7 +191,8 @@ export default function TaskDetail() {
           code: d.code || '',
           title: d.title || '',
           description: d.description || '',
-          isPrivate: d.isPrivate || false,
+          isPrivate: d.isPrivate ?? d.IsPrivate ?? storeTask?.isPrivate ?? false,
+          isEditable: parseBoolean(d.isEditable ?? d.IsEditable ?? storeTask?.isEditable),
           priority_No: d.priority?.operTaskPriorityNo || 1,
           category_No: d.category?.operTaskCategoryNo || null,
           type_No: d.type?.operTaskTypeNo || null,

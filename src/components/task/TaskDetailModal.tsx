@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { useAuthStore } from '@/store/useAuthStore';
-import { canUserEditTask } from '@/lib/taskAccess';
+import { canUserEditTask, parseBoolean } from '@/lib/taskAccess';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import {
   Edit,
@@ -189,6 +189,21 @@ function PersonRow({
   );
 }
 
+const findTaskInStore = (taskNo: number): Task | undefined => {
+  const { tasks, allTasks } = useTaskStore.getState();
+  const searchTree = (list: Task[]): Task | undefined => {
+    for (const item of list) {
+      if (item.taskNo === taskNo) return item;
+      if (item.subTasks && item.subTasks.length > 0) {
+        const found = searchTree(item.subTasks);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+  return searchTree(tasks) || searchTree(allTasks);
+};
+
 export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: TaskDetailModalProps) {
   const navigate = useNavigate();
   const { isUpdate } = useFormRights(1547);
@@ -222,6 +237,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
     if (!taskNo) return;
     try {
       setIsLoading(true);
+      const storeTask = findTaskInStore(Number(taskNo));
       const response = await apiService.get<{ success: boolean; data: any }>(`/api/crm/tasks/load-data/${taskNo}`);
       if (response.success && response.data) {
         const d = response.data;
@@ -324,6 +340,8 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           executionNotes: d.executionNotes || d.execution_notes || '',
           execution_notes: d.executionNotes || d.execution_notes || '',
           executionChallenges: d.executionChallenges || [],
+          isPrivate: d.isPrivate ?? d.IsPrivate ?? storeTask?.isPrivate ?? false,
+          isEditable: parseBoolean(d.isEditable ?? d.IsEditable ?? storeTask?.isEditable),
           collaboratorUserGroupNo: d.collaboratorUserGroupNo || null,
           infromToUserGroupNo: d.infromToUserGroupNo || null,
           attachments: (d.attachment || d.attachments || d.documentAttachments || []).map((a: any) => ({
@@ -359,6 +377,10 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
 
   useEffect(() => {
     if (isOpen && taskNo) {
+      const storeTask = findTaskInStore(Number(taskNo));
+      if (storeTask) {
+        setTask(storeTask);
+      }
       fetchTaskDetails();
     } else {
       setTask(undefined);

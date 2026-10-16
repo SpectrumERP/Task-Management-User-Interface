@@ -123,136 +123,136 @@ export function MasterPaginationBar({
       </div>
 
       {/* Per page — center on desktop; row 3 on mobile */}
-      {showPageSize && sizes.length > 0 && (
-      <div
-        className={cn(
-          'flex items-center justify-center gap-2 shrink-0',
-          'order-3 w-full sm:w-auto',
-          'sm:order-2 lg:order-none lg:justify-self-center'
-        )}
-      >
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">
-          Per Page:
-        </span>
-        <div className="flex flex-wrap items-center justify-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)]">
-          {sizes.map((size) => (
-            <button
-              key={size}
-              type="button"
-              onClick={() => changePageSize(size)}
-              className={cn(
-                // Desktop/tablet: original h-6 w-9; mobile: slightly larger tap target
-                'h-7 w-10 sm:h-6 sm:w-9 rounded-md text-[10px] font-semibold tabular-nums tracking-wide transition-all',
-                itemsPerPage === size
-                  ? 'bg-[#1E56A0] text-white shadow-sm'
-                  : 'text-slate-500 hover:text-[#1E56A0] hover:bg-[var(--tm-muted)]'
-              )}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-      </div>
-      )}
 
       {/* Page controls — right on desktop; row 2 on mobile */}
       {showPager ? (
-      <div
-        className={cn(
-          'flex flex-wrap items-center justify-center gap-1 min-w-0 max-w-full',
-          'order-2 w-full sm:w-auto',
-          'sm:order-3 sm:ml-auto sm:justify-end',
-          'lg:order-none lg:ml-0 lg:justify-self-end',
-          !showPageSize && 'lg:col-start-3'
-        )}
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={busy || safeCurrentPage === 1}
-          onClick={() => goToPage(1)}
-          aria-label="First page"
-          className="h-9 w-9 shrink-0 rounded-[7px] text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)]"
-        >
-          <ChevronsLeft size={15} strokeWidth={2} />
-        </Button>
+        <div className='min-w-0 max-w-full flex gap-2'>
+          <div
+            className={cn(
+              'flex items-center justify-center gap-2 shrink-0',
+              'order-3 w-full sm:w-auto',
+              'sm:order-2 lg:order-none lg:justify-self-center'
+            )}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap">
+              Per Page:
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-0.5 bg-[var(--tm-surface)] p-0.5 rounded-lg border border-[var(--tm-border)]">
+              {sizes.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => changePageSize(size)}
+                  className={cn(
+                    // Desktop/tablet: original h-6 w-9; mobile: slightly larger tap target
+                    'h-7 w-10 sm:h-6 sm:w-9 rounded-md text-[10px] font-semibold tabular-nums tracking-wide transition-all',
+                    itemsPerPage === size
+                      ? 'bg-[#1E56A0] text-white shadow-sm'
+                      : 'text-slate-500 hover:text-[#1E56A0] hover:bg-[var(--tm-muted)]'
+                  )}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div
+            className={cn(
+              'flex flex-wrap items-center justify-center gap-1',
+              'order-2 w-full sm:w-auto',
+              'sm:order-3 sm:ml-auto sm:justify-end',
+              'lg:order-none lg:ml-0 lg:justify-self-end',
+              !showPageSize && 'lg:col-start-3'
+            )}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={busy || safeCurrentPage === 1}
+              onClick={() => goToPage(1)}
+              aria-label="First page"
+              className="h-9 w-9 shrink-0 rounded-[7px] text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)]"
+            >
+              <ChevronsLeft size={15} strokeWidth={2} />
+            </Button>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={busy || safeCurrentPage === 1}
-          onClick={() => goToPage(Math.max(1, safeCurrentPage - 1))}
-          aria-label="Previous page"
-          className="h-9 w-9 shrink-0 rounded-[7px] text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)]"
-        >
-          <ChevronLeft size={14} strokeWidth={2.5} />
-        </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={busy || safeCurrentPage === 1}
+              onClick={() => goToPage(Math.max(1, safeCurrentPage - 1))}
+              aria-label="Previous page"
+              className="h-9 w-9 shrink-0 rounded-[7px] text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)]"
+            >
+              <ChevronLeft size={14} strokeWidth={2.5} />
+            </Button>
 
-        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1 max-w-full">
-          {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1)
-            .filter((page) => {
-              return (
-                page === 1 ||
-                page === totalPages ||
-                Math.abs(page - safeCurrentPage) <= 1
-              );
-            })
-            .map((page, idx, arr) => {
-              const isPageActive = safeCurrentPage === page;
-              const hasGap = idx > 0 && page - arr[idx - 1]! > 1;
+            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1 max-w-full">
+              {Array.from({ length: Math.max(1, totalPages) }, (_, i) => i + 1)
+                .filter((page) => {
+                  return (
+                    page === 1 ||
+                    page === totalPages ||
+                    Math.abs(page - safeCurrentPage) <= 1
+                  );
+                })
+                .map((page, idx, arr) => {
+                  const isPageActive = safeCurrentPage === page;
+                  const hasGap = idx > 0 && page - arr[idx - 1]! > 1;
 
-              return (
-                <React.Fragment key={page}>
-                  {hasGap ? (
-                    <span className="text-[10px] font-medium text-slate-400 w-4 text-center select-none shrink-0">
-                      ...
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => goToPage(page)}
-                    aria-label={`Page ${page}`}
-                    aria-current={isPageActive ? 'page' : undefined}
-                    className={cn(
-                      'h-9 w-9 shrink-0 rounded-[7px] text-[13px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
-                      isPageActive
-                        ? 'bg-[#1E56A0] border-[#1E56A0] text-white shadow-sm'
-                        : 'bg-[var(--tm-surface)] border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)]'
-                    )}
-                  >
-                    {page}
-                  </button>
-                </React.Fragment>
-              );
-            })}
+                  return (
+                    <React.Fragment key={page}>
+                      {hasGap ? (
+                        <span className="text-[10px] font-medium text-slate-400 w-4 text-center select-none shrink-0">
+                          ...
+                        </span>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => goToPage(page)}
+                        aria-label={`Page ${page}`}
+                        aria-current={isPageActive ? 'page' : undefined}
+                        className={cn(
+                          'h-9 w-9 shrink-0 rounded-[7px] text-[13px] font-semibold tabular-nums transition-colors flex items-center justify-center border',
+                          isPageActive
+                            ? 'bg-[#1E56A0] border-[#1E56A0] text-white shadow-sm'
+                            : 'bg-[var(--tm-surface)] border-[var(--tm-border)] text-slate-300 hover:bg-[var(--tm-muted)]'
+                        )}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={busy || safeCurrentPage >= totalPages}
+              onClick={() => goToPage(Math.min(totalPages, safeCurrentPage + 1))}
+              aria-label="Next page"
+              className="h-9 w-9 shrink-0 rounded-[7px] text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)]"
+            >
+              <ChevronRight size={14} strokeWidth={2.5} />
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={busy || safeCurrentPage >= totalPages}
+              onClick={() => goToPage(totalPages)}
+              aria-label="Last page"
+              className="h-9 w-9 shrink-0 rounded-[7px] text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)]"
+            >
+              <ChevronsRight size={15} strokeWidth={2} />
+            </Button>
+          </div>
         </div>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={busy || safeCurrentPage >= totalPages}
-          onClick={() => goToPage(Math.min(totalPages, safeCurrentPage + 1))}
-          aria-label="Next page"
-          className="h-9 w-9 shrink-0 rounded-[7px] text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)]"
-        >
-          <ChevronRight size={14} strokeWidth={2.5} />
-        </Button>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={busy || safeCurrentPage >= totalPages}
-          onClick={() => goToPage(totalPages)}
-          aria-label="Last page"
-          className="h-9 w-9 shrink-0 rounded-[7px] text-slate-500 hover:bg-[var(--tm-muted)] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--tm-border)] bg-[var(--tm-surface)]"
-        >
-          <ChevronsRight size={15} strokeWidth={2} />
-        </Button>
-      </div>
       ) : null}
     </div>
   );

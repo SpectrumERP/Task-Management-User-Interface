@@ -9,6 +9,7 @@ import {
   readCrmSession,
   redirectToCrmLogin,
 } from '@/lib/crmSso';
+import { currentAppPath } from '@/lib/basePath';
 
 interface User {
   id: string;
@@ -186,7 +187,7 @@ async function adoptCrmSession(set: SetState, get: () => AuthState) {
 if (CRM_SSO_ENABLED) {
   onCrmSessionEnd(() => {
     if (useAuthStore.getState().isAuthenticated) {
-      void useAuthStore.getState().logout({ returnTo: `${window.location.pathname}${window.location.search}` });
+      void useAuthStore.getState().logout({ returnTo: currentAppPath() });
     }
   });
 }

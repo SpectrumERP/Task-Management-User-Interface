@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, Calendar as CalendarIcon, Clipboard, Plus, X, User, type LucideIcon } from 'lucide-react';
+import { Search, RotateCcw, SlidersHorizontal, Layers, Tag, Calendar as CalendarIcon, Clipboard, Plus, X, User, ListTree, List, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FIELD_TEXT_STYLE } from '@/lib/fieldStyles';
 import { useTaskStore, TaskFillValues } from '@/store/useTaskStore';
@@ -117,6 +117,8 @@ interface TaskFilterProps {
   className?: string;
   viewMode?: 'list' | 'board' | 'calendar';
   onViewModeChange?: (mode: 'list' | 'board' | 'calendar') => void;
+  isGroupView?: boolean;
+  onGroupViewChange?: (isGroup: boolean) => void;
   onCreateTask?: () => void;
   showFilters?: boolean;
   onToggleFilters?: () => void;
@@ -164,6 +166,8 @@ export function TaskFilter({
   className,
   viewMode,
   onViewModeChange,
+  isGroupView = true,
+  onGroupViewChange,
   onCreateTask,
   showFilters,
   onToggleFilters,
@@ -463,7 +467,10 @@ export function TaskFilter({
 
   const emitFilter = (cleanFilters: Record<string, unknown>) => {
     scrollTaskTableToTop();
-    onFilter(cleanFilters);
+    onFilter({
+      ...cleanFilters,
+      ...(isGroupView !== undefined ? { isGroupView } : {}),
+    });
   };
 
   const stripAllSentinelFilters = (data: FilterFormValues): FilterFormValues => {
@@ -816,6 +823,49 @@ export function TaskFilter({
                     </ActionTip>
                   )}
                 />
+              )}
+
+              {/* Grouped vs Single / List tasks toggle */}
+              {onGroupViewChange && (
+                <div
+                  role="group"
+                  aria-label="Toggle grouped or list tasks"
+                  data-page-tour="task-group-toggle"
+                  className="crm-segmented inline-flex shrink-0 items-center overflow-hidden rounded-[7px] border border-[var(--tm-border)] bg-[var(--tm-surface)]"
+                >
+                  <ActionTip label="Grouped tasks (parent tasks with nested subtasks)">
+                    <button
+                      type="button"
+                      aria-pressed={isGroupView}
+                      onClick={() => onGroupViewChange(true)}
+                      className={cn(
+                        "inline-flex h-[30px] items-center gap-1.5 px-3 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1E56A0]/40",
+                        isGroupView
+                          ? "bg-[#1E56A0] text-white shadow-sm"
+                          : "text-slate-400 hover:bg-[var(--tm-muted)] hover:text-slate-200"
+                      )}
+                    >
+                      <ListTree size={13} strokeWidth={2} />
+                      <span>Grouped</span>
+                    </button>
+                  </ActionTip>
+                  <ActionTip label="Single tasks (flat list of all tasks)">
+                    <button
+                      type="button"
+                      aria-pressed={!isGroupView}
+                      onClick={() => onGroupViewChange(false)}
+                      className={cn(
+                        "inline-flex h-[30px] items-center gap-1.5 px-3 text-[12px] font-semibold transition-colors border-l border-[var(--tm-border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1E56A0]/40",
+                        !isGroupView
+                          ? "bg-[#1E56A0] text-white shadow-sm"
+                          : "text-slate-400 hover:bg-[var(--tm-muted)] hover:text-slate-200"
+                      )}
+                    >
+                      <List size={13} strokeWidth={2} />
+                      <span>List</span>
+                    </button>
+                  </ActionTip>
+                </div>
               )}
 
               <div

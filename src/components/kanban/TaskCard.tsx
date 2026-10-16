@@ -11,6 +11,9 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettings } from '@/hooks/useSettings';
 import { taskUrl } from '@/lib/dealMonitor';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useFormRights } from '@/hooks/useFormRights';
+import { canUserEditTask } from '@/lib/taskAccess';
 
 interface TaskCardProps {
   task: Task;
@@ -22,6 +25,9 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
   const navigate = useNavigate();
   const { fillValues } = useTaskStore();
   const { isHideType } = useSettings();
+  const user = useAuthStore((s) => s.user);
+  const { isUpdate } = useFormRights(1547);
+  const canEdit = canUserEditTask(user, task, isUpdate);
 
   const getContrastColor = (hexColor?: string) => {
     if (!hexColor) return 'var(--tm-input-fg)';
@@ -80,16 +86,18 @@ export function TaskCard({ task, index, onTaskClick }: TaskCardProps) {
               <div className="flex justify-between items-start gap-2">
                 <span className="text-[10px] font-semibold text-slate-500">{displayCode}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(taskUrl(task.taskNo, task.categoryName));
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] flex items-center justify-center cursor-pointer"
-                  >
-                    <Edit2 size={12} strokeWidth={2.25} />
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(taskUrl(task.taskNo, task.categoryName));
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-all duration-200 h-6 w-6 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:bg-[var(--tm-tint)] flex items-center justify-center cursor-pointer"
+                    >
+                      <Edit2 size={12} strokeWidth={2.25} />
+                    </button>
+                  )}
                   <PriorityIcon />
                 </div>
               </div>
