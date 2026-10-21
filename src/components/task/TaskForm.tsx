@@ -38,6 +38,8 @@ import {
 } from '@/lib/allowedUploadFiles';
 import { sortByLabel } from '@/lib/sortOptions';
 import { formatDateOnly, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
+import { compressPhoto } from '@/lib/compressImage';
+import { format as formatStamp } from 'date-fns';
 import {
   formatReminderSummary,
   guessDailyFrequencyNo,
@@ -535,6 +537,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   }>>([]);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Phone / tablet camera: "Take Photo" opens the device camera (capture="environment").
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [canCapturePhoto] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches);
+  const [isPreparingPhoto, setIsPreparingPhoto] = useState(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
@@ -1527,6 +1533,21 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     }], { shouldDirty: true });
     setIsCameraModalOpen(false);
     toast.success("Camera attachment uploaded successfully");
+  };
+
+  /** A photo from the device camera: shrunk, given a readable name, then uploaded like any attachment. */
+  const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const photo = e.target.files?.[0];
+    e.target.value = '';
+    if (!photo) return;
+    setIsPreparingPhoto(true);
+    try {
+      // Phones often name every capture "image.jpg": a timestamp keeps names unique and readable.
+      const file = await compressPhoto(photo, `task-photo-${formatStamp(new Date(), 'yyyyMMdd-HHmmss')}`);
+      processFiles([file]);
+    } finally {
+      setIsPreparingPhoto(false);
+    }
   };
 
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2966,6 +2987,29 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   accept={UPLOAD_ACCEPT_ATTR}
                   helperText={ALLOWED_UPLOAD_HELPER_TEXT}
                 />
+
+                {canCapturePhoto && (
+                  <>
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => void handleCameraCapture(e)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isPreparingPhoto}
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="h-10 w-full gap-2 rounded-[8px] border-[#0EA5E9]/30 text-xs font-semibold text-[#0EA5E9] hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]"
+                    >
+                      {isPreparingPhoto ? <RefreshCw size={16} className="animate-spin" /> : <Camera size={16} />}
+                      {isPreparingPhoto ? 'Preparing photo…' : 'Take Photo'}
+                    </Button>
+                  </>
+                )}
 
                 {uploadingFiles.length > 0 && (
                   <div className="space-y-1.5">
