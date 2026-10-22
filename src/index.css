@@ -1134,6 +1134,22 @@ html:not(.dark) .tm-sidebar-tip {
   background-color: color-mix(in srgb, rgb(239 68 68) 20%, var(--tm-row-odd)) !important;
 }
 
+/* Stale task (In-Progress, no update for 3+ days) — orange row, pinned cells included
+   (listed by class so they out-rank the zebra rules on sticky cells). */
+.tm-data-table>tbody>tr[data-row-stale]>td,
+.tm-data-table>tbody>tr[data-row-stale]>td.tm-sticky-cell,
+.tm-data-table>tbody>tr[data-row-stale]>td.tm-col-sticky-code,
+.tm-data-table>tbody>tr[data-row-stale]>td.tm-col-actions {
+  background-color: color-mix(in srgb, rgb(249 115 22) 14%, var(--tm-row-odd)) !important;
+}
+
+.tm-data-table>tbody>tr[data-row-stale]:hover>td,
+.tm-data-table>tbody>tr[data-row-stale]:hover>td.tm-sticky-cell,
+.tm-data-table>tbody>tr[data-row-stale]:hover>td.tm-col-sticky-code,
+.tm-data-table>tbody>tr[data-row-stale]:hover>td.tm-col-actions {
+  background-color: color-mix(in srgb, rgb(249 115 22) 20%, var(--tm-row-odd)) !important;
+}
+
 /* ── CRM data table (Spectrum CRM `.crm-table` look), light theme ──
    Slate header, bold 12px labels, full grid lines, white rows (no zebra), slate hover.
    The vars also feed the sticky Code / Actions cells above. */
@@ -1720,6 +1736,15 @@ html:not(.dark) .crm-select-field {
 .crm-select-panel [role='listbox'] ~ *,
 .crm-select-panel > div:first-child {
   line-height: 18px;
+}
+
+/* Options and column titles wrap instead of ending in "…": the panel already grows to fit (up to
+   40rem), so this only kicks in for values longer than that. Covers every option renderer's `truncate`. */
+.crm-select-panel .truncate {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* ══ Spectrum CRM form design (CreateLead): section cards, headers, fields ══ */

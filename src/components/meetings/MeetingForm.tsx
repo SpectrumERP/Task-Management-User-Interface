@@ -2,20 +2,25 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { AttachedFileRow } from '@/components/shared/AttachedFileRow';
 import { AttachmentDropZone } from '@/components/shared/AttachmentDropZone';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { useNavigate, useBlocker, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useBlocker, useLocation } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Clock, X } from 'lucide-react';
+import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Clock, X, Lock, Pencil, Eye, CalendarClock, ExternalLink, ChevronDown, AlertCircle as AlertCircleIcon } from 'lucide-react';
 import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { Combobox } from '@/components/ui/Combobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
-import { formatLocationDisplayLabel } from '@/services/locationService';
-import { UserCombobox } from '@/components/ui/UserCombobox';
-import { EmployeeCombobox } from '@/components/meetings/EmployeeCombobox';
-import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityCombobox';
+import { formatLocationDisplayLabel, locationService } from '@/services/locationService';
+import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
+import { isAdminUser } from '@/lib/taskAccess';
+import { ParticipantChipsInput } from '@/components/meetings/ParticipantChipsInput';
+import { ExternalParticipantDialog } from '@/components/meetings/ExternalParticipantDialog';
+import { PARTICIPANT_TYPE, resolveParticipantContacts, type ParticipantValue } from '@/lib/meetingParticipants';
+import { buildTaskOptions, discussionsFromApi, discussionsToApi, optionLabel } from '@/lib/meetingDiscussions';
+import { taskUrl } from '@/lib/dealMonitor';
+import { AssigneeAvatar, AssigneeLabel, DiscussionTasksDrawer } from '@/components/meetings/DiscussionTasksDrawer';
 import { DocumentCombobox } from '@/components/meetings/DocumentCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
@@ -29,7 +34,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useFormRights } from '@/hooks/useFormRights';
 import { useSettings } from '@/hooks/useSettings';
-import { getMeetingSchema, MeetingNotesFormData } from '@/types/meeting';
+import { getMeetingSchema, MeetingNotesFormData, type MeetingNotesDiscussion, type MeetingNotesDiscussionTask } from '@/types/meeting';
 import { attachmentService } from '@/services/attachmentService';
 import { Image as ImageIcon, RefreshCw, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -47,13 +52,14 @@ import {
 import { SendMinutesDialog } from '@/components/meetings/SendMinutesDialog';
 import {
   buildMinutesRecipients,
+  isMeetingFinalized,
   isMinutesSendStatusAllowed,
   readLastMinutesSentAt,
 } from '@/lib/meetingMinutesShare';
 import {
   ALLOWED_UPLOAD_HELPER_TEXT,
   UPLOAD_ACCEPT_ATTR,
-  validateUploadFile,
+  selectUploadBatch,
 } from '@/lib/allowedUploadFiles';
 
 const formatFileSize = (bytes?: number | null) => {
@@ -63,14 +69,6 @@ const formatFileSize = (bytes?: number | null) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const cleanMasterLabel = (label?: string | null) =>
-  (label || '').replace(/^\[(.+)\]$/, '$1').trim() || label || '';
-
-const toOptionalInt = (val: string) => {
-  if (val === '' || val == null) return null;
-  const n = parseInt(val, 10);
-  return Number.isNaN(n) ? null : n;
-};
 
 
 function FormSection({ title, icon: Icon, children, headerAction, tourId }: { title?: string, icon?: any, children?: React.ReactNode, headerAction?: React.ReactNode, tourId?: string }) {
@@ -99,7 +97,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const location = useLocation();
   const { isSave, isUpdate } = useFormRights(1559);
   const { isHideType, isHideFolder } = useSettings();
-  const { company: authCompanies } = useAuthStore();
+  const { company: authCompanies, user: authUser } = useAuthStore();
+  // "Add New Location" in Business Location: admins, and users who may save the Location master (form 1541).
+  const { isSave: canSaveLocationMaster } = useFormRights(1541);
+  const canAddLocation = isAdminUser(authUser) || canSaveLocationMaster;
+  const [locationCreateOpen, setLocationCreateOpen] = useState(false);
+  const currentLoginNo = Number(authUser?.LoginNo ?? authUser?.loginNo) || null;
   const companyNoStr = authCompanies?.[0]?.CompanyNo?.toString() || authCompanies?.[0]?.companyNo?.toString() || '1';
 
   // Task Masters for Action Items
@@ -109,7 +112,6 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const [meetingTypes, setMeetingTypes] = useState<any[]>([]);
   const [meetingCategories, setMeetingCategories] = useState<any[]>([]);
   const [meetingModes, setMeetingModes] = useState<any[]>([]);
-  const [participantTypes, setParticipantTypes] = useState<any[]>([]);
   const [meetingDocumentTypes, setMeetingDocumentTypes] = useState<any[]>([]);
   const [statuses, setStatuses] = useState<any[]>([]);
 
@@ -126,12 +128,56 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const [isRenamingAttachment, setIsRenamingAttachment] = useState(false);
   const [isDeletingAttachment, setIsDeletingAttachment] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{
-    type: 'participant' | 'discussion' | 'document';
+    type: 'participant' | 'discussion' | 'document' | 'task';
     index: number;
+    /** type 'task': the task within discussion `index`. */
+    taskIndex?: number;
     label: string;
   } | null>(null);
   const [invalidFiles, setInvalidFiles] = useState<Array<{ name: string; size: number; reason: string }>>([]);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
+  // Discussion lines whose task table is open (by field id, so it survives reordering / removal).
+  const [expandedLines, setExpandedLines] = useState<Set<string>>(() => new Set());
+  const toggleLineTasks = (fieldId: string) =>
+    setExpandedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(fieldId)) next.delete(fieldId);
+      else next.add(fieldId);
+      return next;
+    });
+  // Task drawer: one task of a discussion line (taskIndex null = add), with a snapshot of it.
+  // Kept (with open: false) while the drawer animates closed; `session` remounts it per opening.
+  const [tasksDrawer, setTasksDrawer] = useState<{
+    open: boolean;
+    session: number;
+    index: number;
+    taskIndex: number | null;
+    task: MeetingNotesDiscussionTask | null;
+    topic: string;
+  } | null>(null);
+  const openTask = (index: number, taskIndex: number | null) =>
+    setTasksDrawer((prev) => {
+      const tasks = form.getValues(`discussions.${index}.tasks`) ?? [];
+      return {
+        open: true,
+        session: (prev?.session ?? 0) + 1,
+        index,
+        taskIndex,
+        task: taskIndex == null ? null : { ...tasks[taskIndex] },
+        topic: form.getValues(`discussions.${index}.topic`) ?? '',
+      };
+    });
+  // External participant details dialog: the participant (index + snapshot), null when closed.
+  const [externalEdit, setExternalEdit] = useState<{ index: number; value: ParticipantValue } | null>(null);
+  const openExternalDetails = (index: number) => {
+    const value = form.getValues(`participants.${index}`) as ParticipantValue | undefined;
+    if (value) setExternalEdit({ index, value: { ...value } });
+  };
+  const addDiscussion = () =>
+    appendDiscussion(
+      { topic: '', discussionSummary: '', decisionRemarks: '', remarks: '', tasks: [] },
+      { shouldFocus: true, focusName: `discussions.${discussionFields.length}.topic` }
+    );
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [typeModalOpen, setTypeModalOpen] = useState(false);
@@ -144,6 +190,11 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
+  // Status as last saved — finalized notes are locked (picking Finalize only locks once saved).
+  const [savedStatus, setSavedStatus] = useState<{ no: number | null; name: string }>(() => ({
+    no: initialData?.statusNo ?? null,
+    name: initialData?.statusName || '',
+  }));
   const [pendingData, setPendingData] = useState<any>(null);
   const [isSubmitSuccessful, setIsSubmitSuccessful] = useState(false);
   const [locationLabel, setLocationLabel] = useState(() =>
@@ -177,10 +228,28 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       remarks: initialData?.remarks || '',
       statusNo: initialData?.statusNo || 17,
       participants: initialData?.participants || [],
-      discussions: initialData?.discussions || [],
+      discussions: discussionsFromApi(initialData?.discussions, Number(initialData?.operTaskCompanyNo ?? companyNoStr) || null),
       documents: initialData?.documents || []
     }
   });
+
+  /** Selects a location just added from the Business Location dropdown. */
+  const selectCreatedLocation = async (createdId: string, label: string) => {
+    let id = createdId;
+    if (!id) {
+      // The save response had no id: find the new location by its name.
+      const matches = await locationService.searchLocations(label);
+      const found = matches.find((l) => formatLocationDisplayLabel(l).toLowerCase() === label.trim().toLowerCase());
+      id = found?.operLocationNo?.toString() || '';
+    }
+    if (!id) {
+      toast.success(`Location "${label.trim()}" added. Select it from the list.`);
+      return;
+    }
+    form.setValue('operLocationNo', id, { shouldDirty: true, shouldValidate: true });
+    setLocationLabel(label.trim());
+    toast.success(`Location "${label.trim()}" added and selected.`);
+  };
 
   useEffect(() => {
     if (meetingNotesNo && !initialData) {
@@ -198,14 +267,23 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               console.error('Failed to load attachments in form load-data:', attError);
             }
 
+            setSavedStatus({ no: res.data.statusNo ?? null, name: res.data.statusName || '' });
             form.reset({
               ...res.data,
               meetingTypeNo: res.data.meetingTypeNo?.toString(),
-              companyNo: res.data.operTaskCompanyNo?.toString(),
+              companyNo: res.data.operTaskCompanyNo?.toString() || companyNoStr,
+              // Tasks saved before company existed start with the meeting's company.
+              discussions: discussionsFromApi(res.data.discussions, Number(res.data.operTaskCompanyNo ?? companyNoStr) || null),
               meetingCategoryNo: res.data.meetingCategoryNo?.toString(),
               meetingModeNo: res.data.meetingModeNo?.toString(),
               operTaskCompanyNo: res.data.companyNo?.toString(),
               operLocationNo: res.data.operLocationNo?.toString(),
+            });
+            // Users / employees saved without an email get it looked up (Send Minutes needs it).
+            void resolveParticipantContacts(res.data.participants || []).then((resolved) => {
+              if (resolved.some((p, i) => p !== res.data.participants[i])) {
+                form.setValue('participants', resolved as MeetingNotesFormData['participants'], { shouldDirty: false });
+              }
             });
             setLocationLabel(
               formatLocationDisplayLabel({
@@ -237,7 +315,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
     }
   }, [meetingNotesNo, initialData, form]);
 
-  const { fields: participantFields, append: appendParticipant, remove: removeParticipant } = useFieldArray({
+  const { fields: participantFields, append: appendParticipant, remove: removeParticipant, update: updateParticipant } = useFieldArray({
     control: form.control,
     name: 'participants'
   });
@@ -263,7 +341,6 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         if (data.meetingTypes) setMeetingTypes(data.meetingTypes);
         if (data.meetingCategories) setMeetingCategories(data.meetingCategories);
         if (data.meetingModes) setMeetingModes(data.meetingModes);
-        if (data.participantTypes) setParticipantTypes(data.participantTypes);
 
         if (data.meetingDocumentTypes) setMeetingDocumentTypes(data.meetingDocumentTypes);
         if (data.statuses) setStatuses(data.statuses);
@@ -285,12 +362,38 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
   const resolvedMeetingNo = meetingNotesNo || initialData?.meetingNotesNo || null;
 
+  // Company for meeting tasks — same options as the task form.
+  const taskCompanyOptions = useMemo(
+    () =>
+      taskFillValues?.taskCompany?.length
+        ? taskFillValues.taskCompany.map((c) => ({
+            label: c.CompanyName || c.AliasName || c.Code || 'Unknown Company',
+            value: String(c.OperTaskCompanyNo || ''),
+          }))
+        : ((authCompanies || []) as Array<{ CompanyName?: string; companyName?: string; name?: string; companyNo?: number | string; CompanyNo?: number | string }>).map((c) => ({
+            label: c.CompanyName || c.companyName || c.name || 'Unknown Company',
+            value: String(c.companyNo || c.CompanyNo || ''),
+          })),
+    [taskFillValues, authCompanies]
+  );
+  const watchedCompanyNo = form.watch('companyNo');
+  const taskOptions = useMemo(() => buildTaskOptions(taskFillValues), [taskFillValues]);
+
   const currentStatusName = useMemo(() => {
     const match = statuses.find(
       (s) => String(s.statusNo) === String(watchedStatusNo)
     );
     return match?.statusName || match?.StatusName || '';
   }, [statuses, watchedStatusNo]);
+
+  const savedStatusName =
+    savedStatus.name ||
+    statuses.find((s) => savedStatus.no != null && String(s.statusNo) === String(savedStatus.no))?.statusName ||
+    '';
+  /** Finalized: the tasks have been created and the meeting notes can no longer be changed. */
+  const isLocked = Boolean(resolvedMeetingNo) && isMeetingFinalized(savedStatusName);
+  /** This save finalizes the notes: it creates the tasks and locks the form. */
+  const isFinalizing = !isLocked && isMeetingFinalized(currentStatusName);
 
   const minutesRecipients = useMemo(
     () => buildMinutesRecipients(watchedParticipants || []),
@@ -400,16 +503,12 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   };
 
   const processFiles = (files: File[]) => {
-    const validFiles: File[] = [];
-    const failed: Array<{ name: string; size: number; reason: string }> = [];
-    files.forEach(file => {
-      const result = validateUploadFile(file);
-      if (!result.ok) {
-        failed.push({ name: file.name, size: file.size, reason: result.reason });
-        return;
-      }
-      validFiles.push(file);
-    });
+    // Already attached + still in the upload queue count toward the per-meeting limit.
+    const existing = [
+      ...((form.getValues('attachments') || []) as Array<{ name?: string; size?: number }>),
+      ...uploadingFiles.map((f) => ({ name: f.name, size: f.fileObject?.size })),
+    ];
+    const { accepted: validFiles, rejected: failed } = selectUploadBatch(files, existing);
     if (failed.length > 0) {
       setInvalidFiles(failed);
       setShowWarningDialog(true);
@@ -444,19 +543,25 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   };
 
   const requestRemoveItem = (
-    type: 'participant' | 'discussion' | 'document',
+    type: 'participant' | 'discussion' | 'document' | 'task',
     index: number,
-    label: string
+    label: string,
+    taskIndex?: number
   ) => {
-    setItemToDelete({ type, index, label });
+    setItemToDelete({ type, index, label, taskIndex });
   };
 
   const confirmRemoveItem = () => {
     if (!itemToDelete) return;
-    const { type, index } = itemToDelete;
+    const { type, index, taskIndex } = itemToDelete;
     if (type === 'participant') removeParticipant(index);
     else if (type === 'discussion') removeDiscussion(index);
-    else removeDocument(index);
+    else if (type === 'task') {
+      const path = `discussions.${index}.tasks` as const;
+      const tasks = form.getValues(path) ?? [];
+      form.setValue(path, tasks.filter((_, i) => i !== taskIndex), { shouldDirty: true });
+      if (form.formState.errors.discussions?.[index]?.tasks) void form.trigger(path);
+    } else removeDocument(index);
     setItemToDelete(null);
   };
 
@@ -501,6 +606,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   };
 
   const onSubmit = (data: any) => {
+    if (isLocked) return;
     setPendingData(data);
     setShowConfirm(true);
   };
@@ -508,7 +614,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const handleConfirmSave = async () => {
     setShowConfirm(false);
     const data = pendingData;
-    if (!data) return;
+    if (!data || isLocked) return;
 
     try {
       if (uploadingFiles.some(f => f.status === 'pending' || f.status === 'uploading' || f.status === 'verifying')) {
@@ -534,8 +640,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       let payload = {
         ...data,
         companyNo: parseInt(data.operTaskCompanyNo),
-        meetingTypeNo: parseInt(data.meetingTypeNo),
-        operTaskCompanyNo: parseInt(data.companyNo),
+        meetingTypeNo: data.meetingTypeNo ? parseInt(data.meetingTypeNo) : null,
+        // Not sent at the meeting level; each discussion task sends its own company.
+        operTaskCompanyNo: null,
         meetingCategoryNo: parseInt(data.meetingCategoryNo),
         meetingModeNo: parseInt(data.meetingModeNo),
         operLocationNo: parseInt(data.operLocationNo),
@@ -543,6 +650,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         attachments: data.attachments.map((a: any) => ({
           docNo: a.id
         })),
+        discussions: discussionsToApi(data.discussions || []),
         documents: data.documents.map((d: any) => ({
           mnDocumentDetailNo: d.mnDocumentDetailNo || null,
           documentType: parseInt(d.documentType?.toString() || null) || null,
@@ -569,7 +677,15 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
             };
           }
 
-          return { ...p, participantType: type };
+          // External (typed email address)
+          return {
+            participantType: PARTICIPANT_TYPE.external,
+            participantName: p.participantName || p.email,
+            email: p.email,
+            companyName: p.companyName,
+            designation: p.designation,
+            contactNo: p.contactNo,
+          };
         })
       };
 
@@ -581,7 +697,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       }
 
       await apiService.post(url, cleanEmptyStrings(payload));
-      toast.success(isUpdate ? 'Meeting notes updated successfully.' : 'Meeting notes saved successfully.');
+      toast.success(
+        isFinalizing
+          ? 'Meeting notes finalized. Tasks have been created.'
+          : isUpdate
+            ? 'Meeting notes updated successfully.'
+            : 'Meeting notes saved successfully.'
+      );
+      setSavedStatus({ no: data.statusNo ?? null, name: currentStatusName });
       setIsSubmitSuccessful(true);
 
       // Delay to allow state update for useBlocker
@@ -651,7 +774,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setTimeout(() => {
-            const focusable = element?.querySelector('button, input:not([type="hidden"]), select, textarea') as HTMLElement;
+            const focusable = (element?.matches('input, select, textarea')
+              ? element
+              : element?.querySelector('button, input:not([type="hidden"]), select, textarea')) as HTMLElement;
             if (focusable) {
               focusable.focus();
             }
@@ -679,8 +804,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         items={[
           { label: 'Meeting Notes', href: '/meetings' },
           {
-            label:
-              meetingNotesNo || initialData?.meetingNotesNo
+            label: isLocked
+              ? 'View Meeting Note'
+              : meetingNotesNo || initialData?.meetingNotesNo
                 ? 'Edit Meeting Note'
                 : 'Create Meeting Note',
             current: true,
@@ -690,9 +816,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         actions={
           <div className="flex items-center gap-2" data-page-tour="meeting-form-actions">
             <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] text-slate-300 shadow-none px-3" onClick={requestLeave}>
-              Cancel
+              {isLocked ? 'Back' : 'Cancel'}
             </Button>
-            {((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
+            {!isLocked && ((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
               <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-sm shadow-[#0EA5E9]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
                 {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
               </Button>
@@ -715,7 +841,19 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
       <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
         <div className="w-full mx-auto px-5 py-4">
+          {isLocked ? (
+            <div role="status" className="mb-3 flex items-start gap-2.5 rounded-[8px] border border-[#0EA5E9]/30 bg-[var(--tm-tint)] px-3.5 py-2.5">
+              <Lock size={15} className="mt-0.5 shrink-0 text-[#0EA5E9]" />
+              <div>
+                <p className="text-xs font-semibold text-slate-100">Finalized — read only</p>
+                <p className="text-[11px] text-slate-400">
+                  The tasks from the discussion points have been created. These meeting notes can no longer be changed.
+                </p>
+              </div>
+            </div>
+          ) : null}
           <form onSubmit={form.handleSubmit(onSubmit, onValidationError)} className="space-y-3">
+            <fieldset disabled={isLocked} className="m-0 min-w-0 space-y-3 border-0 p-0">
 
             {/* SECTION 1: Basic Information */}
             <FormSection
@@ -762,6 +900,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.meetingCategoryNo?.message}>
                         <Combobox className={cn("rounded-[8px] h-10 w-full", form.formState.errors.meetingCategoryNo && "border-red-400")}
+                          disabled={isLocked}
                           options={meetingCategories.map(c => ({ value: (c.id || c.meetingCategoryNo).toString(), label: c.name || c.meetingCategoryName }))}
                           value={field.value}
                           onChange={field.onChange}
@@ -774,14 +913,16 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   />
                 </div>
 
+                {!isHideType && (
                 <div id="form-group-meetingTypeNo" className="space-y-1.5">
-                  <FieldLabel required>Meeting Type</FieldLabel>
+                  <FieldLabel>Meeting Type</FieldLabel>
                   <Controller
                     control={form.control}
                     name="meetingTypeNo"
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.meetingTypeNo?.message}>
                         <Combobox className={cn("rounded-[8px] h-10 w-full", form.formState.errors.meetingTypeNo && "border-red-400")}
+                          disabled={isLocked}
                           options={meetingTypes.map(t => ({ value: (t.id || t.meetingTypeNo).toString(), label: t.name || t.meetingTypeName }))}
                           value={field.value}
                           onChange={field.onChange}
@@ -793,34 +934,18 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                     )}
                   />
                 </div>
+                )}
 
-
-                <div id="form-group-companyNo" className="space-y-1.5">
-                  <FieldLabel required>Company</FieldLabel>
-                  <Controller
-                    control={form.control}
-                    name="companyNo"
-                    render={({ field }) => (
-                      <FieldControl error={form.formState.errors.companyNo?.message}>
-                        <Combobox className={cn("rounded-[8px] h-10", form.formState.errors.companyNo && "border-red-400")}
-                          options={taskFillValues?.taskCompany?.map(c => ({ value: c.CompanyNo?.toString() || c.companyNo?.toString() || c.OperTaskCompanyNo?.toString() || '', label: c.TaskCompanyName || c.CompanyName || c.companyName || c.name || c.AliasName || c.Code || 'Unknown Company' })) || []}
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select Company"
-                        />
-                      </FieldControl>
-                    )}
-                  />
-                </div>
 
                 <div id="form-group-operLocationNo" className="space-y-1.5">
-                  <FieldLabel required>Location</FieldLabel>
+                  <FieldLabel required>Business Location</FieldLabel>
                   <Controller
                     control={form.control}
                     name="operLocationNo"
                     render={({ field }) => (
                       <FieldControl error={form.formState.errors.operLocationNo?.message}>
                         <LocationCombobox
+                          disabled={isLocked}
                           className={cn(
                             'rounded-[8px] h-10',
                             form.formState.errors.operLocationNo && 'border-red-400'
@@ -839,6 +964,8 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                           initialLabel={locationLabel || undefined}
                           placeholder="Select location"
                           error={!!form.formState.errors.operLocationNo}
+                          onAddNew={canAddLocation ? () => setLocationCreateOpen(true) : undefined}
+                          addNewLabel="Add New Location"
                         />
                       </FieldControl>
                     )}
@@ -877,6 +1004,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       <FieldControl error={form.formState.errors.meetingStartDateTime?.message}>
                         <DateTimePicker
                           hour24
+                          disabled={isLocked}
                           className={cn("rounded-[8px]", form.formState.errors.meetingStartDateTime && "border-red-400")}
                           date={field.value ? new Date(field.value) : undefined}
                           onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
@@ -895,6 +1023,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                       <FieldControl error={form.formState.errors.meetingEndDateTime?.message}>
                         <DateTimePicker
                           hour24
+                          disabled={isLocked}
                           className={cn("rounded-[8px]", form.formState.errors.meetingEndDateTime && "border-red-400")}
                           date={field.value ? new Date(field.value) : undefined}
                           onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
@@ -918,422 +1047,414 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               </div>
             </FormSection>
 
-            {/* SECTION 2: Participants */}
+            {/* SECTION 2: Participants — one Outlook-style "To" field */}
             <FormSection
               title="Participants"
               icon={Users}
               tourId="meeting-form-participants"
               headerAction={
-                <Button type="button" onClick={() => appendParticipant({ participantType: 1 })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
-                  <Plus size={14} className="mr-1" /> Add Participant
-                </Button>
+                participantFields.length > 0 ? (
+                  <span className="text-[11px] font-medium text-slate-400">
+                    {participantFields.length} participant{participantFields.length === 1 ? '' : 's'}
+                  </span>
+                ) : null
               }
             >
-              {participantFields.length === 0 ? (
+              <div id="form-group-participants">
                 <FieldControl
-                  className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)] flex flex-col items-center justify-center"
                   error={
                     (form.formState.errors.participants?.message ||
-                      form.formState.errors.participants?.root?.message) as string | undefined
+                      form.formState.errors.participants?.root?.message ||
+                      (Array.isArray(form.formState.errors.participants) && form.formState.errors.participants.some(Boolean)
+                        ? 'Add the missing details for the highlighted external participants.'
+                        : undefined)) as string | undefined
                   }
                 >
-                  <p className="text-xs text-slate-500 font-medium">No participants added yet.</p>
+                  <ParticipantChipsInput
+                    participants={(watchedParticipants || []) as ParticipantValue[]}
+                    onAdd={(participant) => {
+                      const index = (form.getValues('participants') || []).length;
+                      appendParticipant(participant as MeetingNotesFormData['participants'][number]);
+                      if (form.formState.errors.participants) void form.trigger('participants');
+                      // External: ask for the details the API requires (several pasted at once → the first).
+                      if (participant.participantType === PARTICIPANT_TYPE.external) {
+                        setExternalEdit((open) => open ?? { index, value: { ...participant } });
+                      }
+                    }}
+                    onRemove={(index) => {
+                      removeParticipant(index);
+                      void form.trigger('participants');
+                    }}
+                    onEditExternal={openExternalDetails}
+                    invalid={!!form.formState.errors.participants}
+                    disabled={isLocked}
+                  />
                 </FieldControl>
-              ) : (
-                <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                  <table className="tm-data-table w-full text-left border-collapse min-w-[800px]">
-                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
-                      <tr>
-                        <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
-                        <th className="px-3 py-2.5 w-[15%] border-r border-[var(--tm-border)]">Type</th>
-                        <th className="px-3 py-2.5 w-[20%] border-r border-[var(--tm-border)]">Participant Name</th>
-                        <th className="px-3 py-2.5 w-[15%] border-r border-[var(--tm-border)]">Company</th>
-                        <th className="px-3 py-2.5 w-[20%] border-r border-[var(--tm-border)]">Email</th>
-                        <th className="px-3 py-2.5 w-[15%] border-r border-[var(--tm-border)]">Designation / Contact</th>
-                        <th className="px-1 py-2.5 w-10 text-center"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--tm-border)]">
-                      {participantFields.map((field, index) => {
-                        const participantType = form.watch(`participants.${index}.participantType`);
-                        const participantName = form.watch(`participants.${index}.participantName`);
+                {!isLocked ? (
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    Search users or employees by name, or type an email address and press Enter to add an external participant. Click an external participant to edit their details.
+                  </p>
+                ) : null}
+              </div>
+            </FormSection>
 
-                        return (
-                          <tr key={field.id} className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
-                            <td className="px-3 py-2 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
-                              {index + 1}
-                            </td>
-                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top">
-                              <Controller
-                                control={form.control}
-                                name={`participants.${index}.participantType`}
-                                render={({ field }) => (
-                                  <Select value={field.value.toString()} onValueChange={(v) => { field.onChange(parseInt(v)); form.setValue(`participants.${index}.participantName`, ''); form.setValue(`participants.${index}.email`, ''); form.setValue(`participants.${index}.companyName`, ''); form.setValue(`participants.${index}.designation`, ''); form.setValue(`participants.${index}.contactNo`, ''); }}>
-                                    <SelectTrigger className="h-9 rounded-[8px] bg-transparent border-transparent hover:border-[var(--tm-border)] text-xs w-full shadow-none px-2 focus:ring-0">
-                                      <SelectValue placeholder="Select type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {sortByLabel(participantTypes, { getLabel: (pt) => pt.participantType || '', getValue: (pt) => String(pt.id) }).map(pt => (
-                                        <SelectItem key={pt.id} value={pt.id.toString()}>{pt.participantType}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                )}
-                              />
-                            </td >
-                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top space-y-1">
-                              {participantType === 1 && (
-                                <Controller
-                                  control={form.control}
-                                  name={`participants.${index}.userNo`}
-                                  render={({ field }) => (
-                                    <FieldControl error={form.formState.errors.participants?.[index]?.userNo?.message}>
-                                      <UserCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.participants?.[index]?.userNo && "border-red-400")}
-                                        value={field.value?.toString() || ''}
-                                        onChange={(user: any) => { field.onChange(user?.loginNo ? Number(user.loginNo) : undefined); form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || ''); form.setValue(`participants.${index}.email`, user?.email || ''); }}
-                                        onResolve={(user: any) => { if (!form.getValues(`participants.${index}.email`)) { form.setValue(`participants.${index}.participantName`, user?.userName || user?.printingName || user?.loginId || ''); form.setValue(`participants.${index}.email`, user?.email || ''); } }}
-                                        placeholder="Search internal user..."
-                                      />
-                                    </FieldControl>
-                                  )}
-                                />
-                              )}
-                              {participantType === 2 && (
-                                <Controller
-                                  control={form.control}
-                                  name={`participants.${index}.empNo`}
-                                  render={({ field }) => (
-                                    <FieldControl error={form.formState.errors.participants?.[index]?.empNo?.message}>
-                                      <EmployeeCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.participants?.[index]?.empNo && "border-red-400")}
-                                        value={field.value?.toString() || ''}
-                                        onChange={(emp: any) => { field.onChange(emp?.empNo ? Number(emp.empNo) : undefined); form.setValue(`participants.${index}.participantName`, emp?.empCode || ''); form.setValue(`participants.${index}.email`, emp?.email || ''); }}
-                                        onResolve={(emp: any) => { if (!form.getValues(`participants.${index}.email`)) { form.setValue(`participants.${index}.participantName`, emp?.empCode || ''); form.setValue(`participants.${index}.email`, emp?.email || ''); } }}
-                                        placeholder="Search employee..."
-                                      />
-                                    </FieldControl>
-                                  )}
-                                />
-                              )}
-                              {participantType === 3 && (
-                                <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
-                                  <Input {...form.register(`participants.${index}.participantName`)} placeholder="Name" className={cn("h-9 rounded-[8px] bg-transparent text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")} maxLength={100} />
-                                </FieldControl>
-                              )}
-                              {participantType === 4 && (
-                                <Controller
-                                  control={form.control}
-                                  name={`participants.${index}.participantName`}
-                                  render={({ field }) => (
-                                    <FieldControl error={form.formState.errors.participants?.[index]?.participantName?.message}>
-                                      <BusinessEntityCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.participants?.[index]?.participantName && "border-red-400")}
-                                        detailNo={form.watch(`participants.${index}.businessEntityContactPersonDetailNo`)}
-                                        value={field.value || ''}
-                                        onChange={(contact: any) => { field.onChange(contact?.contactPersonName || ''); form.setValue(`participants.${index}.email`, contact?.email || ''); form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || ''); form.setValue(`participants.${index}.designation`, contact?.designation || ''); form.setValue(`participants.${index}.department` as any, contact?.department || ''); form.setValue(`participants.${index}.businessEntityNo`, contact?.businessEntityNo || null); form.setValue(`participants.${index}.businessEntityContactPersonDetailNo`, contact?.businessEntityContactPersonDetailNo || null); }}
-                                        onResolve={(contact: any) => { if (!form.getValues(`participants.${index}.email`)) { form.setValue(`participants.${index}.email`, contact?.email || ''); form.setValue(`participants.${index}.companyName`, contact?.businessEntityName || ''); form.setValue(`participants.${index}.designation`, contact?.designation || ''); form.setValue(`participants.${index}.department` as any, contact?.department || ''); } }}
-                                        placeholder="Search contact..."
-                                      />
-                                    </FieldControl>
-                                  )}
-                                />
-                              )}
-                            </td>
-                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top">
-                              {participantType === 3 ? (
-                                <FieldControl error={form.formState.errors.participants?.[index]?.companyName?.message}>
-                                  <Input {...form.register(`participants.${index}.companyName`)} placeholder="Company" className={cn("h-9 rounded-[8px] bg-transparent text-xs", form.formState.errors.participants?.[index]?.companyName && "border-red-400")} maxLength={100} />
-                                </FieldControl>
-                              ) : participantType === 4 ? (
-                                <Input value={form.watch(`participants.${index}.companyName`) || ''} disabled placeholder="Business Entity" className="h-9 rounded-[8px] bg-transparent border-transparent text-xs text-slate-500" />
-                              ) : (
-                                <span className="text-slate-500 text-xs">-</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top">
-                              {(participantType === 1 || participantType === 2 || participantType === 4) ? (
-                                <Input value={form.watch(`participants.${index}.email`) || ''} disabled placeholder="Email" className="h-9 w-full rounded-[8px] bg-transparent border-transparent text-xs text-slate-500" />
-                              ) : (
-                                <FieldControl error={form.formState.errors.participants?.[index]?.email?.message}>
-                                  <Input {...form.register(`participants.${index}.email`)} placeholder="Email" className={cn("h-9 rounded-[8px] bg-transparent text-xs", form.formState.errors.participants?.[index]?.email && "border-red-400")} maxLength={100} />
-                                </FieldControl>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 border-r border-[var(--tm-border)] align-top space-y-1">
-                              {participantType === 3 && (
-                                <>
-                                  <FieldControl error={form.formState.errors.participants?.[index]?.designation?.message}>
-                                    <Input {...form.register(`participants.${index}.designation`)} placeholder="Designation" className={cn("h-9 rounded-[8px] bg-transparent text-xs", form.formState.errors.participants?.[index]?.designation && "border-red-400")} maxLength={100} />
-                                  </FieldControl>
-                                  <FieldControl error={form.formState.errors.participants?.[index]?.contactNo?.message}>
-                                    <Input {...form.register(`participants.${index}.contactNo`)} placeholder="Contact No" className={cn("h-9 rounded-[8px] bg-transparent text-xs mt-1", form.formState.errors.participants?.[index]?.contactNo && "border-red-400")} maxLength={20} />
-                                  </FieldControl>
-                                </>
-                              )}
-                              {participantType === 4 && (
-                                <>
-                                  <Input value={form.watch(`participants.${index}.designation`) || ''} disabled placeholder="Designation" className="h-9 rounded-[8px] bg-transparent border-transparent text-xs text-slate-500" />
-                                  <Input value={(form.watch(`participants.${index}` as any)?.department) || ''} disabled placeholder="Department" className="h-9 rounded-[8px] bg-transparent border-transparent text-xs text-slate-500 mt-1" />
-                                </>
-                              )}
-                              {(participantType === 1 || participantType === 2) && (
-                                <span className="text-slate-500 text-xs">-</span>
-                              )}
-                            </td>
-                            <td className="px-2 py-2 text-center align-top">
-                              <button
-                                type="button"
-                                onClick={() => requestRemoveItem('participant', index, participantName || `Participant ${index + 1}`)}
-                                className="h-8 w-8 inline-flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-[8px] transition-colors mt-0.5"
-                                title="Remove participant"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </td>
-                          </tr >
-                        );
-                      })}
-                    </tbody >
-                  </table >
-                </div >
-              )}
-            </FormSection >
-
-            {/* SECTION 4: Discussions & Action Items */}
-            < FormSection
+            {/* SECTION 4: Discussions & Action Items — topic, summary and decision inline; tasks in a drawer */}
+            <FormSection
               title="Discussions & Outcomes"
               icon={MessageSquare}
               tourId="meeting-form-discussions"
               headerAction={
-                < Button type="button" onClick={() => appendDiscussion({ topic: '', isActionRequired: false })} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]" >
+                isLocked ? null : <Button type="button" onClick={addDiscussion} variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)]">
                   <Plus size={14} className="mr-1" /> Add Discussion Point
-                </Button >
+                </Button>
               }
             >
-              {
-                discussionFields.length === 0 ? (
-                  <div className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
-                    <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                    <table className="tm-data-table w-full text-left border-collapse min-w-[1000px]">
-                      <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
-                          <tr>
-                          <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
-                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Topic / Agenda</th>
-                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Discussion Summary</th>
-                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Decision Remarks</th>
-                          <th className="px-3 py-2.5 w-[25%] border-r border-[var(--tm-border)]">Action Required</th>
-                          <th className="px-1 py-2.5 w-10 text-center"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--tm-border)]">
-                        {discussionFields.map((field, index) => {
-                          const isActionRequired = form.watch(`discussions.${index}.isActionRequired`);
-                          const topicValue = (form.watch(`discussions.${index}.topic`) || '').trim();
-                          return (
-                            <React.Fragment key={field.id}>
-                              <tr className="group hover:bg-[var(--tm-muted)]/30 transition-colors">
-                                <td className="px-3 py-3 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
-                                  {index + 1}
-                                </td>
-                                <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top space-y-1">
-                                  <FieldControl error={form.formState.errors.discussions?.[index]?.topic?.message}>
-                                    <Input {...form.register(`discussions.${index}.topic`)} placeholder="What was discussed?" className={cn("h-9 rounded-[8px] text-xs font-medium bg-transparent", form.formState.errors.discussions?.[index]?.topic && "border-red-400")} />
-                                  </FieldControl>
-                                </td>
-                                <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                                  <Controller
-                                    control={form.control}
-                                    name={`discussions.${index}.discussionSummary`}
-                                    render={({ field }) => (
-                                      <Textarea
-                                        value={field.value || ''}
-                                        onChange={field.onChange}
-                                        placeholder="Details..."
-                                        maxLength={700}
-                                        className="min-h-[60px] rounded-[8px] text-xs bg-transparent resize-y focus-visible:ring-[#0EA5E9]/30"
-                                      />
-                                    )}
+              {discussionFields.length === 0 ? (
+                <div id="form-group-discussions" className="text-center p-8 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-elevated)]">
+                  <p className="text-xs text-slate-500 font-medium">No discussion points added yet.</p>
+                </div>
+              ) : (
+                <div id="form-group-discussions" className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
+                  <table className="tm-data-table w-full text-left border-collapse min-w-[1000px]">
+                    <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
+                      <tr>
+                        <th className="px-3 py-2.5 w-10 border-r border-[var(--tm-border)] text-center">#</th>
+                        <th className="px-3 py-2.5 w-[22%] border-r border-[var(--tm-border)]">Topic / Agenda{!isLocked && <span className="ml-0.5 text-red-400">*</span>}</th>
+                        <th className="px-3 py-2.5 w-[26%] border-r border-[var(--tm-border)]">Discussion Summary</th>
+                        <th className="px-3 py-2.5 w-[20%] border-r border-[var(--tm-border)]">Decision Remarks</th>
+                        <th className="px-3 py-2.5 w-[24%] border-r border-[var(--tm-border)]">Tasks</th>
+                        <th className="px-1 py-2.5 w-12 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--tm-border)]">
+                      {discussionFields.map((field, index) => {
+                        const line = (form.watch(`discussions.${index}`) || {}) as MeetingNotesDiscussion;
+                        const topicValue = (line.topic || '').trim();
+                        const lineErrors = form.formState.errors.discussions?.[index];
+                        const topicError = lineErrors?.topic?.message;
+                        const tasksError = !!lineErrors?.tasks;
+                        const tasks = line.tasks ?? [];
+                        // Missing task details keep the task table open so they can be fixed.
+                        const expanded = expandedLines.has(field.id) || tasksError;
+                        const owners = [...new Set(tasks.map((t) => t.actionTaskOwnerNo).filter((n): n is number => n != null))];
+                        const nextDue = tasks
+                          .map((t) => t.actionDueDate)
+                          .filter((d): d is string => !!d && !Number.isNaN(Date.parse(d)))
+                          .sort((a, b) => Date.parse(a) - Date.parse(b))[0];
+                        const invalidCount = tasks.filter((_, ti) => !!lineErrors?.tasks?.[ti]).length;
+                        return (
+                          <React.Fragment key={field.id}>
+                          <tr className={cn('group align-top', (topicError || tasksError) && 'bg-red-500/5')}>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-center font-medium text-slate-400 align-top">
+                              {index + 1}
+                            </td>
+                            <td className="px-2 py-2 border-r border-[var(--tm-border)] align-top">
+                              {isLocked ? (
+                                <p className="px-1 py-0.5 text-xs font-semibold text-slate-100 whitespace-normal break-words">{topicValue || '—'}</p>
+                              ) : (
+                                <FieldControl error={topicError}>
+                                  <Input
+                                    {...form.register(`discussions.${index}.topic` as const)}
+                                    maxLength={200}
+                                    placeholder="What was discussed?"
+                                    aria-label={`Topic / Agenda ${index + 1}`}
+                                    className={cn('h-9 rounded-[8px] text-xs font-semibold', topicError && 'border-red-400')}
                                   />
-                                </td>
-                                <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                                  <Controller
-                                    control={form.control}
-                                    name={`discussions.${index}.decisionRemarks`}
-                                    render={({ field }) => (
-                                      <Textarea
-                                        value={field.value || ''}
-                                        onChange={field.onChange}
-                                        placeholder="Final decision..."
-                                        maxLength={300}
-                                        className="min-h-[60px] rounded-[8px] text-xs bg-transparent resize-y focus-visible:ring-[#0EA5E9]/30"
-                                      />
-                                    )}
-                                  />
-                                </td>
-                                <td className="px-3 py-3 border-r border-[var(--tm-border)] align-top">
-                                  <Controller
-                                    control={form.control}
-                                    name={`discussions.${index}.isActionRequired`}
-                                    render={({ field }) => (
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <button
-                                          type="button"
-                                          role="switch"
-                                          aria-checked={!!field.value}
-                                          onClick={() => field.onChange(!field.value)}
-                                          className="inline-flex items-center gap-2 shrink-0 cursor-pointer select-none rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/30"
-                                        >
-                                          <span className={cn('relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200', field.value ? 'bg-[#0EA5E9]' : 'bg-slate-600')}>
-                                            <span className={cn('absolute h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200', field.value ? 'translate-x-[18px]' : 'translate-x-[2px]')} />
-                                          </span>
-                                          <span className={cn('text-[10px] font-semibold tracking-wide', field.value ? 'text-[#0EA5E9]' : 'text-slate-400')}>
-                                            {field.value ? 'ON' : 'OFF'}
-                                          </span>
-                                        </button>
-                                      </div>
-                                    )}
-                                  />
-                                </td>
-                                <td className="px-2 py-3 text-center align-top">
-                                  <button
-                                    type="button"
-                                    onClick={() => requestRemoveItem('discussion', index, topicValue || `Discussion ${index + 1}`)}
-                                    className="h-8 w-8 inline-flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-[8px] transition-colors mt-0.5"
-                                    title="Remove discussion"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </td>
-                              </tr>
-
-                              {/* Expandable Task Details Row */}
-                              {isActionRequired && (
-                                <tr className="bg-[var(--tm-muted)]/10 border-t border-[var(--tm-border)]/50">
-                                  <td colSpan={6} className="p-3 pl-14">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <div className="w-1.5 h-1.5 rounded-full bg-[#0EA5E9]"></div>
-                                      <p className="text-[10px] font-semibold text-[#0EA5E9] uppercase tracking-wide">Task Details</p>
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                                      <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskCategoryNo?.message}>
-                                        <Controller
-                                          control={form.control}
-                                          name={`discussions.${index}.operTaskCategoryNo`}
-                                          render={({ field }) => (
-                                            <Combobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.operTaskCategoryNo && "border-red-400")}
-                                              options={taskFillValues?.category?.filter(c => c.Category.toLowerCase() !== 'all' && c.Category.toLowerCase() !== '[all]').map(c => ({ value: c.OperTaskCategoryNo.toString(), label: c.Category, colorCoding: c.colorCoding || c.ColorCoding })) || []}
-                                              value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                              onChange={(val) => field.onChange(toOptionalInt(val))}
-                                              placeholder="Category"
-                                            />
-                                          )}
-                                        />
-                                      </FieldControl>
-
-                                      {!isHideType && (
-                                        <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskTypeNo?.message}>
-                                          <Controller
-                                            control={form.control}
-                                            name={`discussions.${index}.operTaskTypeNo`}
-                                            render={({ field }) => (
-                                              <Combobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.operTaskTypeNo && "border-red-400")}
-                                                options={taskFillValues?.type?.filter(t => t["Task Type"].toLowerCase() !== 'all' && t["Task Type"].toLowerCase() !== '[all]').map(c => ({ value: c.OperTaskTypeNo.toString(), label: c["Task Type"] })) || []}
-                                                value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                                onChange={(val) => field.onChange(toOptionalInt(val))}
-                                                placeholder="Task Type"
-                                              />
-                                            )}
-                                          />
-                                        </FieldControl>
-                                      )}
-
-                                      <FieldControl error={form.formState.errors.discussions?.[index]?.operTaskPriorityNo?.message}>
-                                        <Controller
-                                          control={form.control}
-                                          name={`discussions.${index}.operTaskPriorityNo`}
-                                          render={({ field }) => (
-                                            <Combobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.operTaskPriorityNo && "border-red-400")}
-                                              options={taskFillValues?.priority?.filter(p => p.Priority.toLowerCase() !== 'all' && p.Priority.toLowerCase() !== '[all]').map(c => ({ value: c.OperTaskPriorityNo.toString(), label: c.Priority, colorCoding: c.ColorCoding })) || []}
-                                              value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                              onChange={(val) => field.onChange(toOptionalInt(val))}
-                                              sortAlphabetically={false}
-                                              placeholder="Priority"
-                                            />
-                                          )}
-                                        />
-                                      </FieldControl>
-
-                                      {!isHideFolder && (
-                                        <Controller
-                                          control={form.control}
-                                          name={`discussions.${index}.operTaskCategoryNo`}
-                                          render={({ field }) => (
-                                            <Combobox className="rounded-[8px] h-9 text-xs"
-                                              options={taskFillValues?.folder?.map(c => ({ value: c.TaskFolderNo.toString(), label: cleanMasterLabel(c["Folder Name"]) })) || []}
-                                              value={field.value != null && !Number.isNaN(Number(field.value)) ? String(field.value) : ''}
-                                              onChange={(val) => field.onChange(toOptionalInt(val))}
-                                              placeholder="Folder"
-                                            />
-                                          )}
-                                        />
-                                      )}
-
-                                      <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo?.message}>
-                                        <Controller
-                                          control={form.control}
-                                          name={`discussions.${index}.actionTaskOriginatorNo`}
-                                          render={({ field }) => (
-                                            <UserCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOriginatorNo && "border-red-400")}
-                                              value={field.value?.toString() || ''}
-                                              onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                              placeholder="Assign By"
-                                            />
-                                          )}
-                                        />
-                                      </FieldControl>
-
-                                      <FieldControl error={form.formState.errors.discussions?.[index]?.actionTaskOwnerNo?.message}>
-                                        <Controller
-                                          control={form.control}
-                                          name={`discussions.${index}.actionTaskOwnerNo`}
-                                          render={({ field }) => (
-                                            <UserCombobox className={cn("rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.actionTaskOwnerNo && "border-red-400")}
-                                              value={field.value?.toString() || ''}
-                                              onChange={(user: any) => field.onChange(user?.loginNo ? Number(user.loginNo) : undefined)}
-                                              placeholder="Assign To"
-                                            />
-                                          )}
-                                        />
-                                      </FieldControl>
-
-                                      <FieldControl error={form.formState.errors.discussions?.[index]?.actionDueDate?.message}>
-                                        <Controller
-                                          control={form.control}
-                                          name={`discussions.${index}.actionDueDate`}
-                                          render={({ field }) => (
-                                            <DateTimePicker
-                                              hour24
-                                              className={cn("w-full rounded-[8px] h-9 text-xs", form.formState.errors.discussions?.[index]?.actionDueDate && "border-red-400")}
-                                              date={field.value ? new Date(field.value) : undefined}
-                                              onChange={(d) => field.onChange(toUtcIsoOrEmpty(d))}
-                                              placeholder="Due Date & Time"
-                                            />
-                                          )}
-                                        />
-                                      </FieldControl>
-                                    </div>
-                                  </td>
-                                </tr>
+                                </FieldControl>
                               )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div >
-                )}
-            </FormSection >
+                            </td>
+                            <td className="px-2 py-2 border-r border-[var(--tm-border)] align-top">
+                              {isLocked ? (
+                                <p className="px-1 py-0.5 text-xs text-slate-300 whitespace-pre-wrap break-words">{line.discussionSummary || '—'}</p>
+                              ) : (
+                                <FieldControl error={lineErrors?.discussionSummary?.message}>
+                                  <Textarea
+                                    {...form.register(`discussions.${index}.discussionSummary` as const)}
+                                    maxLength={700}
+                                    placeholder="Details..."
+                                    aria-label={`Discussion Summary ${index + 1}`}
+                                    className="min-h-[72px] rounded-[8px] text-xs"
+                                  />
+                                </FieldControl>
+                              )}
+                            </td>
+                            <td className="px-2 py-2 border-r border-[var(--tm-border)] align-top">
+                              {isLocked ? (
+                                <p className="px-1 py-0.5 text-xs text-slate-300 whitespace-pre-wrap break-words">{line.decisionRemarks || '—'}</p>
+                              ) : (
+                                <FieldControl error={lineErrors?.decisionRemarks?.message}>
+                                  <Textarea
+                                    {...form.register(`discussions.${index}.decisionRemarks` as const)}
+                                    maxLength={300}
+                                    placeholder="Final decision..."
+                                    aria-label={`Decision Remarks ${index + 1}`}
+                                    className="min-h-[72px] rounded-[8px] text-xs"
+                                  />
+                                </FieldControl>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 border-r border-[var(--tm-border)] align-top">
+                              {tasks.length === 0 ? (
+                                isLocked ? (
+                                  <span className="text-[11px] text-slate-500">No tasks</span>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openTask(index, null)}
+                                    className="h-7 px-1.5 -mx-1.5 rounded-[6px] text-[11px] font-medium text-[#0EA5E9] hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]"
+                                  >
+                                    <Plus size={12} className="mr-1" /> Add Task
+                                  </Button>
+                                )
+                              ) : (
+                                <div className="flex min-w-0 items-start gap-1">
+                                  {/* Summary: count, assignees, next due, missing details; expands the task table below */}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => toggleLineTasks(field.id)}
+                                    aria-expanded={expanded}
+                                    aria-label={`${expanded ? 'Hide' : 'Show'} tasks of discussion ${index + 1}`}
+                                    className="h-auto min-w-0 flex-1 flex-wrap justify-start gap-x-2 gap-y-1 whitespace-normal rounded-[6px] px-1.5 py-1 -mx-1.5 text-left hover:bg-[var(--tm-muted)]/40"
+                                  >
+                                    <ChevronDown size={14} className={cn('shrink-0 text-slate-400 transition-transform', expanded && 'rotate-180')} />
+                                    <span className="text-[11px] font-semibold text-slate-100">
+                                      {tasks.length} task{tasks.length === 1 ? '' : 's'}
+                                    </span>
+                                    {owners.length ? (
+                                      <span className="flex items-center -space-x-1.5">
+                                        {owners.slice(0, 3).map((loginNo) => (
+                                          <AssigneeAvatar key={loginNo} loginNo={loginNo} className="ring-2 ring-[var(--tm-surface)]" />
+                                        ))}
+                                        {owners.length > 3 ? (
+                                          <span className="relative inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--tm-muted)] px-1 text-[9px] font-semibold text-slate-300 ring-2 ring-[var(--tm-surface)]">
+                                            +{owners.length - 3}
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    ) : null}
+                                    {nextDue ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-normal text-slate-400">
+                                        <CalendarClock size={11} /> Next {formatUtcDateTime(nextDue)}
+                                      </span>
+                                    ) : null}
+                                    {invalidCount > 0 && !isLocked ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+                                        <AlertCircleIcon size={10} /> {invalidCount} need details
+                                      </span>
+                                    ) : null}
+                                  </Button>
+                                  {!isLocked && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => openTask(index, null)}
+                                      aria-label={`Add task to discussion ${index + 1}`}
+                                      title="Add task"
+                                      className="h-7 w-7 shrink-0 rounded-[6px] text-[#0EA5E9] hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]"
+                                    >
+                                      <Plus size={14} />
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-1 py-2 text-center align-top">
+                              {!isLocked && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => requestRemoveItem('discussion', index, topicValue || `Discussion ${index + 1}`)}
+                                  className="h-8 w-8 rounded-[8px] text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                  title="Remove discussion"
+                                  aria-label="Remove discussion"
+                                >
+                                  <Trash2 size={14} />
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                          {expanded && tasks.length > 0 ? (
+                            <tr className="bg-[var(--tm-elevated)]/30">
+                              <td colSpan={6} className="px-3 py-2">
+                                <div className="ml-7 overflow-hidden rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-surface)]">
+                                  {/* One line per task; scrolls past ~8 so long lists stay compact */}
+                                  <div className="max-h-[22rem] overflow-auto">
+                                    <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
+                                      <thead className="sticky top-0 z-10 bg-[var(--tm-elevated)] text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                        <tr>
+                                          <th className="w-8 px-2 py-1.5 text-center">#</th>
+                                          <th className="px-2 py-1.5">Task Title</th>
+                                          <th className="px-2 py-1.5">Assign To</th>
+                                          <th className="px-2 py-1.5">Due</th>
+                                          <th className="px-2 py-1.5">Priority</th>
+                                          <th className="px-2 py-1.5">Category</th>
+                                          {!isHideType && <th className="px-2 py-1.5">Type</th>}
+                                          <th className="px-2 py-1.5">Company</th>
+                                          <th className="w-16 px-2 py-1.5" />
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-[var(--tm-border)]">
+                                        {tasks.map((task, ti) => {
+                                          const taskInvalid = !!lineErrors?.tasks?.[ti];
+                                          const taskLabel = task.title || `Task ${ti + 1}`;
+                                          return (
+                                            <tr key={task.key || ti} className={cn('align-middle hover:bg-[var(--tm-muted)]/30', taskInvalid && 'bg-red-500/5')}>
+                                              <td className="px-2 py-1.5 text-center text-slate-500">{ti + 1}</td>
+                                              <td className="px-2 py-1.5">
+                                                <div className="flex min-w-0 items-center gap-1.5">
+                                                  {taskInvalid && !isLocked ? (
+                                                    <AlertCircleIcon size={12} className="shrink-0 text-red-400" aria-label="Missing required details" />
+                                                  ) : null}
+                                                  <span className="font-semibold text-slate-100 whitespace-normal break-words">{taskLabel}</span>
+                                                  {task.operTaskNo ? (
+                                                    <Link
+                                                      to={taskUrl(Number(task.operTaskNo))}
+                                                      target="_blank"
+                                                      title="Open created task"
+                                                      aria-label={`Open created task ${taskLabel}`}
+                                                      className="shrink-0 text-[#0EA5E9] hover:text-[#0284C7]"
+                                                    >
+                                                      <ExternalLink size={11} />
+                                                    </Link>
+                                                  ) : null}
+                                                </div>
+                                              </td>
+                                              <td className="px-2 py-1.5">
+                                                {task.actionTaskOwnerNo ? <AssigneeLabel loginNo={task.actionTaskOwnerNo} /> : <span className="text-slate-500">—</span>}
+                                              </td>
+                                              <td className="px-2 py-1.5 whitespace-nowrap text-slate-300">
+                                                {task.actionDueDate ? formatUtcDateTime(task.actionDueDate) : '—'}
+                                              </td>
+                                              <td className="px-2 py-1.5 text-slate-300">{optionLabel(taskOptions.priority, task.operTaskPriorityNo) || '—'}</td>
+                                              <td className="px-2 py-1.5 text-slate-300">{optionLabel(taskOptions.category, task.operTaskCategoryNo) || '—'}</td>
+                                              {!isHideType && (
+                                                <td className="px-2 py-1.5 text-slate-300">{optionLabel(taskOptions.type, task.operTaskTypeNo) || '—'}</td>
+                                              )}
+                                              <td className="px-2 py-1.5 text-slate-300">{optionLabel(taskCompanyOptions, task.operTaskCompanyNo) || '—'}</td>
+                                              <td className="px-2 py-1.5">
+                                                <div className="flex items-center justify-end gap-0.5">
+                                                  {isLocked ? (
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      onClick={() => openTask(index, ti)}
+                                                      aria-label={`View task ${taskLabel}`}
+                                                      title="View task"
+                                                      className="h-6 w-6 rounded-[6px] text-slate-400 hover:bg-[var(--tm-muted)] hover:text-[#0EA5E9]"
+                                                    >
+                                                      <Eye size={12} />
+                                                    </Button>
+                                                  ) : (
+                                                    <>
+                                                      <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => openTask(index, ti)}
+                                                        aria-label={`Edit task ${taskLabel}`}
+                                                        title="Edit task"
+                                                        className="h-6 w-6 rounded-[6px] text-slate-400 hover:bg-[var(--tm-muted)] hover:text-[#0EA5E9]"
+                                                      >
+                                                        <Pencil size={12} />
+                                                      </Button>
+                                                      <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => requestRemoveItem('task', index, taskLabel, ti)}
+                                                        aria-label={`Delete task ${taskLabel}`}
+                                                        title="Delete task"
+                                                        className="h-6 w-6 rounded-[6px] text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                                                      >
+                                                        <Trash2 size={12} />
+                                                      </Button>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                  {!isLocked && (
+                                    <div className="border-t border-[var(--tm-border)] px-2 py-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => openTask(index, null)}
+                                        className="h-7 px-1.5 rounded-[6px] text-[11px] font-medium text-[#0EA5E9] hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]"
+                                      >
+                                        <Plus size={12} className="mr-1" /> Add Task
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </FormSection>
+
+            <ExternalParticipantDialog
+              open={externalEdit !== null}
+              onOpenChange={(open) => {
+                if (!open) setExternalEdit(null);
+              }}
+              value={externalEdit?.value ?? null}
+              onSave={(details) => {
+                if (!externalEdit) return;
+                const current = form.getValues(`participants.${externalEdit.index}`);
+                updateParticipant(externalEdit.index, { ...current, ...details, participantType: PARTICIPANT_TYPE.external });
+                if (form.formState.errors.participants) void form.trigger('participants');
+              }}
+            />
+
+            {tasksDrawer ? (
+              <DiscussionTasksDrawer
+                key={tasksDrawer.session}
+                open={tasksDrawer.open}
+                onOpenChange={(open) => {
+                  if (!open) setTasksDrawer((prev) => (prev ? { ...prev, open: false } : prev));
+                }}
+                task={tasksDrawer.task}
+                taskNo={tasksDrawer.taskIndex != null ? tasksDrawer.taskIndex + 1 : undefined}
+                topic={tasksDrawer.topic}
+                lineNo={tasksDrawer.index + 1}
+                taskFillValues={taskFillValues}
+                companyOptions={taskCompanyOptions}
+                defaultCompanyNo={Number(watchedCompanyNo) || null}
+                isHideType={isHideType}
+                isHideFolder={isHideFolder}
+                currentLoginNo={currentLoginNo}
+                readOnly={isLocked}
+                onSave={(task) => {
+                  const path = `discussions.${tasksDrawer.index}.tasks` as const;
+                  const current = form.getValues(path) ?? [];
+                  const { taskIndex } = tasksDrawer;
+                  const tasks = taskIndex == null ? [...current, task] : current.map((t, i) => (i === taskIndex ? task : t));
+                  form.setValue(path, tasks, { shouldDirty: true });
+                  const fieldId = discussionFields[tasksDrawer.index]?.id;
+                  if (fieldId) setExpandedLines((prev) => new Set(prev).add(fieldId));
+                  if (form.formState.errors.discussions?.[tasksDrawer.index]?.tasks) void form.trigger(path);
+                  setTasksDrawer((prev) => (prev ? { ...prev, open: false } : prev));
+                }}
+              />
+            ) : null}
 
             {/* SECTION 3: Document Details */}
             < FormSection
@@ -1556,7 +1677,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                                             ? 'Search document...'
                                             : 'Select Document Name first'
                                         }
-                                        disabled={!(Number(docType) > 0)}
+                                        disabled={isLocked || !(Number(docType) > 0)}
                                         className={cn(
                                           'h-10 rounded-[8px] bg-[var(--tm-surface)] text-xs shadow-none border-[var(--tm-border)]/80',
                                           form.formState.errors.documents?.[index]?.documentNo &&
@@ -1577,10 +1698,13 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                 )}
             </FormSection >
 
+            </fieldset>
+
             {/* SECTION 5: Attachments */}
             < FormSection title="Documents / Attachments" icon={Paperclip} tourId="meeting-form-attachments" >
               <div className="space-y-3">
                 {/* Same upload area as the CRM's lead / opportunity forms. */}
+                {!isLocked && (
                 <AttachmentDropZone
                   inputRef={fileInputRef}
                   onFiles={processFiles}
@@ -1588,6 +1712,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                   accept={UPLOAD_ACCEPT_ATTR}
                   helperText={ALLOWED_UPLOAD_HELPER_TEXT}
                 />
+                )}
 
                 {uploadingFiles.length > 0 && (
                   <div className="space-y-1.5">
@@ -1684,6 +1809,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                           onRename={() => setAttachmentToRename({ id: file.id, name: file.name })}
                           onDelete={() => handleRemoveAttachment(file.id, file.name)}
                           renameDisabled={attachmentToRename != null}
+                          readOnly={isLocked}
                           renaming={
                             attachmentToRename?.id === file.id ? (
                               <InlineAttachmentRename
@@ -1718,7 +1844,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
             ? 'participant'
             : itemToDelete?.type === 'discussion'
               ? 'discussion'
-              : 'document'
+              : itemToDelete?.type === 'task'
+                ? 'task'
+                : 'document'
         }
       />
 
@@ -1757,6 +1885,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
       </Dialog>
 
       {/* Category Modal */}
+      <MasterCreateDialog
+        open={locationCreateOpen}
+        onOpenChange={setLocationCreateOpen}
+        type="location"
+        companyNo={companyNoStr}
+        fillValues={taskFillValues}
+        onSuccess={(id, label) => void selectCreatedLocation(id, label)}
+      />
       <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
         <DialogContent className="rounded-3xl max-w-sm p-6 border-none shadow-2xl bg-[var(--tm-surface)] select-none">
           <DialogHeader className="pb-3 border-b border-[var(--tm-border)]">
@@ -1898,10 +2034,15 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
         <DialogContent className="rounded-[12px] max-w-sm p-0 border border-[var(--tm-border)]/80 shadow-xl">
           <DialogHeader className="p-5 pb-3">
             <DialogTitle className="text-base font-semibold text-slate-100 tracking-tight">
-              Confirm Save
+              {isFinalizing ? 'Finalize meeting notes?' : 'Confirm Save'}
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-500 mt-1.5">
-              Are you sure you want to save these meeting notes?
+              {isFinalizing
+                ? (() => {
+                    const taskCount = ((pendingData?.discussions || []) as MeetingNotesDiscussion[]).reduce((n, d) => n + (d.tasks?.length || 0), 0);
+                    return `Finalizing creates ${taskCount} task${taskCount === 1 ? '' : 's'} from the discussion points and locks these meeting notes. They can't be edited afterwards.`;
+                  })()
+                : 'Are you sure you want to save these meeting notes?'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="p-4 pt-2 bg-[var(--tm-elevated)] flex justify-end gap-2 rounded-b-[12px] border-t border-[var(--tm-border)]">
@@ -1921,7 +2062,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? <InlineLoader size={14} className="mr-1.5" /> : null}
-              Save
+              {isFinalizing ? 'Finalize' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>

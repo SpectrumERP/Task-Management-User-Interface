@@ -11,7 +11,7 @@ import { BrandLoader } from '@/components/ui/BrandLoader';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { useAuthStore } from '@/store/useAuthStore';
 import { canUserEditTask, parseBoolean } from '@/lib/taskAccess';
-import { getStatusTextClass } from '@/lib/taskStatusGroups';
+import { getStatusTextClass, getChallengeStatusTextClass, resolveChallengeStatus } from '@/lib/taskStatusGroups';
 import {
   Edit,
   Calendar,
@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 
 import { taskUrl } from '@/lib/dealMonitor';
 import { formatDateOnly, formatUtcDateTime, toUtcIso } from '@/lib/dateTime';
+import { formatCreatedLine, readCreatedInfo } from '@/lib/createdInfo';
 import { useTaskStore } from '@/store/useTaskStore';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
@@ -573,6 +574,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                               <span className="text-xs font-medium text-slate-100 whitespace-pre-wrap">
                                 {entry.remarks}
                               </span>
+                              {(() => {
+                                const { createdBy, createdDate } = readCreatedInfo(entry);
+                                const line = formatCreatedLine(createdBy, createdDate);
+                                return line ? <span className="text-[10px] text-slate-400">{line}</span> : null;
+                              })()}
                             </div>
                           ))}
                       </div>
@@ -590,9 +596,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         {task.executionChallenges!
                           .filter((c: any) => c.typeNo === 2)
                           .map((entry: any, idx: number) => {
-                            const statusLabel = fillValues?.status?.find(
-                              (s) => s.StatusNo === entry.statusNo
-                            )?.Status;
+                            const statusLabel = resolveChallengeStatus(
+                              fillValues?.status?.find((s) => s.StatusNo === entry.statusNo)?.Status
+                            );
                             return (
                               <div
                                 key={idx}
@@ -605,7 +611,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                                       : '-'}
                                   </span>
                                   {statusLabel && (
-                                    <span className={cn('text-[9px] shrink-0', getStatusTextClass(statusLabel))}>
+                                    <span className={cn('text-[9px] shrink-0', getChallengeStatusTextClass(statusLabel))}>
                                       {statusLabel}
                                     </span>
                                   )}
@@ -619,6 +625,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                                     {entry.proposedSolution}
                                   </span>
                                 )}
+                                {(() => {
+                                  const { createdBy, createdDate } = readCreatedInfo(entry);
+                                  const line = formatCreatedLine(createdBy, createdDate);
+                                  return line ? <span className="text-[10px] text-slate-400">{line}</span> : null;
+                                })()}
                               </div>
                             );
                           })}

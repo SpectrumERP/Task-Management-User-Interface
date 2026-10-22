@@ -33,11 +33,12 @@ export default function MeetingReportPage() {
       if (filters.location) searchParamsPascal.Location = Number(filters.location);
       if (filters.mode) searchParamsPascal.MeetingModelNo = filters.mode;
 
-      if (filters.internalUser) searchParamsPascal.UserNo = filters.internalUser;
-      if (filters.internalEmployee) searchParamsPascal.EmpNo = filters.internalEmployee;
-      if (filters.businessEntity)
-        searchParamsPascal.BusinessEntityNo = Number(filters.businessEntity);
-      if (filters.externalUser) searchParamsPascal.ParticipantsName = filters.externalUser;
+      // One participant filter → the matching report parameter.
+      const participant = filters.participant;
+      if (participant?.kind === 'user') searchParamsPascal.UserNo = participant.value;
+      else if (participant?.kind === 'employee') searchParamsPascal.EmpNo = participant.value;
+      else if (participant?.kind === 'businessEntity') searchParamsPascal.BusinessEntityNo = Number(participant.value);
+      else if (participant?.kind === 'name') searchParamsPascal.ParticipantsName = participant.value;
       if (filters.isActionTaken !== false)
         searchParamsPascal.IsActionTaken = filters.isActionTaken;
       if (filters.isAttachedDocument !== false)

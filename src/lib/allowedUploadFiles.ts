@@ -6,7 +6,10 @@
  * allowlist on the document-attachments API; the client cannot be the only gate.
  */
 
-export const MAX_UPLOAD_FILE_BYTES = 25 * 1024 * 1024; // existing app limit — do not change lightly
+export const MAX_UPLOAD_FILE_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_FILE_SIZE_LABEL = '10MB';
+/** Most files one record (task, meeting, company…) may hold. */
+export const MAX_ATTACHMENTS_PER_RECORD = 10;
 
 /** Canonical extensions (lowercase, no dot). `.tif` accepted as TIFF alias. */
 export const ALLOWED_UPLOAD_EXTENSIONS = [
@@ -20,7 +23,9 @@ export const ALLOWED_UPLOAD_EXTENSIONS = [
   'pdf',
   'doc',
   'docx',
+  'xls',
   'xlsx',
+  'pptx',
   'csv',
   'txt',
 ] as const;
@@ -40,9 +45,10 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'text/csv',
   'application/csv',
-  'application/vnd.ms-excel', // some browsers label CSV this way
+  'application/vnd.ms-excel', // .xls, and how some browsers label CSV
   'text/plain',
   'text/txt',
 ] as const;
@@ -59,7 +65,9 @@ export const UPLOAD_ACCEPT_ATTR = [
   '.pdf',
   '.doc',
   '.docx',
+  '.xls',
   '.xlsx',
+  '.pptx',
   '.csv',
   '.txt',
   // MIME hints for pickers that prefer them
@@ -72,18 +80,23 @@ export const UPLOAD_ACCEPT_ATTR = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'text/csv',
   'text/plain',
 ].join(',');
 
 /** Short human-readable list for helper text */
 export const ALLOWED_UPLOAD_TYPES_LABEL =
-  'PNG, JPG, JPEG, WebP, AVIF, TIFF, PDF, DOC, DOCX, XLSX, CSV, TXT';
+  'PNG, JPG, JPEG, WebP, AVIF, TIFF, PDF, DOC, DOCX, XLS, XLSX, PPTX, CSV, TXT';
 
 export const ALLOWED_UPLOAD_EXTENSIONS_LABEL =
-  '.png, .jpg, .jpeg, .webp, .avif, .tiff, .pdf, .doc, .docx, .xlsx, .csv, .txt';
+  '.png, .jpg, .jpeg, .webp, .avif, .tiff, .pdf, .doc, .docx, .xls, .xlsx, .pptx, .csv, .txt';
 
-export const ALLOWED_UPLOAD_HELPER_TEXT = `${ALLOWED_UPLOAD_TYPES_LABEL} · Max 25MB each`;
+export const ALLOWED_UPLOAD_HELPER_TEXT =
+  `${ALLOWED_UPLOAD_TYPES_LABEL} · Max ${MAX_UPLOAD_FILE_SIZE_LABEL} each · Up to ${MAX_ATTACHMENTS_PER_RECORD} files`;
+
+export const MAX_ATTACHMENTS_MESSAGE = `You can attach up to ${MAX_ATTACHMENTS_PER_RECORD} files.`;
 
 export const UNSUPPORTED_UPLOAD_TYPE_MESSAGE =
   `Unsupported file type. Allowed: ${ALLOWED_UPLOAD_TYPES_LABEL}.`;
@@ -112,7 +125,7 @@ export function isAllowedUploadMime(mime: string): boolean {
 
 /**
  * Validate a File before upload.
- * - Always checks size (existing 25MB limit).
+ * - Always checks size (10MB) and rejects empty files.
  * - Requires an allowed extension.
  * - When the browser provides a MIME type, it must also be in the allowlist
  *   (empty MIME is allowed if the extension is valid — common on some OS/browsers).
@@ -124,8 +137,12 @@ export function validateUploadFile(
     return { ok: false, reason: 'Invalid file.' };
   }
 
+  if (file.size === 0) {
+    return { ok: false, reason: 'File is empty.' };
+  }
+
   if (file.size > MAX_UPLOAD_FILE_BYTES) {
-    return { ok: false, reason: 'File size exceeds the 25MB limit.' };
+    return { ok: false, reason: `File size exceeds the ${MAX_UPLOAD_FILE_SIZE_LABEL} limit.` };
   }
 
   const ext = getFileExtension(file.name);
@@ -146,6 +163,49 @@ export function validateUploadFile(
 
 export function isAllowedUploadFile(file: File): boolean {
   return validateUploadFile(file).ok;
+}
+
+export interface RejectedUpload {
+  name: string;
+  size: number;
+  reason: string;
+}
+
+/**
+ * Picks which of the chosen files may be uploaded to a record that already holds `existing` files
+ * (attached or still uploading): each must pass validateUploadFile, must not already be attached
+ * (same name and size), and the record may hold at most MAX_ATTACHMENTS_PER_RECORD files.
+ */
+export function selectUploadBatch(
+  files: File[],
+  existing: ReadonlyArray<{ name?: string; size?: number }>
+): { accepted: File[]; rejected: RejectedUpload[] } {
+  const accepted: File[] = [];
+  const rejected: RejectedUpload[] = [];
+  const seen = new Set(existing.map((f) => `${(f.name || '').toLowerCase()}|${f.size ?? ''}`));
+  let room = Math.max(0, MAX_ATTACHMENTS_PER_RECORD - existing.length);
+
+  for (const file of files) {
+    const reject = (reason: string) => rejected.push({ name: file.name, size: file.size, reason });
+    const check = validateUploadFile(file);
+    if (!check.ok) {
+      reject(check.reason);
+      continue;
+    }
+    const key = `${file.name.toLowerCase()}|${file.size}`;
+    if (seen.has(key)) {
+      reject('Already attached.');
+      continue;
+    }
+    if (room === 0) {
+      reject(`Limit reached — ${MAX_ATTACHMENTS_MESSAGE}`);
+      continue;
+    }
+    seen.add(key);
+    room -= 1;
+    accepted.push(file);
+  }
+  return { accepted, rejected };
 }
 
 /** True for images that can be shown inline in a new tab. */
@@ -185,8 +245,12 @@ export function mimeFromFileName(fileName: string): string {
       return 'application/msword';
     case 'docx':
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'xls':
+      return 'application/vnd.ms-excel';
     case 'xlsx':
       return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'pptx':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
     case 'csv':
       return 'text/csv';
     case 'txt':

@@ -29,6 +29,7 @@ import { UserType } from '@/types/enums';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { CRM_SSO_ENABLED } from '@/lib/crmSso';
 import { ShellHomeLink } from '@/components/layout/ShellHomeLink';
+import { MODULE_NAME, ModuleTitle } from '@/components/layout/ModuleTitle';
 import { EMPLOYEE_DIRECTORY_FORM_NO, canOpenEmployeeDirectory } from '@/lib/employeeDirectory';
 export const navItems = [
   { icon: LayoutGrid, label: 'Tasks List', id: 'tasks', formNo: 1547 },
@@ -496,11 +497,11 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
             )}
           >
             <ShellHomeLink className="block w-full min-w-0">
-              <img
-              src={`${import.meta.env.BASE_URL}spectrum-erp-logo-on-dark.png`}
-              alt="Spectrum ERP"
-              className={cn("block h-9 w-full object-contain", isCollapsed ? "object-center" : "object-left")}
-            />
+              {isCollapsed ? (
+                <span aria-label={MODULE_NAME} className="block text-center text-[15px] font-semibold text-white">TM</span>
+              ) : (
+                <ModuleTitle />
+              )}
             </ShellHomeLink>
           </div>
           {onClose && (

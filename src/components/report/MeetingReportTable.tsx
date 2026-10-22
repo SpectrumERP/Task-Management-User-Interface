@@ -16,6 +16,7 @@ import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import { formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/hooks/useSettings';
 
 interface MeetingReportTableProps {
   data: any[];
@@ -40,6 +41,16 @@ const DEFAULT_COLUMNS = [
 export function MeetingReportTable({ data }: MeetingReportTableProps) {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
     DEFAULT_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id)
+  );
+  // Meeting Type follows the "hide type" setting: no column, no column toggle, not exported.
+  const { isHideType } = useSettings();
+  const shownColumns = useMemo(
+    () => (isHideType ? visibleColumns.filter((id) => id !== 'type') : visibleColumns),
+    [visibleColumns, isHideType]
+  );
+  const pickableColumns = useMemo(
+    () => (isHideType ? DEFAULT_COLUMNS.filter((c) => c.id !== 'type') : DEFAULT_COLUMNS),
+    [isHideType]
   );
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -148,7 +159,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
   };
 
   const handleExport = () => {
-    exportMeetingReportToExcel(data, 'Meeting_Notes_Report.xlsx');
+    exportMeetingReportToExcel(data, 'Meeting_Notes_Report.xlsx', { hideType: isHideType });
   };
 
   const formatDate = (dateString: string) => {
@@ -174,7 +185,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
     return {};
   };
 
-  const visibleCols = DEFAULT_COLUMNS.filter((col) => visibleColumns.includes(col.id));
+  const visibleCols = DEFAULT_COLUMNS.filter((col) => shownColumns.includes(col.id));
 
   const tableColgroup = (
     <colgroup>
@@ -213,7 +224,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
               </DropdownMenuTrigger>
             </ActionTip>
             <DropdownMenuContent align="end" className="w-56">
-              {DEFAULT_COLUMNS.map((col) => (
+              {pickableColumns.map((col) => (
                 <DropdownMenuCheckboxItem
                   key={col.id}
                   checked={visibleColumns.includes(col.id)}
@@ -340,7 +351,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                     key={meeting.meetingNotesNo || `${startIndex + index}`}
                     className="border-b border-[var(--tm-border)] hover:bg-[var(--tm-elevated)]/50"
                   >
-                    {visibleColumns.includes('srNo') && (
+                    {shownColumns.includes('srNo') && (
                       <td
                         className="tm-col-sr tm-col-id px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                         style={getColStyle('srNo')}
@@ -348,7 +359,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         {meeting._sr ?? startIndex + index + 1}
                       </td>
                     )}
-                    {visibleColumns.includes('meetingTitle') && (
+                    {shownColumns.includes('meetingTitle') && (
                       <td
                         className="tm-col-primary px-3 py-2.5 border-r border-[var(--tm-border)] font-medium text-slate-50 align-top min-w-0 overflow-hidden"
                         style={getColStyle('meetingTitle')}
@@ -359,7 +370,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('category') && (
+                    {shownColumns.includes('category') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-top min-w-0 overflow-hidden"
                         style={getColStyle('category')}
@@ -370,7 +381,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('type') && (
+                    {shownColumns.includes('type') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('type')}
@@ -381,7 +392,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('company') && (
+                    {shownColumns.includes('company') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('company')}
@@ -396,7 +407,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('location') && (
+                    {shownColumns.includes('location') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('location')}
@@ -407,7 +418,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('mode') && (
+                    {shownColumns.includes('mode') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('mode')}
@@ -418,7 +429,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('startDateTime') && (
+                    {shownColumns.includes('startDateTime') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('startDateTime')}
@@ -433,7 +444,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('endDateTime') && (
+                    {shownColumns.includes('endDateTime') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('endDateTime')}
@@ -446,7 +457,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('participants') && (
+                    {shownColumns.includes('participants') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('participants')}
@@ -468,7 +479,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('discussionsMade') && (
+                    {shownColumns.includes('discussionsMade') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('discussionsMade')}
@@ -487,7 +498,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('discussionRemarks') && (
+                    {shownColumns.includes('discussionRemarks') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('discussionRemarks')}
@@ -506,7 +517,7 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         />
                       </td>
                     )}
-                    {visibleColumns.includes('status') && (
+                    {shownColumns.includes('status') && (
                       <td
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 truncate"
                         style={getColStyle('status')}

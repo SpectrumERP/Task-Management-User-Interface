@@ -190,6 +190,40 @@ export function filterSelectableStatuses<T extends { Status: string }>(
   return out;
 }
 
+/**
+ * Challenges are only Open or Closed. They are stored as task statuses: a status literally named
+ * "Open" / "Closed" when the master has one, otherwise Assigned (Open) and Complete (Closed).
+ * Older challenges saved as In-Progress / Hold read as Open, Cancelled as Closed.
+ */
+export type ChallengeStatus = 'Open' | 'Closed';
+
+export function resolveChallengeStatus(status?: string | null): ChallengeStatus | null {
+  const name = (status || '').trim().toLowerCase();
+  if (name === 'open') return 'Open';
+  if (name === 'closed') return 'Closed';
+  const canonical = resolveCanonicalStatus(status);
+  if (!canonical) return null;
+  return canonical === 'Complete' || canonical === 'Cancelled' ? 'Closed' : 'Open';
+}
+
+/** The two challenge choices, each with the StatusNo it saves as (missing when the master lacks it). */
+export function getChallengeStatusOptions<T extends { StatusNo: number; Status: string }>(
+  statuses: T[] | undefined | null
+): Array<{ label: ChallengeStatus; statusNo: number }> {
+  const pick = (label: ChallengeStatus, fallback: CanonicalStatusPill) =>
+    statuses?.find((s) => (s.Status || '').trim().toLowerCase() === label.toLowerCase()) ??
+    statuses?.find((s) => statusMatchesPill(s.Status, fallback));
+  return ([['Open', 'Assigned'], ['Closed', 'Complete']] as const).flatMap(([label, fallback]) => {
+    const match = pick(label, fallback);
+    return match ? [{ label, statusNo: match.StatusNo }] : [];
+  });
+}
+
+/** Text colour for a challenge badge: Open in the Assigned blue, Closed in the Complete green. */
+export function getChallengeStatusTextClass(status: ChallengeStatus): string {
+  return getStatusTextClass(status === 'Closed' ? 'Complete' : 'Assigned');
+}
+
 /** Form/API token for a status pill (not a numeric StatusNo). */
 export function toStatusPillToken(pillName: string): string {
   return `${STATUS_PILL_PREFIX}${pillName}`;

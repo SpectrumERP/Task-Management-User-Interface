@@ -19,6 +19,10 @@ export const meetingParticipantSchema = z.object({
   designation: z.string().optional().nullable(),
   email: z.string().email('Invalid email address').optional().nullable().or(z.literal('')),
   contactNo: z.string().optional().nullable(),
+  // Display names sent by load-data (not saved)
+  printingName: z.string().optional().nullable(),
+  empName: z.string().optional().nullable(),
+  businessEntityContactPersonName: z.string().optional().nullable(),
 }).superRefine((data, ctx) => {
   // If internal (e.g. 1), userNo is required. If external (e.g. 2), participantName is required.
   // Assuming 1 = Internal, 2 = External, 3 = Business Entity for validation logic
@@ -39,20 +43,16 @@ export const meetingParticipantSchema = z.object({
       });
     }
   } else if (data.participantType === 3) {
-    if (!data.participantName || data.participantName.trim() === '') {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Name is required', path: ['participantName'] });
-    }
-    if (!data.companyName || data.companyName.trim() === '') {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Company is required', path: ['companyName'] });
-    }
-    if (!data.email || data.email.trim() === '') {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Email is required', path: ['email'] });
-    }
-    if (!data.designation || data.designation.trim() === '') {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Designation is required', path: ['designation'] });
-    }
-    if (!data.contactNo || data.contactNo.trim() === '') {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Contact No is required', path: ['contactNo'] });
+    // External participants: added by email, the API also requires name, company, designation and contact.
+    const required: [keyof typeof data, string][] = [
+      ['participantName', 'Name is required'],
+      ['email', 'Email is required'],
+      ['companyName', 'Company Name is required'],
+      ['designation', 'Designation is required'],
+      ['contactNo', 'Contact No is required'],
+    ];
+    for (const [path, message] of required) {
+      if (!String(data[path] ?? '').trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: [path] });
     }
   } else if (data.participantType === 4) {
     if (!data.businessEntityContactPersonDetailNo) {
@@ -65,41 +65,45 @@ export const meetingParticipantSchema = z.object({
   }
 });
 
-export const getMeetingDiscussionSchema = (isHideType: boolean = false) => z.object({
-  mnDiscussionDetailNo: z.number().optional(),
-  topic: z.string().min(1, 'Topic is required').max(200, 'Topic cannot exceed 200 characters'),
-  discussionSummary: z.string().max(700, 'Summary cannot exceed 700 characters').optional().nullable(),
-  decisionRemarks: z.string().max(300, 'Decision cannot exceed 300 characters').optional().nullable(),
-  isActionRequired: z.boolean().default(false),
-  remarks: z.string().max(500, 'Remarks cannot exceed 500 characters').optional().nullable(),
-
-  // Required only if isActionRequired is true
-  actionTaskOwnerNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
-  actionDueDate: z.string().optional().nullable(),
+/** One task raised from a discussion line (agenda). A line can raise several. */
+export const getMeetingDiscussionTaskSchema = (isHideType: boolean = false) => z.object({
+  /** Client-side key for the task cards (not saved). */
+  key: z.string().optional(),
+  /** Sent by load-data: the task detail row, and the task once it has been created. */
+  mnDiscussionTaskDetailNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  operTaskNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  title: z.string().trim().min(1, 'Task Title is required').max(200, 'Title cannot exceed 200 characters'),
+  operTaskCompanyNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
   operTaskCategoryNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
   operTaskTypeNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
   operTaskPriorityNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
   taskFolderNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
   actionTaskOriginatorNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
-  operTaskNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  actionTaskOwnerNo: z.preprocess(emptyToNull, z.number().optional().nullable()),
+  actionDueDate: z.string().optional().nullable(),
 }).superRefine((data, ctx) => {
-  if (data.isActionRequired) {
-    if (data.actionTaskOwnerNo == null) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Assign To is required', path: ['actionTaskOwnerNo'] });
-    }
-    if (!data.actionDueDate) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Due Date is required', path: ['actionDueDate'] });
-    }
-    if (data.operTaskCategoryNo == null) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Category is required', path: ['operTaskCategoryNo'] });
-    }
-    if (!isHideType && data.operTaskTypeNo == null) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Type is required', path: ['operTaskTypeNo'] });
-    }
-    if (data.operTaskPriorityNo == null) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Task Priority is required', path: ['operTaskPriorityNo'] });
-    }
+  // Same mandatory fields as the task form.
+  const required: [keyof typeof data, string][] = [
+    ['operTaskCompanyNo', 'Company is required'],
+    ['operTaskCategoryNo', 'Task Category is required'],
+    ['operTaskPriorityNo', 'Task Priority is required'],
+    ['actionTaskOriginatorNo', 'Task Assign By is required'],
+    ['actionTaskOwnerNo', 'Task Assign To is required'],
+    ['actionDueDate', 'Due Date is required'],
+  ];
+  if (!isHideType) required.push(['operTaskTypeNo', 'Task Type is required']);
+  for (const [path, message] of required) {
+    if (data[path] == null || data[path] === '') ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: [path] });
   }
+});
+
+export const getMeetingDiscussionSchema = (isHideType: boolean = false) => z.object({
+  mnDiscussionDetailNo: z.number().optional(),
+  topic: z.string().min(1, 'Topic is required').max(200, 'Topic cannot exceed 200 characters'),
+  discussionSummary: z.string().max(700, 'Summary cannot exceed 700 characters').optional().nullable(),
+  decisionRemarks: z.string().max(300, 'Decision cannot exceed 300 characters').optional().nullable(),
+  remarks: z.string().max(500, 'Remarks cannot exceed 500 characters').optional().nullable(),
+  tasks: z.array(getMeetingDiscussionTaskSchema(isHideType)).default([]),
 });
 
 export const meetingDocumentSchema = z.object({
@@ -121,8 +125,9 @@ export const meetingDocumentSchema = z.object({
 export const getMeetingSchema = (isHideType: boolean = false) => z.object({
   meetingNotesNo: z.number().optional(),
   meetingTitle: z.string().min(1, 'Meeting Title is required').max(200, 'Title cannot exceed 200 characters'),
-  meetingTypeNo: z.string().min(1, 'Meeting Type is required'),
-  companyNo: z.string().min(1, 'Company is required'),
+  meetingTypeNo: z.string().optional().default(''),
+  // Not shown on the form; defaults to the logged-in company.
+  companyNo: z.string().optional().default(''),
   divisionNo: z.string().optional(),
   meetingCategoryNo: z.string().min(1, 'Meeting Category is required'),
   meetingStartDateTime: z.string().min(1, 'Start Date & Time is required'),
@@ -154,5 +159,6 @@ export const getMeetingSchema = (isHideType: boolean = false) => z.object({
 
 export type MeetingNotesParticipant = z.infer<typeof meetingParticipantSchema>;
 export type MeetingNotesDiscussion = z.infer<ReturnType<typeof getMeetingDiscussionSchema>>;
+export type MeetingNotesDiscussionTask = z.infer<ReturnType<typeof getMeetingDiscussionTaskSchema>>;
 export type MeetingNotesDocument = z.infer<typeof meetingDocumentSchema>;
 export type MeetingNotesFormData = z.infer<ReturnType<typeof getMeetingSchema>>;

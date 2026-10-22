@@ -30,6 +30,7 @@ import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { getStatusPillClass } from '@/lib/taskStatusGroups';
 import { RowEditIcon, RowViewIcon } from '@/components/shared/RowIcons';
+import { formatTimeAgo, getOverdueDays, isStaleTask } from '@/lib/taskFreshness';
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -41,7 +42,7 @@ interface TaskListViewProps {
   onClearFilters?: () => void;
   hideCategoryColumn?: boolean;
 }
-type ColumnKey = 'code' | 'status' | 'title' | 'category' | 'type' | 'priority' | 'dueDate' | 'completionDate' | 'folder' | 'createdBy' | 'createdDate' | 'owner' | 'originator' | 'companyName' | 'location' | 'actions';
+type ColumnKey = 'code' | 'status' | 'title' | 'category' | 'type' | 'priority' | 'dueDate' | 'completionDate' | 'folder' | 'createdBy' | 'createdDate' | 'lastUpdate' | 'owner' | 'originator' | 'companyName' | 'location' | 'actions';
 interface ColumnDef {
   key: ColumnKey;
   label: string;
@@ -57,6 +58,7 @@ const COLUMNS: ColumnDef[] = [
   { key: 'priority', label: 'Priority', defaultVisible: true },
   { key: 'owner', label: 'Assign To', defaultVisible: true },
   { key: 'dueDate', label: 'Due Date', defaultVisible: true },
+  { key: 'lastUpdate', label: 'Last Update', defaultVisible: true },
   { key: 'completionDate', label: 'Completion Date', defaultVisible: false },
   { key: 'folder', label: 'Folder', defaultVisible: false },
   { key: 'companyName', label: 'Company', defaultVisible: false },
@@ -77,7 +79,8 @@ const DEFAULT_COL_WIDTH: Partial<Record<ColumnKey, string>> = {
   type: '6.5rem',
   priority: '6.5rem',
   owner: '7.5rem',
-  dueDate: '5.75rem',
+  dueDate: '7rem',
+  lastUpdate: '12rem',
   completionDate: '9.5rem',
   folder: '6.5rem',
   companyName: '8rem',
@@ -86,6 +89,12 @@ const DEFAULT_COL_WIDTH: Partial<Record<ColumnKey, string>> = {
   createdBy: '7.5rem',
   createdDate: '11.5rem',
 };
+
+const COLUMNS_STORAGE_KEY = 'taskListViewColumns';
+/** Every column key the saved layout has already been offered, so new defaults show up once. */
+const COLUMNS_SEEN_STORAGE_KEY = 'taskListViewColumnsSeen';
+/** Columns added after layouts were first saved (layouts saved before the "seen" list existed). */
+const COLUMNS_ADDED_LATER: ColumnKey[] = ['lastUpdate'];
 
 /** Actions: full "Actions" label + column toggle + View/Edit icons. */
 const ACTIONS_COL_PX = 118;
@@ -117,7 +126,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
   // Initialize visible columns from localStorage or defaults
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(() => {
-    const saved = localStorage.getItem('taskListViewColumns');
+    const saved = localStorage.getItem(COLUMNS_STORAGE_KEY);
     let cols: Set<ColumnKey>;
     if (saved) {
       try {
@@ -125,6 +134,17 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       } catch {
         cols = new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
       }
+      // Turn on default-visible columns the saved layout has never seen (e.g. newly added ones)
+      let seen: ColumnKey[];
+      try {
+        seen = JSON.parse(localStorage.getItem(COLUMNS_SEEN_STORAGE_KEY) || 'null')
+          ?? COLUMNS.map(c => c.key).filter(k => !COLUMNS_ADDED_LATER.includes(k));
+      } catch {
+        seen = [];
+      }
+      COLUMNS.forEach(c => {
+        if (c.defaultVisible && !seen.includes(c.key)) cols.add(c.key);
+      });
     } else {
       cols = new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
     }
@@ -136,8 +156,16 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
 
   // Save to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('taskListViewColumns', JSON.stringify(Array.from(visibleColumns)));
+    localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(Array.from(visibleColumns)));
+    localStorage.setItem(COLUMNS_SEEN_STORAGE_KEY, JSON.stringify(COLUMNS.map(c => c.key)));
   }, [visibleColumns]);
+
+  // Shared clock for "x ago" / stale checks; ticks each minute so labels stay current
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
 
@@ -215,6 +243,7 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
       case 'priority': return task.priority || '';
       case 'owner': return task.assignedDisplayName || '';
       case 'dueDate': return toSortTime(task.end_date);
+      case 'lastUpdate': return toSortTime(task.lastCommentDate);
       case 'completionDate': return toSortTime(task.completionDate);
       case 'folder': return task.folderName || task.project_No || '';
       case 'companyName': return task.companyName || '';
@@ -395,8 +424,8 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           <TruncatedText text={task.title || ''} className="text-sm font-semibold text-slate-100 leading-snug" />
           <div className="mt-1 min-w-0">
             <TruncatedText
-              text={`${task.assignedDisplayName || 'Unassigned'}${task.end_date ? ` · Due ${formatDateOnly(task.end_date, '')}` : ''}`}
-              className="text-[11px] text-slate-400"
+              text={`${task.assignedDisplayName || 'Unassigned'}${task.end_date ? ` · Due ${formatDateOnly(task.end_date, '')}` : ''}${getOverdueDays(task) > 0 ? ` · ${getOverdueDays(task)} ${getOverdueDays(task) === 1 ? 'day' : 'days'} late` : ''}`}
+              className={cn('text-[11px]', getOverdueDays(task) > 0 ? 'text-red-400' : 'text-slate-400')}
             />
           </div>
         </div>
@@ -434,10 +463,14 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
     </div>
   );
 
-  const renderTableRow = (task: Task, isSubtask = false) => (
+  const renderTableRow = (task: Task, isSubtask = false) => {
+    const overdueDays = getOverdueDays(task);
+    const stale = isStaleTask(task, now);
+    return (
     <tr
       key={task.taskNo}
       onClick={() => openTask(task)}
+      data-row-stale={stale ? 'true' : undefined}
       className={cn("group transition-colors cursor-pointer", isSubtask ? "bg-[var(--tm-surface)]/30" : "")}
     >
       {/* Code — sticky left so it stays visible while scrolling horizontally */}
@@ -575,13 +608,39 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         </td>
       )}
 
-      {/* Due Date */}
+      {/* Due Date — red + "X days late" when overdue */}
       {visibleColumns.has('dueDate') && (
         <td className={cellOverflowClass}>
           <TruncatedText
             text={task.end_date ? formatDateOnly(task.end_date) : ''}
-            className="text-slate-200"
+            className={overdueDays > 0 ? 'text-red-500 font-semibold' : 'text-slate-200'}
           />
+          {overdueDays > 0 ? (
+            <TruncatedText
+              text={`${overdueDays} ${overdueDays === 1 ? 'day' : 'days'} late`}
+              className="text-[11px] text-red-500 font-medium"
+            />
+          ) : null}
+        </td>
+      )}
+
+      {/* Last Update — latest comment + who + how long ago */}
+      {visibleColumns.has('lastUpdate') && (
+        <td className={cellOverflowClass}>
+          {task.lastCommentDate ? (() => {
+            const by = task.lastCommentedBy?.displayName || task.lastCommentedBy?.userName || '';
+            const meta = [by.split(' ')[0], formatTimeAgo(task.lastCommentDate, now)].filter(Boolean).join(' · ');
+            return task.lastComment ? (
+              <>
+                <TruncatedText text={task.lastComment} className="text-slate-200" />
+                <TruncatedText text={meta} className={cn('text-[11px]', stale ? 'text-orange-400' : 'text-slate-400')} />
+              </>
+            ) : (
+              <TruncatedText text={meta} className={stale ? 'text-orange-400' : 'text-slate-200'} />
+            );
+          })() : (
+            <TruncatedText text="No update yet" className={cn('text-[11px] italic', stale ? 'text-orange-400' : 'text-slate-400')} />
+          )}
         </td>
       )}
 
@@ -728,7 +787,8 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         </td>
       )}
     </tr>
-  );
+    );
+  };
 
   const visibleCols = COLUMNS.filter((col) => visibleColumns.has(col.key) && isColumnAllowed(col.key));
 

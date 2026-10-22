@@ -49,6 +49,14 @@ export function participantTypeLabel(type?: number | string | null): string {
   return 'Participant';
 }
 
+/**
+ * Finalized meeting notes: the tasks from the discussion points are created at finalize, and the
+ * notes can no longer be changed.
+ */
+export function isMeetingFinalized(statusName?: string | null): boolean {
+  return String(statusName || '').trim().toLowerCase().includes('final');
+}
+
 /** Release / Authorized (and similar) can send; Initial/Draft cannot. */
 export function isMinutesSendStatusAllowed(statusName?: string | null): boolean {
   const n = String(statusName || '').trim().toLowerCase();

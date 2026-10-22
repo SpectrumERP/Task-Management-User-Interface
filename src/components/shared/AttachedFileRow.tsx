@@ -26,13 +26,15 @@ interface AttachedFileRowProps {
   renameDisabled?: boolean;
   /** The inline rename editor, shown in place of the name while renaming. */
   renaming?: ReactNode;
+  /** View only: hides Rename and Delete. */
+  readOnly?: boolean;
 }
 
 /**
  * One uploaded file, laid out as in the Spectrum CRM (lead / opportunity attachments): type tag, name
  * (opens the file) with its size under it, then View, Rename and Delete.
  */
-export function AttachedFileRow({ name, sizeLabel, onView, onRename, onDelete, renameDisabled, renaming }: AttachedFileRowProps) {
+export function AttachedFileRow({ name, sizeLabel, onView, onRename, onDelete, renameDisabled, renaming, readOnly = false }: AttachedFileRowProps) {
   const kind = kindOf(name);
   return (
     <div className="flex items-center gap-3 rounded-lg border border-[#E2E8F0] bg-[var(--tm-surface)] px-3 py-2.5 dark:border-[var(--tm-border)]">
@@ -60,20 +62,24 @@ export function AttachedFileRow({ name, sizeLabel, onView, onRename, onDelete, r
                 </svg>
               </button>
             </ActionTip>
-            <ActionTip label="Rename">
-              <button type="button" className={ICON_BUTTON} aria-label={`Rename ${name}`} onClick={onRename} disabled={renameDisabled}>
-                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-            </ActionTip>
-            <ActionTip label="Delete">
-              <button type="button" className={`${ICON_BUTTON} hover:!text-[#c41e1e]`} aria-label={`Delete ${name}`} onClick={onDelete}>
-                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </ActionTip>
+            {!readOnly && (
+              <>
+                <ActionTip label="Rename">
+                  <button type="button" className={ICON_BUTTON} aria-label={`Rename ${name}`} onClick={onRename} disabled={renameDisabled}>
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                </ActionTip>
+                <ActionTip label="Delete">
+                  <button type="button" className={`${ICON_BUTTON} hover:!text-[#c41e1e]`} aria-label={`Delete ${name}`} onClick={onDelete}>
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </ActionTip>
+              </>
+            )}
           </div>
         </>
       )}

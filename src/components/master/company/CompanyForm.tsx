@@ -10,7 +10,7 @@ import { Camera as CameraIcon } from 'lucide-react';
 import { BrandLoader } from '@/components/ui/BrandLoader';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { validateUploadFile } from '@/lib/allowedUploadFiles';
+import { MAX_ATTACHMENTS_MESSAGE, MAX_ATTACHMENTS_PER_RECORD, selectUploadBatch } from '@/lib/allowedUploadFiles';
 import { MasterFormShell } from '../shared/MasterFormShell';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { useConfirmDelete } from '../shared/useConfirmDelete';
@@ -866,6 +866,16 @@ export function CompanyForm({ id }: CompanyFormProps) {
   };
 
   // ---- Attachments ----
+  /** Camera / card scan adds a file: blocked once the company holds the most it may. */
+  const openCameraIfRoom = () => {
+    if (companyAttachments.length >= MAX_ATTACHMENTS_PER_RECORD) {
+      toast.error(MAX_ATTACHMENTS_MESSAGE);
+      return false;
+    }
+    setIsCameraModalOpen(true);
+    return true;
+  };
+
   const handleAnalyzeAttachment = async (att: any) => {
     try {
       const toastId = toast.loading('Fetching document for analysis...');
@@ -895,9 +905,10 @@ export function CompanyForm({ id }: CompanyFormProps) {
     const file = files[0];
     e.target.value = '';
 
-    const validation = validateUploadFile(file);
-    if (!validation.ok) {
-      toast.error(validation.reason);
+    const existing = companyAttachments.map((a: any) => ({ name: a.fileName || a.name, size: a.fileSize || a.size }));
+    const { rejected } = selectUploadBatch([file], existing);
+    if (rejected.length > 0) {
+      toast.error(rejected[0].reason);
       return;
     }
 
@@ -1203,16 +1214,16 @@ export function CompanyForm({ id }: CompanyFormProps) {
             businessEntityTypes={businessEntityTypes}
             errors={errors}
             setErrors={setErrors}
-            onOpenCamera={() => setIsCameraModalOpen(true)}
+            onOpenCamera={openCameraIfRoom}
             createdBy={createdBy}
             createdDate={createdDate}
             attachmentCount={companyAttachments.length}
             onShowAttachments={() => setIsAttachmentsModalOpen(true)}
             onUploadAttachment={handleFileUpload}
             onDirectAnalyze={(file) => {
+              if (!openCameraIfRoom()) return;
               setAnalyzeFile(file);
               setAnalyzingAttachmentId(null);
-              setIsCameraModalOpen(true);
             }}
           >
             <div className="space-y-0">
@@ -1333,7 +1344,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
                 attachments={companyAttachments}
                 companyName={name}
                 onFileUpload={handleFileUpload}
-                onOpenCamera={() => setIsCameraModalOpen(true)}
+                onOpenCamera={openCameraIfRoom}
                 onAnalyze={handleAnalyzeAttachment}
                 onRemove={requestRemoveCompanyAttachment}
                 onRename={requestRenameCompanyAttachment}

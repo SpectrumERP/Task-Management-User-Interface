@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { UserType } from '@/types/enums';
 import { IN_SPECTRUM } from '@/lib/crmSso';
 import { ModuleLauncher } from '@/components/layout/ModuleLauncher';
+import { ModuleTitle } from '@/components/layout/ModuleTitle';
 // Header copy of the client logo, trimmed to its edges so it reads at header size.
 import SteelMontLogo from '@/assets/SteelMontLogoHeader.png';
 
@@ -200,15 +201,11 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
               )}
             >
               <div className="w-56 shrink-0 px-3">
-                  <img
-                  src={`${import.meta.env.BASE_URL}spectrum-erp-logo-on-dark.png`}
-                  alt="Spectrum ERP"
-                  className="block h-9 w-full min-w-0 object-contain object-left"
-                />
+                <ModuleTitle />
               </div>
             </div>
             <div className={cn("flex min-w-0 items-center pl-4", isSidebarOpen && "lg:hidden")}>
-                <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="block h-8 w-auto max-w-[10.5rem] object-contain object-left" />
+                <ModuleTitle tone="light" />
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -308,7 +305,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
             ) : (
               <div className="flex shrink-0 items-center"><ModuleLauncher /></div>
             )}
-              <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="block h-8 w-auto max-w-[10.5rem] object-contain object-left" />
+              <ModuleTitle tone="light" />
           </div>
 
           {/* Desktop brand rail — CRM layout:
@@ -327,11 +324,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
                 ) : (
                   <div className="flex shrink-0 items-center"><ModuleLauncher tone="dark" /></div>
                 )}
-                  <img
-                    src={`${import.meta.env.BASE_URL}spectrum-erp-logo-on-dark.png`}
-                    alt="Spectrum ERP"
-                    className="block h-8 w-full min-w-0 object-contain object-left"
-                  />
+                  <ModuleTitle className="flex-1" />
               </div>
             )}
 
@@ -380,7 +373,7 @@ export function Navbar({ onMenuClick, onToggleSidebar, isSidebarCollapsed = fals
               ) : (
                 <div className="flex shrink-0 items-center"><ModuleLauncher /></div>
               )}
-                <img src={`${import.meta.env.BASE_URL}spectrum-erp-logo.png`} alt="Spectrum ERP" className="block h-8 w-auto max-w-[10.5rem] object-contain object-left" />
+                <ModuleTitle tone="light" />
             </div>
           )}
           {/* Spectrum ERP │ client (SteelMont) logo — vertical line, then the client logo; desktop/tablet only */}

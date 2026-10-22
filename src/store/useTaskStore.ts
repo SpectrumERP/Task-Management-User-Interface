@@ -528,6 +528,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         end_date: item.endDate,
         completionDate: item.completionDate || null,
         completionRemark: item.completionRemark || '',
+        lastCommentedBy: item.lastCommentedBy || null,
+        lastCommentDate: item.lastCommentDate || null,
+        // search-data does not return the comment text yet; picked up automatically once it does.
+        lastComment: item.lastComment ?? item.lastCommentDescription ?? null,
+        overdueDays: item.overdueDays ?? null,
         isAllDay: item.isAllday ?? item.isAllDay ?? false,
         calendarColor: item.colorCoding || '',
         estimated_effort_value: item.estimatedEfforts ?? null,

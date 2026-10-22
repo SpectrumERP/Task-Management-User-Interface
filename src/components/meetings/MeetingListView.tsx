@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import {
   ClipboardList,
   Edit2,
+  Eye,
   Plus,
   Download,
   Search,
@@ -36,10 +37,11 @@ import { MasterPaginationBar } from '@/components/master/shared/MasterPagination
 import { cn } from '@/lib/utils';
 import {
   canDeleteMeetingNote,
+  isMeetingFinalized,
   isMinutesSendStatusAllowed,
   readLastMinutesSentAt,
 } from '@/lib/meetingMinutesShare';
-import { RowDeleteIcon, RowEditIcon } from '@/components/shared/RowIcons';
+import { RowDeleteIcon, RowEditIcon, RowViewIcon } from '@/components/shared/RowIcons';
 
 interface MeetingListViewProps {
   onMeetingClick?: (meetingNotesNo: number) => void;
@@ -497,6 +499,8 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                     const start = formatScheduleLine(meeting.meetingStartDateTime);
                     const canSend = isMinutesSendStatusAllowed(status);
                     const deleteGate = canDeleteMeetingNote(isDelete, status);
+                    // Finalized notes are read only: View instead of Edit.
+                    const finalized = isMeetingFinalized(status);
                     const id = meeting.meetingNotesNo || meeting.id;
                     const lastSent = id ? readLastMinutesSentAt(Number(id)) : null;
 
@@ -560,7 +564,7 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                               Send
                             </Button>
                           ) : null}
-                          {isUpdate ? (
+                          {finalized || isUpdate ? (
                             <Button
                               type="button"
                               variant="ghost"
@@ -568,8 +572,8 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                               className="h-8 rounded-[8px] text-[11px] font-semibold text-slate-300 hover:text-[#0EA5E9] hover:!bg-transparent gap-1"
                               onClick={() => openMeeting(meeting)}
                             >
-                              <Edit2 size={13} />
-                              Edit
+                              {finalized ? <Eye size={13} /> : <Edit2 size={13} />}
+                              {finalized ? 'View' : 'Edit'}
                             </Button>
                           ) : null}
                           {isDelete ? (
@@ -720,6 +724,8 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                       const start = formatScheduleLine(meeting.meetingStartDateTime);
                       const end = formatScheduleLine(meeting.meetingEndDateTime);
                       const deleteGate = canDeleteMeetingNote(isDelete, status);
+                      // Finalized notes are read only: View instead of Edit.
+                      const finalized = isMeetingFinalized(status);
                       const id = meeting.meetingNotesNo || meeting.id;
                       const lastSent = id ? readLastMinutesSentAt(Number(id)) : null;
 
@@ -815,17 +821,17 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                                   </Button>
                                 </ActionTip>
                               ) : null} */}
-                              {isUpdate ? (
-                                <ActionTip label="Edit">
+                              {finalized || isUpdate ? (
+                                <ActionTip label={finalized ? 'View (finalized)' : 'Edit'}>
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    aria-label="Edit meeting"
+                                    aria-label={finalized ? 'View meeting' : 'Edit meeting'}
                                     onClick={() => openMeeting(meeting)}
                                     className="h-7 w-7 rounded-[6px] text-slate-400 hover:text-[#0EA5E9] hover:!bg-transparent"
                                   >
-                                    <RowEditIcon />
+                                    {finalized ? <RowViewIcon /> : <RowEditIcon />}
                                   </Button>
                                 </ActionTip>
                               ) : null}

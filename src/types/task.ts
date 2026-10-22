@@ -119,6 +119,12 @@ export interface Task {
   customFields?: { customFieldNo: number | string; fieldValue: string }[];
   createdDate?: string;
   createdBy?: { displayName: string; id?: number; loginNo?: number };
+  /** Latest comment on the task (search-data `lastCommentedBy` / `lastCommentDate`). */
+  lastCommentedBy?: { id?: number; displayName?: string; userName?: string } | null;
+  lastCommentDate?: string | null;
+  lastComment?: string | null;
+  /** Days past the due date, computed by the API (null/0 when not overdue). */
+  overdueDays?: number | null;
   roadBlock?: string;
   // typeNo 1 = Task Execution Log entry, typeNo 2 = Road Block Remark entry
   executionChallenges?: {
@@ -127,5 +133,7 @@ export interface Task {
     remarks: string | null;
     proposedSolution: string | null;
     statusNo: number | null;
+    createdBy?: { displayName?: string; printingName?: string; loginId?: string } | string | null;
+    createdDate?: string | null;
   }[];
 }

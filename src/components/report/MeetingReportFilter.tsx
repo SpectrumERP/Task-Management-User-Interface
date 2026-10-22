@@ -5,7 +5,8 @@ import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/Combobox';
 import { UserCombobox } from '@/components/ui/UserCombobox';
-import { BusinessEntityCombobox } from '@/components/meetings/BusinessEntityCombobox';
+import { ParticipantFilterCombobox, type ParticipantFilter } from '@/components/report/ParticipantFilterCombobox';
+import { useSettings } from '@/hooks/useSettings';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldLabel } from '@/components/ui/form-field';
@@ -27,11 +28,8 @@ interface MeetingReportFilterValues {
   company?: string;
   location?: string;
   mode?: string;
-  internalUser?: string;
-  internalEmployee?: string;
-  businessEntity?: string;
-  businessEntityName?: string;
-  externalUser?: string;
+  /** One filter for any participant: a user, employee, business entity, or a name (incl. external). */
+  participant?: ParticipantFilter;
   isActionTaken?: boolean;
   isAttachedDocument?: boolean;
   createdBy?: string;
@@ -56,8 +54,8 @@ function buildMeetingAppliedSummary(data: MeetingReportFilterValues | null): str
   if (data.company) parts.push('Company');
   if (data.location) parts.push('Location');
   if (data.mode) parts.push('Mode');
-  if (data.internalUser) parts.push('Internal user');
-  if (data.businessEntity || data.businessEntityName) parts.push('Business entity');
+  if (data.participant) parts.push('Participant');
+  if (data.createdBy) parts.push('Created by');
   if (data.status) parts.push('Status');
   if (data.isActionTaken) parts.push('Action taken');
   if (data.isAttachedDocument) parts.push('Attachments');
@@ -73,6 +71,8 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
   const authCompanies = useAuthStore((state) => state.company);
   const companyNo = (authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1).toString();
   const { fillValues: taskFillValues } = useTaskStore();
+  // Meeting Type follows the "hide type" setting, as on the meeting form.
+  const { isHideType } = useSettings();
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -90,7 +90,7 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
     fetchOptions();
   }, [companyNo]);
 
-  const { control, handleSubmit, reset, register, setValue } = useForm<MeetingReportFilterValues>({
+  const { control, handleSubmit, reset, register } = useForm<MeetingReportFilterValues>({
     defaultValues: {
       meetingDateRange: { from: undefined, to: undefined },
       createdDateRange: { from: undefined, to: undefined },
@@ -100,11 +100,7 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
       company: undefined,
       location: undefined,
       mode: undefined,
-      internalUser: undefined,
-      internalEmployee: undefined,
-      businessEntity: undefined,
-      businessEntityName: undefined,
-      externalUser: '',
+      participant: undefined,
       isActionTaken: false,
       isAttachedDocument: false,
       createdBy: undefined,
@@ -115,8 +111,10 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
   const appliedSummary = useMemo(() => buildMeetingAppliedSummary(lastApplied), [lastApplied]);
 
   const onSubmit = (data: MeetingReportFilterValues) => {
-    setLastApplied(data);
-    onApply(data);
+    // Hidden Meeting Type never filters the report.
+    const applied = isHideType ? { ...data, type: undefined } : data;
+    setLastApplied(applied);
+    onApply(applied);
     setFiltersCollapsed(true);
   };
 
@@ -216,6 +214,7 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
             />
           </div>
 
+          {!isHideType && (
           <div className="space-y-1.5 min-w-0">
             <FieldLabel>Meeting Type</FieldLabel>
             <Controller
@@ -234,6 +233,7 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
               )}
             />
           </div>
+          )}
 
           <div className="space-y-1.5 min-w-0">
             <FieldLabel>Meeting Title</FieldLabel>
@@ -334,60 +334,13 @@ export function MeetingReportFilter({ onApply }: MeetingReportFilterProps) {
           </div>
 
           <div className="space-y-1.5 min-w-0">
-            <FieldLabel>Internal User</FieldLabel>
+            <FieldLabel>Participant</FieldLabel>
             <Controller
-              name="internalUser"
+              name="participant"
               control={control}
               render={({ field }) => (
-                <UserCombobox
-                  value={field.value || ''}
-                  onChange={(user: any) => field.onChange(user?.loginNo?.toString() || '')}
-                  className={fieldClass}
-                />
+                <ParticipantFilterCombobox value={field.value} onChange={field.onChange} className={fieldClass} />
               )}
-            />
-          </div>
-
-          <div className="space-y-1.5 min-w-0">
-            <FieldLabel>Internal Employee</FieldLabel>
-            <Controller
-              name="internalEmployee"
-              control={control}
-              render={({ field }) => (
-                <UserCombobox
-                  value={field.value || ''}
-                  onChange={(user: any) => field.onChange(user?.loginNo?.toString() || '')}
-                  className={fieldClass}
-                />
-              )}
-            />
-          </div>
-
-          <div className="space-y-1.5 min-w-0">
-            <FieldLabel>Business Entity</FieldLabel>
-            <Controller
-              name="businessEntityName"
-              control={control}
-              render={({ field }) => (
-                <BusinessEntityCombobox
-                  value={field.value || ''}
-                  onChange={(contact: any) => {
-                    field.onChange(contact?.contactPersonName || '');
-                    setValue('businessEntity', contact?.businessEntityNo?.toString() || '');
-                  }}
-                  placeholder="Select Business Entity"
-                  className={fieldClass}
-                />
-              )}
-            />
-          </div>
-
-          <div className="space-y-1.5 min-w-0">
-            <FieldLabel>External User</FieldLabel>
-            <Input
-              {...register('externalUser')}
-              placeholder="Enter External User"
-              className={fieldClass}
             />
           </div>
 

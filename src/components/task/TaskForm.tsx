@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- TaskForm maps loosely-typed API payloads throughout */
 import { AttachedFileRow } from '@/components/shared/AttachedFileRow';
 import { AttachmentDropZone } from '@/components/shared/AttachmentDropZone';
+import { PhotoCaptureDialog } from '@/components/shared/PhotoCaptureDialog';
 import { useForm, Controller, useFieldArray, FormProvider, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -23,23 +24,25 @@ import { InlineAttachmentRename } from '@/components/master/shared/InlineAttachm
 import { useConfirmDelete } from '@/components/master/shared/useConfirmDelete';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 
-import { useEffect, useState, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { FieldInfoControl } from '@/components/ui/info-tooltip';
 import { TagInput } from '@/components/ui/TagInput';
 import { cn } from '@/lib/utils';
-import { SortableHeader } from '@/components/shared/useTableSort';
-import { getStatusTextClass, getStatusChipClass, getStatusDotClass, filterSelectableStatuses, resolveCanonicalStatus, STATUS_TRANSITIONS, statusMatchesPill } from '@/lib/taskStatusGroups';
+import { getStatusTextClass, getStatusChipClass, getStatusDotClass, filterSelectableStatuses, resolveCanonicalStatus, STATUS_TRANSITIONS, statusMatchesPill, getChallengeStatusOptions, resolveChallengeStatus } from '@/lib/taskStatusGroups';
 import {
   ALLOWED_UPLOAD_EXTENSIONS_LABEL,
   ALLOWED_UPLOAD_HELPER_TEXT,
   ALLOWED_UPLOAD_TYPES_LABEL,
+  MAX_ATTACHMENTS_PER_RECORD,
+  MAX_UPLOAD_FILE_SIZE_LABEL,
   UPLOAD_ACCEPT_ATTR,
-  validateUploadFile,
+  selectUploadBatch,
 } from '@/lib/allowedUploadFiles';
 import { sortByLabel } from '@/lib/sortOptions';
 import { formatDateOnly, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import { compressPhoto } from '@/lib/compressImage';
 import { format as formatStamp } from 'date-fns';
+import { formatCreatedLine, readCreatedInfo } from '@/lib/createdInfo';
 import {
   formatReminderSummary,
   guessDailyFrequencyNo,
@@ -56,8 +59,10 @@ import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { UserChipsInput } from '@/components/ui/UserChipsInput';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { TaskActivity } from './TaskActivity';
+import { TaskTimeline } from './TaskTimeline';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
 import { useFormDraft } from '@/hooks/useFormDraft';
 
@@ -69,7 +74,6 @@ const formatFileSize = (bytes?: number | null) => {
 };
 
 import { CustomFieldsSection } from '@/components/ui/CustomFieldsSection';
-const CameraComp = lazy(() => import('@/components/ui/CameraComp'));
 import {
   Dialog,
   DialogContent,
@@ -98,7 +102,7 @@ const standaloneSubtaskSchema = z.object({
   type_No: z.string().optional()
 });
 
-const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) => z.object({
+const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null, skipStatusRules = false) => z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title cannot exceed 200 characters'),
   code: z.string().optional(),
   description: z.string().optional(),
@@ -114,7 +118,7 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
   status: z.string().min(1, 'Status is required'),
   isPrivate: z.boolean().optional().default(false),
   start_date: z.string().optional(),
-  end_date: isSubTask ? z.string().min(1, 'Due Date is required for sub-tasks') : z.string().optional(),
+  end_date: z.string().min(1, isSubTask ? 'Due Date is required for sub-tasks' : 'Due Date is required'),
   completionDate: z.string().optional(),
   completionRemark: z.string().max(500, 'Remark cannot exceed 500 characters').optional(),
   road_block_remarks: z.array(z.object({
@@ -123,6 +127,8 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     remark: z.string().min(1, 'Remark is required'),
     proposedSolution: z.string().optional(),
     status_No: z.string().min(1, 'Status is required'),
+    createdBy: z.string().optional(),
+    createdDate: z.string().optional(),
   })).optional().default([]),
   isAllDay: z.boolean().optional().default(false),
   calendarColor: z.string().optional().default(''),
@@ -220,8 +226,29 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null) =
     id: z.string(),
     date: z.string().min(1, 'Date is required'),
     remark: z.string().min(1, 'Remark is required'),
+    createdBy: z.string().optional(),
+    createdDate: z.string().optional(),
   })).optional().default([]),
 }).superRefine((data, ctx) => {
+  // Status rules. Skipped when the page hides the Task Execution Log section, as these fields can't be filled there.
+  if (!skipStatusRules) {
+    if (statusMatchesPill(data.status, 'In-Progress') && !data.execution_logs?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Add at least one Task Execution Log to move the task to In Progress',
+        path: ['execution_logs'],
+      });
+    }
+    if (statusMatchesPill(data.status, 'Complete')) {
+      if (!data.completionDate) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Completion Date is required to complete the task', path: ['completionDate'] });
+      }
+      if (!data.completionRemark?.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Completion Remark is required to complete the task', path: ['completionRemark'] });
+      }
+    }
+  }
+
   if (data.start_date && data.end_date) {
     if (new Date(data.end_date) < new Date(data.start_date)) {
       ctx.addIssue({
@@ -327,6 +354,7 @@ const splitExecutionChallenges = (challenges?: any[] | null) => {
       id: (c.operTaskExecutionChallengeNo ?? c.id ?? `${idx}-log`).toString(),
       date: toDateInputValue(c.logDate ?? c.LogDate),
       remark: c.remarks ?? c.Remarks ?? '',
+      ...readCreatedInfo(c),
     }));
   const road_block_remarks = list
     .filter((c: any) => Number(c.typeNo ?? c.TypeNo) === 2)
@@ -336,6 +364,7 @@ const splitExecutionChallenges = (challenges?: any[] | null) => {
       remark: c.remarks ?? c.Remarks ?? '',
       proposedSolution: c.proposedSolution ?? c.ProposedSolution ?? '',
       status_No: (c.statusNo ?? c.StatusNo ?? '').toString(),
+      ...readCreatedInfo(c),
     }));
   return { execution_logs, road_block_remarks };
 };
@@ -537,11 +566,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   }>>([]);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Phone / tablet camera: "Take Photo" opens the device camera (capture="environment").
+  // Take Photo: phones / tablets open the native camera app (capture="environment"); other devices
+  // get the in-app live camera (PhotoCaptureDialog).
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [canCapturePhoto] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches);
+  const [canCapturePhoto] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    return !!window.matchMedia?.('(pointer: coarse)').matches
+      || /Android|iPhone|iPad|iPod|Mobi/i.test(ua)
+      || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1); // iPadOS reports a desktop UA
+  });
   const [isPreparingPhoto, setIsPreparingPhoto] = useState(false);
-  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false);
 
   const [isMasterCreateOpen, setIsMasterCreateOpen] = useState(false);
   const [isSubtasksModalOpen, setIsSubtasksModalOpen] = useState(false);
@@ -645,9 +681,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     setShowDraftRestore(false);
   };
 
+  const isExecutionSectionHidden = hiddenSections.includes('execution_note');
   const formResolver = useMemo(() => {
-    return zodResolver(getTaskSchema(isSubTask, fillValues));
-  }, [isSubTask, fillValues]);
+    return zodResolver(getTaskSchema(isSubTask, fillValues, isExecutionSectionHidden));
+  }, [isSubTask, fillValues, isExecutionSectionHidden]);
 
   const standaloneSubtaskForm = useForm({
     resolver: zodResolver(standaloneSubtaskSchema),
@@ -860,6 +897,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   );
 
   const currentStatus = form.watch('status');
+  const isCompleteStatus = statusMatchesPill(currentStatus, 'Complete');
   const isBenefitApplicable = form.watch('is_business_benefit_applicable');
   const selectedBenefitTypeNo = form.watch('business_benefit_type_No');
   const isAllDay = form.watch('isAllDay');
@@ -900,45 +938,81 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     name: "execution_logs"
   });
 
-  const [collabSortCol, setCollabSortCol] = useState<string | null>(null);
-  const [collabSortDesc, setCollabSortDesc] = useState(false);
-  const [informSortCol, setInformSortCol] = useState<string | null>(null);
-  const [informSortDesc, setInformSortDesc] = useState(false);
-
-  const sortPeopleRows = useCallback(
-    (
-      rows: Array<{ userName?: string; displayName?: string; email?: string; isFromTeam?: boolean; loginNo?: number | string }>,
-      key: string,
-      desc: boolean
-    ) => {
-      const team = rows.filter((r) => r.isFromTeam);
-      const empty = rows.filter((r) => !r.isFromTeam && !r.loginNo && !r.userName && !r.displayName);
-      const filled = rows.filter((r) => !r.isFromTeam && (r.loginNo || r.userName || r.displayName));
-      const sorted = [...filled].sort((a, b) => {
-        const av = String((a as Record<string, unknown>)[key] ?? '');
-        const bv = String((b as Record<string, unknown>)[key] ?? '');
-        const cmp = av.localeCompare(bv, undefined, { sensitivity: 'base', numeric: true });
-        return desc ? -cmp : cmp;
-      });
-      return [...team, ...sorted, ...empty];
-    },
-    []
+  // Execution logs open for typing, by log id: new ones (date + remark) or saved ones being edited
+  // (remark only; `original` restores it on Cancel). Everything else shows read-only.
+  const [openExecutionLogs, setOpenExecutionLogs] = useState<Record<string, { isNew: boolean; original?: string; originalDate?: string }>>({});
+  // Logs already in the database (loaded with the task, or saved since): their date is fixed.
+  // Logs added since the last save can still change their date.
+  const [logIdsSavedHere, setLogIdsSavedHere] = useState<Set<string>>(() => new Set());
+  const loadedLogIds = useMemo(
+    () => new Set(splitExecutionChallenges(initialData?.executionChallenges).execution_logs.map((l) => l.id)),
+    [initialData]
   );
-
-  const handleCollabSort = (key: string) => {
-    const nextDesc = collabSortCol === key ? !collabSortDesc : false;
-    setCollabSortCol(key);
-    setCollabSortDesc(nextDesc);
-    const rows = form.getValues('collaborators') || [];
-    replaceCollab(sortPeopleRows(rows, key, nextDesc) as any);
+  const isExecutionLogSaved = (id: string) => loadedLogIds.has(id) || logIdsSavedHere.has(id);
+  const closeExecutionLog = (id: string) =>
+    setOpenExecutionLogs((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  const addExecutionLog = () => {
+    const id = Date.now().toString();
+    appendExecutionLog({ id, date: new Date().toISOString(), remark: '' });
+    setOpenExecutionLogs((prev) => ({ ...prev, [id]: { isNew: true } }));
   };
 
-  const handleInformSort = (key: string) => {
-    const nextDesc = informSortCol === key ? !informSortDesc : false;
-    setInformSortCol(key);
-    setInformSortDesc(nextDesc);
-    const rows = form.getValues('informed_to') || [];
-    replaceInform(sortPeopleRows(rows, key, nextDesc) as any);
+  // Moving a task to Hold needs a reason. It is saved as a Task Execution Log entry ("On Hold: …").
+  // `resubmit`: the prompt was raised by Save, so saving continues once the reason is given.
+  const [holdPrompt, setHoldPrompt] = useState<{ status: string; resubmit: boolean } | null>(null);
+  const [holdReason, setHoldReason] = useState('');
+  const [holdReasonError, setHoldReasonError] = useState('');
+  // Id of the log added for the current hold, so leaving Hold before saving drops it again.
+  const [holdLogId, setHoldLogId] = useState<string | null>(null);
+  const wasSavedOnHold = statusMatchesPill(initialData?.status, 'Hold');
+  const openHoldPrompt = (status: string, resubmit = false) => {
+    setHoldReason('');
+    setHoldReasonError('');
+    setHoldPrompt({ status, resubmit });
+  };
+  const dropHoldLog = () => {
+    if (!holdLogId) return;
+    const index = (form.getValues('execution_logs') || []).findIndex((l: { id: string }) => l.id === holdLogId);
+    if (index >= 0) removeExecutionLog(index);
+    setHoldLogId(null);
+  };
+  const confirmHoldReason = () => {
+    const reason = holdReason.trim();
+    if (!reason) {
+      setHoldReasonError('Reason is required to put the task on hold');
+      return;
+    }
+    if (!holdPrompt) return;
+    dropHoldLog();
+    const id = Date.now().toString();
+    appendExecutionLog({ id, date: new Date().toISOString(), remark: `On Hold: ${reason}` });
+    setHoldLogId(id);
+    form.setValue('status', holdPrompt.status, { shouldDirty: true });
+    form.clearErrors('status');
+    const { resubmit } = holdPrompt;
+    setHoldPrompt(null);
+    if (resubmit) void form.handleSubmit(onSubmit, onValidationError)();
+  };
+  const finishExecutionLog = async (index: number, id: string) => {
+    const ok = await form.trigger([`execution_logs.${index}.date`, `execution_logs.${index}.remark`]);
+    if (ok) closeExecutionLog(id);
+  };
+  const cancelExecutionLog = (index: number, id: string) => {
+    const open = openExecutionLogs[id];
+    if (open?.isNew) {
+      removeExecutionLog(index);
+    } else {
+      form.setValue(`execution_logs.${index}.remark`, open?.original ?? '', { shouldDirty: true });
+      if (open?.originalDate !== undefined) {
+        form.setValue(`execution_logs.${index}.date`, open.originalDate, { shouldDirty: true });
+      }
+      form.clearErrors([`execution_logs.${index}.remark`, `execution_logs.${index}.date`]);
+    }
+    closeExecutionLog(id);
   };
 
   const { fields: checklistFields, append: appendChecklist, remove: removeChecklist, replace: replaceChecklist } = useFieldArray({
@@ -955,6 +1029,54 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     control: form.control,
     name: "road_block_remarks"
   });
+
+  // Challenges open for typing, by id — same flow as execution logs. `original` restores the row on Cancel.
+  type ChallengeRow = { id: string; date: string; remark: string; proposedSolution?: string; status_No: string; createdBy?: string; createdDate?: string };
+  const [openChallenges, setOpenChallenges] = useState<Record<string, { isNew: boolean; original?: ChallengeRow }>>({});
+  const [challengeIdsSavedHere, setChallengeIdsSavedHere] = useState<Set<string>>(() => new Set());
+  const loadedChallengeIds = useMemo(
+    () => new Set(splitExecutionChallenges(initialData?.executionChallenges).road_block_remarks.map((c) => c.id)),
+    [initialData]
+  );
+  const isChallengeSaved = (id: string) => loadedChallengeIds.has(id) || challengeIdsSavedHere.has(id);
+  const closeChallenge = (id: string) =>
+    setOpenChallenges((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  // Challenges are only Open / Closed; a new one starts Open.
+  const challengeStatusOptions = getChallengeStatusOptions(fillValues?.status);
+  const challengeStatusNameOf = (statusNo?: string) =>
+    fillValues?.status.find(s => s.StatusNo.toString() === statusNo)?.Status;
+  const addChallenge = () => {
+    const id = Date.now().toString();
+    const openNo = challengeStatusOptions.find(o => o.label === 'Open')?.statusNo;
+    appendRoadBlock({ id, date: '', remark: '', proposedSolution: '', status_No: openNo != null ? openNo.toString() : '' });
+    setOpenChallenges((prev) => ({ ...prev, [id]: { isNew: true } }));
+  };
+  const editChallenge = (index: number, id: string) => {
+    const row = form.getValues(`road_block_remarks.${index}`) as ChallengeRow;
+    setOpenChallenges((prev) => ({ ...prev, [id]: { isNew: false, original: { ...row } } }));
+  };
+  const finishChallenge = async (index: number, id: string) => {
+    const ok = await form.trigger([
+      `road_block_remarks.${index}.date`,
+      `road_block_remarks.${index}.remark`,
+      `road_block_remarks.${index}.status_No`,
+    ]);
+    if (ok) closeChallenge(id);
+  };
+  const cancelChallenge = (index: number, id: string) => {
+    const open = openChallenges[id];
+    if (open?.isNew) {
+      removeRoadBlock(index);
+    } else if (open?.original) {
+      form.setValue(`road_block_remarks.${index}`, open.original, { shouldDirty: true });
+      form.clearErrors(`road_block_remarks.${index}`);
+    }
+    closeChallenge(id);
+  };
 
   // Subtask "Type" field must always show for Deal Monitor tasks, irrespective of isHideType.
   const selectedCategoryNo = form.watch('category_No');
@@ -1396,7 +1518,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       'benefit_period',
       'estimated_benefit_amount',
       'actual_benefit_amount',
-      'business_benefit_description'
+      'business_benefit_description',
+      'execution_logs',
+      'completionDate',
+      'completionRemark'
     ];
 
     const hiddenFields = [
@@ -1407,7 +1532,10 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       'benefit_period',
       'estimated_benefit_amount',
       'actual_benefit_amount',
-      'business_benefit_description'
+      'business_benefit_description',
+      'execution_logs',
+      'completionDate',
+      'completionRemark'
     ];
 
     const firstErrorField = fieldOrder.find(field => errors[field]);
@@ -1485,22 +1613,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   };
 
   const processFiles = (files: File[]) => {
-    const validFiles: File[] = [];
-    const failed: Array<{ name: string; size: number; reason: string }> = [];
-
-    files.forEach(file => {
-      const result = validateUploadFile(file);
-      if (!result.ok) {
-        failed.push({
-          name: file.name,
-          size: file.size,
-          reason: result?.reason,
-        });
-        return;
-      }
-
-      validFiles.push(file);
-    });
+    // Already attached + still in the upload queue count toward the per-task limit.
+    const existing = [
+      ...((form.getValues('attachments') || []) as Array<{ name?: string; size?: number }>),
+      ...uploadingFiles.map((f) => ({ name: f.name, size: f.fileObject?.size })),
+    ];
+    const { accepted: validFiles, rejected: failed } = selectUploadBatch(files, existing);
 
     if (failed.length > 0) {
       setInvalidFiles(failed);
@@ -1524,22 +1642,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     });
   };
 
-  const handleCameraAttachmentUploaded = (attachment: any) => {
-    const currentAttachments = form.getValues('attachments') || [];
-    form.setValue('attachments', [...currentAttachments, {
-      id: attachment.docNo || attachment.id,
-      name: attachment.docName || attachment.name || attachment.fileName,
-      size: attachment.docSize || attachment.size
-    }], { shouldDirty: true });
-    setIsCameraModalOpen(false);
-    toast.success("Camera attachment uploaded successfully");
-  };
-
-  /** A photo from the device camera: shrunk, given a readable name, then uploaded like any attachment. */
-  const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const photo = e.target.files?.[0];
-    e.target.value = '';
-    if (!photo) return;
+  /** A camera photo: shrunk, given a readable name, then uploaded like any attachment. */
+  const addPhoto = async (photo: File) => {
     setIsPreparingPhoto(true);
     try {
       // Phones often name every capture "image.jpg": a timestamp keeps names unique and readable.
@@ -1548,6 +1652,12 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
     } finally {
       setIsPreparingPhoto(false);
     }
+  };
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const photo = e.target.files?.[0];
+    e.target.value = '';
+    if (photo) void addPhoto(photo);
   };
 
   const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1659,6 +1769,11 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   const onSubmit = async (data: any) => {
     if (uploadingFiles.some(f => f.status === 'pending' || f.status === 'uploading' || f.status === 'verifying')) {
       toast.error("Please wait for all attachments to finish uploading before saving the task.");
+      return;
+    }
+    // A task put on hold here (or created on hold) must say why.
+    if (statusMatchesPill(data.status, 'Hold') && !wasSavedOnHold && !holdLogId) {
+      openHoldPrompt(data.status, true);
       return;
     }
     setPendingSaveData(data);
@@ -1826,6 +1941,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       }
       clearDraft();
       setIsSubmitSuccessful(true);
+      setLogIdsSavedHere(new Set((data.execution_logs || []).map((l: any) => String(l.id))));
+      setChallengeIdsSavedHere(new Set((data.road_block_remarks || []).map((c: any) => String(c.id))));
 
       setTimeout(() => {
         form.reset(data); // Reset form state to clear isDirty flag
@@ -1974,7 +2091,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
             <div className="mt-4 flex items-center gap-4 text-[10px] font-medium text-slate-400">
               <span>{ALLOWED_UPLOAD_TYPES_LABEL}</span>
               <span className="h-1.5 w-1.5 rounded-full bg-slate-300"></span>
-              <span>Max 25MB</span>
+              <span>Max {MAX_UPLOAD_FILE_SIZE_LABEL} · Up to {MAX_ATTACHMENTS_PER_RECORD} files</span>
             </div>
           </div>
         </div>
@@ -2025,7 +2142,18 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       name="status"
                       control={form.control}
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={(val) => {
+                            // Hold asks for a reason first; the status changes once it is given.
+                            if (statusMatchesPill(val, 'Hold') && !statusMatchesPill(field.value, 'Hold') && !wasSavedOnHold) {
+                              openHoldPrompt(val);
+                              return;
+                            }
+                            if (!statusMatchesPill(val, 'Hold')) dropHoldLog();
+                            field.onChange(val);
+                          }}
+                          value={field.value}
+                        >
                           <SelectTrigger
                             aria-required
                             className={cn(
@@ -2274,7 +2402,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 </div>
 
                 <div className="space-y-1.5" id="form-group-end_date">
-                  <FieldLabel required={isSubTask}>Due Date</FieldLabel>
+                  <FieldLabel required>Due Date</FieldLabel>
                   <FieldControl error={form.formState.errors.end_date?.message}>
                     <Controller
                       name="end_date"
@@ -2550,181 +2678,27 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           )}
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        onClick={() => appendCollab({ userName: '', displayName: '', email: '' })}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
-                      >
-                        <Plus size={12} /> Add
-                      </Button>
                     </div>
                   </div>
 
-                  <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
-                    {collabFields.length === 0 ? (
-                      <FieldControl
-                        className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center"
-                        error={hasCollabError ? (collabError as any).message : undefined}
-                      >
-                        <p className="text-xs text-slate-500 font-medium">No collaborators added yet.</p>
-                      </FieldControl>
-                    ) : (
-                      <FieldControl error={hasCollabError ? (collabError as any).message : undefined}>
-                        <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                          <table className="tm-data-table w-full text-left border-collapse min-w-[420px] [--tm-col-id-width:2.75rem]">
-                            <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
-                              <tr>
-                                <th className="tm-col-sr px-2 py-2.5 border-r border-[var(--tm-border)] text-center">#</th>
-                                <th className="px-3 py-2.5 w-[30%] border-r border-[var(--tm-border)]">
-                                  <SortableHeader
-                                    label="User Name"
-                                    sortKey="userName"
-                                    sortCol={collabSortCol}
-                                    sortDesc={collabSortDesc}
-                                    onSort={handleCollabSort}
-                                  />
-                                </th>
-                                <th className="px-3 py-2.5 w-[20%] border-r border-[var(--tm-border)]">
-                                  <SortableHeader
-                                    label="Display Name"
-                                    sortKey="displayName"
-                                    sortCol={collabSortCol}
-                                    sortDesc={collabSortDesc}
-                                    onSort={handleCollabSort}
-                                  />
-                                </th>
-                                <th className="px-3 py-2.5 w-[40%] border-r border-[var(--tm-border)]">
-                                  <SortableHeader
-                                    label="Email"
-                                    sortKey="email"
-                                    sortCol={collabSortCol}
-                                    sortDesc={collabSortDesc}
-                                    onSort={handleCollabSort}
-                                  />
-                                </th>
-                                <th className="px-1 py-2.5 w-10 text-center"></th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[var(--tm-border)]">
-                              {collabFields.map((field, index) => {
-                                const displayName = form.watch(`collaborators.${index}.displayName`);
-                                const email = form.watch(`collaborators.${index}.email`);
-                                const loginNo = form.watch(`collaborators.${index}.loginNo`);
-                                const userErr = form.formState.errors.collaborators?.[index]?.userName?.message;
-                                const nameErr = form.formState.errors.collaborators?.[index]?.displayName?.message;
-
-                                if (field.isFromTeam) {
-                                  return (
-                                    <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors">
-                                      <td className="px-2 py-2.5 text-center">
-                                        <input type="hidden" {...form.register(`collaborators.${index}.userName`)} />
-                                        <input type="hidden" {...form.register(`collaborators.${index}.displayName`)} />
-                                        <input type="hidden" {...form.register(`collaborators.${index}.email`)} />
-                                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                          {index + 1}
-                                        </span>
-                                      </td>
-                                      <td className="px-3 py-2.5">
-                                        <span className="text-slate-400 italic text-[11px]">From Team</span>
-                                      </td>
-                                      <td className="px-3 py-2.5">
-                                        <div className="flex items-center gap-2">
-                                          <UserAvatar loginNo={loginNo ? Number(loginNo) : null} displayName={displayName} size="sm" />
-                                          <span className="font-semibold text-slate-100">{displayName || '—'}</span>
-                                        </div>
-                                      </td>
-                                      <td className="px-3 py-2.5 text-slate-500 break-all">{email || '—'}</td>
-                                      <td className="px-1 py-2.5 text-center text-slate-500">-</td>
-                                    </tr>
-                                  );
-                                }
-
-                                return (
-                                  <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors group">
-                                    <td className="px-2 py-2.5 text-center align-top pt-3">
-                                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                        {index + 1}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2.5 align-top">
-                                      <FieldControl error={userErr} className="mb-0">
-                                        <Controller
-                                          name={`collaborators.${index}.userName`}
-                                          control={form.control}
-                                          render={({ field: nameField }) => (
-                                            <UserCombobox
-                                              value={nameField.value}
-                                              onChange={(user) => {
-                                                const currentCollaborators = form.getValues('collaborators') || [];
-
-                                                if (
-                                                  currentCollaborators.some((c, i) => i !== index && c.loginNo === user.loginNo)
-                                                ) {
-                                                  toast.error('This user is already added as a collaborator.');
-                                                  nameField.onChange('');
-                                                  return;
-                                                }
-
-                                                nameField.onChange(user.loginId);
-                                                form.setValue(`collaborators.${index}.displayName`, user.printingName);
-                                                form.setValue(`collaborators.${index}.email`, user.email || '');
-                                                form.setValue(`collaborators.${index}.loginNo`, user.loginNo);
-                                                form.clearErrors(`collaborators.${index}.userName`);
-                                                form.clearErrors(`collaborators.${index}.displayName`);
-                                              }}
-                                              placeholder="Select username"
-                                              className={cn("rounded-[6px] h-8 text-[11px] w-full", userErr && "border-red-400")}
-                                              initialLabel={nameField.value}
-                                            />
-                                          )}
-                                        />
-                                      </FieldControl>
-                                    </td>
-                                    <td className="px-3 py-2.5 align-top">
-                                      <FieldControl error={nameErr} className="mb-0">
-                                        <Input
-                                          disabled
-                                          {...form.register(`collaborators.${index}.displayName`)}
-                                          placeholder="Display Name"
-                                          className={cn("h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
-                                        />
-                                      </FieldControl>
-                                    </td>
-                                    <td className="px-3 py-2.5 align-top">
-                                      <Input
-                                        disabled
-                                        {...form.register(`collaborators.${index}.email`)}
-                                        placeholder="Email"
-                                        className="h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
-                                      />
-                                    </td>
-                                    <td className="px-1 py-2.5 text-center align-top pt-3">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const row = form.getValues(`collaborators.${index}`);
-                                          rowDeleteConfirm.requestConfirm({
-                                            entityLabel: 'collaborator',
-                                            recordName: row?.displayName || row?.email || 'Collaborator',
-                                            onConfirm: () => removeCollab(index),
-                                          });
-                                        }}
-                                        className="inline-flex h-6 w-6 items-center justify-center text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-[6px] transition-colors"
-                                        title="Remove collaborator"
-                                      >
-                                        <Trash2 size={13} />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </FieldControl>
-                    )}
+                  <div className="p-3">
+                    <FieldControl error={hasCollabError ? (collabError as any).message : undefined} className="mb-0">
+                      <UserChipsInput
+                        users={collabFields}
+                        onAdd={(user) =>
+                          appendCollab({
+                            userName: user.loginId || user.printingName,
+                            displayName: user.printingName || user.loginId,
+                            email: user.email || '',
+                            loginNo: user.loginNo,
+                          })
+                        }
+                        onRemove={removeCollab}
+                        invalid={!!hasCollabError}
+                        placeholder="Add collaborators — type a name or email"
+                        ariaLabel="Collaborators / Supporters"
+                      />
+                    </FieldControl>
                   </div>
                 </div>
 
@@ -2782,181 +2756,27 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           )}
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        onClick={() => appendInform({ userName: '', displayName: '', email: '' })}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-[8px] text-[11px] font-medium border-[#0EA5E9]/25 text-[#0EA5E9] hover:bg-[var(--tm-tint)] gap-1 px-2.5"
-                      >
-                        <Plus size={12} /> Add
-                      </Button>
                     </div>
                   </div>
 
-                  <div className="p-3 space-y-2.5 max-h-[480px] overflow-y-auto scrollbar-hide">
-                    {informFields.length === 0 ? (
-                      <FieldControl
-                        className="text-center p-6 border border-dashed border-[var(--tm-border)] rounded-[8px] bg-[var(--tm-surface)] flex flex-col items-center justify-center"
-                        error={hasInformError ? (informError as any).message : undefined}
-                      >
-                        <p className="text-xs text-slate-500 font-medium">No report-to users added yet.</p>
-                      </FieldControl>
-                    ) : (
-                      <FieldControl error={hasInformError ? (informError as any).message : undefined}>
-                        <div className="overflow-x-auto border border-[var(--tm-border)]/60 rounded-[8px] bg-[var(--tm-surface)]/80">
-                          <table className="tm-data-table w-full text-left border-collapse min-w-[420px] [--tm-col-id-width:2.75rem]">
-                            <thead className="sticky top-0 z-30 bg-[var(--tm-elevated)] border-b border-[var(--tm-border)] text-[10px] text-slate-300 font-semibold uppercase tracking-wide">
-                              <tr>
-                                <th className="tm-col-sr px-2 py-2.5 border-r border-[var(--tm-border)] text-center">#</th>
-                                <th className="px-3 py-2.5 w-[30%] border-r border-[var(--tm-border)]">
-                                  <SortableHeader
-                                    label="User Name"
-                                    sortKey="userName"
-                                    sortCol={informSortCol}
-                                    sortDesc={informSortDesc}
-                                    onSort={handleInformSort}
-                                  />
-                                </th>
-                                <th className="px-3 py-2.5 w-[30%] border-r border-[var(--tm-border)]">
-                                  <SortableHeader
-                                    label="Display Name"
-                                    sortKey="displayName"
-                                    sortCol={informSortCol}
-                                    sortDesc={informSortDesc}
-                                    onSort={handleInformSort}
-                                  />
-                                </th>
-                                <th className="px-3 py-2.5 w-[40%] border-r border-[var(--tm-border)]">
-                                  <SortableHeader
-                                    label="Email"
-                                    sortKey="email"
-                                    sortCol={informSortCol}
-                                    sortDesc={informSortDesc}
-                                    onSort={handleInformSort}
-                                  />
-                                </th>
-                                <th className="px-1 py-2.5 w-10 text-center"></th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[var(--tm-border)]">
-                              {informFields.map((field, index) => {
-                                const displayName = form.watch(`informed_to.${index}.displayName`);
-                                const email = form.watch(`informed_to.${index}.email`);
-                                const loginNo = form.watch(`informed_to.${index}.loginNo`);
-                                const userErr = form.formState.errors.informed_to?.[index]?.userName?.message;
-                                const nameErr = form.formState.errors.informed_to?.[index]?.displayName?.message;
-
-                                if (field.isFromTeam) {
-                                  return (
-                                    <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors">
-                                      <td className="px-2 py-2.5 text-center">
-                                        <input type="hidden" {...form.register(`informed_to.${index}.userName`)} />
-                                        <input type="hidden" {...form.register(`informed_to.${index}.displayName`)} />
-                                        <input type="hidden" {...form.register(`informed_to.${index}.email`)} />
-                                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                          {index + 1}
-                                        </span>
-                                      </td>
-                                      <td className="px-3 py-2.5">
-                                        <span className="text-slate-400 italic text-[11px]">From Team</span>
-                                      </td>
-                                      <td className="px-3 py-2.5">
-                                        <div className="flex items-center gap-2">
-                                          <UserAvatar loginNo={loginNo ? Number(loginNo) : null} displayName={displayName} size="sm" />
-                                          <span className="font-semibold text-slate-100">{displayName || '—'}</span>
-                                        </div>
-                                      </td>
-                                      <td className="px-3 py-2.5 text-slate-500 break-all">{email || '—'}</td>
-                                      <td className="px-1 py-2.5 text-center text-slate-500">-</td>
-                                    </tr>
-                                  );
-                                }
-
-                                return (
-                                  <tr key={field.id} className="hover:bg-[var(--tm-muted)]/30 transition-colors group">
-                                    <td className="px-2 py-2.5 text-center align-top pt-3">
-                                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
-                                        {index + 1}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2.5 align-top">
-                                      <FieldControl error={userErr} className="mb-0">
-                                        <Controller
-                                          name={`informed_to.${index}.userName`}
-                                          control={form.control}
-                                          render={({ field: nameField }) => (
-                                            <UserCombobox
-                                              value={nameField.value}
-                                              onChange={(user) => {
-                                                const currentInformed = form.getValues('informed_to') || [];
-
-                                                if (
-                                                  currentInformed.some((c, i) => i !== index && c.loginNo === user.loginNo)
-                                                ) {
-                                                  toast.error('This user is already added as an Report To user.');
-                                                  nameField.onChange('');
-                                                  return;
-                                                }
-
-                                                nameField.onChange(user.loginId);
-                                                form.setValue(`informed_to.${index}.displayName`, user.printingName);
-                                                form.setValue(`informed_to.${index}.email`, user.email || '');
-                                                form.setValue(`informed_to.${index}.loginNo`, user.loginNo);
-                                                form.clearErrors(`informed_to.${index}.userName`);
-                                                form.clearErrors(`informed_to.${index}.displayName`);
-                                              }}
-                                              placeholder="Select username"
-                                              className={cn("rounded-[6px] h-8 text-[11px] w-full", userErr && "border-red-400")}
-                                              initialLabel={nameField.value}
-                                            />
-                                          )}
-                                        />
-                                      </FieldControl>
-                                    </td>
-                                    <td className="px-3 py-2.5 align-top">
-                                      <FieldControl error={nameErr} className="mb-0">
-                                        <Input
-                                          disabled
-                                          {...form.register(`informed_to.${index}.displayName`)}
-                                          placeholder="Display Name"
-                                          className={cn("h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full", nameErr && "border-red-400")}
-                                        />
-                                      </FieldControl>
-                                    </td>
-                                    <td className="px-3 py-2.5 align-top">
-                                      <Input
-                                        disabled
-                                        {...form.register(`informed_to.${index}.email`)}
-                                        placeholder="Email"
-                                        className="h-8 rounded-[6px] text-[11px] disabled:opacity-100 disabled:text-slate-100 bg-[var(--tm-muted)] w-full"
-                                      />
-                                    </td>
-                                    <td className="px-1 py-2.5 text-center align-top pt-3">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const row = form.getValues(`informed_to.${index}`);
-                                          rowDeleteConfirm.requestConfirm({
-                                            entityLabel: 'report-to user',
-                                            recordName: row?.displayName || row?.email || 'User',
-                                            onConfirm: () => removeInform(index),
-                                          });
-                                        }}
-                                        className="inline-flex h-6 w-6 items-center justify-center text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-[6px] transition-colors"
-                                        title="Remove report-to user"
-                                      >
-                                        <Trash2 size={13} />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </FieldControl>
-                    )}
+                  <div className="p-3">
+                    <FieldControl error={hasInformError ? (informError as any).message : undefined} className="mb-0">
+                      <UserChipsInput
+                        users={informFields}
+                        onAdd={(user) =>
+                          appendInform({
+                            userName: user.loginId || user.printingName,
+                            displayName: user.printingName || user.loginId,
+                            email: user.email || '',
+                            loginNo: user.loginNo,
+                          })
+                        }
+                        onRemove={removeInform}
+                        invalid={!!hasInformError}
+                        placeholder="Add report-to users — type a name or email"
+                        ariaLabel="Report To"
+                      />
+                    </FieldControl>
                   </div>
                 </div>
               </div>
@@ -2988,28 +2808,24 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   helperText={ALLOWED_UPLOAD_HELPER_TEXT}
                 />
 
-                {canCapturePhoto && (
-                  <>
-                    <input
-                      ref={cameraInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => void handleCameraCapture(e)}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isPreparingPhoto}
-                      onClick={() => cameraInputRef.current?.click()}
-                      className="h-10 w-full gap-2 rounded-[8px] border-[#0EA5E9]/30 text-xs font-semibold text-[#0EA5E9] hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]"
-                    >
-                      {isPreparingPhoto ? <RefreshCw size={16} className="animate-spin" /> : <Camera size={16} />}
-                      {isPreparingPhoto ? 'Preparing photo…' : 'Take Photo'}
-                    </Button>
-                  </>
-                )}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleCameraCapture}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPreparingPhoto}
+                  onClick={() => (canCapturePhoto ? cameraInputRef.current?.click() : setIsPhotoDialogOpen(true))}
+                  className="h-10 w-full gap-2 rounded-[8px] border-[#0EA5E9]/30 text-xs font-semibold text-[#0EA5E9] hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]"
+                >
+                  {isPreparingPhoto ? <RefreshCw size={16} className="animate-spin" /> : <Camera size={16} />}
+                  {isPreparingPhoto ? 'Preparing photo…' : 'Take Photo'}
+                </Button>
 
                 {uploadingFiles.length > 0 && (
                   <div className="space-y-1.5">
@@ -3373,6 +3189,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
               {/* 6. Task Execution Log */}
               {!hiddenSections.includes('execution_note') && (
+                <div id="form-group-execution_logs">
                 <FormSection
                   title="Task Execution Log"
                   icon={FileText}
@@ -3387,7 +3204,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         variant="outline"
                         size="sm"
                         type="button"
-                        onClick={() => appendExecutionLog({ id: Date.now().toString(), date: new Date().toISOString(), remark: '' })}
+                        onClick={addExecutionLog}
                         className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
                       >
                       <Plus size={12} className="text-[#0EA5E9]" /> Add Log
@@ -3422,79 +3239,161 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           {executionLogFields.map((field, index) => {
                             const dateErr = form.formState.errors.execution_logs?.[index]?.date?.message;
                             const remarkErr = form.formState.errors.execution_logs?.[index]?.remark?.message;
+                            const logId = form.watch(`execution_logs.${index}.id`) || field.id;
                             const logDate = form.watch(`execution_logs.${index}.date`);
                             const logRemark = form.watch(`execution_logs.${index}.remark`);
+                            const createdLine = formatCreatedLine(
+                              form.watch(`execution_logs.${index}.createdBy`),
+                              form.watch(`execution_logs.${index}.createdDate`)
+                            );
+                            const openState = openExecutionLogs[logId];
+                            // A saved log with a validation error opens too, so the error is visible.
+                            const isOpen = !!openState || !!dateErr || !!remarkErr;
+                            const isNew = !!openState?.isNew;
+                            const dateLocked = isExecutionLogSaved(logId);
+                            const dateLabel = logDate
+                              ? new Date(logDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                              : `Log entry ${index + 1}`;
                             return (
                               <div
                                 key={field.id}
                                 className={cn(
                                   "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
                                   "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
+                                  isOpen && "border-[#0EA5E9]/40",
                                   (dateErr || remarkErr) && "border-red-300"
                                 )}
                               >
-                                <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                                <div className={cn(
+                                  "relative flex items-start gap-3 pl-3 pr-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)]",
+                                  isOpen && "border-b border-[var(--tm-border)]"
+                                )}>
                                   <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                     {index + 1}
                                   </span>
                                   <div className="min-w-0 flex-1">
                                     <p className="text-[12px] font-semibold text-slate-100 leading-snug">
-                                      {logDate ? new Date(logDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : `Log entry ${index + 1}`}
+                                      {isNew ? 'New log entry' : dateLabel}
                                     </p>
-                                    <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
-                                      {logRemark?.trim() || 'Add date and remark'}
-                                    </p>
+                                    {!isOpen && (
+                                      <p className="text-[12px] text-slate-300 mt-1 whitespace-pre-wrap break-words">
+                                        {logRemark?.trim() || '—'}
+                                      </p>
+                                    )}
+                                    {!isNew && createdLine && (
+                                      <p className="text-[10px] text-slate-400 mt-1">{createdLine}</p>
+                                    )}
+                                    {isOpen && !isNew && (
+                                      <p className="text-[10px] text-slate-400 mt-0.5">
+                                        {dateLocked ? 'Editing remark · saved logs keep their date' : 'Not saved yet · date and remark can be changed'}
+                                      </p>
+                                    )}
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeExecutionLog(index)}
-                                    className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                                    title="Remove log"
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    {isOpen ? (
+                                      <>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          onClick={() => finishExecutionLog(index, logId)}
+                                          className="h-7 rounded-[7px] px-2.5 text-[10px] font-medium gap-1 bg-[#0EA5E9] text-white hover:bg-[#0284C7]"
+                                        >
+                                          <Check size={12} /> Done
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => cancelExecutionLog(index, logId)}
+                                          className="h-7 rounded-[7px] px-2.5 text-[10px] font-medium border-[var(--tm-border)]"
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setOpenExecutionLogs((prev) => ({
+                                            ...prev,
+                                            [logId]: { isNew: false, original: logRemark ?? '', originalDate: logDate ?? '' },
+                                          }))
+                                        }
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
+                                        title="Edit log"
+                                        aria-label="Edit log"
+                                      >
+                                        <Edit2 size={13} />
+                                      </button>
+                                    )}
+                                    {!isNew && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          closeExecutionLog(logId);
+                                          removeExecutionLog(index);
+                                        }}
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                        title="Remove log"
+                                        aria-label="Remove log"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
 
-                                <div className="p-3.5 grid grid-cols-1 md:grid-cols-5 gap-2">
-                                  <div className="space-y-1">
-                                    <FieldLabel required>Date</FieldLabel>
-                                    <Controller
-                                      name={`execution_logs.${index}.date`}
-                                      control={form.control}
-                                      render={({ field: dateField }) => (
+                                {isOpen && (
+                                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-5 gap-2">
+                                    <div className="space-y-1">
+                                      <FieldLabel required>Date</FieldLabel>
+                                      {!dateLocked ? (
+                                        <Controller
+                                          name={`execution_logs.${index}.date`}
+                                          control={form.control}
+                                          render={({ field: dateField }) => (
+                                            <FieldControl error={dateErr}>
+                                              <DateTimePicker
+                                                date={dateField.value ? new Date(dateField.value) : undefined}
+                                                onChange={(date) => {
+                                                  dateField.onChange(date ? date.toISOString() : '');
+                                                  form.clearErrors(`execution_logs.${index}.date`);
+                                                }}
+                                                placeholder="Select date"
+                                                hideTime
+                                                className={cn(
+                                                  "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
+                                                  dateErr && "border-red-400"
+                                                )}
+                                              />
+                                            </FieldControl>
+                                          )}
+                                        />
+                                      ) : (
                                         <FieldControl error={dateErr}>
-                                          <DateTimePicker
-                                            date={dateField.value ? new Date(dateField.value) : undefined}
-                                            onChange={(date) => {
-                                              dateField.onChange(date ? date.toISOString() : '');
-                                              form.clearErrors(`execution_logs.${index}.date`);
-                                            }}
-                                            placeholder="Select date"
-                                            hideTime
-                                            className={cn(
-                                              "h-10 rounded-[8px] text-xs border-[var(--tm-border)] w-full max-w-sm",
-                                              dateErr && "border-red-400"
-                                            )}
-                                          />
+                                          <div className="flex h-10 w-full max-w-sm items-center rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-muted)] px-3 text-xs text-slate-300">
+                                            {logDate ? dateLabel : '—'}
+                                          </div>
                                         </FieldControl>
                                       )}
-                                    />
+                                    </div>
+                                    <div className="space-y-1 col-span-4">
+                                      <FieldLabel required>Remark</FieldLabel>
+                                      <FieldControl error={remarkErr}>
+                                        <Textarea
+                                          {...form.register(`execution_logs.${index}.remark`)}
+                                          placeholder="Enter remark"
+                                          rows={2}
+                                          autoFocus
+                                          className={cn(
+                                            "min-h-[20px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                                            remarkErr && "border-red-400"
+                                          )}
+                                        />
+                                      </FieldControl>
+                                    </div>
                                   </div>
-                                  <div className="space-y-1 col-span-4">
-                                    <FieldLabel required>Remark</FieldLabel>
-                                    <FieldControl error={remarkErr}>
-                                      <Textarea
-                                        {...form.register(`execution_logs.${index}.remark`)}
-                                        placeholder="Enter remark"
-                                        rows={1}
-                                        className={cn(
-                                          "min-h-[20px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
-                                          remarkErr && "border-red-400"
-                                        )}
-                                      />
-                                    </FieldControl>
-                                  </div>
-                                </div>
+                                )}
                               </div>
                             );
                           })}
@@ -3513,7 +3412,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       </div>
                       <div className="p-3.5 grid grid-cols-1 md:grid-cols-5 gap-2">
                         <div className="space-y-1" id="form-group-completionDate">
-                          <FieldLabel>Completion Date</FieldLabel>
+                          <FieldLabel required={isCompleteStatus}>Completion Date</FieldLabel>
                           <FieldControl error={form.formState.errors.completionDate?.message}>
                             <Controller
                               name="completionDate"
@@ -3535,7 +3434,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         </div>
 
                         <div className="space-y-1 col-span-4" id="form-group-completionRemark">
-                          <FieldLabel>Completion Remark</FieldLabel>
+                          <FieldLabel required={isCompleteStatus}>Completion Remark</FieldLabel>
                           <FieldControl error={form.formState.errors.completionRemark?.message}>
                             <Textarea
                               placeholder="Enter completion remark"
@@ -3553,6 +3452,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                     </div>
                   </div>
                 </FormSection>
+                </div>
               )}
 
               {/* 6b. Challenges */}
@@ -3571,7 +3471,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                         variant="outline"
                         size="sm"
                         type="button"
-                        onClick={() => appendRoadBlock({ id: Date.now().toString(), date: '', remark: '', proposedSolution: '', status_No: '' })}
+                        onClick={addChallenge}
                         className="rounded-[8px] font-medium border-[#0EA5E9]/40 text-[#0EA5E9] hover:bg-[var(--tm-tint)] h-7 px-3 text-[10px] shadow-sm gap-0.5 transition-all active:scale-95"
                       >
                         <Plus size={12} className="text-[#0EA5E9]" /> Add Challenges
@@ -3591,29 +3491,46 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                           const dateErr = form.formState.errors.road_block_remarks?.[index]?.date?.message;
                           const remarkErr = form.formState.errors.road_block_remarks?.[index]?.remark?.message;
                           const statusErr = form.formState.errors.road_block_remarks?.[index]?.status_No?.message;
+                          const challengeId = form.watch(`road_block_remarks.${index}.id`) || field.id;
                           const challengeDate = form.watch(`road_block_remarks.${index}.date`);
                           const challengeRemark = form.watch(`road_block_remarks.${index}.remark`);
+                          const challengeSolution = form.watch(`road_block_remarks.${index}.proposedSolution`);
                           const challengeStatus = form.watch(`road_block_remarks.${index}.status_No`);
-                          const statusLabel = fillValues?.status.find(s => s.StatusNo.toString() === challengeStatus)?.Status;
+                          const statusLabel = resolveChallengeStatus(challengeStatusNameOf(challengeStatus));
+                          const openState = openChallenges[challengeId];
+                          // A saved challenge with a validation error opens too, so the error is visible.
+                          const isOpen = !!openState || !!dateErr || !!remarkErr || !!statusErr;
+                          const isNew = !!openState?.isNew;
+                          const dateLocked = isChallengeSaved(challengeId);
+                          const createdLine = formatCreatedLine(
+                            form.watch(`road_block_remarks.${index}.createdBy`),
+                            form.watch(`road_block_remarks.${index}.createdDate`)
+                          );
                           return (
                             <div
                               key={field.id}
                               className={cn(
                                 "relative rounded-[8px] border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden transition-all",
                                 "shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#0EA5E9]/30 hover:shadow-[0_8px_24px_-12px_rgba(14,165,233,0.18)]",
+                                isOpen && "border-[#0EA5E9]/40",
                                 (dateErr || remarkErr || statusErr) && "border-red-300"
                               )}
                             >
-                              <div className="relative flex items-start gap-3 pl-3 pr-11 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)] border-b border-[var(--tm-border)]">
+                              <div className={cn(
+                                "relative flex items-start gap-3 pl-3 pr-3 py-2.5 bg-gradient-to-r from-[var(--tm-page)] to-[var(--tm-surface)]",
+                                isOpen && "border-b border-[var(--tm-border)]"
+                              )}>
                                 <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--tm-tint)] text-[11px] font-semibold text-[#0EA5E9] ring-1 ring-[#0EA5E9]/12">
                                   {index + 1}
                                 </span>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <p className="text-[12px] font-semibold text-slate-100 leading-snug">
-                                      {challengeDate
-                                        ? formatDateOnly(challengeDate)
-                                        : `Challenge ${index + 1}`}
+                                      {isNew
+                                        ? 'New challenge'
+                                        : challengeDate
+                                          ? formatDateOnly(challengeDate)
+                                          : `Challenge ${index + 1}`}
                                     </p>
                                     {statusLabel ? (
                                       <span className="inline-flex items-center rounded-[6px] bg-[var(--tm-tint)] px-1.5 py-0.5 text-[10px] font-semibold text-[#0EA5E9]">
@@ -3621,31 +3538,90 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                       </span>
                                     ) : null}
                                   </div>
-                                  <p className="text-[11px] text-slate-400 mt-0.5 break-words line-clamp-2">
-                                    {challengeRemark?.trim() || 'Add remark, solution, and status'}
-                                  </p>
+                                  {!isOpen && (
+                                    <div className="mt-1 space-y-1.5">
+                                      <p className="text-[12px] text-slate-300 whitespace-pre-wrap break-words">
+                                        {challengeRemark?.trim() || '—'}
+                                      </p>
+                                      {challengeSolution?.trim() ? (
+                                        <p className="text-[11px] text-slate-400 whitespace-pre-wrap break-words">
+                                          <span className="font-semibold text-slate-300">Proposed solution: </span>
+                                          {challengeSolution.trim()}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  )}
+                                  {!isNew && createdLine && (
+                                    <p className="text-[10px] text-slate-400 mt-1">{createdLine}</p>
+                                  )}
+                                  {isOpen && !isNew && (
+                                    <p className="text-[10px] text-slate-400 mt-0.5">
+                                      {dateLocked ? 'Editing · saved challenges keep their date' : 'Not saved yet · all fields can be changed'}
+                                    </p>
+                                  )}
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const remark = form.getValues(`road_block_remarks.${index}.remark`);
-                                    rowDeleteConfirm.requestConfirm({
-                                      entityLabel: 'challenge',
-                                      recordName: (remark || '').trim() || 'Challenge',
-                                      onConfirm: () => removeRoadBlock(index),
-                                    });
-                                  }}
-                                  className="absolute top-0 right-0 h-8 w-8 inline-flex items-center justify-center text-red-500 bg-red-500/10 hover:text-red-400 hover:bg-red-500/20 rounded-bl-[8px] rounded-tr-[7px] border-l border-b border-red-500/30 transition-colors"
-                                  title="Remove challenge"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  {isOpen ? (
+                                    <>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => finishChallenge(index, challengeId)}
+                                        className="h-7 rounded-[7px] px-2.5 text-[10px] font-medium gap-1 bg-[#0EA5E9] text-white hover:bg-[#0284C7]"
+                                      >
+                                        <Check size={12} /> Done
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => cancelChallenge(index, challengeId)}
+                                        className="h-7 rounded-[7px] px-2.5 text-[10px] font-medium border-[var(--tm-border)]"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => editChallenge(index, challengeId)}
+                                      className="inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-[#0EA5E9] hover:bg-[var(--tm-tint)] transition-colors"
+                                      title="Edit challenge"
+                                      aria-label="Edit challenge"
+                                    >
+                                      <Edit2 size={13} />
+                                    </button>
+                                  )}
+                                  {!isNew && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const remark = form.getValues(`road_block_remarks.${index}.remark`);
+                                        rowDeleteConfirm.requestConfirm({
+                                          entityLabel: 'challenge',
+                                          recordName: (remark || '').trim() || 'Challenge',
+                                          onConfirm: () => {
+                                            closeChallenge(challengeId);
+                                            removeRoadBlock(index);
+                                          },
+                                        });
+                                      }}
+                                      className="inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                      title="Remove challenge"
+                                      aria-label="Remove challenge"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
 
+                              {isOpen && (
                               <div className="p-3.5 space-y-3">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
                                   <div className="space-y-1">
                                     <FieldLabel required>Date</FieldLabel>
+                                    {!dateLocked ? (
                                     <Controller
                                       name={`road_block_remarks.${index}.date`}
                                       control={form.control}
@@ -3667,20 +3643,31 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                         </FieldControl>
                                       )}
                                     />
+                                    ) : (
+                                      <FieldControl error={dateErr}>
+                                        <div className="flex h-10 w-full items-center rounded-[8px] border border-[var(--tm-border)] bg-[var(--tm-muted)] px-3 text-xs text-slate-300">
+                                          {challengeDate ? formatDateOnly(challengeDate) : '—'}
+                                        </div>
+                                      </FieldControl>
+                                    )}
                                   </div>
                                   <div className="space-y-1">
                                     <FieldLabel required>Status</FieldLabel>
                                     <Controller
                                       name={`road_block_remarks.${index}.status_No`}
                                       control={form.control}
-                                      render={({ field: statusField }) => (
+                                      render={({ field: statusField }) => {
+                                        // Older challenges may hold e.g. Hold / Cancelled: show them as Open / Closed.
+                                        const current = resolveChallengeStatus(challengeStatusNameOf(statusField.value));
+                                        const selected = challengeStatusOptions.find(o => o.label === current);
+                                        return (
                                         <FieldControl error={statusErr}>
                                           <Select
                                             onValueChange={(val) => {
                                               statusField.onChange(val);
                                               form.clearErrors(`road_block_remarks.${index}.status_No`);
                                             }}
-                                            value={statusField.value}
+                                            value={selected ? selected.statusNo.toString() : statusField.value}
                                           >
                                             <SelectTrigger className={cn(
                                               "rounded-[8px] h-10 border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none",
@@ -3689,43 +3676,44 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                               <SelectValue placeholder="Select status" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-[8px]">
-                                              {filterSelectableStatuses(fillValues?.status)
-                                                .map(s => (
-                                                  <SelectItem key={s.StatusNo} value={s.StatusNo.toString()} className="text-xs">{s.Status}</SelectItem>
-                                                ))}
+                                              {challengeStatusOptions.map(o => (
+                                                <SelectItem key={o.label} value={o.statusNo.toString()} className="text-xs">{o.label}</SelectItem>
+                                              ))}
                                             </SelectContent>
                                           </Select>
                                         </FieldControl>
-                                      )}
+                                        );
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="space-y-1 col-span-2">
+                                    <FieldLabel required>Remarks</FieldLabel>
+                                    <FieldControl error={remarkErr}>
+                                      <Textarea
+                                        {...form.register(`road_block_remarks.${index}.remark`)}
+                                        placeholder="Enter remark"
+                                        rows={3}
+                                        className={cn(
+                                          "min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
+                                          remarkErr && "border-red-400"
+                                        )}
+                                      />
+                                    </FieldControl>
+                                  </div>
+
+                                  <div className="space-y-1 col-span-2">
+                                    <FieldLabel>Proposed Solution</FieldLabel>
+                                    <Textarea
+                                      {...form.register(`road_block_remarks.${index}.proposedSolution`)}
+                                      placeholder="Enter proposed solution"
+                                      rows={3}
+                                      className="min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full"
                                     />
                                   </div>
                                 </div>
 
-                                <div className="space-y-1">
-                                  <FieldLabel required>Remarks</FieldLabel>
-                                  <FieldControl error={remarkErr}>
-                                    <Textarea
-                                      {...form.register(`road_block_remarks.${index}.remark`)}
-                                      placeholder="Enter remark"
-                                      rows={3}
-                                      className={cn(
-                                        "min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full",
-                                        remarkErr && "border-red-400"
-                                      )}
-                                    />
-                                  </FieldControl>
-                                </div>
-
-                                <div className="space-y-1">
-                                  <FieldLabel>Proposed Solution</FieldLabel>
-                                  <Textarea
-                                    {...form.register(`road_block_remarks.${index}.proposedSolution`)}
-                                    placeholder="Enter proposed solution"
-                                    rows={3}
-                                    className="min-h-[88px] py-2.5 resize-none rounded-[8px] border-[var(--tm-border)] text-xs text-slate-50 w-full"
-                                  />
-                                </div>
                               </div>
+                              )}
                             </div>
                           );
                         })}
@@ -3752,6 +3740,22 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                       }}
                     />
                   </div>
+                </FormSection>
+              )}
+
+              {/* 9. Timeline — GET /api/crm/tasks/timeline/{id}, paged on scroll */}
+              {initialData?.taskNo && !hiddenSections.includes('timeline') && (
+                <FormSection title="Timeline" icon={History}>
+                  <TaskTimeline
+                    taskNo={initialData.taskNo}
+                    refreshKey={[
+                      initialData.status_No,
+                      initialData.task_comments?.length ?? 0,
+                      initialData.actual_efforts?.length ?? 0,
+                      initialData.executionChallenges?.length ?? 0,
+                      initialData.attachments?.length ?? 0,
+                    ].join(':')}
+                  />
                 </FormSection>
               )}
 
@@ -3846,6 +3850,51 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
       {/* Success feedback is toast + onComplete (see save handler) */}
 
       {/* Criteria Warning Dialog */}
+      <Dialog open={!!holdPrompt} onOpenChange={(open) => { if (!open) setHoldPrompt(null); }}>
+        <DialogContent className="rounded-[12px] max-w-md p-0 border border-[var(--tm-border)]/80 bg-[var(--tm-surface)] overflow-hidden gap-0">
+          <div className="p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-amber-500/15 rounded-[10px] flex items-center justify-center text-amber-500 border border-amber-500/30 shrink-0">
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <DialogTitle className="text-sm font-semibold text-slate-100">Put task on hold</DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                  Give the reason. It is added to the Task Execution Log.
+                </DialogDescription>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <FieldLabel required>Reason</FieldLabel>
+              <FieldControl error={holdReasonError || undefined}>
+                <Textarea
+                  autoFocus
+                  value={holdReason}
+                  onChange={(e) => {
+                    setHoldReason(e.target.value);
+                    if (holdReasonError) setHoldReasonError('');
+                  }}
+                  placeholder="Why is this task on hold?"
+                  rows={3}
+                  maxLength={500}
+                  className={cn(
+                    "rounded-[8px] border-[var(--tm-border)] text-xs bg-[var(--tm-surface)] shadow-none resize-none",
+                    holdReasonError && "border-red-400"
+                  )}
+                />
+              </FieldControl>
+            </div>
+          </div>
+          <DialogFooter className="px-5 py-3 border-t border-[var(--tm-border)] gap-2 sm:gap-2">
+            <Button type="button" variant="outline" onClick={() => setHoldPrompt(null)} className="h-9 rounded-[8px] text-xs">
+              Cancel
+            </Button>
+            <Button type="button" onClick={confirmHoldReason} className="h-9 rounded-[8px] text-xs bg-[#0EA5E9] hover:bg-[#0284C7] text-white">
+              Put on Hold
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
         <DialogContent className="rounded-3xl max-w-md p-0 border-none shadow-2xl bg-[var(--tm-surface)]/95 backdrop-blur-xl [&>button]:hidden overflow-hidden">
           <div className="p-6 pb-4">
@@ -3892,8 +3941,8 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                 </div>
                 <div className="p-3.5 rounded-2xl bg-[var(--tm-muted)]/80 border border-[var(--tm-border)]/60 shadow-sm">
                   <p className="text-[10px] font-medium text-slate-400 leading-none mb-1.5">Maximum Size</p>
-                  <p className="text-xs font-medium text-slate-200">10 MB</p>
-                  <p className="text-[9px] font-medium text-slate-400 mt-1">Per individual file</p>
+                  <p className="text-xs font-medium text-slate-200">{MAX_UPLOAD_FILE_SIZE_LABEL}</p>
+                  <p className="text-[9px] font-medium text-slate-400 mt-1">Per file · up to {MAX_ATTACHMENTS_PER_RECORD} files per task</p>
                 </div>
               </div>
             </div>
@@ -4453,37 +4502,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {isCameraModalOpen && (
-        <Dialog open={isCameraModalOpen} onOpenChange={setIsCameraModalOpen}>
-          <DialogContent className="rounded-3xl max-w-2xl p-0 border-none shadow-2xl bg-[var(--tm-surface)] overflow-hidden flex flex-col max-h-[90vh]">
-            <DialogHeader className="p-5 pb-3 border-b border-[var(--tm-border)]">
-              <DialogTitle className="text-base font-black text-slate-100 tracking-tight flex items-center gap-2">
-                <Camera size={18} className="text-[#0EA5E9]" />
-                Capture Attachment
-              </DialogTitle>
-              <DialogDescription className="text-xs font-semibold text-slate-500">
-                Take a photo and upload it as a Task attachment.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="p-5 overflow-y-auto flex-1">
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-16">
-                  <BrandLoader size="sm" message="Loading camera" />
-                </div>
-              }>
-                <CameraComp
-                  companyNo={authCompanies?.[0]?.HeadOfficeNo || authCompanies?.[0]?.headOfficeNo || authCompanies?.[0]?.CompanyNo || authCompanies?.[0]?.companyNo || 1}
-                  formNo={1547}
-                  fileNamePrefix="task-capture"
-                  className="border-[var(--tm-border)] shadow-none"
-                  onUploaded={handleCameraAttachmentUploaded}
-                  onCancel={() => setIsCameraModalOpen(false)}
-                />
-              </Suspense>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <PhotoCaptureDialog
+        open={isPhotoDialogOpen}
+        onOpenChange={setIsPhotoDialogOpen}
+        onCapture={(photo) => void addPhoto(photo)}
+        onChooseFile={() => cameraInputRef.current?.click()}
+        description="Point the camera at what you want to attach to this task, then capture."
+      />
       {/* Standalone Sub-Task Form Modal */}
       <Dialog open={isStandaloneSubtaskModalOpen} onOpenChange={setIsStandaloneSubtaskModalOpen}>
         <DialogContent className="rounded-[12px] w-[95vw] max-w-3xl p-0 border border-[var(--tm-border)]/80 shadow-[0_20px_50px_-20px_rgba(15,23,42,0.35)] bg-[var(--tm-surface)] flex flex-col max-h-[92vh] overflow-hidden gap-0 [&>button]:hidden">

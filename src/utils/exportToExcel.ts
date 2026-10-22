@@ -200,7 +200,9 @@ export const exportReportToExcel = (
 
 export const exportMeetingReportToExcel = (
   data: any[],
-  filename: string = 'Meeting_Notes_Report.xlsx'
+  filename: string = 'Meeting_Notes_Report.xlsx',
+  /** `hideType`: leave out Meeting Type (types hidden in settings). */
+  options: { hideType?: boolean } = {}
 ) => {
   if (data.length === 0) return;
 
@@ -241,15 +243,19 @@ export const exportMeetingReportToExcel = (
       '',
     ];
 
+    // Meeting Type is the third column; dropped when types are hidden.
+    const TYPE_COL = 2;
+    const keep = <T,>(row: T[]): T[] => (options.hideType ? row.filter((_, i) => i !== TYPE_COL) : row);
+
     const rows: any[][] = [];
-    rows.push(headerRow);
+    rows.push(keep(headerRow));
     data.forEach((meeting, idx) => {
-      rows.push(mapMeetingToRow(meeting, idx));
+      rows.push(keep(mapMeetingToRow(meeting, idx)));
     });
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
 
-    const colWidths = headerRow.map(() => ({ wch: 20 }));
+    const colWidths = rows[0].map(() => ({ wch: 20 }));
     colWidths[1] = { wch: 30 };
     ws['!cols'] = colWidths;
 

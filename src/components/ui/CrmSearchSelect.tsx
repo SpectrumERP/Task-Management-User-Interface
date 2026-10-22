@@ -292,11 +292,12 @@ export function CrmSearchSelect<T>({
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
             contentClassName
           )}
-          // Same width as the field it opens from (CRM): never wider or narrower than the control.
+          // At least as wide as the field; grows to fit its options (up to 40rem / the space on screen)
+          // so names and emails aren't cut off. What still doesn't fit wraps (see .crm-select-panel CSS).
           style={{
-            width: 'var(--radix-popover-trigger-width)',
+            width: 'max-content',
             minWidth: 'var(--radix-popover-trigger-width)',
-            maxWidth: 'var(--radix-popover-trigger-width)',
+            maxWidth: 'min(40rem, var(--radix-popover-content-available-width))',
             maxHeight: 'min(320px, var(--radix-popover-content-available-height))',
           }}
         >
