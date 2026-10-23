@@ -26,6 +26,8 @@ import {
 import { useTaskStore } from '@/store/useTaskStore';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/shared/useTableSort';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { getStatusPillClass } from '@/lib/taskStatusGroups';
@@ -423,10 +425,14 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
           </div>
           <TruncatedText text={task.title || ''} className="text-sm font-semibold text-slate-100 leading-snug" />
           <div className="mt-1 min-w-0">
-            <TruncatedText
-              text={`${task.assignedDisplayName || 'Unassigned'}${task.end_date ? ` · Due ${formatDateOnly(task.end_date, '')}` : ''}${getOverdueDays(task) > 0 ? ` · ${getOverdueDays(task)} ${getOverdueDays(task) === 1 ? 'day' : 'days'} late` : ''}`}
-              className={cn('text-[11px]', getOverdueDays(task) > 0 ? 'text-red-400' : 'text-slate-400')}
-            />
+            <span className={cn('block w-full min-w-0 max-w-full truncate whitespace-nowrap text-[11px]', getOverdueDays(task) > 0 ? 'text-red-400' : 'text-slate-400')}>
+              <PersonName
+                person={userRef(task.owner_user_No)}
+                name={task.assignedDisplayName || 'Unassigned'}
+                wrapperClassName="inline"
+              />
+              {`${task.end_date ? ` · Due ${formatDateOnly(task.end_date, '')}` : ''}${getOverdueDays(task) > 0 ? ` · ${getOverdueDays(task)} ${getOverdueDays(task) === 1 ? 'day' : 'days'} late` : ''}`}
+            </span>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
@@ -597,8 +603,9 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                 size="sm"
                 className="shrink-0"
               />
-              <TruncatedText
-                text={task.assignedDisplayName}
+              <PersonName
+                person={userRef(task.owner_user_No)}
+                name={task.assignedDisplayName}
                 className="tm-person-link text-slate-200"
               />
             </div>
@@ -629,14 +636,23 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
         <td className={cellOverflowClass}>
           {task.lastCommentDate ? (() => {
             const by = task.lastCommentedBy?.displayName || task.lastCommentedBy?.userName || '';
-            const meta = [by.split(' ')[0], formatTimeAgo(task.lastCommentDate, now)].filter(Boolean).join(' · ');
+            const firstName = by.split(' ')[0];
+            const ago = formatTimeAgo(task.lastCommentDate, now);
+            const meta = (className: string) => (
+              <span className={cn('block w-full min-w-0 max-w-full truncate whitespace-nowrap', className)}>
+                {firstName ? (
+                  <PersonName person={userRef(task.lastCommentedBy?.id)} name={firstName} wrapperClassName="inline" />
+                ) : null}
+                {ago ? `${firstName ? ' · ' : ''}${ago}` : ''}
+              </span>
+            );
             return task.lastComment ? (
               <>
                 <TruncatedText text={task.lastComment} className="text-slate-200" />
-                <TruncatedText text={meta} className={cn('text-[11px]', stale ? 'text-orange-400' : 'text-slate-400')} />
+                {meta(cn('text-[11px]', stale ? 'text-orange-400' : 'text-slate-400'))}
               </>
             ) : (
-              <TruncatedText text={meta} className={stale ? 'text-orange-400' : 'text-slate-200'} />
+              meta(stale ? 'text-orange-400' : 'text-slate-200')
             );
           })() : (
             <TruncatedText text="No update yet" className={cn('text-[11px] italic', stale ? 'text-orange-400' : 'text-slate-400')} />
@@ -695,8 +711,9 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                 size="sm"
                 className="shrink-0"
               />
-              <TruncatedText
-                text={task.originatorDisplayName}
+              <PersonName
+                person={userRef(task.originator_user_No)}
+                name={task.originatorDisplayName}
                 className="text-slate-200"
               />
             </div>
@@ -717,8 +734,9 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
                 size="sm"
                 className="shrink-0"
               />
-              <TruncatedText
-                text={task.createdBy?.displayName || task.originatorDisplayName || ''}
+              <PersonName
+                person={userRef(task.createdBy?.id || task.createdBy?.loginNo || task.originator_user_No)}
+                name={task.createdBy?.displayName || task.originatorDisplayName || ''}
                 className="text-slate-200"
               />
             </div>

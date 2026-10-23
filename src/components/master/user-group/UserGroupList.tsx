@@ -45,6 +45,7 @@ export function UserGroupList() {
           name: u.userGroupName || '',
           description: pickDescription(u),
           createdBy: u.createdBy?.printingName || u.createdBy?.displayName || u.createdBy?.loginId || u.createdByName || (typeof u.createdBy === 'string' || typeof u.createdBy === 'number' ? u.createdBy : '') || 'System',
+          createdByLoginNo: u.createdBy?.loginNo ?? u.createdBy?.id ?? null,
           createdDate: u.createdDate || u.createdDateTime || u.createdOn || ''
         }));
 

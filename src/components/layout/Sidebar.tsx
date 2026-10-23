@@ -50,8 +50,9 @@ export const masterItems = [
   { icon: MapPin, label: 'Task Locations', id: 'master-location', formNo: 1541 },
   { icon: Ship, label: 'Vessels', id: 'master-vessel', formNo: 1549 },
   { icon: Anchor, label: 'Ports', id: 'master-port', formNo: 1563 },
-  { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type', formNo: 1564 },
-  { icon: Building2, label: 'Business Entity', id: 'master-company', formNo: 1550 },
+  // Hidden from the sidebar menu; kept here for breadcrumbs and form-rights checks (pages stay reachable in-app).
+  { icon: Building2, label: 'Business Entity Types', id: 'master-business-entity-type', formNo: 1564, hideInSidebar: true },
+  { icon: Building2, label: 'Business Entity', id: 'master-company', formNo: 1550, hideInSidebar: true },
   { icon: Building2, label: 'Task Company', id: 'master-task-company', formNo: 1565 },
   { icon: Globe, label: 'Countries', id: 'master-country', formNo: 14 },
   { icon: MapPin, label: 'States', id: 'master-state', formNo: 13 },
@@ -230,7 +231,9 @@ export function Sidebar({ activeTab, onTabChange, onClose, isCollapsed = false, 
   // Menu rights are loaded once by MainLayout — avoid a second task-management-menu call here.
 
   const filteredNavItems = accessibleForms ? navItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
-  const filteredMasterItems = accessibleForms ? masterItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
+  const filteredMasterItems = accessibleForms
+    ? masterItems.filter(item => !('hideInSidebar' in item && item.hideInSidebar) && item.formNo && accessibleForms.includes(item.formNo))
+    : [];
   const filteredMenuMasterItems = accessibleForms ? menuMasterItems.filter(item => item.formNo && accessibleForms.includes(item.formNo)) : [];
   const showEmployeeDirectory = canOpenEmployeeDirectory(accessibleForms);
 

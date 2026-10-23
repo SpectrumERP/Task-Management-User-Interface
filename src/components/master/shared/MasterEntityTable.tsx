@@ -11,6 +11,8 @@ import { SortableHeader, sortHeaderCellProps, useTableSort } from '@/components/
 import { useColumnResize } from '@/components/shared/useColumnResize';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { RowDeleteIcon, RowEditIcon } from '@/components/shared/RowIcons';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 
 /** Sticky column policy (wide desktop tables): Code left, Actions right. */
 
@@ -31,7 +33,16 @@ export interface MasterColumn<T> {
   plainText?: boolean;
 }
 
-interface MasterEntityTableProps<T extends { id: string; code?: string; createdBy?: string; createdDate?: string }> {
+interface MasterRowBase {
+  id: string;
+  code?: string;
+  createdBy?: string;
+  /** Creator's login no — makes the Created By name open their profile card on hover. */
+  createdByLoginNo?: number | string | null;
+  createdDate?: string;
+}
+
+interface MasterEntityTableProps<T extends MasterRowBase> {
   rows: T[];
   nameHeader: string;
   columns?: MasterColumn<T>[];
@@ -86,7 +97,7 @@ function columnSortKey<T>(col: MasterColumn<T>, index: number): string {
   return `col:${index}:${col.header}`;
 }
 
-export function MasterEntityTable<T extends { id: string; code?: string; createdBy?: string; createdDate?: string }>({
+export function MasterEntityTable<T extends MasterRowBase>({
   rows,
   nameHeader,
   columns = [],
@@ -145,7 +156,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
     
     // Generic shallow flattening
     // Exclude 'id' and grab all primitive fields
-    const keys = Object.keys(sortedRows[0]).filter(k => k !== 'id');
+    const keys = Object.keys(sortedRows[0]).filter(k => k !== 'id' && k !== 'createdByLoginNo');
     const separator = ',';
     
     const csvContent = [
@@ -292,12 +303,21 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                         })}
                       </div>
                     ) : null}
-                    <div className="mt-1 min-w-0">
-                      <TruncatedText
-                        text={`${item.createdBy || 'System'}${item.createdDate ? ` · ${formatUtcDateTime(item.createdDate)}` : ''}`}
-                        className="text-slate-500"
-                      />
-                    </div>
+                    {item.createdBy && userRef(item.createdByLoginNo) ? (
+                      <div className="mt-1 flex min-w-0 items-center text-slate-500">
+                        <PersonName person={userRef(item.createdByLoginNo)} name={item.createdBy} className="text-slate-500" />
+                        {item.createdDate ? (
+                          <span className="shrink-0 whitespace-nowrap">&nbsp;· {formatUtcDateTime(item.createdDate)}</span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="mt-1 min-w-0">
+                        <TruncatedText
+                          text={`${item.createdBy || 'System'}${item.createdDate ? ` · ${formatUtcDateTime(item.createdDate)}` : ''}`}
+                          className="text-slate-500"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center justify-center gap-0.5">
                     {canUpdate ? (
@@ -399,6 +419,7 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                 const codeText = nodeToPlainText(getCode(item)) || String(item.code || `SYS-${item.id}`);
                 const nameText = nodeToPlainText(getName(item)) || String((item as { name?: string }).name || '');
                 const createdByText = item.createdBy || 'System';
+                const createdByPerson = item.createdBy ? userRef(item.createdByLoginNo) : null;
                 const createdDateText = item.createdDate
                   ? formatUtcDateTime(item.createdDate)
                   : '';
@@ -444,7 +465,11 @@ export function MasterEntityTable<T extends { id: string; code?: string; created
                     );
                   })}
                   <td className="px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0 overflow-hidden">
-                    <TruncatedText text={createdByText} className="text-slate-300" />
+                    {createdByPerson ? (
+                      <PersonName person={createdByPerson} name={createdByText} className="text-slate-300" />
+                    ) : (
+                      <TruncatedText text={createdByText} className="text-slate-300" />
+                    )}
                   </td>
                   <td className="px-3 py-2.5 border-r border-[var(--tm-border)] align-middle min-w-0 overflow-hidden">
                     <TruncatedText text={createdDateText} className="text-slate-300 tabular-nums" />

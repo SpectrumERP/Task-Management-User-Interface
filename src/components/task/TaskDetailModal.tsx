@@ -34,9 +34,11 @@ import { cn } from '@/lib/utils';
 
 import { taskUrl } from '@/lib/dealMonitor';
 import { formatDateOnly, formatUtcDateTime, toUtcIso } from '@/lib/dateTime';
-import { formatCreatedLine, readCreatedInfo } from '@/lib/createdInfo';
+import { formatCreatedDate, readCreatedInfo } from '@/lib/createdInfo';
 import { useTaskStore } from '@/store/useTaskStore';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import type { ReactNode } from 'react';
@@ -175,9 +177,11 @@ function PersonRow({
     >
       <UserAvatar loginNo={loginNo} displayName={displayName} size="sm" className="shrink-0" />
       <div className="min-w-0 flex-1 overflow-hidden">
-        <TruncatedText
-          text={displayName || 'Unknown'}
+        <PersonName
+          person={userRef(loginNo)}
+          name={displayName || 'Unknown'}
           className="text-[11px] font-semibold text-slate-100 leading-tight"
+          wrapperClassName="flex w-fit"
         />
         {email ? (
           <TruncatedText
@@ -187,6 +191,24 @@ function PersonRow({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** "Created by <name> · date" for an execution log / challenge row; the name opens the creator's card. */
+function CreatedLine({ row }: { row: unknown }) {
+  const { createdBy, createdDate, createdByLoginNo } = readCreatedInfo(row);
+  const date = formatCreatedDate(createdDate);
+  if (!createdBy && !date) return null;
+  return (
+    <span className="text-[10px] text-slate-400">
+      {createdBy ? (
+        <>
+          Created by <PersonName person={userRef(createdByLoginNo)} name={createdBy} wrapperClassName="inline" />
+        </>
+      ) : null}
+      {createdBy && date ? ' · ' : ''}
+      {date}
+    </span>
   );
 }
 
@@ -291,7 +313,8 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           taskNo: st.operTaskNo || st.taskNo,
           title: st.title || st.taskName || st.subTaskTitle || '',
           status: st.status?.statusName || st.status || 'Assigned',
-          ownerDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.ownerLoginNo || '',
+          ownerLoginNo: st.assignedTo?.id || st.assignedTo?.loginNo || st.owner?.id || st.ownerLoginNo || st.owner_user_No || null,
+          ownerDisplayName: st.assignedTo?.displayName || st.assignedTo?.userName || st.assignedDisplayName || '',
           endDate: st.endDate || st.end_date || '',
           typeName: st.type?.typeName || st.typeName || ''
         }));
@@ -312,7 +335,10 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
           company: d.taskCompany?.taskCompanyNo || '',
           companyName: d.taskCompany?.taskCompanyAlias || '',
           createdDate: d.createdDate || d.created_date || null,
-          createdBy: { displayName: d.createdBy?.displayName || d.createdBy?.printingName || d.createdBy?.loginId || '' },
+          createdBy: {
+            displayName: d.createdBy?.displayName || d.createdBy?.printingName || d.createdBy?.loginId || '',
+            id: d.createdBy?.id || d.createdBy?.loginNo || undefined,
+          },
           start_date: d.startDate,
           end_date: d.endDate,
           isAllDay: d.isAllday ?? d.isAllDay ?? false,
@@ -538,10 +564,14 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                                 text={st.title || '-'}
                                 className="text-xs font-semibold text-slate-50 leading-tight"
                               />
-                              <TruncatedText
-                                text={`${st.typeName || 'Task'} · ${st.ownerDisplayName || 'Unassigned'}`}
-                                className="text-[10px] font-medium text-slate-400 mt-1"
-                              />
+                              <span className="block w-full min-w-0 max-w-full truncate whitespace-nowrap text-[10px] font-medium text-slate-400 mt-1">
+                                {`${st.typeName || 'Task'} · `}
+                                <PersonName
+                                  person={userRef(st.ownerLoginNo)}
+                                  name={st.ownerDisplayName || 'Unassigned'}
+                                  wrapperClassName="inline"
+                                />
+                              </span>
                             </div>
                             <span className={cn('text-[9px] shrink-0', getStatusTextClass(st.status))}>
                               {st.status}
@@ -574,11 +604,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                               <span className="text-xs font-medium text-slate-100 whitespace-pre-wrap">
                                 {entry.remarks}
                               </span>
-                              {(() => {
-                                const { createdBy, createdDate } = readCreatedInfo(entry);
-                                const line = formatCreatedLine(createdBy, createdDate);
-                                return line ? <span className="text-[10px] text-slate-400">{line}</span> : null;
-                              })()}
+                              <CreatedLine row={entry} />
                             </div>
                           ))}
                       </div>
@@ -625,11 +651,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                                     {entry.proposedSolution}
                                   </span>
                                 )}
-                                {(() => {
-                                  const { createdBy, createdDate } = readCreatedInfo(entry);
-                                  const line = formatCreatedLine(createdBy, createdDate);
-                                  return line ? <span className="text-[10px] text-slate-400">{line}</span> : null;
-                                })()}
+                                <CreatedLine row={entry} />
                               </div>
                             );
                           })}
@@ -669,9 +691,11 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                         <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 block">
                           Assign To
                         </span>
-                        <TruncatedText
-                          text={task.assignedDisplayName || 'Unassigned'}
+                        <PersonName
+                          person={userRef(task.owner_user_No)}
+                          name={task.assignedDisplayName || 'Unassigned'}
                           className="text-[13px] font-semibold text-slate-50 leading-tight"
+                          wrapperClassName="flex w-fit"
                         />
                       </div>
                     </div>
@@ -714,6 +738,10 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                             ? priorityObj.ColorCoding
                             : undefined;
                         const priorityTextColor = priorityBgColor ? getContrastColor(priorityBgColor) : undefined;
+                        // The creator's own id when the API names a creator; the originator only stands in for a missing one.
+                        const createdByLoginNo = task.createdBy?.displayName
+                          ? task.createdBy.id || task.createdBy.loginNo
+                          : task.originator_user_No;
 
                         return (
                           <>
@@ -789,8 +817,9 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                                     size="sm"
                                     className="shrink-0"
                                   />
-                                  <TruncatedText
-                                    text={task.originatorDisplayName}
+                                  <PersonName
+                                    person={userRef(task.originator_user_No)}
+                                    name={task.originatorDisplayName}
                                     className="text-[11px] font-medium text-slate-100"
                                   />
                                 </div>
@@ -803,13 +832,14 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
                               <SpecRow index={next()} icon={UserPlus} label="Created By">
                                 <div className="flex items-center gap-1.5 min-w-0 justify-end" onClick={(e) => e.stopPropagation()}>
                                   <UserAvatar
-                                    loginNo={task.createdBy?.id || task.createdBy?.loginNo || task.originator_user_No}
+                                    loginNo={createdByLoginNo}
                                     displayName={task.createdBy?.displayName || task.originatorDisplayName}
                                     size="sm"
                                     className="shrink-0"
                                   />
-                                  <TruncatedText
-                                    text={task.createdBy?.displayName || task.originatorDisplayName || ''}
+                                  <PersonName
+                                    person={userRef(createdByLoginNo)}
+                                    name={task.createdBy?.displayName || task.originatorDisplayName || ''}
                                     className="text-[11px] font-medium text-slate-100"
                                   />
                                 </div>

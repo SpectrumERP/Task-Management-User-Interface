@@ -110,8 +110,8 @@ export const employeeService = {
   },
 
   /** Full record for the profile page (GET /api/payroll/employees/load-data/{id}); null when not found. */
-  getEmployee: async (empNo: number): Promise<Employee | null> => {
-    const response = await apiService.get<ApiResponse<EmployeeLoadData>>(`/api/payroll/employees/load-data/${empNo}`);
+  getEmployee: async (empNo: number, options: { silent?: boolean } = {}): Promise<Employee | null> => {
+    const response = await apiService.get<ApiResponse<EmployeeLoadData>>(`/api/payroll/employees/load-data/${empNo}`, options);
     const row = response?.success === false ? null : response?.data;
     if (!row || !row.empNo) return null;
     return toEmployee(row, row.department?.departmentName ?? '', row.company?.companyName ?? '');

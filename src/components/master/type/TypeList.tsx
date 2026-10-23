@@ -43,6 +43,7 @@ export function TypeList() {
           code: t.code,
           name: t.operTaskTypeName || '',
           createdBy: t.createdBy?.printingName || t.createdBy?.displayName || t.createdBy?.loginId || t.createdByName || (typeof t.createdBy === 'string' || typeof t.createdBy === 'number' ? t.createdBy : '') || 'System',
+          createdByLoginNo: t.createdBy?.loginNo ?? t.createdBy?.id ?? null,
           createdDate: t.createdDate || t.createdDateTime || t.createdOn || ''
         }));
         setApiTypes(mapped);

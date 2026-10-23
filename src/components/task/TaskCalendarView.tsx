@@ -30,6 +30,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -753,7 +755,7 @@ export function TaskCalendarView({
                       {task.assignedDisplayName && (
                         <span className="flex items-center gap-1 text-[9px] font-medium text-slate-500">
                           <User size={10} className="text-[#0EA5E9]" />
-                          {task.assignedDisplayName}
+                          <PersonName person={userRef(task.owner_user_No)} name={task.assignedDisplayName} />
                         </span>
                       )}
                     </div>
@@ -883,8 +885,9 @@ export function TaskCalendarView({
                               size="sm"
                               className="h-4.5 w-4.5 shrink-0"
                             />
-                            <TruncatedText
-                              text={task.assignedDisplayName}
+                            <PersonName
+                              person={userRef(task.owner_user_No)}
+                              name={task.assignedDisplayName}
                               className="text-[9px] font-medium text-slate-200"
                             />
                           </div>

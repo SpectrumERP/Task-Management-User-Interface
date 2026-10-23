@@ -47,6 +47,7 @@ export function FolderList() {
           parentFolderNo: (f.parentFolderNo ?? '').toString(),
           sequence: f.sequenceNo || f.sequence || '',
           createdBy: f.createdBy?.printingName || f.createdBy?.displayName || f.createdBy?.loginId || f.createdByName || (typeof f.createdBy === 'string' || typeof f.createdBy === 'number' ? f.createdBy : '') || 'System',
+          createdByLoginNo: f.createdBy?.loginNo ?? f.createdBy?.id ?? null,
           createdDate: f.createdDate || f.createdDateTime || f.createdOn || ''
         }));
 

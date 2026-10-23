@@ -48,6 +48,7 @@ export function CategoryList() {
           checkList: Array.isArray(c.checkLists) ? c.checkLists.map((cl: any) => ({ description: cl.checkListDescription || cl.description || '', isChecked: !!cl.isChecked })) : [],
           color: c.colorCoding || '',
           createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || (typeof c.createdBy === 'string' || typeof c.createdBy === 'number' ? c.createdBy : '') || 'System',
+          createdByLoginNo: c.createdBy?.loginNo ?? c.createdBy?.id ?? null,
           createdDate: c.createdDate || c.createdDateTime || c.createdOn || ''
         }));
         setApiCategories(mapped);

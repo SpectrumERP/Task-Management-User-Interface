@@ -42,7 +42,7 @@ import { sortByLabel } from '@/lib/sortOptions';
 import { formatDateOnly, toUtcIso, toUtcIsoOrEmpty } from '@/lib/dateTime';
 import { compressPhoto } from '@/lib/compressImage';
 import { format as formatStamp } from 'date-fns';
-import { formatCreatedLine, readCreatedInfo } from '@/lib/createdInfo';
+import { formatCreatedDate, formatCreatedLine, readCreatedInfo } from '@/lib/createdInfo';
 import {
   formatReminderSummary,
   guessDailyFrequencyNo,
@@ -59,8 +59,9 @@ import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { UserCombobox } from '@/components/ui/UserCombobox';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 import { UserChipsInput } from '@/components/ui/UserChipsInput';
-import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { TaskActivity } from './TaskActivity';
 import { TaskTimeline } from './TaskTimeline';
 import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
@@ -129,6 +130,7 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null, s
     status_No: z.string().min(1, 'Status is required'),
     createdBy: z.string().optional(),
     createdDate: z.string().optional(),
+    createdByLoginNo: z.union([z.string(), z.number()]).optional(),
   })).optional().default([]),
   isAllDay: z.boolean().optional().default(false),
   calendarColor: z.string().optional().default(''),
@@ -228,6 +230,7 @@ const getTaskSchema = (isSubTask: boolean, fillValues?: TaskFillValues | null, s
     remark: z.string().min(1, 'Remark is required'),
     createdBy: z.string().optional(),
     createdDate: z.string().optional(),
+    createdByLoginNo: z.union([z.string(), z.number()]).optional(),
   })).optional().default([]),
 }).superRefine((data, ctx) => {
   // Status rules. Skipped when the page hides the Task Execution Log section, as these fields can't be filled there.
@@ -337,6 +340,22 @@ interface TaskFillValues {
 }
 
 const statusTransitions: Record<string, string[]> = STATUS_TRANSITIONS;
+
+/** "Created by <name> · date" for a saved log / challenge; the name opens the creator's profile card. */
+function CreatedByLine({ createdBy, createdDate, loginNo }: { createdBy?: string; createdDate?: string; loginNo?: string | number }) {
+  const date = formatCreatedDate(createdDate);
+  return (
+    <>
+      {createdBy ? (
+        <>
+          Created by <PersonName person={userRef(loginNo)} name={createdBy} wrapperClassName="inline" />
+        </>
+      ) : null}
+      {createdBy && date ? ' · ' : ''}
+      {date}
+    </>
+  );
+}
 
 // The backend stores both the Task Execution Log and Road Block Remarks in a single
 // `executionChallenges` array, distinguished by `typeNo` (1 = execution log, 2 = road block).
@@ -1031,7 +1050,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
   });
 
   // Challenges open for typing, by id — same flow as execution logs. `original` restores the row on Cancel.
-  type ChallengeRow = { id: string; date: string; remark: string; proposedSolution?: string; status_No: string; createdBy?: string; createdDate?: string };
+  type ChallengeRow = { id: string; date: string; remark: string; proposedSolution?: string; status_No: string; createdBy?: string; createdDate?: string; createdByLoginNo?: string | number };
   const [openChallenges, setOpenChallenges] = useState<Record<string, { isNew: boolean; original?: ChallengeRow }>>({});
   const [challengeIdsSavedHere, setChallengeIdsSavedHere] = useState<Set<string>>(() => new Set());
   const loadedChallengeIds = useMemo(
@@ -3251,9 +3270,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                             const isOpen = !!openState || !!dateErr || !!remarkErr;
                             const isNew = !!openState?.isNew;
                             const dateLocked = isExecutionLogSaved(logId);
-                            const dateLabel = logDate
-                              ? new Date(logDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
-                              : `Log entry ${index + 1}`;
+                            const dateLabel = logDate ? formatDateOnly(logDate) : `Log entry ${index + 1}`;
                             return (
                               <div
                                 key={field.id}
@@ -3281,7 +3298,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                       </p>
                                     )}
                                     {!isNew && createdLine && (
-                                      <p className="text-[10px] text-slate-400 mt-1">{createdLine}</p>
+                                      <p className="text-[10px] text-slate-400 mt-1">
+                                        <CreatedByLine
+                                          createdBy={form.watch(`execution_logs.${index}.createdBy`)}
+                                          createdDate={form.watch(`execution_logs.${index}.createdDate`)}
+                                          loginNo={form.watch(`execution_logs.${index}.createdByLoginNo`)}
+                                        />
+                                      </p>
                                     )}
                                     {isOpen && !isNew && (
                                       <p className="text-[10px] text-slate-400 mt-0.5">
@@ -3552,7 +3575,13 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     </div>
                                   )}
                                   {!isNew && createdLine && (
-                                    <p className="text-[10px] text-slate-400 mt-1">{createdLine}</p>
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                      <CreatedByLine
+                                        createdBy={form.watch(`road_block_remarks.${index}.createdBy`)}
+                                        createdDate={form.watch(`road_block_remarks.${index}.createdDate`)}
+                                        loginNo={form.watch(`road_block_remarks.${index}.createdByLoginNo`)}
+                                      />
+                                    </p>
                                   )}
                                   {isOpen && !isNew && (
                                     <p className="text-[10px] text-slate-400 mt-0.5">
@@ -4224,8 +4253,9 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                                     size="sm"
                                     className="shrink-0"
                                   />
-                                  <TruncatedText
-                                    text={task.assignedDisplayName}
+                                  <PersonName
+                                    person={userRef(task.ownerLoginNo ? parseInt(task.ownerLoginNo as string) : undefined)}
+                                    name={task.assignedDisplayName}
                                     className="text-xs font-medium text-slate-200"
                                   />
                                 </div>

@@ -19,6 +19,10 @@ export type MinutesRecipient = {
   typeLabel: string;
   companyName?: string;
   hasEmail: boolean;
+  /** Login no of an internal-user attendee (for the profile card; not sent). */
+  userNo?: number;
+  /** Employee no of an employee attendee (for the profile card; not sent). */
+  empNo?: number;
 };
 
 export type SendMinutesPayload = {
@@ -119,6 +123,7 @@ export function buildMinutesRecipients(
     const key = hasEmail ? `e:${email}` : `i:${index}:${p.userNo || p.empNo || p.participantName || ''}`;
     if (seen.has(key)) return;
     seen.add(key);
+    const type = Number(p.participantType);
 
     out.push({
       key,
@@ -127,6 +132,8 @@ export function buildMinutesRecipients(
       typeLabel: participantTypeLabel(p.participantType),
       companyName: String(p.companyName || '').trim() || undefined,
       hasEmail,
+      userNo: type === 1 && p.userNo ? Number(p.userNo) : undefined,
+      empNo: type === 2 && p.empNo ? Number(p.empNo) : undefined,
     });
   });
 

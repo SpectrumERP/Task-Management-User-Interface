@@ -45,6 +45,7 @@ export function CityList() {
           countryNo: (ct.countryNo ?? ct.CountryNo ?? '').toString(),
           stateNo: (ct.stateNo ?? ct.StateNo ?? '').toString(),
           createdBy: ct.createdBy?.printingName || ct.createdBy?.displayName || ct.createdBy?.loginId || ct.createdByName || (typeof ct.createdBy === 'string' || typeof ct.createdBy === 'number' ? ct.createdBy : '') || 'System',
+          createdByLoginNo: ct.createdBy?.loginNo ?? ct.createdBy?.id ?? null,
           createdDate: ct.createdDate || ct.createdDateTime || ct.createdOn || ''
         }));
         setApiCities(mapped);

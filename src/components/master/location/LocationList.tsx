@@ -54,6 +54,7 @@ export function LocationList() {
           pinCode: l.pinCode || '',
           locationRegion: l.regionName || l.locationRegion || '',
           createdBy: l.createdBy?.printingName || l.createdBy?.displayName || l.createdBy?.loginId || l.createdByName || (typeof l.createdBy === 'string' || typeof l.createdBy === 'number' ? l.createdBy : '') || 'System',
+          createdByLoginNo: l.createdBy?.loginNo ?? l.createdBy?.id ?? null,
           createdDate: l.createdDate || l.createdDateTime || l.createdOn || '',
         }));
         setApiLocations(mapped);

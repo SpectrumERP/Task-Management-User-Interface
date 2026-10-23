@@ -70,6 +70,7 @@ export function PriorityList() {
             isReminderEnabled: rule.enabled,
             reminderSummary: formatReminderSummary(rule, freqLabel),
             createdBy: p.createdBy?.printingName || p.createdBy?.displayName || p.createdBy?.loginId || p.createdByName || (typeof p.createdBy === 'string' || typeof p.createdBy === 'number' ? p.createdBy : '') || 'System',
+            createdByLoginNo: p.createdBy?.loginNo ?? p.createdBy?.id ?? null,
             createdDate: p.createdDate || p.createdDateTime || p.createdOn || ''
           };
         });

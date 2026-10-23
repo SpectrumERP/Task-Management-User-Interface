@@ -14,6 +14,8 @@ import { ANALYZE_IMAGE_ACCEPT_ATTR, UPLOAD_ACCEPT_ATTR, validateAnalyzeImageFile
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CompanyFormSection } from './CompanyFormSection';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 
 const fieldClass = FIELD_CONTROL_CLASS;
 
@@ -59,6 +61,8 @@ interface CompanyHeaderFieldsProps {
   setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   onOpenCamera: () => void;
   createdBy?: string | null;
+  /** Creator's login no — the "Created by" name opens their profile card on hover. */
+  createdByLoginNo?: number | string | null;
   createdDate?: string | null;
   attachmentCount?: number;
   onShowAttachments?: () => void;
@@ -81,6 +85,7 @@ export function CompanyHeaderFields({
   setErrors,
   onOpenCamera,
   createdBy,
+  createdByLoginNo,
   createdDate,
   attachmentCount = 0,
   onShowAttachments,
@@ -229,7 +234,11 @@ export function CompanyHeaderFields({
           <RecordMetaItem label="Code">
             <span className="font-mono">{code || '—'}</span>
           </RecordMetaItem>
-          {createdBy && <RecordMetaItem label="Created by">{createdBy}</RecordMetaItem>}
+          {createdBy && (
+            <RecordMetaItem label="Created by">
+              <PersonName person={userRef(createdByLoginNo)} name={createdBy} />
+            </RecordMetaItem>
+          )}
           {formattedCreatedDate && <RecordMetaItem label="Created on">{formattedCreatedDate}</RecordMetaItem>}
         </div>
       )}

@@ -13,11 +13,13 @@ import { useSettings } from '@/hooks/useSettings';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 import { ActionTip, TruncatedText } from '@/components/master/shared/TruncatedCellTip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { PersonName } from '@/components/ui/PersonHoverCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import { cn } from '@/lib/utils';
+import { userRef } from '@/lib/personDetails';
 
 interface ReportTableProps {
   data: any[];
@@ -237,8 +239,9 @@ export function ReportTable({ data }: ReportTableProps) {
                   size="sm"
                   className="shrink-0"
                 />
-                <TruncatedText
-                  text={task.assignedTo.displayName}
+                <PersonName
+                  person={userRef(task.assignedTo?.id || task.assignedTo?.loginNo)}
+                  name={task.assignedTo.displayName}
                   className="tm-person-link text-slate-300 text-xs font-medium"
                 />
               </div>
@@ -258,8 +261,9 @@ export function ReportTable({ data }: ReportTableProps) {
                   size="sm"
                   className="shrink-0"
                 />
-                <TruncatedText
-                  text={task.originator.displayName}
+                <PersonName
+                  person={userRef(task.originator?.id || task.originator?.loginNo)}
+                  name={task.originator.displayName}
                   className="tm-person-link text-slate-300 text-xs font-medium"
                 />
               </div>
@@ -493,7 +497,11 @@ export function ReportTable({ data }: ReportTableProps) {
                       </span>
                       <span className="min-w-0 truncate">
                         <span className="text-slate-500">Owner: </span>
-                        {ownerName}
+                        <PersonName
+                          person={userRef(task.assignedTo?.id || task.assignedTo?.loginNo)}
+                          name={ownerName}
+                          wrapperClassName="align-bottom"
+                        />
                       </span>
                       <span className="min-w-0 truncate">
                         <span className="text-slate-500">Priority: </span>

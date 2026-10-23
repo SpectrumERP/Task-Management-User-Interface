@@ -15,6 +15,8 @@ import { parseApiSaveError } from '../shared/parseSaveError';
 import { useMasterFormGuard } from '../shared/useMasterFormGuard';
 import { SortableHeader } from '@/components/shared/useTableSort';
 import { FieldControl, FieldLabel } from '@/components/ui/form-field';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 
 const FORM_NO = 1546;
 const TITLE = 'User Group Master';
@@ -387,12 +389,13 @@ export function UserGroupForm({ id }: UserGroupFormProps) {
                           />
                         </td>
                         <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300">
-                          <Input
-                            disabled
-                            value={field.displayName}
-                            placeholder="—"
-                            className="h-8 rounded-[8px] border-transparent text-[11px] bg-transparent shadow-none px-2 disabled:opacity-100 disabled:text-slate-200"
-                          />
+                          <div className="flex h-8 min-w-0 items-center px-2 text-[11px] text-slate-200">
+                            {field.displayName ? (
+                              <PersonName person={userRef(field.loginNo)} name={field.displayName} />
+                            ) : (
+                              <span className="text-tm-placeholder">—</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300">
                           <Input

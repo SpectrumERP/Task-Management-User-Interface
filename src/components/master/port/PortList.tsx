@@ -50,6 +50,7 @@ export function PortList() {
           cityNo: (p.cityNo ?? p.CityNo ?? '').toString(),
           cityName: p.cityName || p.CityName || '',
           createdBy: p.createdBy?.printingName || p.createdBy?.displayName || p.createdBy?.loginId || p.createdByName || (typeof p.createdBy === 'string' || typeof p.createdBy === 'number' ? p.createdBy : '') || 'System',
+          createdByLoginNo: p.createdBy?.loginNo ?? p.createdBy?.id ?? null,
           createdDate: p.createdDate || p.createdDateTime || p.createdOn || ''
         }));
         setApiPorts(mapped);

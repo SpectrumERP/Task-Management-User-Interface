@@ -11,11 +11,14 @@ import {
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 import { TruncatedText, ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PersonName } from '@/components/ui/PersonHoverCard';
 import { SortableHeader, sortHeaderCellProps, usePagedTableSort } from '@/components/shared/useTableSort';
 import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { getStatusTextClass } from '@/lib/taskStatusGroups';
 import { formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
 import { cn } from '@/lib/utils';
+import { employeeRef, userRef, type PersonRef } from '@/lib/personDetails';
+import { PARTICIPANT_TYPE } from '@/lib/meetingParticipants';
 import { useSettings } from '@/hooks/useSettings';
 
 interface MeetingReportTableProps {
@@ -37,6 +40,52 @@ const DEFAULT_COLUMNS = [
   { id: 'discussionRemarks', label: 'Discussion Remarks', defaultVisible: true },
   { id: 'status', label: 'Status', defaultVisible: true },
 ];
+
+type ReportParticipant =
+  | string
+  | {
+      printingName?: string | null;
+      loginId?: string | null;
+      participantName?: string | null;
+      participantType?: number | string | null;
+      userNo?: number | null;
+      empNo?: number | null;
+    };
+
+/** Display name and profile card target of a meeting participant (external / business entity: no card). */
+function participantPerson(p: ReportParticipant): { name: string; person: PersonRef | null } {
+  if (typeof p === 'string') return { name: p, person: null };
+  return {
+    name: p.printingName || p.loginId || p.participantName || '',
+    person:
+      Number(p.participantType) === PARTICIPANT_TYPE.employee
+        ? employeeRef(p.empNo)
+        : userRef(p.userNo) ?? employeeRef(p.empNo),
+  };
+}
+
+/** Comma-separated participant names on one truncating line; each user / employee name opens their profile card. */
+function ParticipantNames({ participants }: { participants: ReportParticipant[] }) {
+  const people = participants.map(participantPerson).filter((p) => p.name);
+  const joined = people.map((p) => p.name).join(', ');
+  return (
+    <span
+      className="block w-full min-w-0 max-w-full truncate whitespace-nowrap text-slate-300"
+      // Full list as a native tooltip, only when the cell is cut off.
+      onMouseEnter={(e) => {
+        const el = e.currentTarget;
+        el.title = el.scrollWidth > el.clientWidth ? joined : '';
+      }}
+    >
+      {people.map((p, i) => (
+        <span key={i}>
+          {i > 0 ? ', ' : null}
+          <PersonName person={p.person} name={p.name} wrapperClassName="inline" className="inline" />
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export function MeetingReportTable({ data }: MeetingReportTableProps) {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
@@ -462,21 +511,14 @@ export function MeetingReportTable({ data }: MeetingReportTableProps) {
                         className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 min-w-0 overflow-hidden"
                         style={getColStyle('participants')}
                       >
-                        <TruncatedText
-                          text={
-                            Array.isArray(meeting.participants)
-                              ? meeting.participants
-                                  .map((p: any) =>
-                                    typeof p === 'string'
-                                      ? p
-                                      : p.printingName || p.loginId || p.participantName
-                                  )
-                                  .filter(Boolean)
-                                  .join(', ') || ''
-                              : String(meeting.participants || meeting.internalUsers || '')
-                          }
-                          className="text-slate-300"
-                        />
+                        {Array.isArray(meeting.participants) ? (
+                          <ParticipantNames participants={meeting.participants} />
+                        ) : (
+                          <TruncatedText
+                            text={String(meeting.participants || meeting.internalUsers || '')}
+                            className="text-slate-300"
+                          />
+                        )}
                       </td>
                     )}
                     {shownColumns.includes('discussionsMade') && (

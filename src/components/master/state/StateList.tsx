@@ -46,6 +46,7 @@ export function StateList() {
           gstStateCode: s.gstStateCode || s.gstCode || '',
           isUnionTerritory: s.isUnionTerritory || false,
           createdBy: s.createdBy?.printingName || s.createdBy?.displayName || s.createdBy?.loginId || s.createdByName || (typeof s.createdBy === 'string' || typeof s.createdBy === 'number' ? s.createdBy : '') || 'System',
+          createdByLoginNo: s.createdBy?.loginNo ?? s.createdBy?.id ?? null,
           createdDate: s.createdDate || s.createdDateTime || s.createdOn || ''
         }));
         setApiStates(mapped);

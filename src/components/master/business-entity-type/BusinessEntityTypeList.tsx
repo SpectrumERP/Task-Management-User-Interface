@@ -45,6 +45,7 @@ export function BusinessEntityTypeList() {
           name: b.operCRMBusinessEntityTypeName || b.OperCRMBusinessEntityTypeName || b.name || '',
           description: pickDescription(b),
           createdBy: b.createdBy?.printingName || b.createdBy?.displayName || b.createdBy?.loginId || b.createdByName || (typeof b.createdBy === 'string' || typeof b.createdBy === 'number' ? b.createdBy : '') || 'System',
+          createdByLoginNo: b.createdBy?.loginNo ?? b.createdBy?.id ?? null,
           createdDate: b.createdDate || b.createdDateTime || b.createdOn || ''
         }));
 

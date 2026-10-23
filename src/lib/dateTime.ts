@@ -13,8 +13,9 @@ import { format, isValid, parse } from 'date-fns';
 
 export type DateInput = Date | string | number | null | undefined;
 
-/** App-wide date display format (date-fns tokens). Change here to change it everywhere. */
-export const DATE_FORMAT = 'dd/MM/yyyy';
+/** App-wide date display format (date-fns tokens): 23/Oct/2026. Change here to change it everywhere.
+ *  Keep it in step with the CRM's src/utils/dateFormat.ts (DD/Mon/YYYY) so both apps show dates alike. */
+export const DATE_FORMAT = 'dd/MMM/yyyy';
 /** App-wide 24h time display format. */
 export const TIME_FORMAT = 'HH:mm';
 /** App-wide 12h time display format (pickers / readbacks that show AM/PM). */
@@ -46,11 +47,15 @@ function asDate(value: DateInput): Date | null {
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  // Our own display format (DATE_FORMAT, optionally + time) — Date() would misread it as US.
-  if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(raw)) {
-    for (const fmt of [DATE_TIME_FORMAT_12H, DATE_TIME_FORMAT, DATE_FORMAT]) {
-      const d = parse(raw, fmt, new Date());
-      if (isValid(d)) return d;
+  // Our own display format (DATE_FORMAT, optionally + time) and the older dd/MM/yyyy one, which
+  // drafts and exports may still hold — Date() would misread both.
+  if (/^\d{1,2}\/(\d{1,2}|[A-Za-z]{3})\/\d{4}/.test(raw)) {
+    const dateFormats = [DATE_FORMAT, 'dd/MM/yyyy'];
+    for (const dateFmt of dateFormats) {
+      for (const fmt of [`${dateFmt} ${TIME_FORMAT_12H}`, `${dateFmt} ${TIME_FORMAT}`, dateFmt]) {
+        const d = parse(raw, fmt, new Date());
+        if (isValid(d)) return d;
+      }
     }
     return null;
   }

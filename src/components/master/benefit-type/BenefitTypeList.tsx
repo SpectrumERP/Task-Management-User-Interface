@@ -45,6 +45,7 @@ export function BenefitTypeList() {
           name: b.businessBenefitTypeName || '',
           valuationtypeNo: b.valuationType?.toString() || '0',
           createdBy: b.createdBy?.printingName || b.createdBy?.displayName || b.createdBy?.loginId || b.createdByName || (typeof b.createdBy === 'string' || typeof b.createdBy === 'number' ? b.createdBy : '') || 'System',
+          createdByLoginNo: b.createdBy?.loginNo ?? b.createdBy?.id ?? null,
           createdDate: b.createdDate || b.createdDateTime || b.createdOn || ''
         }));
         setApiBusinessBenefitTypes(mapped);

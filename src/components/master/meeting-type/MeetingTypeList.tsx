@@ -48,7 +48,8 @@ export function MeetingTypeList() {
           id: (c.meetingTypeNo ?? '').toString(),
           code: c.code || '',
           name: c.meetingTypeName || '',
-          createdBy: c.createdBy || 'System',
+          createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || (typeof c.createdBy === 'string' || typeof c.createdBy === 'number' ? c.createdBy : '') || 'System',
+          createdByLoginNo: c.createdBy?.loginNo ?? c.createdBy?.id ?? null,
           createdDate: c.createdDate || '',
         }));
         setApiMeetingTypes(mapped);

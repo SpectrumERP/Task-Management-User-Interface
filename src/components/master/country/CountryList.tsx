@@ -43,6 +43,7 @@ export function CountryList() {
           code: c.code || c.countryCode || '',
           name: c.countryName || c.name || '',
           createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || (typeof c.createdBy === 'string' || typeof c.createdBy === 'number' ? c.createdBy : '') || 'System',
+          createdByLoginNo: c.createdBy?.loginNo ?? c.createdBy?.id ?? null,
           createdDate: c.createdDate || c.createdDateTime || c.createdOn || ''
         }));
         setApiCountries(mapped);

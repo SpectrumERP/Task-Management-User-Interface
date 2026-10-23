@@ -13,6 +13,8 @@ import {
   type ParticipantValue,
 } from '@/lib/meetingParticipants';
 import { getUserInitials } from '@/lib/userProfile';
+import { employeeRef, userRef } from '@/lib/personDetails';
+import { PersonHoverCard } from '@/components/ui/PersonHoverCard';
 import { cn } from '@/lib/utils';
 
 type Suggestion =
@@ -243,43 +245,52 @@ export function ParticipantChipsInput({ participants, onAdd, onRemove, onEditExt
               const details = incomplete
                 ? 'Details missing — click to add company, designation and contact no'
                 : [tag.label, p.email, p.companyName, p.designation, p.contactNo].filter(Boolean).join(' · ');
+              // Users and employees open their profile card on hover; externals / contacts have none.
+              const person =
+                p.participantType === PARTICIPANT_TYPE.user
+                  ? userRef(p.userNo)
+                  : p.participantType === PARTICIPANT_TYPE.employee
+                    ? employeeRef(p.empNo)
+                    : null;
               return (
                 <span
                   key={`${p.participantType}:${p.userNo ?? p.empNo ?? p.businessEntityContactPersonDetailNo ?? p.email ?? index}`}
-                  title={details}
+                  title={person ? undefined : details}
                   className={cn(
                     'inline-flex max-w-full items-center gap-1 rounded-[6px] border py-0.5 pl-1 pr-0.5',
                     incomplete ? 'border-amber-500/60 bg-amber-500/10' : 'border-[var(--tm-border)] bg-[var(--tm-muted)]/60'
                   )}
                 >
-                  {p.participantType === PARTICIPANT_TYPE.external ? (
-                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600">
-                      <Mail size={11} />
-                    </span>
-                  ) : (
-                    <Avatar className="h-5 w-5 shrink-0">
-                      <AvatarFallback className="bg-gradient-to-br from-[#0EA5E9] to-[#00b4d8] text-[9px] font-semibold text-white">
-                        {getUserInitials(label)}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  {editable ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditExternal?.(index);
-                      }}
-                      aria-label={`Edit details for ${label}`}
-                      className="h-auto max-w-[12rem] gap-1 rounded-[4px] p-0 text-[11px] font-medium text-slate-100 hover:bg-transparent hover:underline"
-                    >
-                      <span className="truncate">{label}</span>
-                      {incomplete ? <AlertCircle size={12} className="shrink-0 text-amber-500" aria-label="Details missing" /> : null}
-                    </Button>
-                  ) : (
-                    <span className="max-w-[12rem] truncate text-[11px] font-medium text-slate-100">{label}</span>
-                  )}
+                  <PersonHoverCard person={person} name={label} className="items-center gap-1">
+                    {p.participantType === PARTICIPANT_TYPE.external ? (
+                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600">
+                        <Mail size={11} />
+                      </span>
+                    ) : (
+                      <Avatar className="h-5 w-5 shrink-0">
+                        <AvatarFallback className="bg-gradient-to-br from-[#0EA5E9] to-[#00b4d8] text-[9px] font-semibold text-white">
+                          {getUserInitials(label)}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    {editable ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditExternal?.(index);
+                        }}
+                        aria-label={`Edit details for ${label}`}
+                        className="h-auto max-w-[12rem] gap-1 rounded-[4px] p-0 text-[11px] font-medium text-slate-100 hover:bg-transparent hover:underline"
+                      >
+                        <span className="truncate">{label}</span>
+                        {incomplete ? <AlertCircle size={12} className="shrink-0 text-amber-500" aria-label="Details missing" /> : null}
+                      </Button>
+                    ) : (
+                      <span className="max-w-[12rem] truncate text-[11px] font-medium text-slate-100">{label}</span>
+                    )}
+                  </PersonHoverCard>
                   <span className={cn('rounded px-1 text-[9px] font-semibold', tag.className)}>{tag.label}</span>
                   {!disabled && (
                     <Button

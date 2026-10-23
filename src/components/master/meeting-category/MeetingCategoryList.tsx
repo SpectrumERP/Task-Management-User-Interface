@@ -42,7 +42,8 @@ export function MeetingCategoryList() {
           id: (c.meetingCategoryNo ?? '').toString(),
           code: c.code || '',
           name: c.meetingCategoryName || '',
-          createdBy: c.createdBy || 'System',
+          createdBy: c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || (typeof c.createdBy === 'string' || typeof c.createdBy === 'number' ? c.createdBy : '') || 'System',
+          createdByLoginNo: c.createdBy?.loginNo ?? c.createdBy?.id ?? null,
           createdDate: c.createdDate || ''
         }));
         setApiMeetingCategories(mapped);

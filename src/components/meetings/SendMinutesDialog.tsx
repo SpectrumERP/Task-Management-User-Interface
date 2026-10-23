@@ -21,6 +21,8 @@ import {
   type MinutesRecipient,
 } from '@/lib/meetingMinutesShare';
 import { InlineLoader } from '@/components/ui/BrandLoader';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { employeeRef, userRef } from '@/lib/personDetails';
 
 type SendMinutesDialogProps = {
   open: boolean;
@@ -178,7 +180,9 @@ export function SendMinutesDialog({
                     className="flex items-center justify-between gap-2 rounded-[8px] border border-[var(--tm-border)]/60 bg-[var(--tm-surface)] px-2.5 py-1.5"
                   >
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold text-slate-100 truncate">{r.name}</p>
+                      <p className="text-[11px] font-semibold text-slate-100 truncate">
+                        <PersonName person={userRef(r.userNo) ?? employeeRef(r.empNo)} name={r.name} />
+                      </p>
                       <p className="text-[10px] text-slate-500 truncate">{r.email}</p>
                     </div>
                     <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
@@ -195,7 +199,12 @@ export function SendMinutesDialog({
                 <ul className="space-y-0.5">
                   {missingEmail.map((r) => (
                     <li key={r.key} className="text-[10px] text-slate-500 truncate">
-                      {r.name} · {r.typeLabel}
+                      <PersonName
+                        person={userRef(r.userNo) ?? employeeRef(r.empNo)}
+                        name={r.name}
+                        wrapperClassName="align-bottom"
+                      />{' '}
+                      · {r.typeLabel}
                     </li>
                   ))}
                 </ul>

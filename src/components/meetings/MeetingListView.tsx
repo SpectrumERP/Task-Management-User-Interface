@@ -35,6 +35,8 @@ import { formatUtcScheduleLine, formatUtcDateTime, toUtcMs } from '@/lib/dateTim
 import { MasterDeleteDialog } from '@/components/master/shared/MasterDeleteDialog';
 import { MasterPaginationBar } from '@/components/master/shared/MasterPaginationBar';
 import { cn } from '@/lib/utils';
+import { userRef } from '@/lib/personDetails';
+import { PersonName } from '@/components/ui/PersonHoverCard';
 import {
   canDeleteMeetingNote,
   isMeetingFinalized,
@@ -779,9 +781,10 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
                             </div>
                           </td>
                           <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">
-                            <TruncatedText
-                              text={meeting.createdBy?.printingName || meeting.createdBy?.displayName || meeting.createdByName || ''}
-                              className="text-slate-300"
+                            <PersonName
+                              person={userRef(meeting.createdBy?.loginNo ?? meeting.createdBy?.id)}
+                              name={meeting.createdBy?.printingName || meeting.createdBy?.displayName || meeting.createdByName || ''}
+                              className="block text-slate-300"
                             />
                           </td>
                           <td className="px-3 py-2.5 border-r border-[var(--tm-border)] text-slate-300 align-middle min-w-0">

@@ -20,6 +20,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { formatUtcDateTime } from '@/lib/dateTime';
 import { formatTimeAgo } from '@/lib/taskFreshness';
 import { cn } from '@/lib/utils';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 
 /**
  * Task timeline (GET /api/crm/tasks/timeline/{id}) — same contract and behaviour as the CRM's
@@ -55,6 +57,8 @@ interface TimelineEntry {
   typeNo?: number;
   at: string;
   by: string;
+  /** Login no of `by`, so the name opens their profile card. */
+  byLoginNo?: number;
 }
 
 function entryFromRow(row: ServerTimelineRow): TimelineEntry {
@@ -65,6 +69,7 @@ function entryFromRow(row: ServerTimelineRow): TimelineEntry {
     typeNo: row.timelineTypeNo ?? undefined,
     at: row.actionDate ?? '',
     by: row.createdBy?.printingName?.trim() || row.createdBy?.loginId || '',
+    byLoginNo: row.createdBy?.loginNo ?? undefined,
   };
 }
 
@@ -253,7 +258,18 @@ export function TaskTimeline({ taskNo, refreshKey }: { taskNo: number; refreshKe
                     </p>
                   ) : null}
                   <p className="mt-0.5 text-[10px] text-slate-500">
-                    {entry.by ? <>By <span className="font-medium text-slate-400">{entry.by}</span> · </> : null}
+                    {entry.by ? (
+                      <>
+                        By{' '}
+                        <PersonName
+                          person={userRef(entry.byLoginNo)}
+                          name={entry.by}
+                          className="font-medium text-slate-400"
+                          wrapperClassName="inline"
+                        />{' '}
+                        ·{' '}
+                      </>
+                    ) : null}
                     {formatUtcDateTime(entry.at, '')}
                   </p>
                 </div>

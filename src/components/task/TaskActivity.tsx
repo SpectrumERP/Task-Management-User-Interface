@@ -3,7 +3,8 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/apiService';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { TruncatedText } from '@/components/master/shared/TruncatedCellTip';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 import { Textarea } from '@/components/ui/textarea';
 import { formatUtcDateTime } from '@/lib/dateTime';
 import {
@@ -19,6 +20,8 @@ interface TaskActivityProps {
     author: string;
     text: string;
     timestamp: string;
+    /** Author's login no (avatar + profile card). */
+    loginNo?: number | null;
   }[];
   efforts: {
     date: string;
@@ -120,15 +123,16 @@ export function TaskActivity({ taskNo, comments = [], onRefresh, readOnly = fals
                 className="bg-[var(--tm-surface)] border border-[var(--tm-border)]/70 rounded-xl p-3 flex items-start gap-3"
               >
                 <UserAvatar
-                  loginNo={(c as any).loginNo}
+                  loginNo={c.loginNo}
                   displayName={c.author}
                   size="md"
                   className="shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <TruncatedText
-                      text={c.author || ''}
+                    <PersonName
+                      person={userRef(c.loginNo)}
+                      name={c.author || ''}
                       className="text-[11px] font-semibold text-slate-100"
                     />
                     <span className="text-[9px] font-medium text-slate-500 shrink-0">

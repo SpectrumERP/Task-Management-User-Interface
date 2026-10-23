@@ -27,6 +27,8 @@ import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
 import { useInView } from 'framer-motion';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { RowDeleteIcon, RowEditIcon } from '@/components/shared/RowIcons';
+import { PersonName } from '@/components/ui/PersonHoverCard';
+import { userRef } from '@/lib/personDetails';
 
 function AttachmentThumbnail({ attachment, onPreview, className }: { attachment: any; onPreview: (url: string) => void; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -353,6 +355,7 @@ export function CompanyList() {
         const countryName = c.countryName ?? c.CountryName ?? c.country ?? '';
         const pin = c.pinCode ?? c.PinCode ?? '';
         const user = c.DisplayName ?? c.UserName ?? (c.createdBy?.printingName || c.createdBy?.displayName || c.createdBy?.loginId || c.createdByName || 'System');
+        const userLoginNo = c.createdBy?.loginNo ?? c.createdBy?.id ?? null;
         const date = c.createdDate ?? c.CreatedDate ?? '';
 
         const locations = c.locations || (c.LocationNo ? [{
@@ -394,7 +397,7 @@ export function CompanyList() {
           contacts: c.contactPersons || c.contacts || [],
           ports: c.ports || [],
           attachments: c.attachments || c.attachment || [],
-          createdBy: user, createdDate: date
+          createdBy: user, createdByLoginNo: userLoginNo, createdDate: date
         };
       });
 
@@ -1106,10 +1109,18 @@ export function CompanyList() {
                                   <User size={10} className="text-slate-400 shrink-0" />
                                   <span className="shrink-0">Created By:</span>
                                   <div className="min-w-0 flex-1 overflow-hidden">
-                                    <TruncatedText
-                                      text={company.createdBy || company.displayName || company.userName || 'System'}
-                                      className="text-slate-300 font-semibold"
-                                    />
+                                    {company.createdBy && userRef(company.createdByLoginNo) ? (
+                                      <PersonName
+                                        person={userRef(company.createdByLoginNo)}
+                                        name={company.createdBy}
+                                        className="block text-slate-300 font-semibold"
+                                      />
+                                    ) : (
+                                      <TruncatedText
+                                        text={company.createdBy || company.displayName || company.userName || 'System'}
+                                        className="text-slate-300 font-semibold"
+                                      />
+                                    )}
                                   </div>
                                 </span>
                                 <span className="text-[8px] text-slate-400 font-semibold shrink-0">

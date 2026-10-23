@@ -43,6 +43,7 @@ export function VesselList() {
           code: v.code || v.Code || '',
           name: v.vesselName || v.VesselName || v.name || '',
           createdBy: v.createdBy?.printingName || v.createdBy?.displayName || v.createdBy?.loginId || v.createdByName || (typeof v.createdBy === 'string' || typeof v.createdBy === 'number' ? v.createdBy : '') || 'System',
+          createdByLoginNo: v.createdBy?.loginNo ?? v.createdBy?.id ?? null,
           createdDate: v.createdDate || v.createdDateTime || v.createdOn || ''
         }));
         setApiVessels(mapped);

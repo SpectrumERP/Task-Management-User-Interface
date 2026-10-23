@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Clock, X, Lock, Pencil, Eye, CalendarClock, ExternalLink, ChevronDown, AlertCircle as AlertCircleIcon } from 'lucide-react';
+import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Clock, X, Lock, Pencil, Eye, CalendarClock, ExternalLink, ChevronDown, Printer, AlertCircle as AlertCircleIcon } from 'lucide-react';
 import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
 import { Combobox } from '@/components/ui/Combobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
@@ -17,7 +17,10 @@ import { MasterCreateDialog } from '@/components/master/MasterCreateDialog';
 import { isAdminUser } from '@/lib/taskAccess';
 import { ParticipantChipsInput } from '@/components/meetings/ParticipantChipsInput';
 import { ExternalParticipantDialog } from '@/components/meetings/ExternalParticipantDialog';
-import { PARTICIPANT_TYPE, resolveParticipantContacts, type ParticipantValue } from '@/lib/meetingParticipants';
+import { PARTICIPANT_TYPE, participantLabel, resolveParticipantContacts, type ParticipantValue } from '@/lib/meetingParticipants';
+import { buildMeetingMinutesHtml } from '@/components/meetings/MeetingMinutesPrint';
+import { printHtml } from '@/lib/printHtml';
+import { userService } from '@/services/userService';
 import { buildTaskOptions, discussionsFromApi, discussionsToApi, optionLabel } from '@/lib/meetingDiscussions';
 import { taskUrl } from '@/lib/dealMonitor';
 import { AssigneeAvatar, AssigneeLabel, DiscussionTasksDrawer } from '@/components/meetings/DiscussionTasksDrawer';
@@ -54,6 +57,7 @@ import {
   buildMinutesRecipients,
   isMeetingFinalized,
   isMinutesSendStatusAllowed,
+  participantTypeLabel,
   readLastMinutesSentAt,
 } from '@/lib/meetingMinutesShare';
 import {
@@ -91,6 +95,22 @@ function FormSection({ title, icon: Icon, children, headerAction, tourId }: { ti
     </section>
   );
 }
+
+type PrintUserRef = { printingName?: string; displayName?: string; loginId?: string };
+/** Fields of GET /api/crm/meeting-notes/load-data used by the printed minutes. */
+type MeetingRecordForPrint = {
+  code?: string;
+  taskCompanyName?: string;
+  statusName?: string;
+  meetingCategoryName?: string;
+  meetingTypeName?: string;
+  meetingModeName?: string;
+  operLocation?: string;
+  createdBy?: PrintUserRef | null;
+  createdDate?: string | null;
+  authorizedBy?: PrintUserRef | null;
+  authorizedDate?: string | null;
+};
 
 export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initialData?: any, onComplete?: () => void, meetingNotesNo?: number }) {
   const navigate = useNavigate();
@@ -188,6 +208,9 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [isSavingType, setIsSavingType] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(false);
+  // The record as loaded (code, names, created / finalized by) — for the printed minutes.
+  const [meetingRecord, setMeetingRecord] = useState<MeetingRecordForPrint | null>(initialData || null);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
   // Status as last saved — finalized notes are locked (picking Finalize only locks once saved).
@@ -268,6 +291,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
             }
 
             setSavedStatus({ no: res.data.statusNo ?? null, name: res.data.statusName || '' });
+            setMeetingRecord(res.data);
             form.reset({
               ...res.data,
               meetingTypeNo: res.data.meetingTypeNo?.toString(),
@@ -399,6 +423,84 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
     () => buildMinutesRecipients(watchedParticipants || []),
     [watchedParticipants]
   );
+
+  /** Prints the meeting notes as minutes of meeting (what is on screen; DRAFT until finalized). */
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      const v = form.getValues();
+      const rec = meetingRecord || {};
+      const userName = (u?: PrintUserRef | null) => String(u?.printingName || u?.displayName || u?.loginId || '').trim();
+      const label = (list: Array<Record<string, unknown>>, value: unknown, key: string, nameKey: string) => {
+        const match = list.find((x) => String(x?.id ?? x?.[key]) === String(value ?? ''));
+        return String(match?.[nameKey] || match?.name || '');
+      };
+
+      // Assignee names: one cached lookup per person.
+      const ownerNos = [
+        ...new Set((v.discussions || []).flatMap((d) => (d.tasks || []).map((t) => Number(t.actionTaskOwnerNo)).filter((n) => n > 0))),
+      ];
+      const owners = new Map(
+        await Promise.all(ownerNos.map(async (n) => [n, (await userService.getUserBrief(n))?.name || ''] as const))
+      );
+
+      const html = buildMeetingMinutesHtml({
+        meetingCode: rec.code || '',
+        title: v.meetingTitle || '',
+        status: currentStatusName || rec.statusName || '',
+        finalized: isLocked,
+        category: label(meetingCategories, v.meetingCategoryNo, 'meetingCategoryNo', 'meetingCategoryName') || rec.meetingCategoryName || '',
+        type: label(meetingTypes, v.meetingTypeNo, 'meetingTypeNo', 'meetingTypeName') || rec.meetingTypeName || '',
+        mode: label(meetingModes, v.meetingModeNo, 'meetingModeNo', 'meetingModeName') || rec.meetingModeName || '',
+        location: locationLabel || rec.operLocation || '',
+        taskCompany:
+          rec.taskCompanyName ||
+          optionLabel(taskCompanyOptions, v.companyNo) ||
+          optionLabel(taskCompanyOptions, v.operTaskCompanyNo) ||
+          '',
+        start: v.meetingStartDateTime,
+        end: v.meetingEndDateTime,
+        durationMinutes: v.durationMinutes,
+        minutesUrl: v.meetingMinutesUrl,
+        remarks: v.remarks,
+        preparedBy: rec.createdBy ? { name: userName(rec.createdBy), date: rec.createdDate } : null,
+        finalizedBy: isLocked && rec.authorizedBy ? { name: userName(rec.authorizedBy), date: rec.authorizedDate } : null,
+        participants: (v.participants || []).map((p) => ({
+          name: participantLabel(p as ParticipantValue),
+          type: participantTypeLabel(p.participantType),
+          organisation: p.companyName || '',
+          designation: p.designation || '',
+          email: p.email || '',
+          contact: p.contactNo || '',
+        })),
+        discussions: (v.discussions || []).map((d) => ({
+          topic: d.topic || '',
+          summary: d.discussionSummary || '',
+          decision: d.decisionRemarks || '',
+          remarks: d.remarks || '',
+          tasks: (d.tasks || []).map((t) => ({
+            title: t.title || '',
+            assignee: owners.get(Number(t.actionTaskOwnerNo)) || '',
+            due: t.actionDueDate,
+            priority: optionLabel(taskOptions.priority, t.operTaskPriorityNo) || '',
+            category: optionLabel(taskOptions.category, t.operTaskCategoryNo) || '',
+            type: optionLabel(taskOptions.type, t.operTaskTypeNo) || '',
+            company: optionLabel(taskCompanyOptions, t.operTaskCompanyNo) || '',
+            taskNo: t.operTaskNo,
+          })),
+        })),
+        hideType: isHideType,
+        printedBy: String(authUser?.PrintingName || authUser?.printingName || authUser?.DisplayName || authUser?.displayName || '').trim(),
+        printedAt: new Date(),
+      });
+      await printHtml(html);
+    } catch (err) {
+      console.error('Failed to print meeting notes:', err);
+      toast.error('Could not prepare the print. Please try again.');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   const canSendMinutesStatus = isMinutesSendStatusAllowed(currentStatusName);
   const recipientEmailCount = minutesRecipients.filter((r) => r.hasEmail).length;
@@ -818,6 +920,17 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
             <Button type="button" variant="outline" size="sm" className="h-9 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] text-slate-300 shadow-none px-3" onClick={requestLeave}>
               {isLocked ? 'Back' : 'Cancel'}
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isPrinting || isFetchingData}
+              onClick={() => void handlePrint()}
+              title={isLocked ? 'Print the minutes of meeting' : 'Print the minutes (marked DRAFT until finalized)'}
+              className="h-9 gap-1.5 rounded-[8px] text-xs font-medium border-[var(--tm-border)] bg-[var(--tm-surface)] hover:bg-[var(--tm-muted)] text-slate-300 shadow-none px-3"
+            >
+              <Printer size={14} /> {isPrinting ? 'Preparing…' : 'Print'}
+            </Button>
             {!isLocked && ((meetingNotesNo || initialData?.meetingNotesNo) ? isUpdate : isSave) && (
               <Button disabled={form.formState.isSubmitting} type="submit" size="sm" className="h-9 rounded-[8px] bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-semibold shadow-sm shadow-[#0EA5E9]/20 text-xs px-4" onClick={form.handleSubmit(onSubmit, (errors) => console.log('Validation Errors:', errors))}>
                 {form.formState.isSubmitting ? (meetingNotesNo || initialData?.meetingNotesNo ? 'Updating...' : 'Saving...') : (meetingNotesNo || initialData?.meetingNotesNo ? 'Update' : 'Save')}
@@ -1097,8 +1210,11 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
                 ) : null}
               </div>
             </FormSection>
+            </fieldset>
 
-            {/* SECTION 4: Discussions & Action Items — topic, summary and decision inline; tasks in a drawer */}
+            {/* SECTION 4: Discussions & Action Items — topic, summary and decision inline; tasks in a drawer.
+                Kept outside the disabled fieldset: once finalized, its controls are read-only one by one
+                (isLocked), while the task list toggle and "View task" must still work. */}
             <FormSection
               title="Discussions & Outcomes"
               icon={MessageSquare}
@@ -1456,6 +1572,7 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
               />
             ) : null}
 
+            <fieldset disabled={isLocked} className="m-0 min-w-0 space-y-3 border-0 p-0">
             {/* SECTION 3: Document Details */}
             < FormSection
               title="Document Details"

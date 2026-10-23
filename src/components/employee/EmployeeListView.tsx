@@ -19,6 +19,8 @@ import { DataTableScroll } from '@/components/shared/DataTableScroll';
 import { RowEditIcon, RowViewIcon } from '@/components/shared/RowIcons';
 import type { Employee } from '@/types/employee';
 import { EmployeeAvatar, EmployeeStatusPill } from './employeeShared';
+import { PersonHoverCard, PersonName } from '@/components/ui/PersonHoverCard';
+import { employeeRef } from '@/lib/personDetails';
 
 export type EmployeeColumnKey =
   | 'profile'
@@ -227,16 +229,19 @@ export function EmployeeListView({
       case 'profile':
         return (
           <div className="flex w-full justify-center">
-            <EmployeeAvatar employee={employee} className="h-8 w-8 text-[11px]" />
+            <PersonHoverCard person={employeeRef(employee.empNo)} name={employee.empName}>
+              <EmployeeAvatar employee={employee} className="h-8 w-8 text-[11px]" />
+            </PersonHoverCard>
           </div>
         );
       case 'empCode':
         return <TruncatedText text={employee.empCode} className="text-left text-[#0EA5E9]" />;
       case 'empName':
         return (
-          <TruncatedText
-            text={employee.empName}
-            className="tm-text-semibold text-slate-50 group-hover:text-[#1E56A0] transition-colors"
+          <PersonName
+            person={employeeRef(employee.empNo)}
+            name={employee.empName}
+            className="block tm-text-semibold text-slate-50 group-hover:text-[#1E56A0] transition-colors"
           />
         );
       case 'email':
@@ -333,7 +338,11 @@ export function EmployeeListView({
                   <span className="font-semibold text-[12px] text-[#0EA5E9] tabular-nums">{employee.empCode}</span>
                   <EmployeeStatusPill status={employee.status} className="text-[9px]" />
                 </div>
-                <TruncatedText text={employee.empName} className="text-sm font-semibold text-slate-100 leading-snug" />
+                <PersonName
+                  person={employeeRef(employee.empNo)}
+                  name={employee.empName}
+                  className="block text-sm font-semibold text-slate-100 leading-snug"
+                />
                 <TruncatedText
                   text={[employee.department, employee.workLocation].filter(Boolean).join(' · ')}
                   className="text-[11px] text-slate-400"

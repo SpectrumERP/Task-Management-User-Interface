@@ -82,6 +82,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
   const [creditLimit, setCreditLimit] = useState<number | null>(null);
   const [creditInsuranceCompanyName, setCreditInsuranceCompanyName] = useState('');
   const [createdBy, setCreatedBy] = useState<string | null>(null);
+  const [createdByLoginNo, setCreatedByLoginNo] = useState<number | null>(null);
   const [createdDate, setCreatedDate] = useState<string | null>(null);
   const [companyVatGst, setCompanyVatGst] = useState('');
   const [gstinTypeNo, setGstinTypeNo] = useState('');
@@ -197,6 +198,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
             ? (createdByObj.displayName || createdByObj.userName || createdByObj.name || String(createdByObj))
             : createdByObj;
           setCreatedBy(createdByStr || null);
+          setCreatedByLoginNo(createdByObj?.loginNo ?? createdByObj?.id ?? null);
           setCreatedDate(dl.createdDate || dl.createdOn || null);
           const mappedFollowUpNotes: FollowUpNote[] = Array.isArray(dl.followUpDetails)
             ? dl.followUpDetails.map((n: any) => ({ date: n.followUpDate || '', note: n.followUpNotes || '' }))
@@ -1216,6 +1218,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
             setErrors={setErrors}
             onOpenCamera={openCameraIfRoom}
             createdBy={createdBy}
+            createdByLoginNo={createdByLoginNo}
             createdDate={createdDate}
             attachmentCount={companyAttachments.length}
             onShowAttachments={() => setIsAttachmentsModalOpen(true)}

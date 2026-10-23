@@ -94,6 +94,7 @@ export function TaskCompanyList() {
           cityName: tc.cityName || '',
           pinCode: tc.pinCode || '',
           createdBy: tc.createdBy?.printingName || tc.createdBy?.displayName || tc.createdBy?.loginId || tc.createdByName || 'System',
+          createdByLoginNo: tc.createdBy?.loginNo ?? tc.createdBy?.id ?? null,
           createdDate: tc.createdDate || tc.createdDateTime || tc.createdOn || ''
         }));
         setApiTaskCompanies(mapped);
