@@ -48,14 +48,12 @@ const opencvNodeStubs = (): Plugin => {
  * the CRM auth cookie that src/lib/crmSso.ts reads.
  */
 const SPECTRUM_MODE = 'spectrum';
-const SPECTRUM_PORT = 5178;
 
 /**
  * As a remote this server only feeds the shell. A page opened on it directly goes to the same page in the
  * shell, which has the one Spectrum ERP login. Module requests (Accept without text/html) pass through.
  */
-function redirectPagesToShell(routeBase: string): Plugin {
-  const shellUrl = (process.env.SPECTRUM_SHELL_URL ?? 'http://localhost:5173').replace(/\/+$/, '');
+function redirectPagesToShell(routeBase: string, shellUrl: string): Plugin {
   return {
     name: 'redirect-pages-to-spectrum-shell',
     configureServer(server) {
@@ -88,6 +86,10 @@ function spectrumFederation(): Plugin[] {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const spectrum = mode === SPECTRUM_MODE;
+  const env = loadEnv(mode, process.cwd(), '');
+  const taskPort = Number(env.TASK_PORT || 5175);
+  const host = env.DEV_SERVER_HOST || true;
+  const shellUrl = (env.SPECTRUM_SHELL_URL || `http://${env.REMOTE_DEV_HOST || 'localhost'}:${env.ERP_PORT || 5173}`).replace(/\/+$/, '');
   if (spectrum) {
     // Routes under the shell's /task, sign-in through the shell (src/lib/basePath.ts, crmSso.ts).
     process.env.VITE_TASK_ROUTE_BASE ??= '/task';
@@ -95,9 +97,9 @@ export default defineConfig(({ mode }) => {
     // tailwind.config.js: scope utilities to the app so Tailwind 3 never restyles the shell.
     process.env.TASK_EMBED = '1';
   }
-  const env = loadEnv(mode, process.cwd(), '');
   // Assets must load from this server when the shell, on another origin, imports the remote.
-  const spectrumUrl = env.TASK_PUBLIC_URL || `http://localhost:${SPECTRUM_PORT}/`;
+  const spectrumUrl = env.TASK_PUBLIC_URL || `http://${env.REMOTE_DEV_HOST || 'localhost'}:${taskPort}/`;
+  const spectrumOrigin = new URL(spectrumUrl).origin;
 
   return {
     ...(spectrum && { base: spectrumUrl }),
@@ -105,7 +107,7 @@ export default defineConfig(({ mode }) => {
       react(),
       generateVersionFile(),
       opencvNodeStubs(),
-      ...(spectrum ? [redirectPagesToShell(process.env.VITE_TASK_ROUTE_BASE ?? '/task'), ...spectrumFederation()] : []),
+      ...(spectrum ? [redirectPagesToShell(process.env.VITE_TASK_ROUTE_BASE ?? '/task', shellUrl), ...spectrumFederation()] : []),
     ],
     resolve: {
       alias: {
@@ -113,15 +115,18 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: spectrum
-      ? { port: SPECTRUM_PORT, strictPort: true, origin: `http://localhost:${SPECTRUM_PORT}` }
+      ? { host, port: taskPort, strictPort: true, origin: spectrumOrigin }
       : {
-          proxy: {
-            '/api': {
-              target: env.VITE_API_BASE_URL,
-              changeOrigin: true,
-            },
+        host,
+        port: taskPort,
+        strictPort: true,
+        proxy: {
+          '/api': {
+            target: env.VITE_API_BASE_URL,
+            changeOrigin: true,
           },
         },
+      },
     build: {
       // OpenCV alone is ~10MB and is lazy-loaded via CameraComp
       chunkSizeWarningLimit: 11000,
@@ -146,5 +151,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    preview: { host, port: taskPort, strictPort: true },
   }
 })
