@@ -11,6 +11,8 @@ import { ROUTER_BASENAME, withBase } from '@/lib/basePath';
 const AUTH_COOKIE = 'fi-crm-auth';
 const SESSION_COOKIE = 'fi-crm-session';
 const CHANNEL_NAME = 'fi-crm-session';
+const LOGOUT_EVENT_COOKIE = 'spectrum-auth-event';
+const LOGOUT_STORAGE_KEY = 'spectrum.auth.logout';
 const DEFAULT_SECRET = 'fi-crm-cookie-v1';
 const KEY_SALT = 'fi-crm-cookie-salt';
 const MAX_CHUNKS = 10;
@@ -93,10 +95,26 @@ function readCookie(name: string): string | null {
   return null;
 }
 
+function writeLogoutSignal() {
+  const domain = String(import.meta.env.VITE_CRM_COOKIE_DOMAIN ?? '').trim();
+  const sharedDomain = domain ? `; Domain=${domain}` : '';
+  const secure = location.protocol === 'https:' ? '; Secure' : '';
+  const nonce = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+  const value = `logout:${Date.now()}:${nonce}`;
+  document.cookie = `${LOGOUT_EVENT_COOKIE}=${value}; Path=/; Max-Age=2592000; SameSite=Strict${sharedDomain}${secure}`;
+  try {
+    localStorage.setItem(LOGOUT_STORAGE_KEY, `${Date.now()}:${Math.random().toString(36).slice(2)}`);
+  } catch {
+    // BroadcastChannel and the shared cookie remain available when storage is blocked.
+  }
+}
+
 function expireCookie(name: string) {
   const domain = String(import.meta.env.VITE_CRM_COOKIE_DOMAIN ?? '').trim();
   const sharedDomain = domain ? `; Domain=${domain}` : '';
   document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Strict${sharedDomain}`;
+  // Also a host-only copy left from before the shared domain was configured, which would shadow it.
+  if (domain) document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Strict`;
 }
 
 async function readVault<T>(name: string): Promise<T | null> {
@@ -153,6 +171,7 @@ const channel: BroadcastChannel | null =
 export function endCrmSession() {
   clearVault(AUTH_COOKIE);
   clearVault(SESSION_COOKIE);
+  writeLogoutSignal();
   channel?.postMessage({ type: 'logout' });
 }
 
@@ -161,6 +180,7 @@ export function onCrmSessionEnd(listener: () => void): () => void {
   let active = true;
   let ended = false;
   let sawSession = false;
+  let lastLogoutSignal = readCookie(LOGOUT_EVENT_COOKIE);
   const notify = () => {
     if (!active || ended) return;
     ended = true;
@@ -170,10 +190,20 @@ export function onCrmSessionEnd(listener: () => void): () => void {
     if (event.data?.type === 'logout' || event.data?.type === 'expired') notify();
   };
   channel?.addEventListener('message', handler);
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === LOGOUT_STORAGE_KEY && event.newValue) notify();
+  };
+  window.addEventListener('storage', onStorage);
   // BroadcastChannel is origin-scoped. Poll the shared cookie too so same-site
   // sibling subdomains notice a CRM logout/expiry even though they cannot share the channel.
   const checkSharedSession = async () => {
     if (!active || ended) return;
+    const logoutSignal = readCookie(LOGOUT_EVENT_COOKIE);
+    if (logoutSignal && logoutSignal !== lastLogoutSignal) {
+      lastLogoutSignal = logoutSignal;
+      notify();
+      return;
+    }
     if (await readCrmSession()) sawSession = true;
     else if (sawSession) notify();
   };
@@ -182,6 +212,7 @@ export function onCrmSessionEnd(listener: () => void): () => void {
   return () => {
     active = false;
     window.clearInterval(intervalId);
+    window.removeEventListener('storage', onStorage);
     channel?.removeEventListener('message', handler);
   };
 }

@@ -84,7 +84,7 @@ function spectrumFederation(): Plugin[] {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const spectrum = mode === SPECTRUM_MODE;
   const env = loadEnv(mode, process.cwd(), '');
   const taskPort = Number(env.TASK_PORT || 5175);
@@ -96,13 +96,21 @@ export default defineConfig(({ mode }) => {
     process.env.VITE_CRM_SSO ??= 'true';
     // tailwind.config.js: scope utilities to the app so Tailwind 3 never restyles the shell.
     process.env.TASK_EMBED = '1';
+    // A build serves every environment: the API must be a path on the page's host (nginx picks the backend).
+    // .env's full UAT URL would otherwise end up in a staging or production build.
+    const apiPath = (env.VITE_API_BASE_URL ?? '').trim();
+    if (command === 'build' && !apiPath.startsWith('/')) {
+      throw new Error(`Set VITE_API_BASE_URL to a path such as /crm-api (now "${apiPath}"). See SpectrumERP-Web/docs/deployment/DEPLOYMENT-GUIDE.md.`);
+    }
   }
-  // Assets must load from this server when the shell, on another origin, imports the remote.
-  const spectrumUrl = env.TASK_PUBLIC_URL || `http://${env.REMOTE_DEV_HOST || 'localhost'}:${taskPort}/`;
-  const spectrumOrigin = new URL(spectrumUrl).origin;
+  // Development assets load from this server. Production defaults to the same-origin /task deployment path.
+  const spectrumUrl = env.TASK_PUBLIC_URL || (command === 'serve'
+    ? `http://${env.REMOTE_DEV_HOST || 'localhost'}:${taskPort}/`
+    : `${(env.VITE_TASK_ROUTE_BASE || '/task').replace(/\/+$/, '')}/`);
+  const spectrumBase = spectrumUrl.endsWith('/') ? spectrumUrl : `${spectrumUrl}/`;
 
   return {
-    ...(spectrum && { base: spectrumUrl }),
+    ...(spectrum && { base: spectrumBase }),
     plugins: [
       react(),
       generateVersionFile(),
@@ -115,7 +123,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: spectrum
-      ? { host, port: taskPort, strictPort: true, origin: spectrumOrigin }
+      ? { host, port: taskPort, strictPort: true, ...(command === 'serve' ? { origin: new URL(spectrumBase, shellUrl).origin } : {}) }
       : {
         host,
         port: taskPort,
