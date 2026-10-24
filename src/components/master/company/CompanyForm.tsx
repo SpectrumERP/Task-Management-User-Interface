@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 const CameraComp = lazy(() => import('@/components/ui/CameraComp'));
 import { Camera as CameraIcon } from 'lucide-react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonCamera } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MAX_ATTACHMENTS_MESSAGE, MAX_ATTACHMENTS_PER_RECORD, selectUploadBatch } from '@/lib/allowedUploadFiles';
@@ -1395,11 +1395,7 @@ export function CompanyForm({ id }: CompanyFormProps) {
               </DialogHeader>
               <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 <Suspense
-                  fallback={
-                    <div className="flex flex-1 items-center justify-center py-20">
-                      <BrandLoader size="sm" message="Loading camera" />
-                    </div>
-                  }
+                  fallback={<SkeletonCamera label="Loading camera" />}
                 >
                   <CameraComp
                     companyNo={parseInt(companyNo as any) || 1}

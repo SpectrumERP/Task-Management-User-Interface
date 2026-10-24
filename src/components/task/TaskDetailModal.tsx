@@ -7,7 +7,7 @@ import { TaskActivity } from './TaskActivity';
 import { Button } from '@/components/ui/button';
 import { useFormRights } from '@/hooks/useFormRights';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonDetails } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { useAuthStore } from '@/store/useAuthStore';
 import { canUserEditTask, parseBoolean } from '@/lib/taskAccess';
@@ -476,9 +476,7 @@ export function TaskDetailModal({ taskNo, isOpen, onClose, onRefreshTasks }: Tas
         {/* Body */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {isLoading && !task ? (
-            <div className="h-full min-h-[320px] flex flex-col items-center justify-center py-20">
-              <BrandLoader size="sm" message="Loading task details" />
-            </div>
+            <SkeletonDetails label="Loading task details" />
           ) : task ? (
             <div className="p-4 sm:p-5">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">

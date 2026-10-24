@@ -20,7 +20,7 @@ import { FieldControl, FieldLabel } from '@/components/ui/form-field';
 import { fetchStatesByCountry } from './shared/geo';
 import { MasterDeleteDialog } from './shared/MasterDeleteDialog';
 import { useConfirmDelete } from './shared/useConfirmDelete';
-import { InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
 
 interface MasterCreateDialogProps {
   open: boolean;

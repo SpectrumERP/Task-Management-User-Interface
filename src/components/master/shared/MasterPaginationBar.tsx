@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { pageSizesForTotal } from '@/lib/pageSizes';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonUpdating } from '@/components/ui/skeleton';
 
 /** How long the page-change loader covers the list (same as the Spectrum CRM). */
 const PAGE_LOADER_MS = 380;
@@ -106,7 +106,7 @@ export function MasterPaginationBar({
           role="status"
           aria-busy="true"
         >
-          <BrandLoader size="sm" message="Loading" />
+          <SkeletonUpdating label="Loading the page" />
         </div>
       ) : null}
       {/* Record count — left on desktop */}

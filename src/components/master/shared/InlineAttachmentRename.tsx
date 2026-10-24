@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
 
 interface InlineAttachmentRenameProps {
   originalName: string;

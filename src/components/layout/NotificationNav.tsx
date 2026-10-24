@@ -14,6 +14,7 @@ import {
 } from '@/services/notificationService';
 import { formatUtcDateTime } from '@/lib/dateTime';
 import { cn } from '@/lib/utils';
+import { SkeletonList } from '@/components/ui/skeleton';
 
 const ICON_TONES = [
   { box: 'bg-sky-500/15 text-sky-300' },
@@ -149,7 +150,7 @@ export function NotificationNav() {
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {loading && items.length === 0 ? (
-            <div className="px-3 py-5 text-center text-[12px] text-slate-400">Loading…</div>
+            <SkeletonList rows={4} label="Loading notifications" />
           ) : items.length === 0 ? (
             <div className="px-3 py-5 text-center text-[12px] text-slate-400">No notifications</div>
           ) : (

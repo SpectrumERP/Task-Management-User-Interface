@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Loader2, Plus, RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Download, Plus, RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import {
 } from '@/lib/employeeDirectory';
 import { cn } from '@/lib/utils';
 import type { Employee, EmployeePage } from '@/types/employee';
+import { InlineLoader } from '@/components/ui/InlineLoader';
 
 /** Wait this long after the last keystroke before searching on the server. */
 const SEARCH_DEBOUNCE_MS = 350;
@@ -229,7 +230,7 @@ export default function EmployeeDirectoryPage() {
                 disabled={isExporting}
                 className="h-9 px-3.5 text-[13px] font-semibold gap-1.5 rounded-[7px] border-[var(--tm-border)] bg-[var(--tm-surface)] text-slate-500 hover:bg-[var(--tm-muted)]"
               >
-                {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {isExporting ? <InlineLoader size={14} label="Exporting" /> : <Download size={14} />}
                 Export CSV
               </Button>
             )}

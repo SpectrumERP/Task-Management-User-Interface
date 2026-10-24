@@ -5,7 +5,7 @@ import { apiService } from '@/services/apiService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { toDateOnlyLocal } from '@/lib/dateTime';
 import { useSettings } from '@/hooks/useSettings';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonTable, SkeletonUpdating } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { toast } from 'sonner';
@@ -107,9 +107,13 @@ export default function ReportPage() {
         ) : (
           <ReportTable data={reportData} />
         )}
-        {isLoading ? (
-          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[8px] bg-[var(--tm-surface)]/80 backdrop-blur-[1px]">
-            <BrandLoader size="sm" message="Loading report" />
+        {isLoading && reportData.length === 0 ? (
+          <div className="absolute inset-0 z-20 overflow-hidden rounded-[8px] bg-[var(--tm-surface)] crm-pad-x">
+            <SkeletonTable rows={12} columns={[14, 22, 12, 12, 12, 12]} label="Loading report" />
+          </div>
+        ) : isLoading ? (
+          <div className="absolute inset-0 z-20 flex items-start justify-center rounded-[8px] bg-[var(--tm-surface)]/60 pt-16">
+            <SkeletonUpdating label="Loading report" />
           </div>
         ) : null}
       </div>

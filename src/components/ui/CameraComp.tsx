@@ -21,7 +21,7 @@ import { useClipboardStore } from '@/store/useClipboardStore';
 import { getUserErrorMessage, toErrorMessage } from '@/lib/errorFeedback';
 import { LogoCropperModal } from './camera/components/LogoCropperModal';
 import { BusinessCardData } from './camera/models/BusinessCardData';
-import { InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
 
 type CameraStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'capturing' | 'preview' | 'processing' | 'parsed' | 'uploading' | 'error';
 

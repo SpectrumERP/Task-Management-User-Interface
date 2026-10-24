@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Column } from './Column';
 import { TaskStatus, Task } from '@/types/task';
 import { useState, useEffect } from 'react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonBoard } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { filterSelectableStatuses, STATUS_PILL_ORDER, resolveCanonicalStatus, statusMatchesPill } from '@/lib/taskStatusGroups';
 
@@ -88,9 +88,7 @@ export function Board({ onAddTask, onTaskClick, filterParams, tasks: propTasks }
   // Loader only on first paint when columns aren't ready yet — not on every view switch / task refresh
   if (isStatusesLoading && statuses.length === 0 && !loadError) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3">
-        <BrandLoader size="sm" message="Loading board" />
-      </div>
+      <SkeletonBoard label="Loading board" />
     );
   }
 
@@ -111,9 +109,7 @@ export function Board({ onAddTask, onTaskClick, filterParams, tasks: propTasks }
 
   if (statuses.length === 0 && isTasksLoading && tasks.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3">
-        <BrandLoader size="sm" message="Loading board" />
-      </div>
+      <SkeletonBoard label="Loading board" />
     );
   }
 

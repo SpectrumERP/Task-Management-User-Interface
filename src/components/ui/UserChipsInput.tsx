@@ -7,6 +7,7 @@ import { userService, type UserResponse } from '@/services/userService';
 import { getUserInitials } from '@/lib/userProfile';
 import { sortByLabel } from '@/lib/sortOptions';
 import { cn } from '@/lib/utils';
+import { SkeletonList } from '@/components/ui/skeleton';
 
 export interface UserChip {
   loginNo?: number | string;
@@ -198,7 +199,7 @@ export function UserChipsInput({ users, onAdd, onRemove, placeholder = 'Type a n
           {query.trim() ? 'Search results' : 'Suggested contacts'}
         </p>
         {loading && suggestions.length === 0 ? (
-          <p className="px-2.5 py-3 text-[11px] text-slate-500">Searching users…</p>
+          <SkeletonList rows={3} avatar className="py-0.5" label="Searching users" />
         ) : suggestions.length === 0 ? (
           <p className="px-2.5 py-3 text-[11px] text-slate-500">No matching users.</p>
         ) : (

@@ -17,7 +17,7 @@ import {
   shareContactViaWhatsApp,
   type ShareContactInfo,
 } from '@/lib/businessEntityShare';
-import { InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
 
 type ContactShareProps = {
   mode: 'contact';

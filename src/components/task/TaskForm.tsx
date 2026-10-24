@@ -13,7 +13,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Info, Users, TrendingUp, CheckCircle, Plus, Trash2, UserPlus, History, Check, FileText, Paperclip, UploadCloud, Image, RefreshCw, X, Sparkles, Edit2, ExternalLink, AlertCircle, Camera, ChevronUp, ChevronDown, Bell, Layers, type LucideIcon } from 'lucide-react';
-import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
+import { SkeletonForm } from '@/components/ui/skeleton';
 import { Task, TaskStatus } from '@/types/task';
 import { attachmentService } from '@/services/attachmentService';
 import { toast } from 'sonner';
@@ -2052,9 +2053,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
 
   if (isLoadingOptions) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <BrandLoader size="sm" message="Loading application data" />
-      </div>
+      <SkeletonForm sections={[6, 4]} textarea className="space-y-6 py-2" label="Loading application data" />
     );
   }
 
@@ -2842,7 +2841,7 @@ export function TaskForm({ initialStatus, initialData, parentTask: parentTaskPro
                   onClick={() => (canCapturePhoto ? cameraInputRef.current?.click() : setIsPhotoDialogOpen(true))}
                   className="h-10 w-full gap-2 rounded-[8px] border-[#0EA5E9]/30 text-xs font-semibold text-[#0EA5E9] hover:bg-[var(--tm-tint)] hover:text-[#0EA5E9]"
                 >
-                  {isPreparingPhoto ? <RefreshCw size={16} className="animate-spin" /> : <Camera size={16} />}
+                  {isPreparingPhoto ? <InlineLoader size={16} label="Preparing photo" /> : <Camera size={16} />}
                   {isPreparingPhoto ? 'Preparing photo…' : 'Take Photo'}
                 </Button>
 

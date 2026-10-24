@@ -3,7 +3,8 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { TaskForm } from '@/components/task/TaskForm';
 import { Button } from '@/components/ui/button';
 import { Save, X, Trash2, MoreVertical } from 'lucide-react';
-import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
+import { SkeletonForm } from '@/components/ui/skeleton';
 import { Task, TaskStatus } from '@/types/task';
 import { useState, useEffect, useCallback } from 'react';
 import { useFormRights } from '@/hooks/useFormRights';
@@ -359,8 +360,8 @@ export default function TaskDetail() {
         <div className="flex-1 overflow-y-auto bg-[var(--tm-page)]">
           <div className="w-full max-w-none px-5 py-3">
             {isFetching ? (
-              <div className="flex flex-col items-center justify-center rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] py-16 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)]">
-                <BrandLoader size="sm" message="Loading task" />
+              <div className="rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] p-4 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] sm:p-5">
+                <SkeletonForm sections={[6, 4]} textarea label="Loading task" />
               </div>
             ) : (
               <TaskForm

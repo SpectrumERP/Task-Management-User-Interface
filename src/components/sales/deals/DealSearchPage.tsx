@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDateOnly } from '@/lib/dateTime';
 import { Edit, FileText, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonTable } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { PageGuideButton } from '@/components/layout/PageGuideButton';
 import { Combobox } from '@/components/ui/Combobox';
@@ -225,7 +225,8 @@ export function DealSearchPage() {
               <FieldLabel className="text-[11px] font-medium text-slate-200 normal-case ml-1">Division</FieldLabel>
               <Combobox options={divisionOptions} value={filters.divisionNo || ''} onChange={(value) => setFilters((prev) => ({ ...prev, divisionNo: value }))}
                 disabled={!filters.companyNo || isLoadingDivisions}
-                placeholder={!filters.companyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "All divisions"}
+                optionsLoading={isLoadingDivisions}
+                placeholder={!filters.companyNo ? "Select company first" : "All divisions"}
                 searchPlaceholder="Search division..."
                 className="h-9 rounded-[7px] border-[var(--tm-border)] hover:border-[#1E56A0]/35 bg-[var(--tm-surface)] text-xs font-medium text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#1E56A0]/20 focus:border-[#1E56A0] focus-visible:ring-2 focus-visible:ring-[#1E56A0]/20 focus-visible:border-[#1E56A0] focus-visible:ring-offset-0 focus:outline-none"
               />
@@ -266,9 +267,7 @@ export function DealSearchPage() {
         <div data-page-tour="deal-table" className="crm-list-page crm-bleed-x crm-bleed-b flex-1 min-h-0 flex flex-col overflow-hidden">
         <div className="crm-pad-x flex-1 min-h-0 flex flex-col overflow-hidden">
           {isLoading && deals.length === 0 ? (
-            <div className="px-4 py-16 flex items-center justify-center">
-              <BrandLoader size="sm" message="Loading sales deals" />
-            </div>
+            <SkeletonTable rows={10} columns={[10, 26, 18, 14, 14, 10]} label="Loading sales deals" />
           ) : loadError && deals.length === 0 ? (
             <div className="px-4 py-8">
               <LoadErrorState

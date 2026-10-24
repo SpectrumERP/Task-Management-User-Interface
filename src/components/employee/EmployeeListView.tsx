@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, Settings2, Users } from 'lucide-react';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonTable } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -184,9 +184,12 @@ export function EmployeeListView({
 
   if (isLoading && employees.length === 0) {
     return (
-      <div className="h-full min-h-[200px] flex items-center justify-center">
-        <BrandLoader size="sm" message="Loading employees" />
-      </div>
+      <SkeletonTable
+        rows={12}
+        columns={[10, 24, 18, 16, 14, 10]}
+        className="h-full min-h-[200px] rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)]"
+        label="Loading employees"
+      />
     );
   }
 

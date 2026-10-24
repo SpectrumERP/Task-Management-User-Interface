@@ -506,51 +506,6 @@ button[role='combobox'][class*='border-red'] {
   border-color: #ef4444 !important;
 }
 
-/* Brand loader — 3 orbiting rings (e-procurement style) */
-@keyframes brand-loader-orbit-cw {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes brand-loader-orbit-ccw {
-  to {
-    transform: rotate(-360deg);
-  }
-}
-
-.brand-loader-orbit-cw {
-  animation: brand-loader-orbit-cw 1.1s linear infinite;
-}
-
-.brand-loader-orbit-ccw {
-  animation: brand-loader-orbit-ccw 1.6s linear infinite;
-}
-
-.brand-loader-orbit-cw-slow {
-  animation: brand-loader-orbit-cw 2.2s linear infinite;
-}
-
-.brand-loader-msg {
-  color: var(--tm-placeholder);
-}
-
-html:not(.dark) .brand-loader-msg {
-  color: var(--tm-placeholder);
-}
-
-.brand-loader-glow {
-  background: radial-gradient(ellipse at 50% 45%, var(--tm-glow), transparent 52%);
-}
-
-html:not(.dark) .brand-loader-glow {
-  background: radial-gradient(ellipse at 50% 45%, var(--tm-glow), transparent 55%);
-}
-
-html:not(.dark) .brand-loader-mark {
-  box-shadow: 0 8px 24px rgba(8, 28, 48, 0.1);
-}
-
 /* Light theme: keep slate text readable on light surfaces */
 html:not(.dark) .text-slate-50,
 html:not(.dark) .text-slate-100 {
@@ -1293,102 +1248,69 @@ aside.crm-sidebar:hover .crm-sidebar-scroll-indicator {
   opacity: 1;
 }
 
-/* ── CRM loader (BrandLoader): same look as the Spectrum CRM page loader ── */
-.crm-loader-halo {
-  background: #eef3fc;
-  animation: crm-loader-pulse 1.4s ease-in-out infinite;
+/* ── Skeletons (components/ui/skeleton.tsx): the shape of content on its way, with a soft light passing over it ──
+   One band of light for the whole screen: each bar's background is fixed to the viewport, so every bar shows its slice
+   of the same band, and every bar runs on the animation clock (--skeleton-phase, a negative delay; see
+   hooks/useSkeletonPhase.ts), so bars that mount later, or replace index.html's loading screen, carry on the same sweep
+   instead of restarting it. No fade-in: bars show at once, so nothing blinks when one loading shape replaces another.
+   tm- names: the ERP shell has its own .skeleton next to this app when embedded. */
+.tm-skeleton {
+  --tm-skeleton-light: rgba(255, 255, 255, 0.7);
+  background-color: #E2E8F0;
+  background-image: linear-gradient(100deg, transparent 38%, var(--tm-skeleton-light) 50%, transparent 62%);
+  background-size: 100vw 100vh;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  animation: tm-skeleton-sweep 2s linear var(--skeleton-phase, 0s) infinite;
 }
 
-.crm-loader-ring {
+html.dark .tm-skeleton:not(.tm-skeleton-on-dark) {
+  --tm-skeleton-light: rgba(255, 255, 255, 0.05);
+  background-color: #1F2A3D;
+}
+
+/* On the blue sidebar. */
+.tm-skeleton.tm-skeleton-on-dark {
+  --tm-skeleton-light: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Across the screen, then a pause before the next pass. */
+@keyframes tm-skeleton-sweep {
+  0% {
+    background-position: -65vw 0;
+  }
+
+  75%,
+  100% {
+    background-position: 65vw 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-skeleton {
+    animation: none;
+    background-image: none;
+  }
+}
+
+/* Inline spinner (InlineLoader): an action under way, in buttons, inputs and list rows */
+.inline-spinner {
   border-style: solid;
-  border-color: #eef3fc;
-  border-top-color: #1E56A0;
+  border-color: color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
   border-right-color: #c41e1e;
-  animation: crm-loader-spin 0.75s linear infinite;
+  animation: inline-spinner-spin 0.75s linear infinite;
 }
 
-.crm-loader-core {
-  background: #1E56A0;
-  color: #ffffff;
-  letter-spacing: 0.02em;
-}
-
-.crm-loader-msg {
-  color: #0c1a3a;
-}
-
-html.dark .crm-loader-msg {
-  color: var(--tm-input-fg);
-}
-
-html.dark .crm-loader-halo {
-  background: rgba(30, 86, 160, 0.25);
-}
-
-html.dark .crm-loader-ring {
-  border-color: rgba(30, 86, 160, 0.25);
-  border-top-color: #4f86d1;
-  border-right-color: #e05252;
-}
-
-.crm-loader-track {
-  background: #eef3fc;
-}
-
-.crm-loader-bar {
-  width: 40%;
-  background-image: linear-gradient(135deg, #1E56A0, #c41e1e);
-  animation: crm-loader-bar 1.1s ease-in-out infinite;
-}
-
-@keyframes crm-loader-spin {
+@keyframes inline-spinner-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-@keyframes crm-loader-pulse {
-  0%,
-  100% {
-    transform: scale(0.92);
-    opacity: 0.7;
-  }
-
-  50% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
-}
-
-@keyframes crm-loader-bar {
-  0% {
-    transform: translateX(-120%);
-  }
-
-  100% {
-    transform: translateX(320%);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .crm-loader-halo,
-  .crm-loader-ring,
-  .crm-loader-bar {
-    animation: none;
-  }
-}
-
-/* Inline CRM loader ring (InlineLoader) — buttons, inputs, list rows */
-.crm-loader-inline {
-  border-style: solid;
-  border-color: color-mix(in srgb, currentColor 22%, transparent);
-  border-top-color: currentColor;
-  border-right-color: #c41e1e;
-  animation: crm-loader-spin 0.75s linear infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .crm-loader-inline {
+  .inline-spinner {
     animation: none;
   }
 }

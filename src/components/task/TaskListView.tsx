@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Task } from '@/types/task';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonTable } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ClipboardList, Settings2, Edit2, Eye, Search, Plus, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react';
@@ -306,9 +306,12 @@ export function TaskListView({ tasks, isLoading, loadError, onRetryLoad, onTaskC
   // Full loader only on first load (no rows yet). Refetch / view-switch keeps existing rows.
   if (isLoading && tasks.length === 0) {
     return (
-      <div className="h-full min-h-[200px] flex items-center justify-center">
-        <BrandLoader size="sm" message="Loading tasks" />
-      </div>
+      <SkeletonTable
+        rows={12}
+        columns={[8, 30, 12, 12, 14, 12]}
+        className="h-full min-h-[200px] rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)]"
+        label="Loading tasks"
+      />
     );
   }
 

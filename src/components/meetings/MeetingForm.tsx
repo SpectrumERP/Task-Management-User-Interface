@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Users, Plus, Trash2, Paperclip, MessageSquare, FileText, Clock, X, Lock, Pencil, Eye, CalendarClock, ExternalLink, ChevronDown, Printer, AlertCircle as AlertCircleIcon } from 'lucide-react';
-import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
+import { SkeletonForm } from '@/components/ui/skeleton';
 import { Combobox } from '@/components/ui/Combobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { formatLocationDisplayLabel, locationService } from '@/services/locationService';
@@ -890,11 +891,14 @@ export function MeetingForm({ initialData, onComplete, meetingNotesNo }: { initi
 
   if (isLoadingOptions || isFetchingData) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center h-full">
-        <BrandLoader
-          size="sm"
-          message={isFetchingData ? 'Loading meeting details' : 'Loading options'}
-        />
+      <div className="absolute inset-0 overflow-hidden bg-[var(--tm-page)] p-4 sm:p-6">
+        <div className="rounded-[16px] border border-[var(--tm-border)] bg-[var(--tm-surface)] p-4 sm:p-6">
+          <SkeletonForm
+            sections={[6, 4]}
+            textarea
+            label={isFetchingData ? 'Loading meeting details' : 'Loading options'}
+          />
+        </div>
       </div>
     );
   }

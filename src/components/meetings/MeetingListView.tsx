@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonTable } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import {
@@ -318,9 +318,12 @@ export function MeetingListView({ onMeetingClick }: MeetingListViewProps) {
     return (
       <div className="page-shell">
         {renderBreadcrumb()}
-        <div className="flex flex-1 items-center justify-center">
-          <BrandLoader size="sm" message="Loading meetings" />
-        </div>
+        <SkeletonTable
+          rows={10}
+          columns={[10, 30, 14, 14, 16, 8]}
+          className="mt-3 flex-1 rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)]"
+          label="Loading meetings"
+        />
       </div>
     );
   }

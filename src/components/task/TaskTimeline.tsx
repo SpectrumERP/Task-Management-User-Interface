@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '@/services/apiService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonInline, SkeletonTimeline } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatUtcDateTime } from '@/lib/dateTime';
 import { formatTimeAgo } from '@/lib/taskFreshness';
@@ -204,7 +204,7 @@ export function TaskTimeline({ taskNo, refreshKey }: { taskNo: number; refreshKe
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold text-slate-400">
           {initialLoad
-            ? 'Loading timeline…'
+            ? <SkeletonInline label="Loading timeline" className="h-3 w-20" />
             : `${shown.length}${totalRecords > shown.length ? ` of ${totalRecords}` : ''} ${(totalRecords || shown.length) === 1 ? 'entry' : 'entries'}`}
         </p>
         {types.size > 1 || typeNo !== undefined ? (
@@ -299,9 +299,7 @@ export function TaskTimeline({ taskNo, refreshKey }: { taskNo: number; refreshKe
       ) : null}
 
       {loading ? (
-        <div className="flex justify-center py-3">
-          <BrandLoader size="sm" message={initialLoad ? 'Loading timeline' : undefined} />
-        </div>
+        <SkeletonTimeline entries={initialLoad ? 4 : 2} label={initialLoad ? 'Loading timeline' : 'Loading more entries'} />
       ) : null}
 
       {/* Scroll sentinel: reaching it loads the next page. */}

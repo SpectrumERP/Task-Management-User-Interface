@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatUtcDateTime, toUtcMs } from '@/lib/dateTime';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonTable } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ActionTip, TruncatedText, nodeToPlainText } from './TruncatedCellTip';
@@ -218,9 +218,7 @@ export function MasterEntityTable<T extends MasterRowBase>({
   if (isLoading && rows.length === 0) {
     return (
       <div className={shellClass}>
-        <div className="flex items-center justify-center p-10 min-h-[200px] crm-pad-x">
-          <BrandLoader size="sm" message="Loading records" />
-        </div>
+        <SkeletonTable rows={10} columns={[10, 28, 18, 14, 14, 8]} label="Loading records" />
       </div>
     );
   }

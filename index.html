@@ -35,15 +35,22 @@
       } catch (e) { }
     })();
   </script>
-  <!-- App shell paint before JS: same chrome as the Spectrum CRM and Task apps (blue sidebar,
-       white header, canvas), so switching between the two apps never flashes a blank page. -->
+  <!-- App shell paint before JS: the app's shape in skeleton bars (blue sidebar, white header, a list page), as in the
+       Spectrum CRM and the ERP shell, so switching apps never flashes a blank page. Reused by React while the session
+       and workspace load (src/components/ui/BootShell.tsx: keep its markup in step). On /login (a redirect to the
+       Spectrum ERP sign-in) it paints the sign-in page's shape instead. -->
   <script>
     (function () {
+      var r = document.documentElement;
       try {
         if (localStorage.getItem('fi-crm-sidebar-collapsed') === '1') {
-          document.documentElement.setAttribute('data-boot-sidebar', 'collapsed');
+          r.setAttribute('data-boot-sidebar', 'collapsed');
         }
       } catch (e) {}
+      if (/^\/login(\/|$)/.test(location.pathname)) r.setAttribute('data-boot-login', '');
+      // The skeleton light's place on the animation clock (2s a pass, as in src/components/ui/skeleton.tsx).
+      var now = Number((document.timeline && document.timeline.currentTime) || performance.now());
+      r.style.setProperty('--skeleton-phase', '-' + Math.round(now % 2000) + 'ms');
     })();
   </script>
   <style>
@@ -127,126 +134,256 @@
 
     .boot-body {
       position: relative;
-      display: grid;
       flex: 1;
-      place-items: center;
-    }
-
-    .crm-boot-track {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
+      min-height: 0;
       overflow: hidden;
-      background: #eef3fc;
     }
 
-    html.dark .crm-boot-track {
-      background: rgba(30, 86, 160, 0.25);
+    /*
+      A skeleton bar. One band of light passes over the whole screen: each bar's background is fixed to the viewport,
+      so it shows its slice of the same band, on the animation clock (--skeleton-phase, set above), so the bars React
+      puts in their place carry on the same sweep. Same look and timing as .tm-skeleton in src/index.css.
+    */
+    .bsk {
+      --skeleton-light: rgba(255, 255, 255, 0.7);
+      display: block;
+      flex-shrink: 1;
+      min-width: 0;
+      border-radius: 4px;
+      background-color: #e2e8f0;
+      background-image: linear-gradient(100deg, transparent 38%, var(--skeleton-light) 50%, transparent 62%);
+      background-size: 100vw 100vh;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      animation: boot-sweep 2s linear var(--skeleton-phase, 0s) infinite;
     }
 
-    .crm-boot-bar {
-      width: 40%;
-      height: 100%;
-      background-image: linear-gradient(135deg, #1e56a0, #c41e1e);
-      animation: crm-boot-bar 1.1s ease-in-out infinite;
+    html.dark .bsk {
+      --skeleton-light: rgba(255, 255, 255, 0.05);
+      background-color: #1f2a3d;
     }
 
-    .crm-boot-body {
+    /* On the blue sidebar and the sign-in brand panel. */
+    html .boot-side .bsk,
+    html .boot-brand .bsk {
+      --skeleton-light: rgba(255, 255, 255, 0.12);
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    html.dark .boot-side .bsk {
+      --skeleton-light: rgba(255, 255, 255, 0.05);
+      background-color: rgba(255, 255, 255, 0.07);
+    }
+
+    @keyframes boot-sweep {
+      0% {
+        background-position: -65vw 0;
+      }
+
+      75%,
+      100% {
+        background-position: 65vw 0;
+      }
+    }
+
+    /* Sidebar: the logo, then the menu's icons and names. */
+    .boot-side-logo {
+      display: flex;
+      height: 56px;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    html.dark .boot-side-logo {
+      border-color: #2a3548;
+    }
+
+    .boot-side-nav {
       display: flex;
       flex-direction: column;
+      gap: 4px;
+      padding: 12px 8px;
+    }
+
+    .boot-side-item {
+      display: flex;
+      height: 36px;
       align-items: center;
-      gap: 0.5rem;
-      padding: 1rem;
+      gap: 12px;
+      padding: 0 10px;
     }
 
-    .crm-boot-mark {
-      position: relative;
+    html[data-boot-sidebar='collapsed'] .boot-side-item {
+      justify-content: center;
+      padding: 0;
+    }
+
+    html[data-boot-sidebar='collapsed'] .boot-side .bsk-label {
+      display: none;
+    }
+
+    /* Header: the module title, the search, the action icons and the user. */
+    .boot-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      box-sizing: border-box;
+    }
+
+    .boot-head-search {
+      display: none;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 768px) {
+      .boot-head-search {
+        display: block;
+      }
+    }
+
+    .boot-head-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .bsk-round {
+      border-radius: 999px;
+    }
+
+    /* The page: its breadcrumb strip, title and toolbar band, and the list. */
+    .boot-page {
+      padding: 0 24px 24px;
+    }
+
+    .boot-strip {
+      display: flex;
+      height: 40px;
+      align-items: center;
+      gap: 8px;
+      margin: 0 -24px;
+      padding: 0 20px;
+      box-sizing: border-box;
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .boot-band {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin: 0 -24px 16px;
+      padding: 16px 24px 12px;
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .boot-panel {
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+
+    .boot-panel-head {
+      display: flex;
+      height: 40px;
+      align-items: center;
+      gap: 24px;
+      padding: 0 16px;
+      box-sizing: border-box;
+      background: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .boot-row {
+      display: flex;
+      gap: 24px;
+      padding: 13px 16px;
+      border-bottom: 1px solid #eef2f6;
+    }
+
+    .boot-row:last-child {
+      border-bottom: 0;
+    }
+
+    html.dark .boot-strip,
+    html.dark .boot-band,
+    html.dark .boot-panel {
+      background: #121a2b;
+      border-color: #2a3548;
+    }
+
+    html.dark .boot-panel-head {
+      background: #151d2e;
+      border-color: #2a3548;
+    }
+
+    html.dark .boot-row {
+      border-color: #1f2a3d;
+    }
+
+    /* /login: the Spectrum ERP sign-in page's shape (brand panel on wide screens, then the form). */
+    .boot-signin {
+      display: none;
+      min-height: 100%;
+      background: #fff;
+    }
+
+    html[data-boot-login] .boot-shell .boot-side,
+    html[data-boot-login] .boot-shell .boot-head,
+    html[data-boot-login] .boot-shell .boot-page,
+    .boot-shell.boot-login-shell .boot-side,
+    .boot-shell.boot-login-shell .boot-head,
+    .boot-shell.boot-login-shell .boot-page {
+      display: none;
+    }
+
+    html[data-boot-login] .boot-shell .boot-signin,
+    .boot-shell.boot-login-shell .boot-signin {
       display: grid;
-      width: 3.5rem;
-      height: 3.5rem;
-      place-items: center;
     }
 
-    .crm-boot-halo {
-      position: absolute;
-      inset: 0;
-      border-radius: 999px;
-      background: #eef3fc;
-      animation: crm-boot-pulse 1.4s ease-in-out infinite;
+    .boot-brand {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      padding: 40px 20px;
+      background-image: linear-gradient(160deg, #1e56a0, #17457f 55%, #0c1a3a);
     }
 
-    .crm-boot-ring {
-      position: absolute;
-      inset: 0.2rem;
-      border-radius: 999px;
-      border: 3px solid #eef3fc;
-      border-top-color: #1e56a0;
-      border-right-color: #c41e1e;
-      animation: crm-boot-spin 0.75s linear infinite;
-    }
+    @media (min-width: 1024px) {
+      .boot-signin {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      }
 
-    .crm-boot-core {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      width: 1.75rem;
-      height: 1.75rem;
-      place-items: center;
-      border-radius: 999px;
-      background: #1e56a0;
-      color: #fff;
-      font-size: 0.625rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-
-    .crm-boot-label {
-      margin: 0;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #0c1a3a;
-    }
-
-    html.dark .crm-boot-label {
-      color: #e2e8f0;
-    }
-
-    @keyframes crm-boot-spin {
-      to {
-        transform: rotate(360deg);
+      .boot-brand {
+        display: flex;
       }
     }
 
-    @keyframes crm-boot-pulse {
-      0%,
-      100% {
-        transform: scale(0.92);
-        opacity: 0.7;
-      }
-
-      50% {
-        transform: scale(1.08);
-        opacity: 1;
-      }
+    .boot-form {
+      display: flex;
+      width: 100%;
+      max-width: 380px;
+      flex-direction: column;
+      gap: 10px;
+      margin: auto;
+      padding: 40px 20px;
+      box-sizing: border-box;
     }
 
-    @keyframes crm-boot-bar {
-      0% {
-        transform: translateX(-120%);
-      }
-
-      100% {
-        transform: translateX(320%);
-      }
+    html.dark .boot-signin {
+      background: #121a2b;
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .crm-boot-halo,
-      .crm-boot-ring,
-      .crm-boot-bar {
+      .bsk {
         animation: none;
+        background-image: none;
       }
 
       ::view-transition-group(*),
@@ -261,18 +398,51 @@
 <body class="antialiased">
   <div id="root">
     <div class="boot-shell" role="status" aria-busy="true" aria-live="polite" aria-label="Loading">
-      <div class="boot-side"></div>
+      <div class="boot-side" aria-hidden="true">
+        <div class="boot-side-logo"><span class="bsk" style="width:120px;height:22px"></span></div>
+        <div class="boot-side-nav">
+            <div class="boot-side-item"><span class="bsk" style="width:24px;height:24px;flex-shrink:0;border-radius:6px"></span><span class="bsk bsk-label" style="width:62%;height:11px"></span></div>
+            <div class="boot-side-item"><span class="bsk" style="width:24px;height:24px;flex-shrink:0;border-radius:6px"></span><span class="bsk bsk-label" style="width:48%;height:11px"></span></div>
+            <div class="boot-side-item"><span class="bsk" style="width:24px;height:24px;flex-shrink:0;border-radius:6px"></span><span class="bsk bsk-label" style="width:70%;height:11px"></span></div>
+            <div class="boot-side-item"><span class="bsk" style="width:24px;height:24px;flex-shrink:0;border-radius:6px"></span><span class="bsk bsk-label" style="width:54%;height:11px"></span></div>
+            <div class="boot-side-item"><span class="bsk" style="width:24px;height:24px;flex-shrink:0;border-radius:6px"></span><span class="bsk bsk-label" style="width:66%;height:11px"></span></div>
+            <div class="boot-side-item"><span class="bsk" style="width:24px;height:24px;flex-shrink:0;border-radius:6px"></span><span class="bsk bsk-label" style="width:44%;height:11px"></span></div>
+            <div class="boot-side-item"><span class="bsk" style="width:24px;height:24px;flex-shrink:0;border-radius:6px"></span><span class="bsk bsk-label" style="width:58%;height:11px"></span></div>
+        </div>
+      </div>
       <div class="boot-main">
-        <div class="boot-head"></div>
-        <div class="boot-body">
-          <div class="crm-boot-track" aria-hidden="true"><div class="crm-boot-bar"></div></div>
-          <div class="crm-boot-body">
-            <div class="crm-boot-mark" aria-hidden="true">
-              <span class="crm-boot-halo"></span>
-              <span class="crm-boot-ring"></span>
-              <span class="crm-boot-core">FI</span>
+        <div class="boot-head" aria-hidden="true">
+          <span class="bsk" style="width:140px;height:16px"></span>
+          <span class="boot-head-search"><span class="bsk" style="width:min(22rem, 36vw);height:36px"></span></span>
+          <span class="boot-head-actions"><span class="bsk bsk-round" style="width:32px;height:32px"></span><span class="bsk bsk-round" style="width:32px;height:32px"></span><span class="bsk bsk-round" style="width:32px;height:32px"></span><span class="bsk bsk-round" style="width:32px;height:32px"></span></span>
+        </div>
+        <div class="boot-body" aria-hidden="true">
+          <div class="boot-page">
+            <div class="boot-strip"><span class="bsk" style="width:64px;height:12px"></span><span class="bsk" style="width:120px;height:12px"></span></div>
+            <div class="boot-band">
+              <span class="bsk" style="width:180px;height:20px"></span>
+              <div style="display:flex;align-items:center;gap:8px"><span class="bsk" style="width:min(24rem, 60%);height:36px;border-radius:8px"></span><span style="flex:1"></span><span class="bsk" style="width:84px;height:34px;border-radius:8px"></span><span class="bsk" style="width:96px;height:34px;border-radius:8px"></span></div>
             </div>
-            <p class="crm-boot-label">Loading</p>
+            <div class="boot-panel">
+              <div class="boot-panel-head"><span class="bsk" style="width:11%;height:10px"></span><span class="bsk" style="width:16%;height:10px"></span><span class="bsk" style="width:8%;height:10px"></span><span class="bsk" style="width:10%;height:10px"></span><span class="bsk" style="width:7%;height:10px"></span></div>
+              <div class="boot-row"><span class="bsk" style="width:18%;height:13px"></span><span class="bsk" style="width:26%;height:13px"></span><span class="bsk" style="width:14%;height:13px"></span><span class="bsk" style="width:16%;height:13px"></span><span class="bsk" style="width:12%;height:13px"></span></div>
+              <div class="boot-row"><span class="bsk" style="width:14%;height:13px"></span><span class="bsk" style="width:32%;height:13px"></span><span class="bsk" style="width:16%;height:13px"></span><span class="bsk" style="width:13%;height:13px"></span><span class="bsk" style="width:13%;height:13px"></span></div>
+              <div class="boot-row"><span class="bsk" style="width:21%;height:13px"></span><span class="bsk" style="width:20%;height:13px"></span><span class="bsk" style="width:18%;height:13px"></span><span class="bsk" style="width:16%;height:13px"></span><span class="bsk" style="width:10%;height:13px"></span></div>
+              <div class="boot-row"><span class="bsk" style="width:16%;height:13px"></span><span class="bsk" style="width:28%;height:13px"></span><span class="bsk" style="width:11%;height:13px"></span><span class="bsk" style="width:20%;height:13px"></span><span class="bsk" style="width:12%;height:13px"></span></div>
+              <div class="boot-row"><span class="bsk" style="width:19%;height:13px"></span><span class="bsk" style="width:22%;height:13px"></span><span class="bsk" style="width:14%;height:13px"></span><span class="bsk" style="width:14%;height:13px"></span><span class="bsk" style="width:15%;height:13px"></span></div>
+              <div class="boot-row"><span class="bsk" style="width:15%;height:13px"></span><span class="bsk" style="width:30%;height:13px"></span><span class="bsk" style="width:16%;height:13px"></span><span class="bsk" style="width:17%;height:13px"></span><span class="bsk" style="width:11%;height:13px"></span></div>
+              <div class="boot-row"><span class="bsk" style="width:20%;height:13px"></span><span class="bsk" style="width:26%;height:13px"></span><span class="bsk" style="width:10%;height:13px"></span><span class="bsk" style="width:19%;height:13px"></span><span class="bsk" style="width:12%;height:13px"></span></div>
+              <div class="boot-row"><span class="bsk" style="width:18%;height:13px"></span><span class="bsk" style="width:24%;height:13px"></span><span class="bsk" style="width:17%;height:13px"></span><span class="bsk" style="width:12%;height:13px"></span><span class="bsk" style="width:14%;height:13px"></span></div>
+            </div>
+          </div>
+          <div class="boot-signin">
+            <div class="boot-brand"><span class="bsk" style="width:160px;height:40px"></span><span style="flex:1"></span><span class="bsk" style="width:70%;height:28px"></span><span class="bsk" style="width:55%;height:28px"></span><span class="bsk" style="width:80%;height:12px"></span><span class="bsk" style="width:64%;height:12px"></span><span style="flex:1"></span></div>
+            <div class="boot-form">
+              <span class="bsk" style="width:150px;height:24px"></span><span class="bsk" style="width:220px;height:12px"></span><span style="height:12px"></span>
+              <span class="bsk" style="width:80px;height:12px"></span><span class="bsk" style="width:100%;height:42px;border-radius:8px"></span><span style="height:4px"></span>
+              <span class="bsk" style="width:72px;height:12px"></span><span class="bsk" style="width:100%;height:42px;border-radius:8px"></span><span style="height:10px"></span>
+              <span class="bsk" style="width:100%;height:44px;border-radius:8px"></span>
+            </div>
           </div>
         </div>
       </div>

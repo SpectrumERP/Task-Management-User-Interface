@@ -1,7 +1,8 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { cn } from '@/lib/utils';
-import { InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
+import { Skeleton, SkeletonOptions } from '@/components/ui/skeleton';
 
 /**
  * Searchable dropdown with the Spectrum CRM behaviour and look (CRM `ui/forms/SearchSelect`):
@@ -41,6 +42,8 @@ export interface CrmSearchSelectProps<T> {
   serverSearch?: boolean;
   loading?: boolean;
   loadingText?: string;
+  /** The options are on their way (they depend on another field): a skeleton bar in the field instead of its text. */
+  valueLoading?: boolean;
   /** Sticky row above the options (e.g. column titles of a wide lookup). */
   header?: React.ReactNode;
   /** Row under the list (e.g. "+ Add New", "Clear"); a function gets `close` to shut the list. */
@@ -92,6 +95,7 @@ export function CrmSearchSelect<T>({
   serverSearch = false,
   loading = false,
   loadingText = 'Searching…',
+  valueLoading = false,
   header,
   footer,
   onOpenChange,
@@ -216,6 +220,11 @@ export function CrmSearchSelect<T>({
           }}
         >
           {showRichValue ? <div className="pointer-events-none min-w-0 shrink truncate">{renderValue}</div> : null}
+          {valueLoading && !open ? (
+            <span className="pointer-events-none absolute inset-y-0 left-3 right-9 z-[1] flex items-center">
+              <Skeleton className="h-2.5 w-2/3 max-w-40" />
+            </span>
+          ) : null}
           <input
             ref={inputRef}
             id={inputId}
@@ -228,9 +237,10 @@ export function CrmSearchSelect<T>({
             aria-controls={open ? listId : undefined}
             aria-autocomplete="list"
             aria-invalid={invalid || undefined}
+            aria-busy={valueLoading || undefined}
             // Closed: the selected label; open: what is typed, with the selected label as the hint.
             value={open ? query : showRichValue ? '' : closedText}
-            placeholder={showRichValue ? '' : hasValue && closedText ? closedText : placeholder}
+            placeholder={valueLoading && !open ? '' : showRichValue ? '' : hasValue && closedText ? closedText : placeholder}
             className={cn(
               'crm-select-input min-w-0 flex-1 bg-transparent text-[12px] text-tm-input-fg outline-none placeholder:text-tm-placeholder',
               disabled && 'cursor-not-allowed',
@@ -310,10 +320,7 @@ export function CrmSearchSelect<T>({
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1"
           >
             {loading && filtered.length === 0 ? (
-              <p className="flex items-center justify-center gap-2 py-4 text-center text-xs text-[#94a3b8]" role="status">
-                <InlineLoader size={14} />
-                {loadingText}
-              </p>
+              <SkeletonOptions rows={5} label={loadingText} />
             ) : filtered.length === 0 ? (
               <p className="py-4 text-center text-xs text-[#94a3b8]">{emptyText}</p>
             ) : (

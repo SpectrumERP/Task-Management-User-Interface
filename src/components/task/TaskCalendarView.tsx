@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/dateTime';
 import { getPriorityBadgeClass } from '@/lib/priorityStyles';
 import { getStatusTextClass, resolveCanonicalStatus } from '@/lib/taskStatusGroups';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonCalendar } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import {
   ChevronLeft,
@@ -1040,9 +1040,7 @@ export function TaskCalendarView({
       {/* Main Calendar Body */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative bg-[var(--tm-elevated)]/40">
         {isLoading && tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-28">
-            <BrandLoader size="sm" message="Loading schedule" />
-          </div>
+          <SkeletonCalendar label="Loading schedule" />
         ) : loadError && tasks.length === 0 ? (
           <LoadErrorState
             title="Failed to load schedule"

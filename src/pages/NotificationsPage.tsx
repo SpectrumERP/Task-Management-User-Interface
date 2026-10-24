@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Button } from '@/components/ui/button';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonTable } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import {
   Dialog,
@@ -211,7 +211,7 @@ export default function NotificationsPage() {
         {loadError && !loading ? (
           <LoadErrorState title="Failed to load notifications" onRetry={load} className="flex-1 crm-pad-x" />
         ) : loading && items.length === 0 ? (
-          <BrandLoader message="Loading notifications" />
+          <SkeletonTable rows={10} columns={[34, 22, 18, 14]} className="crm-pad-x" label="Loading notifications" />
         ) : rows.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
             No notifications

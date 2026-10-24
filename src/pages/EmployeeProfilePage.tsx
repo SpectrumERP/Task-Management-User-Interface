@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Button } from '@/components/ui/button';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonProfile } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import {
   EmployeeAvatar,
@@ -96,8 +96,8 @@ export default function EmployeeProfilePage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-sleek -mx-[var(--page-pad-x)] px-[var(--page-pad-x)]">
         {isLoading ? (
-          <div className="flex h-full min-h-[240px] items-center justify-center">
-            <BrandLoader size="sm" message="Loading employee" />
+          <div className="min-h-[240px] rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)]">
+            <SkeletonProfile label="Loading employee" />
           </div>
         ) : error || !employee ? (
           <LoadErrorState

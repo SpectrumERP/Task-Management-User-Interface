@@ -20,7 +20,7 @@ import {
   sendMinutesOfMeeting,
   type MinutesRecipient,
 } from '@/lib/meetingMinutesShare';
-import { InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
 import { PersonName } from '@/components/ui/PersonHoverCard';
 import { employeeRef, userRef } from '@/lib/personDetails';
 

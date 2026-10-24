@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Save, X } from 'lucide-react';
-import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
+import { SkeletonForm } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { Button } from '@/components/ui/button';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
@@ -194,9 +195,7 @@ export function DealForm() {
       <div className="flex-1 overflow-y-auto px-3 sm:px-8">
         <div data-page-tour="deal-form-fields" className=" mx-auto bg-[var(--tm-surface)] rounded-[16px] sm:rounded-[24px] p-4 sm:p-8 shadow-xl shadow-black/40/40 border border-[var(--tm-border)]">
           {isFetching ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <BrandLoader size="sm" message="Loading sales deal" />
-            </div>
+            <SkeletonForm sections={[6, 4]} label="Loading sales deal" />
           ) : loadError ? (
             <LoadErrorState
               title="Failed to load sales deal"
@@ -232,7 +231,7 @@ export function DealForm() {
                     name="divisionNo"
                     control={form.control}
                     render={({ field }) => (
-                      <Combobox options={divisionOptions} value={field.value} onChange={field.onChange} disabled={!watchedCompanyNo || isLoadingDivisions} placeholder={!watchedCompanyNo ? "Select company first" : isLoadingDivisions ? "Loading divisions..." : "Select division"} searchPlaceholder="Search division..." className="h-11 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none" />
+                      <Combobox options={divisionOptions} value={field.value} onChange={field.onChange} disabled={!watchedCompanyNo || isLoadingDivisions} optionsLoading={isLoadingDivisions} placeholder={!watchedCompanyNo ? "Select company first" : "Select division"} searchPlaceholder="Search division..." className="h-11 rounded-[8px] border-[var(--tm-border)] hover:border-[#0EA5E9]/35 bg-[var(--tm-surface)] text-slate-200 w-full shadow-sm transition-colors focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] focus-visible:ring-2 focus-visible:ring-[#0EA5E9]/20 focus-visible:border-[#0EA5E9] focus-visible:ring-offset-0 focus:outline-none" />
                     )}
                   />
                 </div>

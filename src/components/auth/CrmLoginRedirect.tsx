@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { BootShell } from '@/components/ui/BootShell';
 import { Button } from '@/components/ui/button';
 import { crmLoginUrl, redirectToCrmLogin } from '@/lib/crmSso';
 
@@ -19,7 +19,7 @@ export function CrmLoginRedirect() {
     if (!redirectToCrmLogin(returnTo)) setStuck(true);
   }, [returnTo]);
 
-  if (!stuck) return <BrandLoader fullScreen message="Opening sign in" />;
+  if (!stuck) return <BootShell login label="Opening sign in" />;
 
   return (
     <div className="flex min-h-screen items-center justify-center p-6">

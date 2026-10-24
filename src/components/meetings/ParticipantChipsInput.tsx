@@ -16,6 +16,7 @@ import { getUserInitials } from '@/lib/userProfile';
 import { employeeRef, userRef } from '@/lib/personDetails';
 import { PersonHoverCard } from '@/components/ui/PersonHoverCard';
 import { cn } from '@/lib/utils';
+import { SkeletonList } from '@/components/ui/skeleton';
 
 type Suggestion =
   | { kind: 'user'; key: string; name: string; sub: string; user: UserResponse }
@@ -357,7 +358,7 @@ export function ParticipantChipsInput({ participants, onAdd, onRemove, onEditExt
           className="z-[9999] w-[min(26rem,var(--radix-popover-trigger-width))] min-w-[18rem] rounded-[10px] border border-[var(--tm-border)] bg-[var(--tm-elevated)] p-1.5 shadow-lg"
         >
           {loading && suggestions.length === 0 ? (
-            <p className="px-2.5 py-3 text-[11px] text-slate-500">Searching users and employees…</p>
+            <SkeletonList rows={3} avatar className="py-0.5" label="Searching users and employees" />
           ) : suggestions.length === 0 ? (
             <p className="px-2.5 py-3 text-[11px] text-slate-500">
               No matching users or employees. Type a full email address to add an external participant.

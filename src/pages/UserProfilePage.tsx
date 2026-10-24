@@ -17,7 +17,7 @@ import { apiService } from '@/services/apiService';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AppBreadcrumbBar } from '@/components/layout/AppBreadcrumbBar';
 import { Button } from '@/components/ui/button';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonProfile } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { ActionTip } from '@/components/master/shared/TruncatedCellTip';
 import { cn } from '@/lib/utils';
@@ -217,8 +217,8 @@ export default function UserProfilePage() {
       />
 
       {isLoading ? (
-        <div className="flex-1 min-h-0 flex items-center justify-center rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)]">
-          <BrandLoader size="md" message="Loading profile" />
+        <div className="flex-1 min-h-0 overflow-hidden rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)]">
+          <SkeletonProfile label="Loading profile" />
         </div>
       ) : error ? (
         <div className="flex-1 min-h-0 overflow-y-auto rounded-[16px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)]">

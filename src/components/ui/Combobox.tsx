@@ -38,6 +38,8 @@ interface ComboboxProps {
   pinValues?: string[]
   /** Extra classes for the dropdown panel (e.g. min-w for long labels). */
   contentClassName?: string
+  /** Its options are on their way: a skeleton bar in the field (it keeps its size). */
+  optionsLoading?: boolean
 }
 
 function ColorChip({ option }: { option: ComboboxOption }) {
@@ -71,6 +73,7 @@ export function Combobox({
   sortAlphabetically = true,
   pinValues,
   contentClassName,
+  optionsLoading = false,
 }: ComboboxProps) {
   const sortedOptions = React.useMemo(
     () => sortByLabel(options, { enabled: sortAlphabetically, pinValues }),
@@ -110,6 +113,7 @@ export function Combobox({
       serverSearch={!shouldFilter}
       className={className}
       contentClassName={contentClassName}
+      valueLoading={optionsLoading}
       modal={modal}
       footer={
         onAddNew ? (close) => (

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { SkeletonProfile } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { EmployeeAvatar, EmployeeStatusPill } from '@/components/employee/employeeShared';
 import { cn } from '@/lib/utils';
@@ -129,9 +129,7 @@ function PersonCardBody({ person, name, onNavigate }: { person: PersonRef; name?
 
   if (state.status === 'idle' || state.status === 'loading') {
     return (
-      <div className="flex flex-col items-center justify-center py-8 pr-8">
-        <BrandLoader size="sm" message="Loading profile" />
-      </div>
+      <SkeletonProfile compact label="Loading profile" />
     );
   }
   if (state.status === 'error') {

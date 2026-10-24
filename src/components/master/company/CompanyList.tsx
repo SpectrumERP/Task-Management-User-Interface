@@ -20,7 +20,7 @@ import { MasterPaginationBar } from '../shared/MasterPaginationBar';
 import { MasterDeleteDialog } from '../shared/MasterDeleteDialog';
 import { ActionTip, TruncatedText } from '../shared/TruncatedCellTip';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { BrandLoader } from '@/components/ui/BrandLoader';
+import { Skeleton, SkeletonTable } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterNewPath, toMasterEditPath } from '../shared/masterRoutes';
 import { BusinessEntityShareMenu } from './BusinessEntityShareMenu';
@@ -54,7 +54,7 @@ function AttachmentThumbnail({ attachment, onPreview, className }: { attachment:
   return (
     <div ref={ref} className={cn("shrink-0 overflow-hidden bg-[var(--tm-muted)] flex items-center justify-center relative group", className || "w-16 h-16 rounded-[8px] border border-[var(--tm-border)]")}>
       {loading ? (
-        <BrandLoader size="sm" message="" />
+        <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
       ) : imgData ? (
         <>
           <img src={imgData} alt={attachment.fileName || ''} className="w-full h-full object-cover" />
@@ -710,9 +710,7 @@ export function CompanyList() {
       <div className="flex-1 min-h-0 flex flex-col select-none">
         {isListLoading && apiCompanies.length === 0 ? (
           <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">
-            <div className="flex items-center justify-center p-10 min-h-[200px]">
-              <BrandLoader size="sm" message="Loading business entities" />
-            </div>
+            <SkeletonTable rows={10} columns={[10, 30, 16, 16, 12, 8]} label="Loading business entities" />
           </div>
         ) : loadError && apiCompanies.length === 0 ? (
           <div className="flex flex-col min-h-0 max-h-full w-full rounded-[8px] border border-[var(--tm-border)]/70 bg-[var(--tm-surface)] shadow-[0_8px_30px_-12px_rgba(15,23,42,0.06)] overflow-hidden">

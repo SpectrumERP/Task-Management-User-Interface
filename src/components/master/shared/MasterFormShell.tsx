@@ -10,7 +10,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { BrandLoader, InlineLoader } from '@/components/ui/BrandLoader';
+import { InlineLoader } from '@/components/ui/InlineLoader';
+import { SkeletonForm } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/ui/LoadErrorState';
 import { toMasterListPath, MasterType } from './masterRoutes';
 import { masterNavLabel } from './masterLabels';
@@ -134,9 +135,7 @@ export function MasterFormShell({
 
         <div className="space-y-5">
           {isLoadingRecord ? (
-            <div className="flex items-center justify-center py-16 min-h-[220px]">
-              <BrandLoader size="sm" message="Loading record" />
-            </div>
+            <SkeletonForm sections={[6, 4]} columns={3} className="min-h-[220px] space-y-6" label="Loading record" />
           ) : loadError ? (
             <LoadErrorState
               title="Failed to load record"
